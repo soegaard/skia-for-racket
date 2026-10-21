@@ -426,7 +426,8 @@ Available from `skia` and `skia/canvas-primitives`. See the
 (draw-point canvas x y paint)
 (draw-points canvas points paint #:mode [mode 'points])
 (draw-arc canvas x y width height start sweep paint #:use-center? [flag #f])
-(draw-rrect canvas spec paint)
+(draw-rounded-rect canvas spec paint)
+(draw-rounded-rect canvas x y width height radius-x radius-y paint)
 (draw-double-rounded-rect canvas outer-spec inner-spec paint)
 (draw-color canvas color #:blend-mode [mode 'src-over])
 
@@ -1720,6 +1721,7 @@ path's fill rule, not a paint's stroke settings.
 (draw-paint canvas paint)
 (draw-line canvas x0 y0 x1 y1 paint)
 (draw-rect canvas x y width height paint)
+(draw-rounded-rect canvas shape paint)
 (draw-rounded-rect canvas x y width height radius-x radius-y paint)
 (draw-circle canvas center-x center-y radius paint)
 (draw-oval canvas x y width height paint)
@@ -1732,7 +1734,10 @@ transform and clipping. `points` is a nonempty list of two-element lists,
 for example `'((10 10) (90 20) (40 80))`. The polygon helper constructs and
 closes a temporary path automatically. Pass `#:closed? #f` for an open polyline;
 use a stroke paint to avoid implicit filled-contour closure by the rasterizer.
-Rectangles with excessively large corner radii use Skia's radius fitting.
+`draw-rounded-rect` accepts either a `rounded-rect?` value or coordinates with
+one pair of radii shared by all four corners. Use the value form for different
+corner radii or for a shape reused in clipping and path construction. Both
+forms use Skia's radius fitting when the corner radii are too large.
 
 ## Paths
 

@@ -64,6 +64,12 @@ The circle and rounded rectangle use different geometry but the same accent
 paint. The paint can be reused because the geometry and its appearance are
 separate.
 
+Here @racket[draw-rounded-rect] uses the same horizontal and vertical radii at
+every corner. It also accepts @racket[(draw-rounded-rect canvas shape accent)],
+where @racket[shape] is a value created with @racket[make-rounded-rect]. Use
+that form when corners need different radii or when you want to reuse the
+shape for drawing and clipping.
+
 @section{Let a Shader Supply the Color}
 
 A shader supplies colors across a coordinate system. A paint can use a shader

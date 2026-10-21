@@ -11,7 +11,8 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require rackunit racket/vector "../main.rkt")
+(require rackunit racket/vector "../main.rkt"
+         (only-in "../canvas-primitives.rkt" [draw-rounded-rect primitive-draw-rounded-rect]))
 (provide canvas-pure-tests)
 
 ;;;
@@ -79,8 +80,27 @@
      (check-exn exn:fail:contract? (lambda () (draw-arc #f 0 0 2 3 +inf.0 90 #f))))
    (test-case "arc center flag is boolean"
      (check-exn exn:fail:contract? (lambda () (draw-arc #f 0 0 2 3 0 90 #f #:use-center? 1))))
-   (test-case "draw-rrect requires specification"
-     (check-exn exn:fail:contract? (lambda () (draw-rrect #f '(0 0 1 1) #f))))
+   (test-case "draw-rounded-rect accepts exactly the two public calling forms"
+     (check-eq? draw-rounded-rect primitive-draw-rounded-rect)
+     (check-equal? (procedure-arity draw-rounded-rect) '(3 8))
+     (define-values (required allowed) (procedure-keywords draw-rounded-rect))
+     (check-equal? required '())
+     (check-equal? allowed '())
+     (check-exn exn:fail:contract:arity? (lambda () (draw-rounded-rect #f #f)))
+     (check-exn exn:fail:contract:arity? (lambda () (draw-rounded-rect #f 0 0 #f)))
+     (check-exn
+      (lambda (e)
+        (and (exn:fail:contract? e)
+             (regexp-match? #rx"^draw-rounded-rect:" (exn-message e))
+             (regexp-match? #rx"rounded-rect[?]" (exn-message e))))
+      (lambda () (draw-rounded-rect #f '(0 0 1 1) #f)))
+     (for ([arguments (in-list (list (list #f 0 0 -1 4 1 1 #f)
+                                     (list #f 0 0 4 -1 1 1 #f)
+                                     (list #f 0 0 4 4 -1 1 #f)
+                                     (list #f 0 0 4 4 1 +inf.0 #f)
+                                     (list #f +nan.0 0 4 4 1 1 #f)
+                                     (list #f 3e38 0 3e38 4 1 1 #f)))])
+       (check-exn exn:fail:contract? (lambda () (apply draw-rounded-rect arguments)))))
    (test-case "clip rounded rect requires specification"
      (check-exn exn:fail:contract? (lambda () (canvas-clip-rounded-rect! #f #f))))
    (test-case "draw color checks blend mode"

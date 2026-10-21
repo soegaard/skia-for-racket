@@ -233,7 +233,7 @@
          canvas-translate! canvas-scale! canvas-rotate!
          canvas-rotate-radians! canvas-skew! canvas-reset-transform!
          canvas-clip-rect! canvas-clip-path!
-         draw-paint draw-line draw-rect draw-rounded-rect draw-circle draw-oval
+         draw-paint draw-line draw-rect draw-circle draw-oval
          draw-path draw-polygon
          paint? make-paint paint-copy paint-color paint-shader paint-path-effect
          paint-color-filter paint-mask-filter paint-image-filter
@@ -3137,16 +3137,6 @@
   (define r (rect 'draw-rect x y w h))
   (call-on-canvas 'draw-rect c (list (paint-h 'draw-rect p))
     (lambda (cp pp) (sk_canvas_draw_rect cp r pp))))
-
-; draw-rounded-rect : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) (and/c real?
-;   (>=/c 0)) (and/c real? (>=/c 0)) paint? -> void?
-;   Draws a rectangle with elliptical corner radii.
-(define (draw-rounded-rect c x y w h rx ry p)
-  (define r (rect 'draw-rounded-rect x y w h))
-  (define frx (nonnegative-scalar 'draw-rounded-rect rx))
-  (define fry (nonnegative-scalar 'draw-rounded-rect ry))
-  (call-on-canvas 'draw-rounded-rect c (list (paint-h 'draw-rounded-rect p))
-    (lambda (cp pp) (sk_canvas_draw_round_rect cp r frx fry pp))))
 
 ; draw-circle : canvas? real? real? (and/c real? (>=/c 0)) paint? -> void?
 ;   Draws a circle centered at coordinates x and y.

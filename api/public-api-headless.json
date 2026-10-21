@@ -330,10 +330,10 @@
         },
         {
           "allowed_keywords": [],
-          "arity_mask": "8",
+          "arity_mask": "264",
           "export_kind": "value",
           "kind": "procedure",
-          "name": "draw-rrect",
+          "name": "draw-rounded-rect",
           "phase": "0",
           "required_keywords": []
         },
@@ -6965,19 +6965,10 @@
         },
         {
           "allowed_keywords": [],
-          "arity_mask": "256",
+          "arity_mask": "264",
           "export_kind": "value",
           "kind": "procedure",
           "name": "draw-rounded-rect",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "8",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "draw-rrect",
           "phase": "0",
           "required_keywords": []
         },

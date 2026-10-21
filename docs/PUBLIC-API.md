@@ -141,7 +141,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | draw-double-rounded-rect | stable | 0 | procedure | 4 | none | none |
 | draw-point | stable | 0 | procedure | 4 | none | none |
 | draw-points | stable | 0 | procedure | 3 | none | #:mode |
-| draw-rrect | stable | 0 | procedure | 3 | none | none |
+| draw-rounded-rect | stable | 0 | procedure | 3, 8 | none | none |
 | make-rounded-rect | stable | 0 | procedure | 4 | none | #:radii |
 | rounded-rect-bounds | stable | 0 | procedure | 1 | none | none |
 | rounded-rect-radii | stable | 0 | procedure | 1 | none | none |
@@ -978,8 +978,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | draw-rasterized | stable | 0 | procedure | 6 | none | #:color-space, #:padding, #:scale |
 | draw-rect | stable | 0 | procedure | 6 | none | none |
 | draw-region | stable | 0 | procedure | 3 | none | none |
-| draw-rounded-rect | stable | 0 | procedure | 8 | none | none |
-| draw-rrect | stable | 0 | procedure | 3 | none | none |
+| draw-rounded-rect | stable | 0 | procedure | 3, 8 | none | none |
 | draw-shaped-run | stable | 0 | procedure | 6 | none | none |
 | draw-shaped-run/on-path | stable | 0 | procedure | 5 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset |
 | draw-shaped-text | stable | 0 | procedure | 6 | none | #:direction, #:features, #:language, #:script |

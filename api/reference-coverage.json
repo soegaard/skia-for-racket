@@ -5,11 +5,11 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "bd5bb2a178dacf491b9c5e2b045592c69f0f2a1d"
+      "git_blob": "4310fe0f786206ce33c70fc7da3eb6f7c7b2bbca"
     },
     {
       "file": "api/public-api-gui.json",
-      "git_blob": "1221794e26e099b8ca38110f4a42564f6b38f8f6"
+      "git_blob": "f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22"
     }
   ],
   "definitions": [
@@ -1057,10 +1057,11 @@
     },
     {
       "name": "draw-rounded-rect",
-      "chapter": "scribblings/reference/drawing.scrbl",
+      "chapter": "scribblings/reference/rounded-rectangles.scrbl",
       "canonical_module": "skia",
       "exports": [
-        "skia"
+        "skia",
+        "skia/canvas-primitives"
       ],
       "phase": "0",
       "space": null
@@ -8141,17 +8142,6 @@
     },
     {
       "name": "draw-arc",
-      "chapter": "scribblings/reference/drawing.scrbl",
-      "canonical_module": "skia",
-      "exports": [
-        "skia",
-        "skia/canvas-primitives"
-      ],
-      "phase": "0",
-      "space": null
-    },
-    {
-      "name": "draw-rrect",
       "chapter": "scribblings/reference/drawing.scrbl",
       "canonical_module": "skia",
       "exports": [

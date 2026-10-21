@@ -58,11 +58,16 @@ finite `draw-rect` when a recorded background should have fixed local bounds.
 (rounded-rect-bounds specification) ; immutable #(x y width height)
 (rounded-rect-radii specification)  ; immutable vector of four immutable #(rx ry)
 
-(draw-rrect canvas specification paint)
+(draw-rounded-rect canvas specification paint)
+(draw-rounded-rect canvas x y width height radius-x radius-y paint)
 (draw-double-rounded-rect canvas outer inner paint)
 (canvas-clip-rounded-rect! canvas specification
                            #:operation 'intersect #:antialias? #f)
 ```
+
+Use the specification form when corners need different radii or the shape is
+reused for clipping or path construction. The coordinate-based form applies
+the same horizontal and vertical radii to all four corners.
 
 These are **pure immutable specifications**, not owned resources; do not put
 them in `with-skia`. Radii are a nonnegative scalar (same circular radius at
@@ -73,7 +78,7 @@ order. Lists and vectors are accepted and deeply copied. For example:
 (define shape
   (make-rounded-rect 20 30 200 100
                      #:radii '((0 0) (30 20) (12 12) (24 36))))
-(draw-rrect canvas shape paint)
+(draw-rounded-rect canvas shape paint)
 ```
 
 The accessors return the requested specification. On submission, Skia normalizes
@@ -98,8 +103,7 @@ four different corners. The ordinary path representation also survives picture
 recording and later SVG replay without erasing the corner differences.
 
 Clip operation is `'intersect` or `'difference`. Difference clipping still needs
-explicit fallback for reliable SVG; use the output auditor. The prior
-`draw-rounded-rect` convenience API remains unchanged.
+explicit fallback for reliable SVG; use the output auditor.
 
 ## Querying the clip
 

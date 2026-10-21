@@ -65,17 +65,17 @@ does not make the segment a filled polygon. Zero stroke width requests a
 hairline. The endpoints may coincide.
 }
 
-@defproc[(draw-rounded-rect [canvas canvas?] [x real?] [y real?]
-                            [width (and/c real? (>=/c 0))]
-                            [height (and/c real? (>=/c 0))]
-                            [radius-x (and/c real? (>=/c 0))]
-                            [radius-y (and/c real? (>=/c 0))]
-                            [paint paint?]) void?]{
-Draws a rectangle with elliptical corner radii. Skia scales overlapping radii
-so the corners fit inside the rectangle. Zero radii give square corners.
-The width, height, and radii must be nonnegative; the computed right and bottom
-coordinates must also be in range. The paint selects filling, stroking, or both.
-}
+For a rectangle with the same corner radii at every corner, use the
+coordinate-based form of @racket[draw-rounded-rect]:
+
+@racketblock[
+(draw-rounded-rect canvas x y width height radius-x radius-y paint)
+]
+
+The horizontal and vertical radii apply to all four corners. The paint selects
+filling, stroking, or both. See the full @racket[draw-rounded-rect] entry in
+@secref["skia-rounded-rectangles"] for the argument contracts and the form
+that accepts a rounded-rectangle value with different radii at each corner.
 
 @defproc[(draw-double-rounded-rect [canvas canvas?]
           [outer rounded-rect?]
@@ -288,21 +288,6 @@ A sweep of at least a full turn in magnitude draws the oval.
 ]
 @reference-figure["arc-open-stage8.png"
                   "A thick blue open oval arc sweeps clockwise across most of an ellipse without connecting to its center."]
-}
-
-@section{Rounded-Rectangle Values}
-
-Use @racket[draw-rrect] to draw the rounded-rectangle
-specifications described in @secref["skia-rounded-rectangles"].
-
-@defproc[(draw-rrect [canvas canvas?]
-          [shape rounded-rect?]
-          [paint paint?])
-          void?]{
-Draws the rounded rectangle with the paint's fill/stroke style. The bounds and
-radii are adjusted using
-@seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}
-before drawing.
 }
 
 @section{Device-Clip Color}

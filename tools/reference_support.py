@@ -18,9 +18,9 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 REFERENCE = Path('scribblings/reference')
 MANIFEST = Path('api/reference-coverage.json')
-DEFINITION_FORMS = {'defproc', 'defform', 'defparam', 'defstruct*', 'defthing',
+DEFINITION_FORMS = {'defproc', 'defproc*', 'defform', 'defparam', 'defstruct*', 'defthing',
                     'defclass', 'definterface'}
-OTHER_DEFINITIONS = {'defproc*', 'defform*', 'defstruct', 'deftogether'}
+OTHER_DEFINITIONS = {'defform*', 'defstruct', 'deftogether'}
 
 
 class CheckError(ValueError):
@@ -228,6 +228,26 @@ def procedure_shape(header):
                 arguments=arguments)
 
 
+def procedure_cases_shape(header):
+    """Read disjoint finite calling forms for one procedure, without keywords."""
+    need(isinstance(header, list) and len(header) == 1
+         and isinstance(header[0], list) and header[0], 'invalid procedure cases')
+    need(all(isinstance(case, list) and len(case) == 2 for case in header[0]),
+         'invalid procedure case')
+    cases = [procedure_shape(case) for case in header[0]]
+    name, mask = cases[0]['name'], 0
+    for case in cases:
+        need(case['name'] == name, 'procedure cases must use the same name')
+        arity = int(case['arity_mask'])
+        need(arity >= 0 and not case['allowed_keywords'],
+             'procedure cases require finite arities without keywords')
+        need(not (mask & arity), 'overlapping procedure cases')
+        mask |= arity
+    return dict(name=name, kind='procedure', arity_mask=str(mask),
+                allowed_keywords=[], required_keywords=[], arguments=[],
+                cases=[case['arguments'] for case in cases])
+
+
 def constant_shape(header):
     """Read literal predicates and the reviewed immutable-symbol-vector contract.
 
@@ -307,6 +327,8 @@ def document_definitions(root: Path):
                     continue
                 if form == 'defproc':
                     entry = procedure_shape(header)
+                elif form == 'defproc*':
+                    entry = procedure_cases_shape(header)
                 elif form == 'defthing':
                     entry = constant_shape(header)
                 elif form in ('defclass', 'definterface'):

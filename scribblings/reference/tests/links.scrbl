@@ -2006,9 +2006,7 @@ The following links cover the font and text interfaces.
 
 @racket[canvas-primitives:draw-arc]
 
-@racket[draw-rrect]
-
-@racket[canvas-primitives:draw-rrect]
+@racket[canvas-primitives:draw-rounded-rect]
 
 @racket[draw-double-rounded-rect]
 

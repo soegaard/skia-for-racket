@@ -99,7 +99,7 @@
 ;   Draws the rounded comparison in the current canvas coordinate system.
 (define (rounded c)
   (with-skia ([p (make-paint #:color teal)] [q (make-paint #:color orange)])
-    (draw-rrect c (make-rounded-rect 0 12 125 88 #:radii '((0 0) (34 25) (12 12) (25 34))) p)
+    (draw-rounded-rect c (make-rounded-rect 0 12 125 88 #:radii '((0 0) (34 25) (12 12) (25 34))) p)
     (draw-double-rounded-rect c (make-rounded-rect 155 12 130 88 #:radii 18)
                                (make-rounded-rect 170 27 100 58 #:radii 10) q)))
 

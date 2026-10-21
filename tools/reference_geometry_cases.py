@@ -1,8 +1,8 @@
 """Pinned call-boundary fixtures for R3g-a, independent of Scribble signatures.
 
-The rows reproduce the ten selected modules in public-api-headless.json at
-Git blob 2cadbe3212b62c3becfb0e184a1adc119639b750. Synthetic test snapshots using
-these rows exercise the checker; the ordinary checker uses the real pinned files.
+The rows describe the ten selected modules in public-api-headless.json, including
+both calling forms of draw-rounded-rect. Synthetic test snapshots using these
+rows exercise the checker; the ordinary checker uses the real pinned files.
 No native execution is claimed by this data module.
 """
 
@@ -29,7 +29,7 @@ GA_MODULES = {'advanced-layers.rkt': ['call-with-canvas-layer-rec',
                            'draw-double-rounded-rect',
                            'draw-point',
                            'draw-points',
-                           'draw-rrect',
+                           'draw-rounded-rect',
                            'make-rounded-rect',
                            'rounded-rect-bounds',
                            'rounded-rect-radii',
@@ -256,7 +256,7 @@ GA_PROCEDURES = {'call-with-canvas-layer': (4, ['bounds', 'paint']),
  'draw-point': (16, []),
  'draw-points': (8, ['mode']),
  'draw-region': (8, []),
- 'draw-rrect': (8, []),
+ 'draw-rounded-rect': (264, []),
  'draw-vertices': (8, ['blend-mode']),
  'drawable->picture': (2, []),
  'drawable-approximate-bytes-used': (2, []),

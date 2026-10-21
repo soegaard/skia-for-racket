@@ -103,15 +103,46 @@
        (check-equal? (surface->rgba-bytes s) (make-bytes 1600 0))))
    (test-case "per-corner rounded rect has square and rounded corners"
      (with-skia ([s (make-surface 50 50)] [p (make-paint #:color 'red)])
-       (draw-rrect (surface-canvas s)
+       (draw-rounded-rect (surface-canvas s)
          (make-rounded-rect 5 5 40 40 #:radii '((0 0) (15 15) (0 0) (15 15))) p)
        (check-equal? (surface-pixel s 6 6) (rgb 255 0 0))
        (check-equal? (rgba-alpha (surface-pixel s 43 6)) 0)))
    (test-case "oversized corner radii are normalized by Skia"
      (with-skia ([s (make-surface 30 30)] [p (make-paint #:color 'red)])
-       (draw-rrect (surface-canvas s) (make-rounded-rect 5 5 20 20 #:radii 100) p)
+       (draw-rounded-rect (surface-canvas s) (make-rounded-rect 5 5 20 20 #:radii 100) p)
        (check-equal? (surface-pixel s 15 15) (rgb 255 0 0))
        (check-equal? (rgba-alpha (surface-pixel s 5 5)) 0)))
+   (test-case "rounded rectangle calling forms draw the same shared radii"
+     (for* ([radii '((0 0) (5 9) (100 100) (0 9))]
+            [style '(fill stroke stroke-and-fill)])
+       (with-skia ([coordinates (make-surface 50 50)]
+                   [specification (make-surface 50 50)]
+                   [paint (make-paint #:color 'red #:style style #:stroke-width 2)])
+         (for ([surface (in-list (list coordinates specification))])
+           (canvas-translate! (surface-canvas surface) 2 3)
+           (canvas-clip-rect! (surface-canvas surface) 0 0 30 35))
+         (define shape (make-rounded-rect 5 5 35 30 #:radii (make-list 4 radii)))
+         (check-true
+          (void? (draw-rounded-rect (surface-canvas coordinates) 5 5 35 30
+                                    (car radii) (cadr radii) paint)))
+         (check-true (void? (draw-rounded-rect (surface-canvas specification) shape paint)))
+         (check-equal? (surface->rgba-bytes coordinates)
+                       (surface->rgba-bytes specification)))))
+   (test-case "both rounded rectangle forms reject closed drawing resources"
+     (with-skia ([surface (make-surface 20 20)] [paint (make-paint)])
+       (define canvas (surface-canvas surface))
+       (define shape (make-rounded-rect 2 2 16 16 #:radii 4))
+       (define (draw-value) (draw-rounded-rect canvas shape paint))
+       (define (draw-coordinates) (draw-rounded-rect canvas 2 2 16 16 4 4 paint))
+       (skia-close! surface)
+       (check-exn exn:fail? draw-value)
+       (check-exn exn:fail? draw-coordinates))
+     (with-skia ([surface (make-surface 20 20)] [paint (make-paint)])
+       (define canvas (surface-canvas surface))
+       (define shape (make-rounded-rect 2 2 16 16 #:radii 4))
+       (skia-close! paint)
+       (check-exn exn:fail? (lambda () (draw-rounded-rect canvas shape paint)))
+       (check-exn exn:fail? (lambda () (draw-rounded-rect canvas 2 2 16 16 4 4 paint)))))
    (test-case "double rounded rectangle leaves the inner hole"
      (with-skia ([s (make-surface 80 70)] [p (make-paint #:color 'red)])
        (draw-double-rounded-rect (surface-canvas s)
@@ -268,10 +299,12 @@
      (check-true (has-feature? r 'point-sprites 'needs-raster)))
    (test-case "SVG arcs and rounded geometry pass vector-only"
      (define-values (bs r)
-       (output->bytes/audit (page (lambda (c) (with-skia ([p (make-paint)])
-                                  (draw-arc c 5 5 30 30 0 160 p)
-                                  (draw-rrect c (make-rounded-rect 45 5 35 30 #:radii 5) p)))) 'svg
-         #:policy 'vector-only))
+       (output->bytes/audit
+        (page (lambda (c)
+                (with-skia ([p (make-paint)])
+                  (draw-arc c 5 5 30 30 0 160 p)
+                  (draw-rounded-rect c (make-rounded-rect 45 5 35 30 #:radii 5) p))))
+        'svg #:policy 'vector-only))
      (check-true (output-audit-report-vector-only? r)) (check-true (regexp-match? #rx#"<path" bs)))
    (test-case "SVG direct layers are rejected before the body runs"
      (define count 0)

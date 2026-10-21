@@ -227,6 +227,32 @@
           'required_keywords (sort required-keywords string<?)))
 
 
+; record-procedure-cases! : list? -> void?
+;   Records disjoint finite calling forms for one procedure, rejecting keywords and mixed names.
+(define (record-procedure-cases! cases)
+  (need (and (list? cases) (pair? cases)) "invalid procedure cases")
+  (for ([entry (in-list cases)])
+    (need (and (list? entry) (= (length entry) 2)
+               (list? (car entry)) (pair? (car entry)) (symbol? (caar entry)))
+          "invalid procedure case"))
+  (define name (caaar cases))
+  (define shapes
+    (for/list ([entry (in-list cases)])
+      (need (eq? (caar entry) name) "procedure cases must use the same name")
+      (procedure-shape (car entry))))
+  (define mask
+    (for/fold ([mask 0]) ([shape (in-list shapes)])
+      (define arity (string->number (hash-ref shape 'arity_mask)))
+      (need (and (>= arity 0) (null? (hash-ref shape 'allowed_keywords)))
+            "procedure cases require finite arities without keywords")
+      (need (zero? (bitwise-and mask arity)) "overlapping procedure cases")
+      (bitwise-ior mask arity)))
+  (record! name
+           (hasheq 'kind "procedure" 'arity_mask (number->string mask)
+                   'allowed_keywords '() 'required_keywords '() 'arguments '()
+                   'cases (map (lambda (shape) (hash-ref shape 'arguments)) shapes))))
+
+
 ; record-structure! : list? -> void?
 ;   Records constructor, predicate, descriptor, and accessor shapes for supported transparent
 ;   structure declarations.
@@ -270,6 +296,7 @@
       [(quote quasiquote racketblock racketblock0 racketmod examples interaction) (void)]
       [(defstruct*) (record-structure! datum)]
       [(defproc) (record! (caadr datum) (procedure-shape (cadr datum)))]
+      [(defproc*) (record-procedure-cases! (cadr datum))]
       [(defclass)
        (record! (cadr datum) (hasheq 'kind "class" 'arguments '()))]
       [(definterface)

@@ -600,7 +600,7 @@
      (define shape
        (make-rounded-rect 20 15 120 60
                           #:radii '((24 24) (8 8) (24 8) (8 24))))
-     (draw-rrect canvas shape paint)))
+     (draw-rounded-rect canvas shape paint)))
  #:background 'white)
 
 (render-reference-image
@@ -2860,7 +2860,7 @@
      (define shape (make-rounded-rect 25 20 130 60 #:radii 80))
      (define normalized (rounded-rect-normalize shape))
      (draw-rect canvas 25 20 130 60 outline)
-     (draw-rrect canvas normalized paint)))
+     (draw-rounded-rect canvas normalized paint)))
  #:background 'white)
 
 (render-reference-image
@@ -2868,7 +2868,7 @@
  (lambda (canvas)
    (with-skia ([paint (make-paint #:color "#326DE6")])
      (define shape (make-nine-patch-rounded-rect 20 15 140 70 30 10 16 28))
-     (draw-rrect canvas shape paint)))
+     (draw-rounded-rect canvas shape paint)))
  #:background 'white)
 
 (render-reference-image
@@ -2882,9 +2882,9 @@
      (define original (make-rounded-rect 65 52 130 65 #:radii 28))
      (define inset (rounded-rect-inset original 12 8))
      (define outset (rounded-rect-outset original 12 8))
-     (draw-rrect canvas outset outset-paint)
-     (draw-rrect canvas original original-paint)
-     (draw-rrect canvas inset inset-paint)
+     (draw-rounded-rect canvas outset outset-paint)
+     (draw-rounded-rect canvas original original-paint)
+     (draw-rounded-rect canvas inset inset-paint)
      (draw-simple-text canvas "orange: outset (12, 8)" 54 22 font label)
      (draw-simple-text canvas "dark: original" 88 137 font label)
      (draw-simple-text canvas "blue: inset (12, 8)" 72 153 font label)))

@@ -10,7 +10,8 @@
 Use a rounded-rectangle value when corners need different radii, or when the
 same rounded boundary will be used for drawing, clipping, and path
 construction. For a single drawing operation with the same radii at every
-corner, @racket[draw-rounded-rect] is simpler.
+corner, use the coordinate-based form of @racket[draw-rounded-rect] without
+creating a separate value.
 
 A @deftech{rounded rectangle} is an immutable Racket structure containing a
 rectangle and four pairs of corner radii. Drawing and path construction use
@@ -19,9 +20,36 @@ to adjust the bounds and radii when needed. The stored radii need not fit the bo
 
 Corners are ordered top-left, top-right, bottom-right, bottom-left. The two
 components at each corner
-are its horizontal and vertical radii. Use @racket[draw-rrect] to draw a value,
+are its horizontal and vertical radii. Use @racket[draw-rounded-rect] to draw a value,
 @racket[canvas-clip-rounded-rect!] to clip with one, or @racket[path-add-rrect!]
 to convert its boundary to path commands.
+
+@section{Drawing}
+
+@defproc*[([(draw-rounded-rect [canvas canvas?]
+                              [shape rounded-rect?]
+                              [paint paint?]) void?]
+           [(draw-rounded-rect [canvas canvas?] [x real?] [y real?]
+                               [width (and/c real? (>=/c 0))]
+                               [height (and/c real? (>=/c 0))]
+                               [radius-x (and/c real? (>=/c 0))]
+                               [radius-y (and/c real? (>=/c 0))]
+                               [paint paint?]) void?])]{
+Draws a rounded rectangle. The paint selects filling, stroking, or both.
+
+The first form takes a @tech{rounded rectangle}, normally created with
+@racket[make-rounded-rect]. Use it when corners need different radii or when
+the same shape is also used for clipping or path construction.
+
+The second form takes the rectangle's position and size directly. Its
+@racket[radius-x] and @racket[radius-y] apply to all four corners. The width,
+height, and radii must be nonnegative; the computed right and bottom
+coordinates must also be in range.
+
+Both forms use @seclink["skia-rounded-rectangle-normalization"]{Skia's
+normalization rules}: overlapping radii are scaled to fit, and a corner
+with a zero radius component becomes square.
+}
 
 @section{Specifications}
 
@@ -102,7 +130,7 @@ records the radii that Skia can represent within the bounds.
   (define shape
     (make-rounded-rect 20 15 120 60
                        #:radii '((24 24) (8 8) (24 8) (8 24))))
-  (draw-rrect (surface-canvas surface) shape paint))
+  (draw-rounded-rect (surface-canvas surface) shape paint))
 ]
 
 @reference-figure["rounded-rect.png"
@@ -182,9 +210,9 @@ add the rounded rectangle to a path and use @racket[path-transform].
   (define inset (rounded-rect-inset original 12 8))
   (define outset (rounded-rect-outset original 12 8))
   (define canvas (surface-canvas surface))
-  (draw-rrect canvas outset outset-paint)
-  (draw-rrect canvas original original-paint)
-  (draw-rrect canvas inset inset-paint)
+  (draw-rounded-rect canvas outset outset-paint)
+  (draw-rounded-rect canvas original original-paint)
+  (draw-rounded-rect canvas inset inset-paint)
   (draw-simple-text canvas "orange: outset (12, 8)" 54 22 font label)
   (draw-simple-text canvas "dark: original" 88 137 font label)
   (draw-simple-text canvas "blue: inset (12, 8)" 72 153 font label)
@@ -211,7 +239,7 @@ remains useful because it establishes the refusal to approximate:
             [paint (make-paint #:color "#326DE6")])
   (define normalized
     (rounded-rect-normalize (make-rounded-rect 25 20 130 60 #:radii 80)))
-  (draw-rrect (surface-canvas surface) normalized paint))
+  (draw-rounded-rect (surface-canvas surface) normalized paint))
 ]
 @reference-figure["rounded-rect-normalized.png"
                   "A blue rounded rectangle after oversized corner radii have been normalized to fit its bounds."]
@@ -220,7 +248,7 @@ remains useful because it establishes the refusal to approximate:
 (with-skia ([surface (make-surface 180 100 #:background 'white)]
             [paint (make-paint #:color "#326DE6")])
   (define shape (make-nine-patch-rounded-rect 20 15 140 70 30 10 16 28))
-  (draw-rrect (surface-canvas surface) shape paint))
+  (draw-rounded-rect (surface-canvas surface) shape paint))
 ]
 @reference-figure["rounded-rect-nine-patch.png"
                   "A blue rounded rectangle whose four corner radii come from independent left, top, right, and bottom components."]

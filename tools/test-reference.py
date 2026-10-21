@@ -66,7 +66,7 @@ for names, arity in (
      'paint-set-shader! paint-set-path-effect! paint-set-color-filter! '
      'paint-set-mask-filter! paint-set-image-filter! paint-set-dither!', 4),
     ('make-color-shader', 2), ('make-blend-shader', 8), ('shader-with-local-matrix', 4),
-    ('draw-paint', 4), ('draw-line draw-oval', 64), ('draw-rounded-rect', 256),
+    ('draw-paint', 4), ('draw-line draw-oval', 64), ('draw-rounded-rect', 264),
     ('draw-circle', 32), ('draw-path', 8),
     ('skia-path? path-copy path-fill-rule path-reset! path-close! path-point-count '
      'path-points path-last-point path-bounds path-tight-bounds path-convex? '
@@ -353,8 +353,8 @@ class Fixtures(unittest.TestCase):
 
     def test_real_authored_source_shape(self):
         result = self.check()
-        self.assertEqual(len(result['definitions']), 1263)
-        self.assertEqual(result['documented_exports'], 1988)
+        self.assertEqual(len(result['definitions']), 1262)
+        self.assertEqual(result['documented_exports'], 1987)
         self.assertEqual(len(result['deferred']), 1)
         self.assertFalse(result['binding_identity_checked'])
 
@@ -473,12 +473,12 @@ class Fixtures(unittest.TestCase):
     def test_no_fake_definition_inside_examples(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
-        self.assertEqual(len(self.check()['definitions']), 1263)
+        self.assertEqual(len(self.check()['definitions']), 1262)
 
     def test_scribble_comments_are_not_definitions(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
-        self.assertEqual(len(self.check()['definitions']), 1263)
+        self.assertEqual(len(self.check()['definitions']), 1262)
 
     def test_cyclic_chapter_include(self):
         path = self.root / checks.REFERENCE / 'drawing.scrbl'
@@ -990,10 +990,23 @@ class EditorialRevisionTests(unittest.TestCase):
         text = (ROOT / checks.REFERENCE / 'drawing.scrbl').read_text()
         blocks = [header for form, header, _ in checks.commands(text, recursive=True)
                   if form == 'racketblock']
-        self.assertEqual(len(blocks), 12)
+        self.assertEqual(len(blocks), 13)
         self.assertEqual(blocks[0][0][0], 'with-skia')
         self.assertEqual([row[0] for row in blocks[0][0][1]], ['surface', 'paint'])
         self.assertIn("#:exists 'replace", text)
+
+    def test_rounded_rectangle_summary_links_to_both_calling_forms(self):
+        definitions, _ = checks.document_definitions(ROOT)
+        matches = [spec for spec in definitions if spec['name'] == 'draw-rounded-rect']
+        self.assertEqual(len(matches), 1)
+        spec = matches[0]
+        self.assertEqual(spec['chapter'], 'scribblings/reference/rounded-rectangles.scrbl')
+        self.assertEqual(spec['form'], 'defproc*')
+        self.assertEqual(spec['arity_mask'], '264')
+        self.assertEqual([len(case) for case in spec['cases']], [3, 8])
+        text = (ROOT / checks.REFERENCE / 'drawing.scrbl').read_text()
+        self.assertIn('(draw-rounded-rect canvas x y width height radius-x radius-y paint)', text)
+        self.assertIn('@secref["skia-rounded-rectangles"]', text)
 
     def test_icc_responsibility_and_validation_are_distinct(self):
         text = (ROOT / checks.REFERENCE / 'encoding.scrbl').read_text()
@@ -1031,8 +1044,8 @@ class EditorialRevisionTests(unittest.TestCase):
 
     def test_source_definitions_and_chapter_count_are_unchanged(self):
         result = checks.check_source(ROOT, documents_only=True)
-        self.assertEqual(len(result['definitions']), 1263)
-        self.assertEqual(result['documented_exports'], 1988)
+        self.assertEqual(len(result['definitions']), 1262)
+        self.assertEqual(result['documented_exports'], 1987)
         self.assertEqual(len(result['chapters']), 85)  # Root plus eighty-four chapters.
 
 
@@ -1253,6 +1266,39 @@ class ReviewArchiveTests(unittest.TestCase):
 class R2SignatureTests(unittest.TestCase):
     def shape(self, text):
         return checks.procedure_shape(checks.Reader(text).read())
+
+    def cases(self, text):
+        return checks.procedure_cases_shape(checks.Reader(text).read())
+
+    def test_disjoint_calling_forms_are_one_procedure(self):
+        shape = self.cases('[([(f [a any/c]) void?] '
+                           '[(f [a any/c] [b any/c] [c any/c]) void?])]')
+        self.assertEqual(shape['name'], 'f')
+        self.assertEqual(shape['arity_mask'], '10')
+        self.assertEqual([len(case) for case in shape['cases']], [1, 3])
+        self.assertEqual(shape['allowed_keywords'], [])
+        self.assertEqual(shape['required_keywords'], [])
+
+    def test_calling_forms_reject_different_names(self):
+        with self.assertRaisesRegex(checks.CheckError, 'same name'):
+            self.cases('[([(f) void?] [(g [a any/c]) void?])]')
+
+    def test_calling_forms_reject_overlapping_arities(self):
+        with self.assertRaisesRegex(checks.CheckError, 'overlapping'):
+            self.cases('[([(f [a any/c]) void?] [(f [b any/c]) void?])]')
+
+    def test_calling_forms_reject_rest_and_keyword_signatures(self):
+        for source in ('[([(f [a any/c] ...) void?])]',
+                       '[([(f [#:key key any/c #f]) void?])]'):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(checks.CheckError, 'finite arities without keywords'):
+                    self.cases(source)
+
+    def test_calling_forms_require_a_nonempty_case_list(self):
+        for source in ('[]', '[()]', '[([(f) void?]) #:link-target? #f]'):
+            with self.subTest(source=source):
+                with self.assertRaises(checks.CheckError):
+                    self.cases(source)
 
     def test_zero_or_more_arguments(self):
         shape = self.shape('[(combine [value any/c] ...) any]')
@@ -2850,14 +2896,14 @@ class R3dColorSemanticsTests(unittest.TestCase):
                       if 'skia/' + module in row['exports']]
             self.assertEqual(sorted(actual), sorted(names))
             self.assertEqual(len(actual), len(set(actual)))
-        self.assertEqual(len(manifest['definitions']), 1263)
-        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1988)
+        self.assertEqual(len(manifest['definitions']), 1262)
+        self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 1987)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
         self.assertEqual({row['file']: row['git_blob'] for row in manifest['snapshots']}, {
-            'api/public-api-headless.json': 'bd5bb2a178dacf491b9c5e2b045592c69f0f2a1d',
-            'api/public-api-gui.json': '1221794e26e099b8ca38110f4a42564f6b38f8f6'})
+            'api/public-api-headless.json': '4310fe0f786206ce33c70fc7da3eb6f7c7b2bbca',
+            'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
 
     def test_standard_space_definitions_move_without_removing_the_legacy_section(self):
         old = self.text('colors')
@@ -3833,8 +3879,8 @@ class R3gaGeometryTests(unittest.TestCase):
         self.assertEqual(set(GA_SYNTAX), {'with-canvas-layer', 'with-canvas-matrix'})
 
     def test_new_chapters_and_aggregate_counts_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1263)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1988)
+        self.assertEqual(len(self.definitions), 1262)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1987)
         self.assertEqual(len(self.chapters) - 1, 84)
         self.assertEqual(self.manifest['stage'], 'R4g')
         for chapter in ('rounded-rectangles', 'regions', 'projective-matrices',
@@ -3987,8 +4033,8 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_new_scope_keeps_actual_pinned_inventory_hashes(self):
         expected = {row['file']: row['git_blob'] for row in self.manifest['snapshots']}
         self.assertEqual(expected, {
-            'api/public-api-headless.json': 'bd5bb2a178dacf491b9c5e2b045592c69f0f2a1d',
-            'api/public-api-gui.json': '1221794e26e099b8ca38110f4a42564f6b38f8f6'})
+            'api/public-api-headless.json': '4310fe0f786206ce33c70fc7da3eb6f7c7b2bbca',
+            'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
 
 
 class R3gbRasterTests(unittest.TestCase):
@@ -4024,8 +4070,8 @@ class R3gbRasterTests(unittest.TestCase):
         self.assertEqual(GB_REQUIRED_KEYWORDS, {'image-apply-filter': ['clip']})
 
     def test_scope_counts_and_r4_completion_are_explicit(self):
-        self.assertEqual(len(self.definitions), 1263)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1988)
+        self.assertEqual(len(self.definitions), 1262)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1987)
         self.assertEqual(len(self.chapters) - 1, 84)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertNotIn('deferred_policy', self.manifest)
@@ -4422,8 +4468,8 @@ class R4aContextTests(unittest.TestCase):
                     if f == 'defproc' and h[0][0] == name)
 
     def test_bounded_scope_counts_real_public_aliases_not_only_names(self):
-        self.assertEqual(len(self.definitions), 1263)
-        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1988)
+        self.assertEqual(len(self.definitions), 1262)
+        self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 1987)
         self.assertEqual(len(self.chapters) - 1, 84)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
@@ -4777,7 +4823,7 @@ class R4bDocumentationTests(unittest.TestCase):
         rows = [d for d in self.manifest['definitions'] if d['name'] in R4B_PROCEDURES]
         self.assertEqual(len(rows), 36)
         self.assertEqual(sum(len(d['exports']) for d in rows), 37)
-        self.assertEqual(len(self.definitions), 1263)
+        self.assertEqual(len(self.definitions), 1262)
         self.assertEqual(len(self.chapters) - 1, 84)
         self.assertTrue(all(d['canonical_module'] == 'skia/gpu' for d in rows))
         self.assertTrue(all('skia' not in d['exports'] for d in rows))
@@ -4905,11 +4951,11 @@ class R4bDocumentationTests(unittest.TestCase):
 
     def test_source_inventory_is_fully_reflected(self):
         result = checks.check_source(ROOT)
-        self.assertEqual(result['inventory_exports'], 1988)
-        self.assertEqual(result['reflected_inventory_exports'], 1988)
+        self.assertEqual(result['inventory_exports'], 1987)
+        self.assertEqual(result['reflected_inventory_exports'], 1987)
         self.assertEqual(result['source_verified_export_additions'], 0)
         self.assertFalse(result['binding_identity_checked'])
-        self.assertEqual(result['documented_exports'], 1988)
+        self.assertEqual(result['documented_exports'], 1987)
         self.assertEqual(len(result['deferred']), 0)
 
     def test_archive_hash_inventory_includes_all_new_chapters(self):
@@ -5141,9 +5187,9 @@ class R4cInteropTests(unittest.TestCase):
 
     def test_coverage_totals_and_stage_are_explicit(self):
         result = checks.check_source(ROOT)
-        self.assertEqual(len(result['definitions']), 1263)
-        self.assertEqual(result['documented_exports'], 1988)
-        self.assertEqual(result['inventory_exports'], 1988)
+        self.assertEqual(len(result['definitions']), 1262)
+        self.assertEqual(result['documented_exports'], 1987)
+        self.assertEqual(result['inventory_exports'], 1987)
         self.assertEqual(len(result['deferred']), 0)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
@@ -5313,9 +5359,9 @@ class R4dPresentationTests(unittest.TestCase):
 
     def test_r4d_coverage_remains_present_in_complete_r4e_manual(self):
         result = checks.check_source(ROOT)
-        self.assertEqual(len(result['definitions']), 1263)
-        self.assertEqual(result['documented_exports'], 1988)
-        self.assertEqual(result['inventory_exports'], 1988)
+        self.assertEqual(len(result['definitions']), 1262)
+        self.assertEqual(result['documented_exports'], 1987)
+        self.assertEqual(result['inventory_exports'], 1987)
         self.assertEqual(len(result['deferred']), 0)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
@@ -5503,10 +5549,10 @@ class R4eDcIntegrationTests(unittest.TestCase):
 
     def test_r4e_closes_the_pinned_and_source_verified_inventory(self):
         result = checks.check_source(ROOT, require_complete=True)
-        self.assertEqual(len(result['definitions']), 1263)
-        self.assertEqual(result['documented_exports'], 1988)
-        self.assertEqual(result['inventory_exports'], 1988)
-        self.assertEqual(result['reflected_inventory_exports'], 1988)
+        self.assertEqual(len(result['definitions']), 1262)
+        self.assertEqual(result['documented_exports'], 1987)
+        self.assertEqual(result['inventory_exports'], 1987)
+        self.assertEqual(result['reflected_inventory_exports'], 1987)
         self.assertEqual(result['source_verified_export_additions'], 0)
         self.assertEqual(result['deferred'], [])
         self.assertEqual(len(result['chapters']) - 1, 84)
@@ -5708,10 +5754,10 @@ class R4fPictBridgeTests(unittest.TestCase):
 
     def test_pict_bridge_closes_the_fresh_inventory(self):
         result = checks.check_source(ROOT, require_complete=True)
-        self.assertEqual(len(result['definitions']), 1263)
-        self.assertEqual(result['documented_exports'], 1988)
-        self.assertEqual(result['inventory_exports'], 1988)
-        self.assertEqual(result['reflected_inventory_exports'], 1988)
+        self.assertEqual(len(result['definitions']), 1262)
+        self.assertEqual(result['documented_exports'], 1987)
+        self.assertEqual(result['inventory_exports'], 1987)
+        self.assertEqual(result['reflected_inventory_exports'], 1987)
         self.assertEqual(result['source_verified_export_additions'], 0)
         self.assertEqual(result['deferred'], [])
         self.assertEqual(len(result['chapters']) - 1, 84)
@@ -5787,10 +5833,10 @@ class R4gRacketDrawBridgeTests(unittest.TestCase):
 
     def test_racket_draw_bridge_closes_the_current_inventory(self):
         result = checks.check_source(ROOT, require_complete=True)
-        self.assertEqual(len(result['definitions']), 1263)
-        self.assertEqual(result['documented_exports'], 1988)
-        self.assertEqual(result['inventory_exports'], 1988)
-        self.assertEqual(result['reflected_inventory_exports'], 1988)
+        self.assertEqual(len(result['definitions']), 1262)
+        self.assertEqual(result['documented_exports'], 1987)
+        self.assertEqual(result['inventory_exports'], 1987)
+        self.assertEqual(result['reflected_inventory_exports'], 1987)
         self.assertEqual(result['source_verified_export_additions'], 0)
         self.assertEqual(result['deferred'], [])
         self.assertEqual(len(result['chapters']) - 1, 84)

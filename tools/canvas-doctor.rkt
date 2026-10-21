@@ -36,7 +36,7 @@
                  (= (rgba-blue p) 255) (= (canvas-save-count c) 1))
       (error 'doctor "group opacity or layer restore failed: ~a" p))
     (draw-arc c 32 2 14 14 0 90 red #:use-center? #t)
-    (draw-rrect c (make-rounded-rect 3 24 30 12 #:radii '((2 2) (5 4) (0 0) (3 3))) blue)
+    (draw-rounded-rect c (make-rounded-rect 3 24 30 12 #:radii '((2 2) (5 4) (0 0) (3 3))) blue)
     (unless (canvas-quick-reject? c 100 100 10 10)
       (error 'doctor "quick reject failed")))
   (define p

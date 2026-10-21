@@ -17,7 +17,7 @@
          "private/check.rkt" "private/lifetime.rkt" "private/path-matrix.rkt"
          (submod "private/core.rkt" canvas-primitive-internals))
 (provide rounded-rect? make-rounded-rect rounded-rect-bounds rounded-rect-radii
-         draw-point draw-points draw-arc draw-rrect draw-double-rounded-rect draw-color
+         draw-point draw-points draw-arc draw-rounded-rect draw-double-rounded-rect draw-color
          canvas-clip-rounded-rect! canvas-local-clip-bounds canvas-device-clip-bounds
          canvas-clip-empty? canvas-clip-rect? canvas-quick-reject?
          canvas-save-layer! call-with-canvas-layer with-canvas-layer)
@@ -177,13 +177,25 @@
   (call-on-canvas who c (list (paint-h who paint))
                   (lambda (cp pp) (sk_canvas_draw_arc cp bounds a b use-center? pp))))
 
-; draw-rrect : canvas? rounded-rect? paint? -> void?
-;   Draws the native-normalized rounded rectangle with the paint's fill/stroke style.
-(define (draw-rrect c rr paint)
-  (define who 'draw-rrect)
-  (check-rounded-rect who rr)
-  (call-on-canvas who c (list (paint-h who paint))
-    (lambda (cp pp) (call-with-rrect who rr (lambda (rp) (sk_canvas_draw_rrect cp rp pp))))))
+; draw-rounded-rect : canvas? rounded-rect? paint? -> void?
+; draw-rounded-rect : canvas? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
+;   (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) paint? -> void?
+;   Draws a rounded-rectangle value or coordinates with shared horizontal and vertical corner radii.
+(define draw-rounded-rect
+  (case-lambda
+    [(canvas shape paint)
+     (define who 'draw-rounded-rect)
+     (check-rounded-rect who shape)
+     (call-on-canvas who canvas (list (paint-h who paint))
+       (lambda (cp pp)
+         (call-with-rrect who shape (lambda (rp) (sk_canvas_draw_rrect cp rp pp)))))]
+    [(canvas x y width height radius-x radius-y paint)
+     (define who 'draw-rounded-rect)
+     (define bounds (rect who x y width height))
+     (define rx (nonnegative-scalar who radius-x))
+     (define ry (nonnegative-scalar who radius-y))
+     (call-on-canvas who canvas (list (paint-h who paint))
+       (lambda (cp pp) (sk_canvas_draw_round_rect cp bounds rx ry pp)))]))
 
 ; draw-double-rounded-rect : canvas? rounded-rect? rounded-rect? paint? -> void?
 ;   Draws the outer rounded rectangle with the inner shape removed.

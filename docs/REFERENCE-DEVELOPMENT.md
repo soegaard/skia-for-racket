@@ -1,11 +1,24 @@
 # Skia Reference development: R4g
 
+## Rounded-rectangle calling forms
+
+`draw-rounded-rect` is documented once, in Rounded Rectangles, with both its
+three-argument value form and eight-argument coordinate form. Drawing Primitives
+introduces the coordinate form and links to the full entry. Both public modules,
+`skia` and `skia/canvas-primitives`, export the same procedure.
+
+The source and runtime declaration readers support `defproc*` for one procedure
+with disjoint finite arities and no keyword arguments. They combine the arity
+masks and preserve each form's argument metadata; other case signatures remain
+unsupported. API snapshots and their coverage pins must change together when
+the calling forms change.
+
 ## Opt-in Racket Draw bridge
 
 Baseline: `4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1`
 (`Clarify Pict bridge introduction`). R4g adds an opt-in
-`skia/racket-draw` reference chapter. The Reference now has 1263 definitions,
-1988 documented export paths, and 84 conceptual chapters. The headless
+`skia/racket-draw` reference chapter. The Reference now has 1262 definitions,
+1987 documented export paths, and 84 conceptual chapters. The headless
 inventory records seven bridge exports, including the two unchanged
 `skia/bitmap` bindings re-exported from the bridge. No export paths are
 deferred.
