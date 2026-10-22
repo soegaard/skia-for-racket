@@ -43,14 +43,14 @@ class NavigationParserTests(unittest.TestCase):
                          data-skia-doc-section="reference">
           <a class="skia-doc-nav__collection-link skia-doc-nav__collection-link--reference"
              href="index.html">Reference</a>
-          <span class="skia-doc-nav__collection-link skia-doc-nav__collection-link--guide"
-                aria-disabled="true">Guide</span>
+          <a class="skia-doc-nav__collection-link skia-doc-nav__collection-link--guide"
+             href="guide.html">Guide</a>
           <a class="skia-doc-nav__collection-link skia-doc-nav__collection-link--tutorials"
              href="tutorials.html">Tutorials</a>
           <div data-skia-doc-nav-panel="tutorials"></div>
         </div>''')
         self.assertEqual(len(parser.navigations), 1)
-        self.assertEqual(len(parser.navigations[0]['anchors']), 2)
+        self.assertEqual(len(parser.navigations[0]['anchors']), 3)
         self.assertEqual(len(parser.navigations[0]['buttons']), 0)
         self.assertEqual(len(parser.navigations[0]['collections']), 3)
         self.assertEqual(len(parser.navigations[0]['panels']), 1)
@@ -85,6 +85,19 @@ class NavigationParserTests(unittest.TestCase):
                 navigation.local_target(root, page,
                                         'https://example.invalid/local-redirect/index.html?'
                                         'doc=other-manual&rel=index.html')
+
+    def test_accepts_package_local_guide_redirects(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / 'skia-guide' / 'index.html'
+            target.parent.mkdir()
+            target.write_text('<!doctype html>', encoding='utf-8')
+            page = root / 'skia-reference' / 'index.html'
+            page.parent.mkdir()
+            page.write_text('<!doctype html>', encoding='utf-8')
+            href = ('https://docs.racket-lang.org/local-redirect/index.html?'
+                    'doc=skia-guide&rel=index.html')
+            self.assertEqual(navigation.local_target(root, page, href), target.resolve())
 
 
 if __name__ == '__main__':

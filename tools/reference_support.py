@@ -679,7 +679,7 @@ def internal_redirect(url):
     doc, rel = query.get('doc', []), query.get('rel', [])
     if len(doc) != 1 or len(rel) != 1:
         return None
-    if not re.fullmatch(r'skia-reference|skia-tutorials|skia-tutorial-[a-z-]+', doc[0]):
+    if not re.fullmatch(r'skia-reference|skia-guide|skia-tutorials|skia-tutorial-[a-z-]+', doc[0]):
         return None
     target = urlsplit(rel[0])
     need(not target.scheme and not target.netloc and not target.query, 'unsafe redirect target')
@@ -850,7 +850,7 @@ def prepare_site(site: Path, *, source_root: Path | None = None):
                     if original.is_relative_to(source_root.resolve()):
                         relative = original.relative_to(source_root.resolve())
                         if (len(relative.parts) >= 2
-                            and re.fullmatch(r'skia-reference|skia-tutorials|skia-tutorial-[a-z-]+',
+                            and re.fullmatch(r'skia-reference|skia-guide|skia-tutorials|skia-tutorial-[a-z-]+',
                                              relative.parts[0])):
                             target = (relative.parts[0], Path(*relative.parts[1:]).as_posix(),
                                       parts.fragment)

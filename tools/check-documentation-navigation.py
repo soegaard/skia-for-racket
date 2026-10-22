@@ -147,6 +147,7 @@ def installed_redirect_target(root: Path, href: str):
         return None
     document, relative = documents[0], unquote(relatives[0])
     if not (document == 'skia-reference'
+            or document == 'skia-guide'
             or document == 'skia-tutorials'
             or document.startswith('skia-tutorial-')):
         return None
@@ -195,17 +196,17 @@ def check_page(root: Path, page: Path, *, section: str, index: bool, tutorial_id
     guide_tag, guide = nav_collection(navigation, 'skia-doc-nav__collection-link--guide')
     tutorials_tag, tutorials = nav_collection(navigation, 'skia-doc-nav__collection-link--tutorials')
     need(reference_tag == 'a', f'{page}: Reference must be a link')
+    need(guide_tag == 'a', f'{page}: Guide must be a link')
     need(tutorials_tag == 'a', f'{page}: Tutorials must be a link')
-    need(guide_tag == 'span' and guide.get('aria-disabled') == 'true' and 'href' not in guide,
-         f'{page}: unavailable Guide must be an inert visible label')
     local_target(root, page, reference.get('href', ''))
+    local_target(root, page, guide.get('href', ''))
     local_target(root, page, tutorials.get('href', ''))
     all_tutorials = [anchor for anchor in navigation['anchors']
                      if anchor.get('data-skia-doc-nav-all') == 'tutorials']
     need(len(all_tutorials) == 1, f'{page}: expected one All tutorials shortcut')
     local_target(root, page, all_tutorials[0].get('href', ''))
 
-    for collection, anchor in (('reference', reference), ('tutorials', tutorials)):
+    for collection, anchor in (('reference', reference), ('guide', guide), ('tutorials', tutorials)):
         expected_current = (collection == section)
         actual_current = anchor.get('aria-current')
         if expected_current:
@@ -276,6 +277,11 @@ def check_site(root: Path):
         check_page(root, page, section='reference', index=page.name == 'index.html',
                    tutorial_id=None, categories=categories, shortcut_ids=shortcut_ids)
 
+    guide_index = root / 'skia-guide' / 'index.html'
+    need(guide_index.is_file(), f'missing Guide index: {guide_index}')
+    check_page(root, guide_index, section='guide', index=True, tutorial_id=None,
+               categories=categories, shortcut_ids=shortcut_ids)
+
     tutorial_index = root / 'skia-tutorials' / 'index.html'
     need(tutorial_index.is_file(), f'missing Tutorials index: {tutorial_index}')
     check_page(root, tutorial_index, section='tutorials', index=True, tutorial_id=None,
@@ -293,7 +299,7 @@ def check_site(root: Path):
         site=str(root),
         reference_pages=len(pages),
         tutorials=len(tutorials),
-        available_collections=['reference', 'tutorials'],
+        available_collections=['reference', 'guide', 'tutorials'],
         landing_checked=True,
     )
 

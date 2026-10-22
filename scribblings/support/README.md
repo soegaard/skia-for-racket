@@ -1,8 +1,8 @@
 # Shared Documentation Navigation
 
-These files implement the collection band shared by the Reference and
-Tutorials, with metadata for the future Guide. Scribble creates real document
-links; browser code enhances the tutorial disclosure rather than defining routes.
+These files implement the collection band shared by the Reference, Guide, and
+Tutorials. Scribble creates real document links; browser code enhances the
+tutorial disclosure rather than defining routes.
 
 - [documentation-catalog.rkt](documentation-catalog.rkt) defines collection
   identities, enabled destinations, and subject-based tutorial shortcuts.

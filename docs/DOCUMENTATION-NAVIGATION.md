@@ -8,12 +8,9 @@ categories, and routes from the tutorial catalog. JavaScript only operates the
 Tutorials shortcut disclosure; the collection links and lesson links are present
 in the HTML before the script runs.
 
-The current visible order is **Reference, Guide, Tutorials**. `Guide` remains a
-disabled, visible reserved catalog record while no registered Guide manual
-exists. To enable it, give the record a real module path and output-directory
-identity, register that exact manual in `info.rkt`, and let
-`validate-documentation-collections!` reject incomplete metadata. The Guide
-will then occupy the middle position automatically.
+The current visible order is **Reference, Guide, Tutorials**. Each collection
+has a registered manual and a real destination; the Guide occupies the middle
+position automatically from the collection catalog.
 
 Tutorial shortcuts are grouped by the catalog's explicit subject categories,
 not by reading routes. Every lesson belongs to exactly one category; routes may
@@ -25,7 +22,7 @@ same metadata by `tools/render-documentation-landing.rkt`, using
 
 For complete-site evidence, build all installed manuals, stage the Pages tree,
 then run `tools/check-documentation-navigation.py` against that staged root.
-It checks every Reference page, the landing page, the Tutorials index, every
+It checks every Reference page, the Guide and Tutorials indexes, every
 tutorial, all shortcut targets, active state, and local CSS/JavaScript assets.
 Reference-only previews remain useful, but report their unavailable navigation
 destinations and are not complete-site navigation evidence.
