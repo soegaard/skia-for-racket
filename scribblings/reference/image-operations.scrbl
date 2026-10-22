@@ -9,58 +9,22 @@
 @defmodule[skia/image-operations #:no-declare]
 @(declare-exporting skia skia/image-operations #:use-sources (skia/image-operations))
 
-@tech{Images} are immutable drawing resources, but their pixels need not already be decoded or
-CPU-accessible. These queries distinguish validity, deferred generation, texture backing, and
-immediately available pixels. None of those properties alone proves the others.
+Use these operations to finish decoding an image before drawing, copy pixels
+into editable storage, or create a filtered image for reuse. For ordinary
+drawing, @racket[draw-image] and @racket[draw-image-rect] can decode pixels as
+needed; no preparation step is required.
 
-The functions that prepare CPU images, transfer pixels, or apply filters require CPU images.
-They reject GPU-owned or texture-backed inputs instead of silently reading back a texture. Transfer a
-@tech{GPU image} explicitly before using these operations. Ordinary image queries still enforce the
-source resource's lifetime, thread, and any GPU-context restrictions.
+The image operations require CPU images. They reject GPU-owned or texture-backed
+inputs instead of reading pixels back from the GPU implicitly. Use an explicit
+@tech{GPU readback} operation first; see @secref["skia-gpu-transfers"]. The
+source must also satisfy its resource-lifetime and thread requirements.
+
+For queries about an image's format, validity, or pixel availability, see
+@secref["skia-image-properties"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Image Properties}
-
-@defproc[(image-unique-id [image image?])
-          exact-nonnegative-integer?]{
-Returns the native image's process-local identifier. This is not a content hash or a persistent
-file identifier. It does not imply that the image owns a unique copy of its pixels.
-}
-
-@defproc[(image-alpha-only? [image image?])
-          boolean?]{
-Reports whether the image has an alpha-only native format. This does not scan for opaque content
-or report that all RGB samples happen to be zero.
-}
-
-@defproc[(image-lazy-generated? [image image?])
-          boolean?]{
-Reports whether the image uses deferred generation. The query itself does not
-decode or generate pixels.
-}
-
-@defproc[(image-texture-backed? [image image?])
-          boolean?]{
-Reports whether the native image is texture-backed. It does not perform a transfer or promise
-that CPU pixel access is available.
-}
-
-@defproc[(image-valid? [image image?])
-          boolean?]{
-Queries native validity, using the image's GPU context when applicable. A closed wrapper or
-invalid context is an error, not a @racket[#f] result from this query. A valid image need not
-have immediately available CPU pixels.
-}
-
-@defproc[(image-pixels-available? [image image?])
-          boolean?]{
-Reports whether native pixel storage can be inspected immediately. The query does not decode or
-read back pixels and exposes no borrowed pointer. A false result is not a claim that later
-decoding will fail.
-}
-
-@section{Preparing CPU Images}
+@section[#:tag "skia-image-preparation"]{Preparing CPU Images}
 
 Use @racket[image->raster-image] when you want an image's pixels ready in CPU
 memory, with any required decoding or generation completed before the function
@@ -128,7 +92,13 @@ The result is @racket['(#f #t)].
 
 @section{Copies into Pixel Views}
 
-The following writes require a live writable destination @tech{pixmap}. Source and destination must
+Use @racket[image-read-pixmap!] to fill existing writable pixel storage from
+part of an image, or @racket[image-scale-pixmap!] to resize the entire image
+into that storage. The destination is a @tech{pixmap}, which describes the
+pixels available for writing. If you simply want a new editable copy, use
+@racket[image->raster-buffer] instead.
+
+The destination pixmap must be live and writable. Source and destination must
 either both have a color-space interpretation or both be untagged. If only one
 is tagged, the operation raises an exception before converting or writing pixels;
 it does not assign sRGB to the untagged value.
@@ -222,37 +192,67 @@ space or both be untagged. Failure releases the new buffer and leaves the source
 
 @section[#:tag "skia-image-filter-results"]{Filtering and Result Placement}
 
-@defproc[(image-apply-filter [image image?] [filter image-filter?] [#:subset subset (or/c #f
-          list? vector?) #f] [#:clip clip (or/c list? vector?)])
+Use @racket[image-apply-filter] when you need a separate filtered image to
+reuse, inspect, or encode. If the effect is needed only while drawing, attach
+the filter to a paint with @racket[make-paint]'s @racket[#:image-filter] option
+and pass that paint to an image-drawing operation instead.
+
+Filtering can change the size and position of the visible pixels. The required
+@racket[#:clip] argument bounds the requested output. The returned rectangle
+and offset describe which pixels to use and where to draw them.
+
+@defproc[(image-apply-filter
+          [image image?] [filter image-filter?]
+          [#:clip clip
+           (or/c (list/c exact-integer? exact-integer?
+                         (integer-in 1 32768) (integer-in 1 32768))
+                 (vector/c exact-integer? exact-integer?
+                           (integer-in 1 32768) (integer-in 1 32768)))]
+          [#:subset subset
+           (or/c #f
+                 (list/c exact-integer? exact-integer?
+                         (integer-in 1 32768) (integer-in 1 32768))
+                 (vector/c exact-integer? exact-integer?
+                           (integer-in 1 32768) (integer-in 1 32768))) #f])
           (values image?
                   (and/c (vector/c exact-integer? exact-integer?
                                    exact-positive-integer? exact-positive-integer?) immutable?)
                   (and/c (vector/c exact-integer? exact-integer?) immutable?))]{
 Applies @racket[filter] to @racket[image] on the CPU.
 
-Returns three values: the result image, a source rectangle within that image,
-and a placement offset. The image is an owned resource; the rectangle and
-offset are immutable vectors. The source rectangle uses x, y, width, and
-height. The offset places its upper-left corner in the original filtering
-coordinates; it does not necessarily place the full returned image at the origin.
+Returns three values:
 
-The optional input subset defaults to the whole image. Subset and clip use exact integers, with
-positive dimensions no greater than 32768 and signed 32-bit edges. The subset must be inside the
-image. The required clip bounds the requested output. The clip relative to the subset must also
-have representable edges. The native result rectangle and its offset are checked against both
-the result image and the requested clip before the values are returned.
+@itemlist[
+ @item{The result image, an @tech{owned resource} that remains usable after the
+   input image and filter are closed.}
+ @item{An immutable source-rectangle vector @racket[#(x y width height)],
+   selecting the pixels to use within the result image.}
+ @item{An immutable offset vector @racket[#(x y)], giving the position of that
+   rectangle's upper-left corner in the input image's coordinate system.
+   This is not necessarily the position of the full result image's origin.}]
 
-GPU-dependent filters are rejected. Floating-point pixel precision is preserved:
-F32 must remain F32, and F16 may remain F16 or become F32.
-Extents use the conservative 16-byte-per-pixel budget. A null native result raises
-an exception. The returned image is independent of subsequent closure of the input wrappers.
+The @racket[subset] and @racket[clip] rectangles are lists or vectors of four
+exact integers: x, y, width, and height. The subset selects input pixels and
+must lie entirely inside the image; @racket[#f] selects the whole image.
+The clip bounds output in the input image's coordinate system.
+
+Each width and height must be between 1 and 32768. The left, top, right, and
+bottom edges must fit signed 32-bit integers, from -2,147,483,648 through
+2,147,483,647. The clip's edges must also fit this range after subtracting the
+subset's upper-left corner. An invalid rectangle raises an exception.
+
+The floating-point precision and image-size rules in
+@secref["skia-image-preparation"] also apply here. The input image, requested
+clip, and result image are each checked using 16 bytes per pixel.
+GPU-dependent filters are rejected. If Skia cannot produce a valid CPU image
+with the required precision, the function raises an exception. It also raises
+if the returned source rectangle lies outside the result image or its placement
+lies outside the requested clip. A rejected result is released before the
+exception is raised; the input resources remain open and unchanged.
 }
 
-@bold{Conceptual diagram.} The source rectangle selects pixels within the returned
-image. The offset places that rectangle's upper-left corner in the original
-filtering coordinates; it does not necessarily give the position of the returned image's origin.
-The highlighted values come from an offset-filter example, and the final panel
-illustrates their placement.
+The diagram shows how the source rectangle selects pixels within the result
+image and the offset positions those pixels relative to the input image.
 
 @reference-figure["concept-image-placement.png"
                   "An input image, its returned filtered image with the native returned source rectangle highlighted, and a placement panel connected by an arrow. Red marks the selected source rectangle and purple brackets mark the returned offset position where its upper-left corner is placed."]
@@ -283,42 +283,25 @@ actual 12 by 10 destination; its checkerboard is not stored in that destination.
 @defmodule[skia/bitmap #:no-declare]
 @(declare-exporting skia/bitmap #:use-sources (skia/bitmap))
 
-@defproc[(image->bitmap [image image?])
-          (is-a?/c bitmap%)]{
-Creates a Racket bitmap by copying the image's pixels. The bitmap can be edited
-independently of the source and has an alpha channel.
+@defproc*[([(image->bitmap [image image?]) (is-a?/c bitmap%)]
+           [(surface->bitmap [surface surface?]) (is-a?/c bitmap%)])]{
+Creates a Racket bitmap by copying the image's or surface's pixels. The bitmap
+has an alpha channel and can be edited independently of the source.
 
-Pixel access follows @racket[image->rgba-bytes] with @tech{premultiplied alpha}, including
-that function's format and CPU-access restrictions. The bytes are reordered from
-RGBA to ARGB; this is not a promise of preserving extended floating-point values
-or ICC metadata.
+Pixel access follows @racket[image->rgba-bytes] or
+@racket[surface->rgba-bytes], respectively, with @tech{premultiplied alpha}.
+The corresponding function's format and CPU-access restrictions apply. The
+copy uses eight-bit color components; extended floating-point values and
+ICC metadata are not preserved.
 
-Closing the source does not close the bitmap. The result follows Racket bitmap ownership, not
-@racket[skia-close!]. This conversion does not create a window or expose a borrowed native
-canvas.
+Closing the source does not close the bitmap. The result follows Racket bitmap
+ownership, not @racket[skia-close!]. Neither conversion creates a window or
+exposes a borrowed native canvas.
 
-For the reverse, explicit copy from a Racket @racket[bitmap%] to a CPU Skia image,
-use @racketmodname[skia/racket-draw]. Its @racket[bitmap->image] function has
-separate physical/logical readback and loaded-mask policies; it is not an
-implicit conversion on image-consuming operations.
+For the reverse conversion, use @racket[bitmap->image] from
+@racketmodname[skia/racket-draw]. It has options for physical or logical pixel
+dimensions and for applying a loaded mask. Image-consuming operations do not
+convert Racket bitmaps implicitly.
 }
 
-@defproc[(surface->bitmap [surface surface?])
-          (is-a?/c bitmap%)]{
-Creates a Racket bitmap by copying the surface's pixels. The bitmap can be edited
-independently of the source and has an alpha channel.
-
-Pixel access follows @racket[surface->rgba-bytes] with premultiplied alpha, including
-that function's format and CPU-access restrictions. The bytes are reordered from
-RGBA to ARGB; this is not a promise of preserving extended floating-point values
-or ICC metadata.
-
-Closing the source does not close the bitmap. The result follows Racket bitmap ownership, not
-@racket[skia-close!]. This conversion does not create a window or expose a borrowed native
-canvas.
-}
-
-The Racket Draw interoperability chapter contains a visual round-trip using
-@racket[bitmap->image], @racket[image->bitmap], and @racket[surface->bitmap].
-It deliberately distinguishes an imported loaded mask from a mask-free copy
-and separately shows logical versus physical bitmap readback.
+See @secref["skia-racket-draw"] for a bitmap round-trip example.

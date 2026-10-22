@@ -4267,9 +4267,23 @@ class R3gbRasterTests(unittest.TestCase):
     def test_image_materialization_does_not_hide_a_gpu_transfer(self):
         text = ' '.join(self.text('image-operations').split())
         self.assertIn('reject GPU-owned or texture-backed inputs', text)
-        self.assertIn('F32 must remain F32', text)
+        self.assertIn('32-bit floating-point components keep that format', text)
         self.assertIn('16 bytes per pixel', text)
-        self.assertIn('is not a content hash', text)
+
+    def test_image_properties_are_grouped_with_images(self):
+        images = ' '.join(self.text('images').split())
+        operations = self.text('image-operations')
+        self.assertIn('@section[#:tag "skia-image-properties"]{Image Properties}', images)
+        self.assertNotIn('{Image Properties}', operations)
+        for name in ('image-color-type', 'image-alpha-type', 'image-color-space',
+                     'image-original-encoded-bytes', 'image-unique-id', 'image-alpha-only?',
+                     'image-lazy-generated?', 'image-texture-backed?', 'image-valid?',
+                     'image-pixels-available?'):
+            self.assertIn('@defproc[(' + name, images)
+            self.assertNotIn('@defproc[(' + name, operations)
+        self.assertIn('a content hash or a persistent file identifier', images)
+        self.assertIn('Use @racket[skia-closed?] to check whether an image has been closed', images)
+        self.assertIn('@secref["skia-image-properties"]', operations)
 
     def test_filtered_image_results_preserve_three_values_and_required_clip(self):
         result = self.header('image-apply-filter')[1]
@@ -4279,7 +4293,9 @@ class R3gbRasterTests(unittest.TestCase):
         self.assertIn('immutable?', result[3])
         self.assertEqual(self.by_name['image-apply-filter']['required_keywords'], ['clip'])
         text = ' '.join(self.text('image-operations').split())
-        self.assertIn('A null native result raises an exception', text)
+        self.assertIn('If Skia cannot produce a valid CPU image with the required precision, '
+                      'the function raises an exception', text)
+        self.assertIn('A rejected result is released before the exception is raised', text)
 
     def test_raw_shader_contract_does_not_advertise_cubic_sampling(self):
         header = self.header('make-raw-image-shader')
