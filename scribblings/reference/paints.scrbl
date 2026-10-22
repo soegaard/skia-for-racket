@@ -1,13 +1,23 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract skia skia/geometry))
+          (for-label racket/base racket/contract skia skia/geometry skia/effects
+                     skia/runtime-effects))
 
 @title[#:tag "skia-paints"]{Paints}
+
+@(declare-exporting skia)
 
 A @deftech{paint} supplies the appearance of a drawing operation. It holds values such
 as a color and stroke width, and may have @tech{shaders}, effects, or filters attached.
 It does not contain the shape being drawn or the current @tech{canvas transform}.
+
+Paints are mutable @tech{owned resources}. Native operations require an open paint on
+its owning thread. When attaching a shader, path effect, filter, or blender,
+the input must also be open. The paint keeps its own native reference, so
+closing the caller's input wrapper does not remove the attachment. A
+GPU-dependent attachment makes the paint subject to that context's lifetime
+and activation rules; see @secref["skia-resources"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -53,14 +63,6 @@ still modulates the result. Without a shader, the color supplies the paint's
 solid RGBA value. The default @tech{blend mode} places source content over the
 existing destination, taking alpha into account. The other accepted modes are
 specified in @secref["skia-blend-modes"].
-
-Each supplied shader, @tech{path effect}, or filter must be open when attached. The
-paint retains its own native reference; it does not take ownership of the
-caller's wrapper. Closing that wrapper after attachment does not remove the
-attached effect. A supplied GPU-dependent resource also makes the paint subject
-to its context's lifetime and activation rules.
-
-The constructor checks options before allocating the native paint.
 
 @racketblock[
 (with-skia ([surface (make-surface 180 80 #:background 'white)]
@@ -228,52 +230,126 @@ PDF or SVG output can preserve it without rasterization; see
 @seclink["top" #:doc '(lib "skia/scribblings/tutorials/vector-raster/vector-raster.scrbl")]{
 Vector Output and Raster Fallbacks}.
 
+@section[#:tag "skia-paint-blenders"]{Blenders on Paints}
+
+@(declare-exporting skia skia/runtime-effects #:use-sources (skia/runtime-effects))
+
+Use a blend-mode symbol for the built-in combinations described in
+@secref["skia-blend-modes"]. Use a blender resource when supplying a custom
+combination or passing a blend operation to an API that expects a resource.
+
+A @deftech{blender} combines source and destination colors. On a paint, it
+combines the drawing's source color with the destination already in the canvas.
+In @racket[make-blender-shader], it instead combines two shader results before
+the paint is blended with the canvas. @racket[make-blender-image-filter] uses
+one to combine two filter inputs.
+
+Create a blender from a built-in mode or arithmetic formula below, or use
+@racket[runtime-effect->blender] for a custom SkSL program. Attach it to a paint
+with @racket[paint-set-blender!]. The attachment rules in @secref["skia-paints"]
+apply.
+
+@defproc[(blender? [v any/c]) boolean?]{
+Returns @racket[#t] for a blender resource and @racket[#f] otherwise.
+The predicate remains true after closure and does not identify a blend mode.
+}
+
+@defproc[(make-blend-mode-blender
+          [mode
+           (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out 'dst-out 'src-atop
+            'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
+            'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation
+            'color 'luminosity)]) blender?]{
+Returns an owned blender implementing the indicated mode from
+@secref["skia-blend-modes"]. This supplies a resource for APIs requiring a
+blender rather than a mode symbol.
+}
+
+@defproc[(paint-blender [paint paint?]) (or/c blender? #f)]{
+Returns an independently owned reference to an explicit paint blender, or
+@racket[#f] for the implicit source-over case. False is not an error and does
+not mean the paint has no compositing behavior. The returned wrapper follows
+the inspection rules in @secref["skia-paint-inspection"].
+}
+
+@defproc[(paint-set-blender! [paint paint?] [blender (or/c blender? #f)]) void?]{
+Replaces the paint's blender, or restores implicit source-over when
+@racket[blender] is @racket[#f]. Setting an ordinary mode with
+@racket[paint-set-blend-mode!] subsequently replaces a custom blender.
+Like the setters in @secref["skia-paint-mutation"], this changes subsequent
+drawing, not pixels or operations already recorded.
+}
+
+@subsection{Arithmetic Blending}
+
+@(declare-exporting skia skia/effects #:use-sources (skia/effects))
+
+@defproc[(make-arithmetic-blender
+          [k1 real?]
+          [k2 real?]
+          [k3 real?]
+          [k4 real?]
+          [#:enforce-premul? enforce-premul? boolean? #t]) blender?]{
+Returns a blender computing @math{k1 S D + k2 S + k3 D + k4} for each
+normalized premultiplied component, where @math{S} is source and @math{D} is
+destination. Results are clamped. With enforcement enabled, resulting RGB is
+also limited by resulting alpha.
+This same algebra is available as @racket[make-arithmetic-image-filter] for
+combining image-filter inputs.
+}
+
 @section[#:tag "skia-paint-inspection"]{Copying and Inspecting Paints}
 
-These operations require an open paint on its owning thread. A paint that
-uses GPU-dependent content also carries that content's context restrictions.
-Reading an attached shader or filter returns an owned wrapper, not a borrowed
-field of the paint.
+Reading an attached shader, effect, filter, or blender returns an independently
+owned wrapper, not a borrowed field of the paint. Changing or closing the paint
+does not close that wrapper. The returned resource keeps its input resources
+alive and preserves any GPU-context dependency. The shared resource rules in
+@secref["skia-paints"] also apply.
 
 @defproc[(paint-copy [paint paint?]) paint?]{
 Returns a new owned paint with the same settings. Later mutation of either
 paint does not change the other's settings. Native shader, effect, and filter
 objects may be shared through each paint's own native references; this is not a
 deep copy of all backing pixels. The copy preserves any GPU-context dependency.
+
+@racketblock[
+(with-skia ([paint (make-paint #:color 'red)]
+            [copy (paint-copy paint)])
+  (paint-set-color! paint 'blue)
+  (equal? (paint-color copy) (color->rgba 'red)))
+]
 }
 
 @defproc[(paint-color [paint paint?]) rgba?]{
 Returns the paint's color as an eight-bit @racket[rgba] value. It does
 not sample an attached shader or apply the paint's color filter. For paints
-configured through extended-color APIs, this byte-valued query is not a
-precision-preserving substitute for the corresponding extended-color query.
+configured through floating-point color APIs, use @racket[paint-color4f] to
+read the stored color without reducing it to eight-bit channels.
 }
 
 @defproc[(paint-shader [paint paint?]) (or/c shader? #f)]{
 Returns an independently owned reference to the attached shader, or
-@racket[#f] when no shader is attached. Changing or closing the paint does not
-close this returned wrapper. Any GPU-context dependency remains in force.
+@racket[#f] when no shader is attached.
 }
 
 @defproc[(paint-path-effect [paint paint?]) (or/c path-effect? #f)]{
 Returns an independently owned reference to the attached path effect, or
-@racket[#f]. The result must be released according to its own resource lifetime.
+@racket[#f] when no path effect is attached.
 }
 
 @defproc[(paint-color-filter [paint paint?]) (or/c color-filter? #f)]{
 Returns an independently owned reference to the attached color filter, or
-@racket[#f]. Replacing the paint's filter does not invalidate this reference.
+@racket[#f] when no color filter is attached.
 }
 
 @defproc[(paint-mask-filter [paint paint?]) (or/c mask-filter? #f)]{
 Returns an independently owned reference to the attached mask filter, or
-@racket[#f]. A shader-backed mask may depend on a GPU context.
+@racket[#f] when no mask filter is attached.
 }
 
 @defproc[(paint-image-filter [paint paint?]) (or/c image-filter? #f)]{
 Returns an independently owned reference to the attached image filter, or
-@racket[#f]. The result keeps its own native references to the filter's inputs
-rather than borrowing the paint.
+@racket[#f] when no image filter is attached.
 }
 
 @section[#:tag "skia-paint-mutation"]{Changing Paints}
@@ -281,7 +357,8 @@ rather than borrowing the paint.
 Each setter changes subsequent uses of the supplied paint and returns
 @racket[(void)]. It does not change pixels already drawn or alter a previously
 recorded operation. An invalid setting raises an exception. These setters use
-the same option meanings as @racket[make-paint].
+the same option meanings as @racket[make-paint] and the attachment and resource
+rules in @secref["skia-paints"].
 
 @defproc[(paint-set-color! [paint paint?] [color color?]) void?]{
 Sets the paint's byte-valued color, including its alpha. It does not remove an
@@ -368,43 +445,31 @@ The limit must be nonnegative.
                  'hue 'saturation 'color 'luminosity)]) void?]{
 Selects one of the modes in @secref["skia-blend-modes"]. Other symbols are
 rejected. Setting an ordinary blend mode replaces a custom blender previously
-attached through the advanced blending API.
+attached through @racket[paint-set-blender!].
 }
 
 @defproc[(paint-set-shader! [paint paint?] [shader (or/c shader? #f)]) void?]{
-Attaches @racket[shader] using the paint's own native reference, independently of
-the argument's wrapper. Passing @racket[#f] removes it. Explicitly closing the
-argument wrapper afterward does not remove the paint's reference. GPU-dependent
-content must still be used in its own context.
+Attaches @racket[shader], or removes it when @racket[shader] is @racket[#f].
 }
 
 @defproc[(paint-set-path-effect! [paint paint?] [effect (or/c path-effect? #f)]) void?]{
-Attaches @racket[effect] using the paint's own native reference, or removes the
+Attaches @racket[effect], or removes the
 path effect when @racket[effect] is @racket[#f]. It does not mutate the caller's path.
 }
 
 @defproc[(paint-set-color-filter! [paint paint?] [filter (or/c color-filter? #f)]) void?]{
-Attaches @racket[filter] using the paint's own native reference, or removes the
+Attaches @racket[filter], or removes the
 color filter when @racket[filter] is @racket[#f].
 }
 
 @defproc[(paint-set-mask-filter! [paint paint?] [filter (or/c mask-filter? #f)]) void?]{
-Attaches @racket[filter] using the paint's own native reference, or removes the
-mask filter when @racket[filter] is @racket[#f]. Attached shader-backed masks
-preserve their GPU-context dependencies.
+Attaches @racket[filter], or removes the
+mask filter when @racket[filter] is @racket[#f].
 }
 
 @defproc[(paint-set-image-filter! [paint paint?] [filter (or/c image-filter? #f)]) void?]{
-Attaches @racket[filter] using the paint's own native reference, or removes the
-image filter when @racket[filter] is @racket[#f]. The caller's wrapper is not
-transferred to the paint.
-
-@racketblock[
-(with-skia ([paint (make-paint #:color 'red)]
-            [copy (paint-copy paint)])
-  (paint-set-color! paint 'blue)
-  (equal? (paint-color copy) (color->rgba 'red)))
-]
+Attaches @racket[filter], or removes the
+image filter when @racket[filter] is @racket[#f].
 }
 
 @section[#:tag "skia-paint-settings"]{Reading Settings and Expanding Strokes}
@@ -551,8 +616,8 @@ The following examples show settings whose effect is easiest to recognize in ren
                   "Three blue V-shaped strokes comparing miter, round, and bevel joins."]
 
 @racketblock[
-(with-skia ([surface (make-surface 420 250 #:background 'white)]
-            [high-miter (make-paint #:color "#326DE6" #:style 'stroke
+(define surface (make-surface 420 250 #:background 'white))
+(with-skia ([high-miter (make-paint #:color "#326DE6" #:style 'stroke
                                     #:stroke-width 16 #:join 'miter)]
             [low-miter (make-paint #:color "#326DE6" #:style 'stroke
                                    #:stroke-width 16 #:join 'miter)]
@@ -586,8 +651,8 @@ The following examples show settings whose effect is easiest to recognize in ren
     (draw-checker x)
     (with-skia ([result (blend-pane mode)])
       (draw-image canvas result x 150))
-    (draw-rect canvas x 150 110 58 outline))
-  surface)
+    (draw-rect canvas x 150 110 58 outline)))
+surface
 ]
 @reference-figure["paint-miter-and-translucent-blends.png"
                   "Top: matching acute blue V strokes use miter limits 8 and 1.2; the low limit bevels the otherwise long miter. Bottom: a 55-percent opaque azure destination and 65-percent opaque orange source are combined over the same gray checkerboard by source-over, modulate, and multiply; the latter two visibly differ with translucency."]
@@ -596,8 +661,8 @@ The first row exercises @racket[paint-set-miter-limit!] after paint construction
 The lower row declares its translucent destination rather than treating the
 white page as the destination: @racket['modulate] multiplies premultiplied
 components, while @racket['multiply] uses source-over alpha with an RGB
-multiply blend.  It is a compact complement to the cap, join, alpha,
-multiply, and screen examples above, not a gallery of every blend mode.
+multiply blend. The other examples in this section illustrate stroke widths,
+caps, joins, and the multiply and screen modes with opaque source colors.
 
 @racketblock[
 (with-skia ([surface (make-surface 180 100 #:background 'white)])

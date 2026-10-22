@@ -18,17 +18,28 @@ pixels. Attach one to a @tech{paint}, wrap a @tech{shader} with
 inside a @tech{filter graph}.
 
 Constructors return @tech{owned resources} that keep their own native references
-to any input filters, independently of the caller's wrappers. Native construction
-failure raises an exception.
+to any input filters, independently of the caller's wrappers. Closing an input
+wrapper after construction does not invalidate the result. Inputs must be open
+and used on their owning thread; GPU-dependent inputs preserve their context
+and lifetime restrictions. Native construction failure raises an exception.
 Applying a filter does not change the input image's stored pixels or its
 color-space metadata.
 
-@section{Core Color Filters}
+@defmodule[skia/color-filters #:no-declare]
+
+@local-table-of-contents[#:style 'immediate-only]
 
 @defproc[(color-filter? [v any/c]) boolean?]{
 Returns @racket[#t] for a color-filter resource and @racket[#f] otherwise.
 The predicate remains true after closure.
 }
+
+@section{Color Adjustments}
+
+Use these filters to change channels with a matrix, scale and offset RGB, or
+adjust contrast. They do not change the image's color-space metadata.
+
+@subsection{RGBA Matrices}
 
 @defproc[(make-color-matrix-filter [matrix (or/c list? vector?)]) color-filter?]{
 Returns a color filter using 20 row-major coefficients: four rows with five
@@ -60,6 +71,137 @@ alpha. The unfiltered rectangle remains blue.
 @reference-figure["color-filter.png"
                   "A blue rectangle beside a red rectangle produced from the same blue paint by a color-matrix filter."]
 }
+
+@subsection{HSLA Matrices}
+
+@(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))
+
+@defproc[(make-hsla-matrix-filter [matrix (or/c list? vector?)]) color-filter?]{
+Returns a filter that converts unpremultiplied RGB to hue, saturation, and
+lightness, applies a four-row, five-column matrix to HSLA, then converts back
+to RGB. The 20 row-major coefficients are copied and subject to the
+@seclink["skia-color-filter-limits"]{input size limit}. Hue uses a normalized
+turn, not degrees. This is an HSLA operation, not HSV and not a change of RGB
+color-space metadata.
+}
+
+@subsection{RGB Scaling and Offsets}
+
+@(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))
+
+@defproc[(make-lighting-color-filter [multiply color?] [add color?]) color-filter?]{
+Returns a filter that multiplies RGB by the normalized RGB channels of
+@racket[multiply], adds those of @racket[add], and clamps the result. The alpha
+components of the two arguments are ignored; the incoming color's alpha is
+preserved. This operation does not model a spatial light source or surface normals.
+
+@racketblock[
+(with-skia ([filter (make-lighting-color-filter "#808080" "#500000")]
+            [plain (make-paint #:color "#326DE6")]
+            [filtered (make-paint #:color "#326DE6" #:color-filter filter)]
+            [surface (make-surface 180 80 #:background 'white)])
+  (draw-rounded-rect (surface-canvas surface) 15 18 60 44 8 8 plain)
+  (draw-rounded-rect (surface-canvas surface) 105 18 60 44 8 8 filtered))
+]
+
+@reference-figure["lighting-color-filter.png"
+                  "Two blue rounded rectangles, with the right one darkened and shifted toward red by a lighting color filter."]
+}
+
+@subsection{Contrast and Grayscale}
+
+@(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))
+
+@defproc[(make-high-contrast-color-filter
+          [#:grayscale? grayscale? boolean? #f]
+          [#:invert-style invert-style (or/c 'none 'brightness 'lightness) 'none]
+          [#:contrast contrast (real-in -1 1) 0]) color-filter?]{
+Returns a high-contrast color filter. Optional grayscale conversion precedes
+inversion and contrast adjustment. Brightness inversion complements the RGB
+channels; lightness inversion operates on HSL lightness. None disables inversion.
+Negative contrast reduces channel contrast and positive contrast increases it;
+zero leaves that adjustment neutral. Alpha is preserved. The settings are
+subject to the @seclink["skia-color-filter-limits"]{input size limit}.
+}
+
+@section{Transfer-Function Conversions}
+
+@(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))
+
+Use these filters when you need to encode or decode the sRGB channel values
+explicitly. For conversion that also accounts for RGB primaries and image
+color-space tags, see @secref["skia-sample-conversion"].
+
+@defproc[(make-linear-to-srgb-gamma-color-filter) color-filter?]{
+Returns a filter applying the sRGB encoding @tech{transfer function} to RGB channels.
+Alpha is unchanged. This is a channel operation, not a full gamut conversion;
+it does not inspect or replace the source image's color-space tag.
+}
+
+@defproc[(make-srgb-to-linear-gamma-color-filter) color-filter?]{
+Returns a filter applying the inverse sRGB transfer function to RGB channels.
+Alpha is unchanged. It changes channel values rather than merely marking an
+image as linear. Applying it to already-linear values performs another conversion.
+}
+
+@section{Channel Tables}
+
+@(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))
+
+Use a lookup table to specify a replacement for each possible byte-valued
+channel input. A single table applies the same curve to all channels; separate
+ARGB tables let you change selected channels while leaving others unchanged.
+
+@defproc[(make-table-color-filter
+          [table (or/c bytes? (listof byte?) (vectorof byte?))]) color-filter?]{
+Returns a filter applying the same 256-entry table to alpha, red, green, and
+blue. Each entry is an exact byte. The input may be a byte string, list, or
+vector and is copied. Table lookup operates on unpremultiplied channel values;
+recombination into premultiplied drawing colors can introduce rounding.
+The table is subject to the @seclink["skia-color-filter-limits"]{input size limit}.
+}
+
+@defproc[(make-table-argb-color-filter
+          [#:alpha alpha (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]
+          [#:red red (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]
+          [#:green green (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]
+          [#:blue blue (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]) color-filter?]{
+Returns a filter with a separate table for each channel. A false table leaves
+that channel unchanged. Each supplied table has exactly 256 byte entries;
+their combined size is subject to the
+@seclink["skia-color-filter-limits"]{input size limit}.
+Supplying no tables returns an owned identity filter, not @racket[#f].
+
+@racketblock[
+(with-skia ([filter (make-table-argb-color-filter)]
+            [paint (make-paint #:color "#326DE6" #:color-filter filter)]
+            [surface (make-surface 4 4)])
+  (draw-paint (surface-canvas surface) paint)
+  (equal? (surface-pixel surface 1 1) (color->rgba "#326DE6")))
+]
+}
+
+@section{Color to Coverage}
+
+@(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))
+
+@defproc[(make-luma-color-filter) color-filter?]{
+Returns a filter with black RGB and alpha derived from the incoming color's
+luminance and alpha. It turns color information into coverage; it does not
+produce an ordinary grayscale RGB image.
+}
+
+@section{Combining Colors and Filters}
+
+Blend a fixed color into each input, apply filters in sequence, or interpolate
+between their results. Composition and interpolation are different operations:
+composition feeds one filter's output to the next; interpolation applies both
+to the same input and mixes their results.
+
+@(declare-exporting skia)
+
+@subsection{Blending a Constant Color}
+
 @defproc[(make-blend-color-filter
           [color color?]
           [mode
@@ -75,37 +217,17 @@ also be rejected when the native factory cannot produce a filter.
 This operation is separate from blending the final paint into the drawing target.
 }
 
+@subsection{Sequential Filters}
+
 @defproc[(make-compose-color-filter [outer color-filter?] [inner color-filter?]) color-filter?]{
 Returns a filter applying @racket[inner] before @racket[outer]. Each stage
-sees the preceding stage's output, including its clamping. The result keeps its
-own native references to both filters. Their caller-owned wrappers may
-subsequently be closed.
+sees the preceding stage's output, including its clamping. Swapping the
+arguments can change the result.
 }
 
-@section{Additional Color Filters}
+@subsection{Interpolating Filter Results}
 
-@defmodule[skia/color-filters #:no-declare]
 @(declare-exporting skia skia/color-filters #:use-sources (skia/color-filters))
-
-@defproc[(make-hsla-matrix-filter [matrix (or/c list? vector?)]) color-filter?]{
-Returns a filter that converts unpremultiplied RGB to hue, saturation, and
-lightness, applies a four-row, five-column matrix to HSLA, then converts back
-to RGB. The 20 row-major coefficients are copied and require 80 bytes within
-the byte limit. Hue uses a normalized turn, not degrees. This is an HSLA
-operation, not HSV and not a change of RGB color-space metadata.
-}
-
-@defproc[(make-linear-to-srgb-gamma-color-filter) color-filter?]{
-Returns a filter applying the sRGB encoding @tech{transfer function} to RGB channels.
-Alpha is unchanged. This is a channel operation, not a full gamut conversion;
-it does not inspect or replace the source image's color-space tag.
-}
-
-@defproc[(make-srgb-to-linear-gamma-color-filter) color-filter?]{
-Returns a filter applying the inverse sRGB transfer function to RGB channels.
-Alpha is unchanged. It changes channel values rather than merely marking an
-image as linear. Applying it to already-linear values performs another conversion.
-}
 
 @defproc[(make-lerp-color-filter
           [weight (real-in 0 1)]
@@ -114,54 +236,23 @@ image as linear. Applying it to already-linear values performs another conversio
 Returns a filter interpolating between the two filters' results for the same
 input color. Weight zero selects the first result and weight one selects the
 second. This is not composition. Both input filters must be supplied and open,
-including at the endpoints; the result keeps its own native references to both filters.
+including at the endpoints.
 }
 
-@defproc[(make-luma-color-filter) color-filter?]{
-Returns a filter with black RGB and alpha derived from the incoming color's
-luminance and alpha. It turns color information into coverage; it does not
-produce an ordinary grayscale RGB image.
-}
+@section[#:tag "skia-color-filter-limits"]{Input Size Limits}
 
-@defproc[(make-high-contrast-color-filter
-          [#:grayscale? grayscale? boolean? #f]
-          [#:invert-style invert-style (or/c 'none 'brightness 'lightness) 'none]
-          [#:contrast contrast (real-in -1 1) 0]) color-filter?]{
-Returns a high-contrast color filter. Optional grayscale conversion precedes
-inversion and contrast adjustment. Brightness inversion complements the RGB
-channels; lightness inversion operates on HSL lightness. None disables inversion.
-Negative contrast reduces channel contrast and positive contrast increases it;
-zero leaves that adjustment neutral. Alpha is preserved. The configuration
-data must fit the current byte limit.
-}
+The following input-storage checks use @racket[current-skia-byte-limit]. If
+you lower the limit, allow 80 bytes for @racket[make-hsla-matrix-filter],
+12 bytes for @racket[make-high-contrast-color-filter], and 256 bytes per
+supplied channel table for the table constructors. A single shared table in
+@racket[make-table-color-filter] counts once; @racket[make-table-argb-color-filter]
+counts the combined size of its supplied tables. Exceeding a check raises an
+exception. These checks are not a bound on all native memory used in drawing.
 
-@defproc[(make-table-color-filter
-          [table (or/c bytes? (listof byte?) (vectorof byte?))]) color-filter?]{
-Returns a filter applying the same 256-entry table to alpha, red, green, and
-blue. Each entry is an exact byte. The input may be a byte string, list, or
-vector and is copied. Table lookup operates on unpremultiplied channel values;
-recombination into premultiplied drawing colors can introduce rounding.
-The 256-byte table must fit the byte limit.
-}
+@section{Visual Comparisons}
 
-@defproc[(make-table-argb-color-filter
-          [#:alpha alpha (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]
-          [#:red red (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]
-          [#:green green (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]
-          [#:blue blue (or/c #f bytes? (listof byte?) (vectorof byte?)) #f]) color-filter?]{
-Returns a filter with a separate table for each channel. A false table leaves
-that channel unchanged. Each supplied table has exactly 256 byte entries;
-the combined size of the copied tables must fit @racket[current-skia-byte-limit].
-Supplying no tables returns an owned identity filter, not @racket[#f].
-
-@racketblock[
-(with-skia ([filter (make-table-argb-color-filter)]
-            [paint (make-paint #:color "#326DE6" #:color-filter filter)]
-            [surface (make-surface 4 4)])
-  (draw-paint (surface-canvas surface) paint)
-  (equal? (surface-pixel surface 1 1) (color->rgba "#326DE6")))
-]
-}
+These examples compare color adjustments and combinations on the same source
+colors or gradients.
 
 @racketblock[
 (with-skia ([color-source (make-surface 120 50)]
@@ -208,29 +299,6 @@ Supplying no tables returns an owned identity filter, not @racket[#f].
 
 These filters change channels. They do not retag an image or perform a full color-space or
 gamut conversion.
-
-@defproc[(make-lighting-color-filter [multiply color?] [add color?]) color-filter?]{
-Returns a filter that multiplies RGB by the normalized RGB channels of
-@racket[multiply], adds those of @racket[add], and clamps the result. The alpha
-components of the two arguments are ignored; the incoming color's alpha is
-preserved. This operation does not model a spatial light source or surface normals.
-
-@racketblock[
-(with-skia ([filter (make-lighting-color-filter "#808080" "#500000")]
-            [plain (make-paint #:color "#326DE6")]
-            [filtered (make-paint #:color "#326DE6" #:color-filter filter)]
-            [surface (make-surface 180 80 #:background 'white)])
-  (draw-rounded-rect (surface-canvas surface) 15 18 60 44 8 8 plain)
-  (draw-rounded-rect (surface-canvas surface) 105 18 60 44 8 8 filtered))
-]
-
-@reference-figure["lighting-color-filter.png"
-                  "Two blue rounded rectangles, with the right one darkened and shifted toward red by a lighting color filter."]
-}
-
-@section{Additional Visual Examples}
-
-These examples compare several color-filter constructions using simple source colors or gradients.
 
 @racketblock[
 (with-skia ([filter (make-blend-color-filter 'orange 'screen)]

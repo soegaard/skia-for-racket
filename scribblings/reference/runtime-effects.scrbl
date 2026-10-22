@@ -3,7 +3,7 @@
 @(require "support/figures.rkt"
           (for-label racket/base racket/contract skia skia/runtime-effects skia/effects))
 
-@title[#:tag "skia-runtime-effects"]{Runtime Effects and Blenders}
+@title[#:tag "skia-runtime-effects"]{Runtime Effects}
 
 @(declare-exporting skia)
 
@@ -14,10 +14,10 @@ filter, or blender instance for use in drawing. Built-in effects are simpler
 when they already provide the required behavior.
 
 A @deftech{runtime effect} is a compiled SkSL program for one stage of drawing:
-a @tech{shader}, @tech{color filter}, or blender. Compilation produces an effect resource;
-creating an instance binds its @tech{uniforms} and child resources. A @deftech{blender}
-combines source and destination colors. It is distinct from a shader combining
-two child shaders before the paint reaches its drawing target.
+a @tech{shader}, @tech{color filter}, or @tech{blender}. Compilation produces an
+effect resource; creating an instance binds its @tech{uniforms} and child
+resources. For built-in blenders and attaching a blender to a paint, see
+@secref["skia-paint-blenders"].
 
 Runtime effects can be used by CPU drawing. Compiling one does not create a GPU
 context. The available SkSL language is the one supported by the installed
@@ -75,31 +75,36 @@ texture coordinates. The source defines a function within Skia's drawing
 pipeline; it does not replace clipping, coverage, or the final paint blend.
 }
 
+@subsection[#:tag "skia-runtime-metadata"]{Inspecting Compiled Effects}
+
+The following queries read the source and compiler descriptions stored when
+the effect was compiled. They remain available after the effect is closed;
+creating a new shader, color filter, or blender instance still requires an
+open effect.
+
 @defproc[(runtime-effect-kind [effect runtime-effect?]) (or/c 'shader 'color-filter 'blender)]{
-Returns the stage for which the effect was compiled. This reads stored
-metadata and remains available after the effect is closed.
+Returns the stage for which the effect was compiled.
 }
 
 @defproc[(runtime-effect-source [effect runtime-effect?])
          (and/c string? immutable?)]{
 Returns the stored immutable source string. This is the submitted program,
-not generated backend code. The query remains available after closure.
+not generated backend code.
 }
 
 @defproc[(runtime-effect-uniform-byte-size [effect runtime-effect?]) exact-nonnegative-integer?]{
 Returns the uniform buffer size reported by the compiler, in bytes. It is a multiple
-of four and can be zero. This snapshot query remains valid after closure.
+of four and can be zero.
 }
 
 @defproc[(runtime-effect-uniforms [effect runtime-effect?]) (listof runtime-uniform?)]{
 Returns the stored ordered list of uniform-description structures.
-The query remains available after the effect is closed.
 }
 
 @defproc[(runtime-effect-children [effect runtime-effect?]) (listof runtime-child?)]{
 Returns the stored ordered list of child-slot description structures. The
 indices are contiguous from zero. This does not return the resources later
-bound to an instance. The query remains available after the effect is closed.
+bound to an instance.
 }
 
 @section[#:tag "skia-runtime-bindings"]{Uniform and Child Bindings}
@@ -143,6 +148,9 @@ children preserve their context, thread, and lifetime restrictions.
 @defproc[(runtime-effect-uniform-bytes [effect runtime-effect?] [bindings hash?])
          (and/c bytes? immutable?)]{
 Packs the uniform values in @racket[bindings] into a byte string for @racket[effect].
+Use this diagnostic utility to inspect how values occupy the compiler's
+uniform layout. For drawing, pass the binding hash table directly to an
+instance constructor instead.
 
 The result is a new immutable byte string. Packing follows the stored uniform
 layout and the rules in @secref["skia-runtime-bindings"]. It uses native byte
@@ -161,7 +169,6 @@ effect is closed. It still validates the current byte limit and all bindings.
 (list (immutable? packed) (bytes-length packed))
 ]
 
-Packing remains possible; creating a shader from the closed effect does not.
 }
 
 @defproc[(runtime-effect->shader
@@ -176,7 +183,7 @@ shader stage. Every child must be an open shader, color filter, or blender of
 the kind required by the compiled effect; false children are rejected.
 The optional affine local matrix must have a
 representable inverse. It affects local shader coordinates and is not a
-replacement for the @tech{canvas transform}. Binding and retention rules follow
+replacement for the @tech{canvas transform}. Binding and resource rules follow
 @secref["skia-runtime-bindings"].
 
 @racketblock[
@@ -199,7 +206,7 @@ replacement for the @tech{canvas transform}. Binding and retention rules follow
           [#:children children hash? (hash)]) color-filter?]{
 Returns an owned color-filter instance. The effect must be open and compiled
 for the color-filter stage. Uniforms, child types, complete binding hash tables,
-and native retention follow @secref["skia-runtime-bindings"]. No local-matrix
+and resource ownership follow @secref["skia-runtime-bindings"]. No local-matrix
 option is accepted for this stage.
 }
 
@@ -209,7 +216,7 @@ option is accepted for this stage.
           [#:children children hash? (hash)]) blender?]{
 Returns an owned blender instance. The effect must be open and compiled
 for the blender stage. Uniforms, child types, complete binding hash tables,
-and native retention follow @secref["skia-runtime-bindings"]. No local-matrix
+and resource ownership follow @secref["skia-runtime-bindings"]. No local-matrix
 option is accepted for this stage.
 }
 
@@ -223,8 +230,8 @@ is safely premultiplied.  For translucent inputs, a custom program must still
 ensure that every RGB component is no greater than alpha.
 
 @racketblock[
-(with-skia ([surface (make-surface 420 270 #:background 'white)]
-            [font (make-font #:size 10)]
+(define surface (make-surface 420 270 #:background 'white))
+(with-skia ([font (make-font #:size 10)]
             [label (make-paint #:color "#20344E")]
             [outline (make-paint #:color "#20344E" #:style 'stroke #:stroke-width 1)]
             [color-effect (make-runtime-effect
@@ -286,8 +293,8 @@ ensure that every RGB component is no greater than alpha.
   (draw-simple-text canvas "same runtime blender" 155 206 font label)
   (draw-simple-text canvas "arithmetic: .25 S + .75 D" 18 238 font label)
   (draw-rounded-rect canvas 225 220 110 28 6 6 destination)
-  (draw-rounded-rect canvas 250 220 60 28 6 6 arithmetic-source)
-  surface)
+  (draw-rounded-rect canvas 250 220 60 28 6 6 arithmetic-source))
+surface
 ]
 @reference-figure["runtime-blender-consumers.png"
                   "Top row: an orange source and its blue-purple runtime color-filter result; a runtime shader recolors a bound red-to-blue gradient child. Bottom row: one runtime blender combines an azure destination and orange source through a paint, a blender shader, and a blender image filter. A final swatch uses the arithmetic .25 source plus .75 destination blender."]
@@ -386,54 +393,4 @@ Returns the copied source string supplied to the compiler.
 @defproc[(exn:fail:skia-sksl-diagnostics [exception exn:fail:skia-sksl?]) string?]{
 Returns the immutable native compiler diagnostics. The exact wording and
 reported line formatting can change with the native library version.
-}
-
-@section{Blenders on Paints}
-
-@defproc[(blender? [v any/c]) boolean?]{
-Returns @racket[#t] for a blender resource and @racket[#f] otherwise.
-The predicate remains true after closure and does not identify a blend mode.
-}
-
-@defproc[(make-blend-mode-blender
-          [mode
-           (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out 'dst-out 'src-atop
-            'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
-            'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation
-            'color 'luminosity)]) blender?]{
-Returns an owned blender implementing the indicated mode from
-@secref["skia-blend-modes"]. This supplies a resource for APIs requiring a
-blender rather than a mode symbol.
-}
-
-@defproc[(paint-blender [paint paint?]) (or/c blender? #f)]{
-Returns an independently owned reference to an explicit paint blender, or
-@racket[#f] for the implicit source-over case. False is not an error and does
-not mean the paint has no compositing behavior. Closing the paint does not
-close a returned wrapper. GPU-dependent contents retain their restrictions.
-}
-
-@defproc[(paint-set-blender! [paint paint?] [blender (or/c blender? #f)]) void?]{
-Replaces the paint's blender, keeping the paint's own native reference to
-@racket[blender], or restores implicit source-over when @racket[blender] is false. The caller's wrapper
-remains independently owned. Setting an ordinary mode with
-@racket[paint-set-blend-mode!] subsequently replaces a custom blender.
-}
-
-@section{Arithmetic Blending}
-
-@(declare-exporting skia skia/effects #:use-sources (skia/effects))
-
-@defproc[(make-arithmetic-blender
-          [k1 real?]
-          [k2 real?]
-          [k3 real?]
-          [k4 real?]
-          [#:enforce-premul? enforce-premul? boolean? #t]) blender?]{
-Returns a blender computing @math{k1 S D + k2 S + k3 D + k4} for each
-normalized premultiplied component, where @math{S} is source and @math{D} is
-destination. Results are clamped. With enforcement enabled, resulting RGB is
-also limited by resulting alpha.
-This same algebra is available as @racket[make-arithmetic-image-filter] for
-combining image-filter inputs.
 }

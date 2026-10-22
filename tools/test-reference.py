@@ -1774,7 +1774,8 @@ class R21SourceTests(unittest.TestCase):
                 self.assertNotIn('@examples', entry)
 
     def test_encoding_aliases_keep_legacy_filename(self):
-        links = self.fixture.check()['section_links']
+        links = [row for row in self.fixture.check()['section_links']
+                 if row['chapter'] == 'scribblings/reference/encoding.scrbl']
         self.assertEqual([row['tag'] for row in links], ['skia-png', 'skia-encoding'])
         self.assertEqual({row['filename'] for row in links}, {'skia-png.html'})
 
@@ -1790,7 +1791,9 @@ class R21SourceTests(unittest.TestCase):
             self.fixture.check()
 
     def test_alias_manifest_cannot_omit_the_current_tag(self):
-        self.fixture.manifest['section_links'].pop()
+        self.fixture.manifest['section_links'] = [
+            row for row in self.fixture.manifest['section_links']
+            if row['tag'] != 'skia-encoding']
         self.fixture.write_manifest()
         with self.assertRaisesRegex(checks.CheckError, 'missing from the section-link manifest'):
             self.fixture.check()
@@ -2748,14 +2751,14 @@ class R3EffectsSemanticsTests(unittest.TestCase):
             self.assertEqual(text.count('@defmodule[skia/' + module + ' #:no-declare]'), 1)
 
     def test_color_blend_contract_excludes_only_dst(self):
-        ordinary = self.header('make-blend-mode-blender', 'runtime-effects')[0][1][1]
+        ordinary = self.header('make-blend-mode-blender', 'paints')[0][1][1]
         restricted = self.header('make-blend-color-filter', 'color-filters')[0][2][1]
         expected = [x for x in ordinary if x != ['quote', 'dst']]
         self.assertEqual(restricted, expected)
         self.assertEqual(len(ordinary) - 1, 29)
 
     def test_blend_graph_uses_the_complete_blend_mode_set(self):
-        ordinary = self.header('make-blend-mode-blender', 'runtime-effects')[0][1][1]
+        ordinary = self.header('make-blend-mode-blender', 'paints')[0][1][1]
         self.assertEqual(self.header('make-blend-image-filter', 'image-filters')[0][1][1],
                          ordinary)
 
@@ -2818,10 +2821,17 @@ class R3EffectsSemanticsTests(unittest.TestCase):
         self.assertIn('does not automatically relocate a subset', text)
 
     def test_runtime_effect_metadata_remains_available_after_closure(self):
+        text = self.text('runtime-effects')
+        start = text.index('@subsection[#:tag "skia-runtime-metadata"]')
+        end = text.index('@section[#:tag "skia-runtime-bindings"]', start)
+        section = ' '.join(text[start:end].split())
+        self.assertIn('They remain available after the effect is closed', section)
+        self.assertIn('creating a new shader, color filter, or blender instance still requires an '
+                      'open effect', section)
         for name in ('runtime-effect-kind', 'runtime-effect-source',
                      'runtime-effect-uniform-byte-size', 'runtime-effect-uniforms',
                      'runtime-effect-children'):
-            self.assertRegex(self.entry(name, 'runtime-effects'), r'closed|closure')
+            self.assertIn('@defproc[(' + name + ' ', section)
 
     def test_runtime_packing_returns_bytes_not_a_native_resource(self):
         self.assertEqual(self.header('runtime-effect-uniform-bytes', 'runtime-effects')[1],
@@ -2854,9 +2864,9 @@ class R3EffectsSemanticsTests(unittest.TestCase):
             self.assertEqual('#:local-matrix' in fields, result == 'shader?')
 
     def test_paint_blender_has_an_owned_nullable_result(self):
-        self.assertEqual(self.header('paint-blender', 'runtime-effects')[1],
+        self.assertEqual(self.header('paint-blender', 'paints')[1],
                          ['or/c', 'blender?', '#f'])
-        text = self.entry('paint-blender', 'runtime-effects')
+        text = self.entry('paint-blender', 'paints')
         self.assertIn('independently owned', text)
         self.assertIn('implicit source-over', text)
 
@@ -2942,10 +2952,11 @@ class R3dColorSemanticsTests(unittest.TestCase):
             'api/public-api-headless.json': '83c229a242a3e2f155b4ee65f6134744d41e4255',
             'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
 
-    def test_standard_space_definitions_move_without_removing_the_legacy_section(self):
+    def test_standard_space_definitions_preserve_the_legacy_section_target(self):
         old = self.text('colors')
         new = self.text('color-management')
-        self.assertIn('@section[#:tag "skia-color-spaces"]{Color Spaces}', old)
+        self.assertNotIn('@section[#:tag "skia-color-spaces"]', old)
+        self.assertIn('@title[#:tag \'("skia-color-management" "skia-color-spaces")]', new)
         self.assertIn('@secref["skia-color-management"]', old)
         for name in ('color-space?', 'make-srgb-color-space', 'make-linear-srgb-color-space',
                      'color-space=?', 'color-space-srgb?', 'color-space-linear-gamma?'):

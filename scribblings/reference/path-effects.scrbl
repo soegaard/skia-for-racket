@@ -17,10 +17,11 @@ its input path. A @deftech{mask filter} changes the coverage of a shape rather
 than the colors inside an image. Attach them with @racket[make-paint],
 @racket[paint-set-path-effect!], or @racket[paint-set-mask-filter!].
 
-The constructors return owned resources. A paint or composed effect retains
+The constructors return owned resources. A paint or composed effect keeps
 its own native references to its inputs; it does not take ownership of the
-caller's wrappers. Inputs must be open on the appropriate owning thread when
-used. GPU-dependent inputs retain their context restrictions. Native rejection
+caller's wrappers. Closing an input wrapper after construction does not
+invalidate the result. Inputs must be open on the appropriate owning thread when
+used. GPU-dependent inputs preserve their context restrictions. Native rejection
 raises an exception.
 
 @section{Path Effects}
@@ -49,8 +50,7 @@ alternating bands.
             [paint (make-paint #:color 'blue #:style 'stroke
                                #:stroke-width 3 #:path-effect dash)])
   (skia-close! dash)
-  (draw-line (surface-canvas surface) 10 15 90 15 paint)
-  (save-png surface "dashed-line.png" #:exists 'replace))
+  (draw-line (surface-canvas surface) 10 15 90 15 paint))
 ]
 
 @reference-figure["dashed-line.png"
@@ -165,8 +165,8 @@ not x coordinates or individual curve parameters.
 
 @defproc[(make-compose-path-effect [outer path-effect?] [inner path-effect?]) path-effect?]{
 Returns an effect that applies @racket[inner] first, then @racket[outer].
-The result keeps its own native references to both effects; closing either
-input wrapper does not invalidate the result. Composition is not generally commutative.
+Swapping the arguments can change the result. The shared resource rules in
+@secref["skia-path-effects"] apply.
 
 
 @racketblock[
@@ -187,7 +187,7 @@ input wrapper does not invalidate the result. Composition is not generally commu
 @defproc[(make-sum-path-effect [first path-effect?] [second path-effect?]) path-effect?]{
 Returns an effect that applies both effects to the original geometry and
 combines the resulting paths. Unlike composition, neither effect receives
-the other's output. The result keeps its own native references to both input effects.
+the other's output.
 
 
 @racketblock[

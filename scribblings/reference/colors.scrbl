@@ -15,19 +15,44 @@
 A @deftech{color specification} is an @racket[rgba] value, a supported color-name
 symbol, a hexadecimal string, or an unsigned ARGB integer.
 
-The supported names are @indexed-racket['transparent], @indexed-racket['black],
-@indexed-racket['white], @indexed-racket['red], @indexed-racket['green],
-@indexed-racket['blue], @indexed-racket['yellow], @indexed-racket['cyan],
-@indexed-racket['magenta], @indexed-racket['gray], @indexed-racket['grey],
-@indexed-racket['orange], and @indexed-racket['purple]. Names are case-sensitive.
-Named green is @tt{#008000}, not
-@tt{#00FF00}.
+The supported names are case-sensitive symbols, not strings containing the
+names. Their values are shown below in @tt{#RRGGBBAA} order:
 
-A string has the form @tt{#RRGGBB} or @tt{#RRGGBBAA}, with hexadecimal channel
-bytes. The six-digit form has alpha 255. An integer instead uses
-@tt{#xAARRGGBB}: alpha is its most significant byte. A supported name must be a
-symbol, not a string containing the name. Alpha zero is transparent; alpha 255
-is opaque.
+@tabular[#:style 'boxed
+ (list
+  (list @bold{Name} @bold{RGBA value})
+  (list @indexed-racket['transparent] @tt{#00000000})
+  (list @indexed-racket['black]       @tt{#000000FF})
+  (list @indexed-racket['white]       @tt{#FFFFFFFF})
+  (list @indexed-racket['red]         @tt{#FF0000FF})
+  (list @indexed-racket['green]       @tt{#008000FF})
+  (list @indexed-racket['blue]        @tt{#0000FFFF})
+  (list @indexed-racket['yellow]      @tt{#FFFF00FF})
+  (list @indexed-racket['cyan]        @tt{#00FFFFFF})
+  (list @indexed-racket['magenta]     @tt{#FF00FFFF})
+  (list @indexed-racket['gray]        @tt{#808080FF})
+  (list @indexed-racket['grey]        @tt{#808080FF})
+  (list @indexed-racket['orange]      @tt{#FFA500FF})
+  (list @indexed-racket['purple]      @tt{#800080FF}))]
+
+A string has the form @tt{#RRGGBB} or @tt{#RRGGBBAA}, with case-insensitive
+hexadecimal digits. The six-digit form has alpha 255. Short forms such as
+@racket["#F00"] and color-name strings such as @racket["red"] are not accepted.
+
+The alpha position differs between strings and integers: a string puts alpha
+last, as @tt{#RRGGBBAA}; an integer puts it first, as @tt{#xAARRGGBB}.
+Alpha zero is transparent; alpha 255 is opaque. These two specifications
+therefore describe the same color:
+
+@examples[#:eval color-eval
+(color->rgba "#12345678")
+(color->rgba #x78123456)
+(equal? (color->rgba "#12345678") (color->rgba #x78123456))
+]
+
+These representations specify channel values, not a color-space resource.
+See @secref["skia-color-management"] for color interpretation and conversion,
+and @secref["skia-float-colors"] for floating-point channel values.
 
 @racketblock[
 (with-skia ([surface (make-surface 210 70 #:background 'white)]
@@ -66,11 +91,7 @@ exact integer from 0 through 255. The constructor checks all four channels and
 raises @racket[exn:fail:contract] for an invalid value. The RGB channels are not
 multiplied by alpha.
 
-The structure is transparent and its fields are immutable. The @racket[rgba?]
-predicate returns @racket[#t] for an instance of this structure and @racket[#f]
-otherwise. The @racket[rgba-red], @racket[rgba-green], @racket[rgba-blue], and
-@racket[rgba-alpha] accessors return the corresponding channel as a byte.
-The @racket[struct:rgba] binding is its structure-type descriptor.
+The fields are immutable.
 
 @examples[#:eval color-eval
 (rgba 50 109 230 128)
@@ -96,9 +117,6 @@ unchanged. Other accepted representations produce an RGBA value with the same
 channel values. This operation changes the representation, not the color space.
 
 @examples[#:eval color-eval
-(color->rgba "#12345678")
-(color->rgba #x78123456)
-(equal? (color->rgba "#12345678") (color->rgba #x78123456))
 (define color (rgb 50 109 230))
 (eq? (color->rgba color) color)
 ]
@@ -116,10 +134,3 @@ not multiplied by alpha. This operation does not convert between color spaces.
 }
 
 @close-eval[color-eval]
-
-@section[#:tag "skia-color-spaces"]{Color Spaces}
-
-Color-space resources describe the meaning of samples rather than their channel
-values. See @secref["skia-color-management"] for @racket[color-space?], the standard
-sRGB constructors, custom RGB spaces, and conversion. Floating-point channel
-values are described in @secref["skia-float-colors"].

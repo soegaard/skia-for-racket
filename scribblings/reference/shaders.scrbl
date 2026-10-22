@@ -14,8 +14,12 @@ then shade different shapes.
 A @deftech{shader} supplies colors as a function of @tech{local coordinates}.
 Attaching it to a @tech{paint} changes the color source, not the geometry. Shader
 resources are immutable: a transformed or combined shader is a new owned
-wrapper. Combined shaders keep their own native references to their inputs
-rather than borrowing the caller's wrappers, and preserve any GPU-context dependency.
+wrapper. Shaders copy supplied numeric data and keep their own native
+references to input resources, including images and child shaders. Closing an
+input wrapper after construction does not invalidate the shader. Inputs must
+be open and used on their owning thread; GPU-dependent inputs preserve their
+context and lifetime restrictions. Native construction failure raises an
+exception. See @secref["skia-resources"] for the shared resource rules.
 
 @defproc[(shader? [v any/c]) boolean?]{
 Returns @racket[#t] for a shader resource and @racket[#f] otherwise. The result
@@ -69,8 +73,7 @@ wrapper checks pass, for example when precision makes geometry degenerate.
 (with-skia ([surface (make-surface 120 40)]
             [shader (make-linear-gradient-shader 0 0 120 0 '(red blue))]
             [paint (make-paint #:shader shader)])
-  (draw-rect (surface-canvas surface) 0 0 120 40 paint)
-  (save-png surface "gradient.png" #:exists 'replace))
+  (draw-rect (surface-canvas surface) 0 0 120 40 paint))
 ]
 
 @reference-figure["gradient.png"
@@ -171,9 +174,8 @@ A circle pair rejected by native Skia raises an exception rather than returning
                            [#:tile-y tile-y (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
                            [#:sampling sampling (or/c 'nearest 'linear) 'nearest]) shader?]{
 Returns a shader that samples @racket[image], with image pixels initially
-aligned to local drawing units. The shader keeps its own native reference to
-the image, so closing the caller's image wrapper does not invalidate the shader.
-A @tech{GPU image} still restricts the shader to its GPU context.
+aligned to local drawing units. The input ownership and GPU restrictions in
+@secref["skia-shaders"] apply to the image as well.
 Use @racket[shader-with-local-matrix]
 to change the image's local placement or scale.
 
@@ -241,20 +243,19 @@ result with the drawing target.
 
 @defproc[(shader-with-local-matrix [shader shader?] [matrix matrix?]) shader?]{
 Returns a new shader whose local mapping includes @racket[matrix]. The source
-shader is unchanged, and the result keeps its own native reference to it. For an
-invertible local matrix, its inverse maps incoming coordinates to the source
-shader: a scale of two therefore makes its pattern twice as large. Native rejection raises an exception;
-a singular matrix is not promised to have a useful sampling interpretation.
+shader is unchanged. For an invertible local matrix, its inverse maps incoming
+coordinates to the source shader: a scale of two therefore makes its pattern
+twice as large. Native rejection raises an exception; a singular matrix is not
+promised to have a useful sampling interpretation.
 }
 
 @section[#:tag "skia-additional-shaders"]{Noise and Shader Composition}
 
 @(declare-exporting skia skia/effects #:use-sources (skia/effects))
 
-These factories return owned shaders. Their input data and numeric
-parameters are copied, while the shader keeps its own native references to
-child resources. Closing caller-owned children after construction does not invalidate the result.
-GPU-dependent children preserve their context restrictions.
+Use noise shaders for procedural textures, or combine existing shaders and
+filters to build a new color source. The construction and resource rules in
+@secref["skia-shaders"] apply.
 
 @defproc[(make-fractal-noise-shader
           [frequency-x real?]
@@ -313,15 +314,14 @@ Returns an owned shader that draws nothing. It is a shader resource, not
 
 @defproc[(shader-with-color-filter [shader shader?] [filter color-filter?]) shader?]{
 Returns a shader applying the @tech{color filter} to the source shader's output.
-The result keeps its own native references to both inputs. This changes shader
-output before the paint is composited with the target; it does not change the source shader.
+This changes shader output before the paint is composited with the target;
+it does not change the source shader.
 }
 
 @defproc[(make-blender-shader [blender blender?] [destination shader?] [source shader?]) shader?]{
 Returns a shader combining two shader results through @racket[blender].
 Destination precedes source in the argument list. The paint's own blend mode
-then combines this shader result with the drawing target. All three input
-resources are kept alive by the result's own native references.
+then combines this shader result with the drawing target.
 }
 
 @section[#:tag "skia-raw-image-shaders"]{Raw Image Samples}
@@ -333,11 +333,13 @@ resources are kept alive by the result's own native references.
           [#:sampling sampling (or/c 'nearest 'linear) 'nearest] [#:matrix matrix (or/c #f
           matrix?) #f])
           shader?]{
-Creates an owned shader that treats image channels as raw numeric samples. It skips the ordinary
-image shader's color-space conversion and unpremultiplication. This is useful for data textures,
-but is not a drop-in way to display a tagged color image correctly.
+Treats the image channels as numeric data without color-space conversion.
+Unpremultiplied samples are not automatically premultiplied. This is useful
+for data textures, such as height maps, but is not a drop-in way to display a
+tagged color image correctly.
 
-The shader keeps its own native reference to the image and preserves any GPU dependency.
+The result is an owned shader, with the input ownership and GPU restrictions
+described in @secref["skia-shaders"].
 A supplied local @tech{affine matrix} must be invertible. Sampling is nearest by default; the public
 interface accepts nearest or linear, not cubic sampling. Raw sample interpretation has no promised direct PDF/SVG
 representation; use an explicit bounded raster group for document output.

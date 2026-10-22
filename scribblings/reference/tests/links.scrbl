@@ -1446,6 +1446,14 @@ The following links cover the font and text interfaces.
 
 @secref["skia-color-spaces" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
 
+@secref["skia-color-management" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
+
+@secref["skia-paint-blenders" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
+
+@secref["skia-runtime-metadata" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
+
+@secref["skia-color-filter-limits" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
+
 @racket[make-picture-image-filter]
 
 @racket[picture?]

@@ -3,7 +3,7 @@
 @(require "support/figures.rkt"
           (for-label racket/base racket/contract skia skia/color-space skia/image-info))
 
-@title[#:tag "skia-color-management"]{Color Management}
+@title[#:tag '("skia-color-management" "skia-color-spaces")]{Color Management}
 
 @(declare-exporting skia)
 
@@ -16,19 +16,50 @@ label is not itself a conversion of existing pixels.
 
 A @deftech{color space} describes how color samples are interpreted. A color-space
 resource is different from a @tech{color specification}: it supplies the
-interpretation, not the channel values. The @racket[color-space?] predicate is
-provided by @racketmodname[skia], not @racketmodname[skia/color]. The standard
-constructors and queries are also provided by @racketmodname[skia].
+interpretation, not the channel values.
+
+Different APIs accept different representations of a color space:
+
+@tabular[#:style 'boxed
+ (list
+  (list @bold{Representation} @bold{Where to use it})
+  (list @elem{A @racket[color-space?] resource, created by a color-space constructor}
+        @elem{@racket[make-surface], @racket[rgba-bytes->image], and
+              @racket[image-convert-color-space]})
+  (list @elem{A @tech{color-space descriptor}: @racket['srgb],
+              @racket['linear-srgb], ICC bytes, or @racket[#f] where allowed}
+        @elem{@racket[make-image-info], @racket[make-paint/color4f], and
+              floating-point gradient constructors}))]
+
+These forms are not interchangeable. The descriptor-taking constructors above
+accept mutable ICC bytes and copy them; stored ICC descriptors are immutable.
+The @racket[color-space?] predicate and standard constructors are provided by
+@racketmodname[skia], not @racketmodname[skia/color].
 
 A color-space value wraps a native Skia object. Racket can reclaim it when
 the value becomes unreachable. Use @racket[skia-close!] to release it at a
-specific time; see @secref["skia-resources"]. A color space obtained from an
-image or surface remains usable after that image or surface is released.
-Releasing a color-space value does not change images or surfaces that use it.
+specific time; see @secref["skia-resources"]. Native operations on a color-space resource
+require it to be open and used on its owning thread. Constructors and queries
+that return a color-space resource give it an independent lifetime, even if
+Skia shares the underlying object. Closing the source resource does not close
+the result, and closing a color-space resource does not change images or
+surfaces that use it. A constructor raises an exception if Skia cannot create
+the requested color space.
 
 An omitted or @racket[#f] color-space argument does not mean sRGB. Its meaning
 depends on the operation; for @racket[make-surface] and @racket[rgba-bytes->image],
 it creates an untagged result rather than selecting a default profile.
+
+For example, sRGB and linear sRGB use the same RGB primaries but different
+@tech{transfer functions}. An opaque gray with byte channels of 128 denotes
+a different amount of light in each space. When drawn to an sRGB destination,
+the sRGB source gives channels of 128, while the linear-sRGB source gives
+approximately 188. Assigning the source label interprets the bytes; drawing
+into the destination performs the conversion. Alpha premultiplication and
+RGBA/BGRA byte order are separate storage choices.
+
+@reference-figure["concept-color-interpretation.png"
+                  "The RGB channel values (128,128,128) branch to an sRGB declaration and a linear-sRGB declaration, then into the same sRGB destination. The two destination swatches are labeled 128 and approximately 188, showing interpretation followed by conversion."]
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -41,17 +72,15 @@ for native operations.
 }
 
 @defproc[(make-srgb-color-space) color-space?]{
-Returns a new owned color-space reference describing sRGB, with its standard
-RGB primaries and nonlinear @tech{transfer function}. The result has an independent
-wrapper lifetime even when Skia shares the underlying native color space.
-Creating the reference does not convert any image or surface samples.
+Returns a color-space resource describing sRGB, with its standard RGB primaries
+and nonlinear @tech{transfer function}. Creating it does not convert any image
+or surface samples.
 }
 
 @defproc[(make-linear-srgb-color-space) color-space?]{
-Returns a new owned color-space reference with the same RGB primaries as sRGB
+Returns a color-space resource with the same RGB primaries as sRGB
 and a linear transfer function. Samples in this space represent relative
-linear-light channel values rather than sRGB-encoded values. The result follows
-the same ownership rules as @racket[make-srgb-color-space].
+linear-light channel values rather than sRGB-encoded values.
 
 The two spaces can be used with the image and surface constructors:
 
@@ -69,47 +98,32 @@ The two spaces can be used with the image and surface constructors:
   (bytes->list (surface->rgba-bytes surface #:color-space srgb)))
 ]
 
-Both source images contain the same channel bytes, but those bytes describe
-different colors. The sRGB source produces RGB values of 128; the linear source
-produces approximately 188 in the sRGB destination. Alpha remains 255. The
-@racket[#:color-space] arguments to @racket[rgba-bytes->image] declare the input
-bytes' meaning; drawing into the tagged destination performs the conversion.
+This draws the two source interpretations from the
+@seclink["skia-color-management"]{color-management introduction} into one
+destination. Reading that destination gives
+@racket['(128 128 128 255 188 188 188 255)], apart from possible rounding differences.
 
 @reference-figure["color-space-interpretation.png"
                   "The actual two-pixel sRGB destination enlarged with nearest-neighbor sampling. The left opaque gray sample, declared sRGB, is RGB 128; the right sample has the same source bytes declared linear sRGB and converts to approximately RGB 188."]
 
-The swatches are captured from the destination surface. They are not manually selected gray
-paint colors.
-
-@bold{Conceptual diagram.} The constructor's color-space tag declares what the
-same RGB bytes mean; it does not convert those samples. Drawing the tagged image
-into the tagged sRGB destination performs conversion. Thus opaque bytes
-@racket[(128 128 128)] produce destination 128 when declared sRGB and about 188
-when declared linear sRGB. Alpha premultiplication and RGBA/BGRA byte order are
-separate storage topics.
-
-@reference-figure["concept-color-interpretation.png"
-                  "The RGB channel values (128,128,128) branch to an sRGB declaration and a linear-sRGB declaration, then into the same sRGB destination. The two destination swatches are labeled 128 and approximately 188, showing interpretation followed by conversion."]
 }
 
 @defproc[(color-space=? [a color-space?] [b color-space?]) boolean?]{
 Returns @racket[#t] when Skia considers @racket[a] and @racket[b] equivalent
 color spaces, and @racket[#f] otherwise. This compares the color-space
-descriptions, not Racket wrapper identity or image pixels. Both arguments must
-be open resources used on their owning thread.
+descriptions, not Racket wrapper identity or image pixels.
 }
 
 @defproc[(color-space-srgb? [space color-space?]) boolean?]{
 Returns @racket[#t] when Skia recognizes @racket[space] as sRGB, and @racket[#f]
-otherwise. The space must be open and used on its owning thread. Linear sRGB
-does not satisfy this predicate merely because it has the same RGB primaries.
+otherwise. Linear sRGB does not satisfy this predicate merely because it has
+the same RGB primaries.
 }
 
 @defproc[(color-space-linear-gamma? [space color-space?]) boolean?]{
 Returns @racket[#t] when @racket[space] has a linear transfer function, and
-@racket[#f] otherwise. The space must be open and used on its owning thread.
-The result does not identify the RGB primaries or verify the meaning of any
-pixel samples.
+@racket[#f] otherwise. The result does not identify the RGB primaries or verify
+the meaning of any pixel samples.
 
 @racketblock[
 (with-skia ([srgb (make-srgb-color-space)]
@@ -130,10 +144,8 @@ The result is @racket['(#t #f #t #f #f #t)].
 @section[#:tag "skia-color-gamma"]{Changing the Transfer Function}
 
 These operations return or inspect color-space descriptions. They do not
-convert pixel samples. Native resources must be open on their owning thread.
-A returned color-space reference has its own lifetime; closing the source does
-not close the result. Native allocation or unsupported descriptions raise an
-exception rather than returning a partly initialized resource.
+convert pixel samples. The shared resource rules in
+@secref["skia-color-management"] apply.
 
 @defproc[(color-space-gamma-close-to-srgb? [space color-space?]) boolean?]{
 Returns @racket[#t] when Skia considers the space's transfer function close
@@ -198,9 +210,8 @@ The result is 0.25. The coefficients describe a square-law decoding function.
 
 @defproc[(transfer-function-coefficients [transfer transfer-function?])
          (and/c (vector/c real? real? real? real? real? real? real?) immutable?)]{
-Returns the stored immutable vector in order @tt{g, a, b, c, d, e, f}. The vector
-contains ordinary Racket numbers, not borrowed native storage. This query does
-not load the native library.
+Returns the stored immutable vector in order @tt{g, a, b, c, d, e, f}. This query
+does not load the native library.
 }
 
 @defproc[(named-transfer-function [name (or/c 'srgb 'linear 'gamma-2.2 'rec2020)])
@@ -293,9 +304,11 @@ not make the Display P3 primaries sRGB primaries.
 
 @defproc[(color-space-transfer-function [space color-space?])
          (or/c transfer-function? #f)]{
-Returns a numerical transfer description for an open color space, or
-@racket[#f] when no such description is available. An invalid or closed resource
-raises an exception; it is not reported as an unavailable numerical description.
+Returns the space's transfer function in the SDR coefficient form described
+in @secref["skia-transfer-functions"]. Returns @racket[#f] if the space does not
+use that form. This is a limitation of the returned representation, not an
+indication that the space has no transfer function. An invalid or closed
+resource raises an exception rather than returning @racket[#f].
 }
 
 @defproc[(color-space-xyz-d50 [space color-space?])
@@ -374,7 +387,7 @@ samples or write a file.
     (list (bytes? profile) (immutable? profile) (color-space? restored))))
 ]
 
-The result is @racket['(#t #f #t)]. The two resources have independent lifetimes.
+The result is @racket['(#t #f #t)].
 }
 
 @section[#:tag "skia-color-space-descriptors"]{Color-Space Descriptors}
@@ -388,9 +401,12 @@ through @racket[#:color-space], instead of a live color-space resource.
 
 A @deftech{color-space descriptor} is @racket[#f], @racket['srgb],
 @racket['linear-srgb], or complete immutable ICC bytes with the required header.
-APIs that require an explicit source interpretation reject @racket[#f]. Some
-such APIs also accept mutable ICC bytes by copying them; their argument
-contracts therefore differ from this representation predicate.
+APIs that require an explicit source interpretation reject @racket[#f].
+Constructors such as @racket[make-image-info] and @racket[make-paint/color4f]
+also accept mutable ICC bytes, including the result of
+@racket[color-space->icc-bytes]. They copy the supplied bytes, so later mutation
+does not change the constructed value. The predicate below tests the immutable
+descriptor representation, not every input accepted by these constructors.
 
 @defproc[(color-space-descriptor? [v any/c]) boolean?]{
 Returns @racket[#t] for @racket[#f], the two named descriptors, or an immutable
@@ -401,9 +417,9 @@ resources. The header check does not parse tag contents, load native Skia, or
 check @racket[current-skia-byte-limit]. A recognized description can still be
 rejected when used to construct a native space.
 
-Use @racket[bytes->immutable-bytes] on an exported profile when an immutable
-descriptor value is needed. The function @racket[color-space->icc-bytes]
-returns mutable bytes, even though it can describe a valid color space.
+Use @racket[bytes->immutable-bytes] when you need a descriptor value that itself
+satisfies this predicate. No explicit conversion is needed when passing an
+exported profile to the constructors described above.
 }
 
 @section[#:tag "skia-sample-conversion"]{Converting Image Samples}

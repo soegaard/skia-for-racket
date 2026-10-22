@@ -25,10 +25,12 @@ one graph into another's source slots. A paint filter processes each drawing
 operation, not everything already present on the canvas. Explicit source nodes use
 an @tech{image} or @tech{shader} specified when the node is constructed.
 
-Each constructor returns an owned filter and retains native references to its
-inputs. Closing caller-owned input wrappers afterward is permitted.
-GPU-dependent content preserves its context restrictions. Operations require
-open resources on their owning thread; native rejection raises an exception.
+Each constructor returns an owned filter and keeps its own native references
+to input resources, including filters, images, shaders, blenders, and pictures.
+Closing a caller-owned input wrapper afterward does not invalidate the result.
+GPU-dependent content preserves its context and lifetime restrictions.
+Operations require open resources on their owning thread; native construction
+failure raises an exception. See @secref["skia-resources"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -45,6 +47,12 @@ canvas @tech{clip} and does not move pixels. Cropping a child before a blur can 
 a different result from cropping the blur's output. The absence of a crop does
 not imply an infinite pixel allocation. Native bounds, drawing clips, memory
 limits, and output-backend restrictions still apply.
+
+Input arrays are subject to @racket[current-skia-byte-limit]. A merge counts
+one native pointer per input; a convolution kernel counts four bytes per
+coefficient. These checks limit the supplied arrays, not all memory Skia may
+use when evaluating the graph. Each operation's count and shape restrictions
+also apply.
 
 @bold{Conceptual diagram.} A graph connects inputs; constructing it does not
 process pixels. The two renderings use the same crop and blur in opposite
@@ -64,6 +72,8 @@ a particular output backend can preserve the filter without rasterization.
 
 @section{Blur, Shadows, and Composition}
 
+@subsection{Blur}
+
 @defproc[(make-blur-image-filter
           [sigma-x (and/c real? (>=/c 0))]
           [sigma-y (and/c real? (>=/c 0))]
@@ -76,7 +86,8 @@ Returns a Gaussian blur of the input colors and alpha. At least one sigma
 must be positive. Each sigma is the blur's standard deviation along its local axis,
 not an exact distance beyond which the blur stops affecting pixels.
 Decal samples outside the input as transparent; clamp
-extends edge samples and repeat tiles them. Mirror is rejected by this API.
+extends edge samples and repeat tiles them. The pinned Skia version (m119)
+documents mirror tiling as unsupported for blur, so this API rejects it.
 Non-decal edge behavior should be used with an explicit crop; the native
 legacy no-crop path does not provide the same crop-relative tiling guarantee.
 The input and crop follow @secref["skia-filter-rectangles"].
@@ -102,6 +113,15 @@ The input and crop follow @secref["skia-filter-rectangles"].
                   "A blue circle blurred much more horizontally than vertically by unequal blur sigmas."]
 }
 
+@subsection{Drop Shadows}
+
+Both shadow constructors derive a shadow from the input's alpha, blur it by
+@racket[sigma-x] and @racket[sigma-y], and offset it by @racket[dx] and
+@racket[dy]. Both sigmas may be zero for an unblurred shadow. The offsets are
+@tech{local-coordinate} displacements, not device-pixel offsets. The crop
+limits the result, so it can cut off the shadow and, in the combined version,
+the original content.
+
 @defproc[(make-drop-shadow-image-filter
           [dx real?]
           [dy real?]
@@ -113,10 +133,6 @@ The input and crop follow @secref["skia-filter-rectangles"].
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a colored, blurred shadow behind the original input.
-The shadow is derived from input alpha, blurred by the two sigmas and offset
-by @racket[dx] and @racket[dy]. Both sigmas may be zero for an unblurred shadow.
-Offsets are local-coordinate displacements, not device-pixel offsets.
-The crop can remove part of the shadow as well as the source.
 
 @racketblock[
 (with-skia ([filter
@@ -142,10 +158,6 @@ The crop can remove part of the shadow as well as the source.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns only the colored, blurred shadow, without the original input.
-The shadow is derived from input alpha, blurred by the two sigmas and offset
-by @racket[dx] and @racket[dy]. Both sigmas may be zero for an unblurred shadow.
-Offsets are local-coordinate displacements, not device-pixel offsets.
-The crop can remove part of the shadow as well as the source.
 
 
 @racketblock[
@@ -159,15 +171,16 @@ The crop can remove part of the shadow as well as the source.
                   "Only the soft dark shadow of a rounded rectangle is visible; the orange source itself is omitted."]
 }
 
+@subsection{Color Filtering and Composition}
+
 @defproc[(make-color-filter-image-filter
           [filter color-filter?]
           [#:input input (or/c image-filter? #f) #f]
           [#:crop crop
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
-Returns a graph node applying a color filter to its input. The node keeps its
-own native reference to the color filter. A false image input uses the dynamic
-source; it does not suppress the color operation.
+Returns a graph node applying a color filter to its input. A false image input
+uses the dynamic source; it does not suppress the color operation.
 }
 
 @defproc[(make-compose-image-filter
@@ -232,9 +245,10 @@ The rectangle moves to the right; the false input slot receives that drawing.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a filter drawing its inputs in order with source-over blending.
-Later inputs are composited over earlier ones. The list or vector must be nonempty,
-fit the native signed-int count, and fit the pointer-array byte limit. Each
-false entry draws the dynamic source again. The input list or vector is copied.
+Later inputs are composited over earlier ones. The list or vector must be nonempty
+and fit the native signed-int count and the input-array limit described in
+@secref["skia-filter-rectangles"]. Each false entry draws the dynamic source
+again. The input list or vector is copied.
 
 @racketblock[
 (with-skia ([shift (make-offset-image-filter 55 0)]
@@ -284,11 +298,18 @@ premultiplied channel, where @math{S} is foreground and @math{D} is background.
 Results are clamped to the channel range. When @racket[enforce-premul?] is
 true, RGB is additionally limited by the resulting alpha. With it false,
 the caller can produce colors inconsistent with premultiplied alpha.
-The result keeps its own native references to supplied input filters. False
-slots denote the dynamic source.
+False input slots denote the dynamic source.
 }
 
 @section{Morphology, Displacement, and Convolution}
+
+@subsection{Dilation and Erosion}
+
+Dilation expands bright or opaque areas by taking the maximum of each channel
+in a rectangular neighborhood. Erosion takes the minimum, shrinking those
+areas. Both operate on pixel channels, not on the original vector path.
+The radii are nonnegative @tech{local-coordinate} distances and may be zero.
+Skia determines the pixel neighborhood after transforming the radii.
 
 @defproc[(make-dilate-image-filter
           [radius-x (and/c real? (>=/c 0))]
@@ -298,10 +319,7 @@ slots denote the dynamic source.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a filter taking the component-wise maximum over a rectangular
-neighborhood. The radii are nonnegative local distances and may be zero.
-This is a channel-wise morphology operation, not an expansion or contraction
-of the original vector path. The native backend determines the raster
-neighborhood after transforming the radii.
+neighborhood.
 
 @racketblock[
 (with-skia ([plain (make-paint #:color "#326DE6")]
@@ -324,10 +342,7 @@ neighborhood after transforming the radii.
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
 Returns a filter taking the component-wise minimum over a rectangular
-neighborhood. The radii are nonnegative local distances and may be zero.
-This is a channel-wise morphology operation, not an expansion or contraction
-of the original vector path. The native backend determines the raster
-neighborhood after transforming the radii.
+neighborhood.
 
 @racketblock[
 (with-skia ([plain (make-paint #:color "#326DE6")]
@@ -341,6 +356,8 @@ neighborhood after transforming the radii.
 @reference-figure["erode-image-filter.png"
                   "Two blue squares, with the filtered square visibly contracted by erosion."]
 }
+
+@subsection{Displacement}
 
 @defproc[(make-displacement-map-image-filter
           [x-channel (or/c 'red 'green 'blue 'alpha)]
@@ -357,6 +374,8 @@ displacement input. For normalized selected channel values @math{u} and
 @math{scale (v - 1/2)}. The midpoint is neutral. Scale is signed, so a negative
 value reverses displacements. A false input slot uses the dynamic source.
 }
+
+@subsection{Convolution}
 
 @defproc[(make-matrix-convolution-image-filter
           [width (integer-in 1 2048)]
@@ -377,7 +396,7 @@ Creates a convolution filter that combines neighboring input samples using
 @racket[kernel].
 
 The kernel must contain exactly @math{width height} coefficients in row-major
-order. The copied coefficient data must fit the byte limit.
+order and fit the input-array limit in @secref["skia-filter-rectangles"].
 Offset selects the kernel's alignment and must lie within its dimensions;
 false uses @math{(floor(width/2), floor(height/2))}. The weighted sum is scaled
 by gain and then bias is added. Bias uses the native eight-bit channel scale:
@@ -387,8 +406,9 @@ When @racket[convolve-alpha?] is true all channels are convolved. Otherwise
 RGB is convolved in unpremultiplied form, the original alpha is restored,
 and the result returns to premultiplied form. RGB is limited by the resulting
 alpha. Non-decal tiling
-requires an explicit crop; mirror is rejected. Unlike a color matrix, the
-kernel combines neighboring samples rather than channels of one sample.
+requires an explicit crop. The pinned Skia version (m119) documents mirror
+tiling as unsupported for convolution, so this API rejects it. Unlike a color
+matrix, the kernel combines neighboring samples rather than channels of one sample.
 
 @racketblock[
 (with-skia ([filter
@@ -446,7 +466,7 @@ The source defaults to the full image and must be a positive rectangle inside
 it. A missing destination uses the source rectangle itself, preserving its
 coordinates and scale; it does not automatically relocate a subset to the
 origin. An explicit destination must also have positive extents.
-Closing the caller's image wrapper does not invalidate the filter.
+The shared input ownership rules in @secref["skia-image-filters"] apply.
 
 
 @racketblock[
@@ -471,11 +491,11 @@ Closing the caller's image wrapper does not invalidate the filter.
           [#:crop crop
            (or/c #f (list/c real? real? real? real?) (vector/c real? real? real? real?)) #f])
          image-filter?]{
-Returns an image-filter source that evaluates @racket[shader]. It keeps its
-own native reference to the shader and does not filter the dynamic source.
+Returns an image-filter source that evaluates @racket[shader] instead of
+filtering the dynamic source.
 Dithering requests reduction of quantization
 artifacts when supported by the destination. A crop is useful for bounding
-otherwise unbounded shader content. Shader GPU dependencies remain in force.
+otherwise unbounded shader content.
 
 
 @racketblock[
@@ -756,8 +776,7 @@ visibility system.
          image-filter?]{
 Returns a filter using the supplied blender to combine foreground and
 background. The foreground is the blender's source and the background is its
-destination. The result keeps its own native references to the blender and
-supplied input filters. False slots refer to the dynamic source, including for
+destination. False slots refer to the dynamic source, including for
 identity combinations.
 }
 
@@ -767,27 +786,29 @@ identity combinations.
 @(declare-exporting skia)
 
 @defproc[(make-picture-image-filter [picture picture?]
-                                    [#:target target (or/c list? vector? #f) #f]
-                                    [#:crop crop (or/c list? vector? #f) #f]) image-filter?]{
+                                    [#:target target
+                                     (or/c #f (list/c real? real? real? real?)
+                                           (vector/c real? real? real? real?)) #f]
+                                    [#:crop crop
+                                     (or/c #f (list/c real? real? real? real?)
+                                           (vector/c real? real? real? real?)) #f]) image-filter?]{
 Creates an image filter that renders @racket[picture] instead of using the
 dynamic source supplied to the surrounding graph.
 
-The filter is an owned resource and keeps its own native reference to the
-picture, independently of the caller's wrapper. It rasterizes picture content
-for filtering; it does not guarantee vector replay on PDF or SVG.
+It rasterizes picture content for filtering; it does not guarantee vector
+replay on PDF or SVG. The input ownership and GPU restrictions in
+@secref["skia-image-filters"] apply to the picture as well.
 
 The optional target is a four-element x, y, width, height list or vector with
 positive extents. It selects the picture's rasterization rectangle, not a
 fit-to-size transform of the recorded commands.
 Omitting it uses the picture's native cull rectangle. The result is clipped to
 both the target and the picture's cull rectangle. The optional crop uses the
-common image-filter output-region rules. The source picture must be open
-during construction; GPU resources used by the picture still have their context
-and thread restrictions.
+common image-filter output-region rules.
 
 @racketblock[
-(with-skia ([surface (make-surface 420 175 #:background 'white)]
-            [picture
+(define surface (make-surface 420 175 #:background 'white))
+(with-skia ([picture
              (call-with-picture
               120 75
               (lambda (pc)
@@ -830,8 +851,8 @@ and thread restrictions.
     (draw-rect canvas 345 38 38 58 crop-bound)
     (draw-simple-text canvas "orange=target; purple=crop" 12 125 font label)
     (draw-simple-text canvas "recording stays 1:1" 150 125 font label)
-    (draw-simple-text canvas "only overlap is output" 290 125 font label)
-    surface))
+    (draw-simple-text canvas "only overlap is output" 290 125 font label)))
+surface
 ]
 @reference-figure["picture-image-filter-target-crop.png"
                   "An asymmetric blue, orange, and purple recorded picture is shown at left with its native cull outline. The middle panel retains only an orange target rectangle without scaling the recorded motifs. The right panel shows a larger orange target and a purple crop rectangle; only their overlap is rendered at the recording's original scale."]

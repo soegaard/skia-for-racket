@@ -5068,7 +5068,7 @@
     },
     {
       "name": "blender?",
-      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "chapter": "scribblings/reference/paints.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -5079,7 +5079,7 @@
     },
     {
       "name": "make-blend-mode-blender",
-      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "chapter": "scribblings/reference/paints.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -5090,7 +5090,7 @@
     },
     {
       "name": "paint-blender",
-      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "chapter": "scribblings/reference/paints.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -5101,7 +5101,7 @@
     },
     {
       "name": "paint-set-blender!",
-      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "chapter": "scribblings/reference/paints.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -5112,7 +5112,7 @@
     },
     {
       "name": "make-arithmetic-blender",
-      "chapter": "scribblings/reference/runtime-effects.scrbl",
+      "chapter": "scribblings/reference/paints.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -13381,6 +13381,18 @@
       "label": "Image Encoding (current tag)",
       "chapter": "scribblings/reference/encoding.scrbl",
       "filename": "skia-png.html"
+    },
+    {
+      "tag": "skia-color-management",
+      "label": "Color Management",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "filename": "skia-color-management.html"
+    },
+    {
+      "tag": "skia-color-spaces",
+      "label": "Color Management (legacy Color Spaces tag)",
+      "chapter": "scribblings/reference/color-management.scrbl",
+      "filename": "skia-color-management.html"
     }
   ],
   "runtime_deferred_modules": [

@@ -21,9 +21,8 @@ Use them when you need to:
  @item{create color-managed paints with @racket[make-paint/color4f] or
        @seclink["skia-float-shaders"]{floating-point gradients}.}]
 
-The source space matters. An opaque gray with RGB components of 0.5 in linear
-sRGB becomes approximately 188 per channel when drawn to an eight-bit sRGB
-surface. The same components interpreted as sRGB become 128.
+The source space determines how the components are interpreted; see
+@secref["skia-color-management"] for the sRGB and linear-sRGB comparison.
 
 For ordinary UI drawing, the byte-valued @tech{color specification}s, such as
 @racket['red] or @racket["#326DE6"], are usually simpler. Floating-point colors
@@ -59,7 +58,7 @@ be finite and lie between minus and plus
 @math{(2 - 2^(-23)) 2^127}, the largest finite @tech{binary32} magnitude.
 After conversion to an inexact Racket number, alpha
 must lie between zero and one, inclusive. Negative and extended RGB values
-are retained, not clipped.
+are stored without clipping.
 
 Construction changes neither color space nor alpha convention.
 
@@ -149,7 +148,6 @@ keyword set. Set additional settings through the documented paint mutators.
 
 The native paint stores the converted color in extended sRGB, not the supplied
 source space. It does not store a reference to the caller's ICC byte string.
-On failure after paint allocation, the new paint is released before the exception is raised.
 
 @racketblock[
 (with-skia ([srgb (make-srgb-color-space)]
@@ -160,7 +158,8 @@ On failure after paint allocation, the new paint is released before the exceptio
   (surface-pixel surface 0 0))
 ]
 
-The pixel has RGB bytes of approximately 188 and alpha 255.
+The pixel has RGB bytes of approximately 188 and alpha 255, following the
+source-space interpretation described in @secref["skia-color-management"].
 
 
 @racketblock[
@@ -267,8 +266,7 @@ The color, stop, tile, and local-matrix rules are specified in
               #:color-space 'srgb #:stops '(0 1))]
             [paint (make-paint #:shader shader)]
             [surface (make-surface 64 16)])
-  (draw-paint (surface-canvas surface) paint)
-  (save-png surface "float-gradient.png" #:exists 'replace))
+  (draw-paint (surface-canvas surface) paint))
 ]
 
 @reference-figure["float-gradient.png"
