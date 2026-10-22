@@ -18,10 +18,16 @@
 (require racket/list racket/string
          scribble/base scribble/core scribble/manual scribble/html-properties
          "catalog.rkt"
-         "../../support/documentation-navigation.rkt")
+         "../../support/documentation-navigation.rkt"
+         "../../support/paragraph-feedback.rkt")
 
 (provide tutorial-link tutorial-entry tutorial-next tutorial-sources tutorial-route tutorial-category
-         command-text tutorial-index-link api-link tutorial-navigation)
+         command-text tutorial-index-link api-link tutorial-navigation tutorial-feedback-style)
+
+;; tutorial-feedback-style : -> style?
+;; Supplies the shared GitHub paragraph-feedback controls for each tutorial manual.
+(define (tutorial-feedback-style)
+  (skia-feedback-style))
 
 ;;;
 ;;; Documentation Navigation Links

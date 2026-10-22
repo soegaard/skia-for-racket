@@ -1,9 +1,10 @@
 #lang scribble/manual
 
 @(require (for-label racket/base racket/contract skia skia/geometry)
-          "../support/documentation-navigation.rkt")
+          "../support/documentation-navigation.rkt"
+          "../support/paragraph-feedback.rkt")
 
-@title[#:tag "skia-reference"]{The Skia Reference}
+@title[#:tag "skia-reference" #:style (skia-feedback-style)]{The Skia Reference}
 @(documentation-navigation-band 'reference #:index? #t)
 @author[(author+email "Jens Axel Søgaard" "jensaxel@soegaard.net")]
 

@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{PDF and SVG — Make a Printable Diagram}
+@title[#:style (tutorial-feedback-style)]{PDF and SVG — Make a Printable Diagram}
 @(tutorial-navigation "pdf-svg")
 
 @(require "eval.rkt"

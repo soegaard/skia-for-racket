@@ -2,7 +2,7 @@
 
 @(require "support/reader.rkt")
 
-@title{Skia Tutorials}
+@title[#:style (tutorial-feedback-style)]{Skia Tutorials}
 @(tutorial-navigation #f #:index? #t)
 
 Skia lets Racket programs draw shapes, text, and images on CPU surfaces, GPU

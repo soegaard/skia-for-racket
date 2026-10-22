@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{GPU Rendering — Render the Same Scene on the GPU}
+@title[#:style (tutorial-feedback-style)]{GPU Rendering — Render the Same Scene on the GPU}
 @(tutorial-navigation "gpu")
 
 @(require racket/file

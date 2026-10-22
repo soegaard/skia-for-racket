@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Transforms and Coordinate Systems — Build a Clock}
+@title[#:style (tutorial-feedback-style)]{Transforms and Coordinate Systems — Build a Clock}
 @(tutorial-navigation "clock")
 
 @(require "eval.rkt"

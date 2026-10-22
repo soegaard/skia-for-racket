@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Shaping and Multilingual Text — Make a Language Sampler}
+@title[#:style (tutorial-feedback-style)]{Shaping and Multilingual Text — Make a Language Sampler}
 @(tutorial-navigation "shaping")
 
 @(require "eval.rkt"

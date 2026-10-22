@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Paragraph Layout — Make a Multilingual Article Card}
+@title[#:style (tutorial-feedback-style)]{Paragraph Layout — Make a Multilingual Article Card}
 @(tutorial-navigation "paragraph")
 
 @(require "eval.rkt"

@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Effects and Filters — Make a Card with Shadows}
+@title[#:style (tutorial-feedback-style)]{Effects and Filters — Make a Card with Shadows}
 @(tutorial-navigation "effects")
 
 @(require "eval.rkt"

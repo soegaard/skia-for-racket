@@ -7,7 +7,7 @@
 @(define-runtime-path program-source "waves.rkt")
 @(define-runtime-path window-source "waves-window.rkt")
 
-@title{Runtime Shaders — Animate Prismatic Waves in a Window}
+@title[#:style (tutorial-feedback-style)]{Runtime Shaders — Animate Prismatic Waves in a Window}
 @(tutorial-navigation "shaders")
 
 @section[#:tag "finished-result"]{The Finished Animation}

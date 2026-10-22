@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Interactive Paths — Drag Bézier Control Points}
+@title[#:style (tutorial-feedback-style)]{Interactive Paths — Drag Bézier Control Points}
 @(tutorial-navigation "interaction")
 
 @(require racket/file

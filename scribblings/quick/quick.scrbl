@@ -3,7 +3,7 @@
 @(require "../tutorials/support/reader.rkt"
           "../tutorials/support/accessible-figures.rkt")
 
-@title{Quick: An Introduction to Skia with Pictures}
+@title[#:style (tutorial-feedback-style)]{Quick: An Introduction to Skia with Pictures}
 @(tutorial-navigation "quick")
 
 @(require "eval.rkt"

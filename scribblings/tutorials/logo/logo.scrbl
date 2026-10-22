@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Paths and Geometry — Draw a Logo}
+@title[#:style (tutorial-feedback-style)]{Paths and Geometry — Draw a Logo}
 @(tutorial-navigation "logo")
 
 @(require "eval.rkt"

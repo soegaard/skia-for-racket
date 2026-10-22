@@ -6,7 +6,7 @@
           (for-label racket skia))
 @(define-runtime-path program-source "pixel-lab.rkt")
 
-@title{Working with Pixels — Build a Two-Ink Image Processor}
+@title[#:style (tutorial-feedback-style)]{Working with Pixels — Build a Two-Ink Image Processor}
 @(tutorial-navigation "pixels")
 
 @section[#:tag "finished-result"]{The Finished Image Study}

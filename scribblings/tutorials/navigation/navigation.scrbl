@@ -10,7 +10,7 @@
 @(define-runtime-path scene-source "scene.rkt")
 @(define-runtime-path window-source "navigate.rkt")
 
-@title{Zoom and Pan — Navigate an Interactive Canvas}
+@title[#:style (tutorial-feedback-style)]{Zoom and Pan — Navigate an Interactive Canvas}
 @(tutorial-navigation "navigation")
 
 @section[#:tag "finished-result"]{The Finished Editor}

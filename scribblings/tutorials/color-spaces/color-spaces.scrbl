@@ -6,7 +6,7 @@
           (for-label racket skia))
 @(define-runtime-path program-source "color-study.rkt")
 
-@title{Color Spaces — Give Pixel Values Their Meaning}
+@title[#:style (tutorial-feedback-style)]{Color Spaces — Give Pixel Values Their Meaning}
 @(tutorial-navigation "color-spaces")
 
 @section[#:tag "finished-result"]{The Finished Color Study}

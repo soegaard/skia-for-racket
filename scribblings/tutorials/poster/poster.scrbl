@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Paints, Gradients, and Shaders — Make a Poster}
+@title[#:style (tutorial-feedback-style)]{Paints, Gradients, and Shaders — Make a Poster}
 @(tutorial-navigation "poster")
 
 @(require "eval.rkt"

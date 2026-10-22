@@ -12,7 +12,7 @@
 @(define-runtime-path host-source "../support/sprite-window.rkt")
 @(define-runtime-path math-source "../support/sprite-math.rkt")
 
-@title[#:tag "sprite-atlases"]{Sprite Atlases — Animate Bouncing Balls on the GPU}
+@title[#:tag "sprite-atlases" #:style (tutorial-feedback-style)]{Sprite Atlases — Animate Bouncing Balls on the GPU}
 @(tutorial-navigation "sprites")
 
 @section[#:tag "finished-result"]{The Finished Animation}

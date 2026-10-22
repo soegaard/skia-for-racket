@@ -6,7 +6,7 @@
           (for-label racket skia))
 @(define-runtime-path program-source "badge.rkt")
 
-@title{Path Operations — Construct a Cutout Badge}
+@title[#:style (tutorial-feedback-style)]{Path Operations — Construct a Cutout Badge}
 @(tutorial-navigation "path-ops")
 
 @section[#:tag "finished-result"]{The Finished Badge}

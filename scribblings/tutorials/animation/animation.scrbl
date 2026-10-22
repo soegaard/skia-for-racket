@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Animation — Orbiting Lights in a Window}
+@title[#:style (tutorial-feedback-style)]{Animation — Orbiting Lights in a Window}
 @(tutorial-navigation "animation")
 
 @(require racket/file

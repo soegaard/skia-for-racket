@@ -1,0 +1,50 @@
+/* Per-paragraph feedback controls for Scribble HTML output. */
+.fb-paragraph { position: relative; }
+.fb-paragraph:target { background: #fffbe6; }
+
+.fb-flag {
+  position: absolute;
+  top: 0;
+  left: -1.8em;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 1em;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.fb-paragraph:hover .fb-flag,
+.fb-flag:focus-visible { opacity: 0.75; }
+.fb-flag:hover { opacity: 1; }
+@media (hover: none) { .fb-flag { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .fb-flag { transition: none; } }
+@media (max-width: 600px) {
+  .fb-paragraph { padding-right: 1.75em; }
+  .fb-flag { right: 0; left: auto; }
+}
+
+.fb-form {
+  margin: 0.5em 0 1.2em;
+  padding: 0.7em;
+  border: 1px solid #ddd;
+  background: #fafafa;
+}
+.fb-link {
+  display: block;
+  overflow-wrap: anywhere;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+.fb-label { display: block; margin-top: 0.5em; }
+.fb-form textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4em;
+  margin-top: 0.25em;
+  font: inherit;
+}
+.fb-actions { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.5em; }
+.fb-actions button { padding: 0.3em 0.8em; cursor: pointer; }

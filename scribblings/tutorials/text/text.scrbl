@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Text and Typography — Make a Type Specimen}
+@title[#:style (tutorial-feedback-style)]{Text and Typography — Make a Type Specimen}
 @(tutorial-navigation "text")
 
 @(require "eval.rkt"

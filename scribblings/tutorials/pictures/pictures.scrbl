@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Reusable Drawings — Record and Replay a Picture}
+@title[#:style (tutorial-feedback-style)]{Reusable Drawings — Record and Replay a Picture}
 @(tutorial-navigation "pictures")
 
 @(require "eval.rkt"

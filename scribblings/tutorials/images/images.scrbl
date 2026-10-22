@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Images — Build a Contact Sheet}
+@title[#:style (tutorial-feedback-style)]{Images — Build a Contact Sheet}
 @(tutorial-navigation "images")
 
 @(require "eval.rkt"

@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt"
           "../support/accessible-figures.rkt")
 
-@title{Vector Output and Raster Fallbacks — What Stays Vector?}
+@title[#:style (tutorial-feedback-style)]{Vector Output and Raster Fallbacks — What Stays Vector?}
 @(tutorial-navigation "vector-raster")
 
 @(require "eval.rkt"
