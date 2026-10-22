@@ -255,6 +255,10 @@ atomic or guarantee that data has reached durable storage.
 
 @(declare-exporting skia skia/streams #:use-sources (skia/streams))
 
+Use a buffered adapter when the complete encoded input or output fits in memory
+and you do not need native work to exchange bytes with the port as it proceeds.
+For that alternative, see @secref["skia-live-streams"].
+
 The buffered adapters finish their Racket port I/O outside native resource
 borrows. Input buffering reads from the port's current position through EOF;
 it does not preserve the cursor. Output buffering takes a complete byte snapshot
@@ -350,9 +354,10 @@ The buffered-port limit, cancellation, and close rules apply.
           [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
           image?]{
 Buffers the unread encoded data and constructs an image as in
-@racket[image-from-bytes]. This is not the orientation-normalizing live
-@racket[image-from-port] operation. The image owns its encoded-data snapshot;
-later decoding does not require the input port.
+@racket[image-from-bytes], including its orientation and color interpretation.
+The image owns its encoded-data snapshot; pixel decoding can happen later
+without the input port. In contrast, @racket[image-from-port] decodes during
+the call and provides an option to disable orientation normalization.
 }
 
 @defproc[(picture-from-port/buffered [input input-port?]

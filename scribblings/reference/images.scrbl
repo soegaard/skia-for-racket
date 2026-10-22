@@ -26,8 +26,27 @@ transferring it implicitly.
 @section[#:tag "skia-image-loading"]{Loading Images}
 
 Use @racket[image-from-file] to load a file, or @racket[image-from-bytes] when
-you already have its encoded contents. Both check the following limits when
-creating the image, even if pixel decoding is deferred:
+you already have its encoded contents. Both apply the @tech{encoded orientation}
+for display. Orientations that exchange axes also exchange the image's width
+and height. The image uses the color space reported by Skia for the encoded
+input, with premultiplied alpha for transparency or opaque alpha for an opaque
+source. These constructors do not offer options to change those choices.
+
+@;{Pinned mono/skia 40f75dc0051d141913c07c20d4c19590c7da0cb7:
+   src/c/sk_image.cpp delegates to SkImages::DeferredFromEncodedData;
+   src/image/SkImage_LazyFactories.cpp and src/codec/SkImageGenerator_FromEncoded.cpp
+   select SkCodecImageGenerator. Its adjust_info and getPixels implementations in
+   src/codec/SkCodecImageGenerator.cpp handle alpha and encoded orientation.}
+
+Pixel decoding can be deferred until drawing or readback. Use
+@racket[image-frame-from-file], @racket[image-frame-from-bytes], or
+@racket[codec->image] when decoding must finish before the call returns, or
+when you need frame selection or explicit orientation and color-space options.
+See @secref["skia-reference-streams-pixels-codecs"] for a comparison that also
+includes port, scanline, and incremental decoding.
+
+Both constructors check the following limits when creating the image, even
+if pixel decoding is deferred:
 
 @itemlist[
  @item{The encoded data must be nonempty and fit @racket[current-skia-byte-limit].}
@@ -89,8 +108,9 @@ An unsupported or invalid image raises an exception rather than returning
 
 The native decoder can defer pixel decoding until drawing or readback, so
 successful construction does not guarantee that later decoding will succeed.
-The operation does not expose an animation's individual frames. Frame selection
-and explicit @tech{encoded orientation} handling belong to the @tech{codec} interfaces.
+The operation loads the first frame, without exposing an animation's other
+frames. Orientation and color interpretation follow the loading rules above;
+use the @tech{codec} interfaces to choose different decoding options.
 }
 
 @section[#:tag "skia-image-dimensions"]{Image Dimensions}

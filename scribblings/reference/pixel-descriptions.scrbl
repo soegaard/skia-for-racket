@@ -32,6 +32,27 @@ by alpha. With @deftech{unpremultiplied alpha}, RGB components are stored
 independently of alpha. An alpha-type declaration describes the supplied
 samples; it does not request multiplication or division of their components.
 
+Color-space arguments have two forms in these interfaces:
+
+@itemlist[
+ @item{@racket[codec->image] and @racket[make-raster-buffer] accept an open
+   @racket[color-space?] resource. A result using that space keeps its own
+   native reference; closing the supplied wrapper does not invalidate it.}
+ @item{@racket[make-image-info], scanline decoding, and incremental decoding
+   accept a @tech{color-space descriptor}: @racket[#f], @racket['srgb],
+   @racket['linear-srgb], or ICC bytes. A descriptor is Racket data, not an
+   open native resource. @racket[make-raster-buffer-from-info] uses the
+   descriptor stored in its pixel description.}]
+
+Use @racket[color-space->descriptor] or @racket[descriptor->color-space] when
+moving between these forms. The meaning of @racket[#f] also depends on the
+operation: @racket[codec->image] preserves the codec's color space, whereas a
+@racket[#f] descriptor specifies untagged pixels. Scanline and incremental
+decoding default to sRGB, requesting conversion rather than preservation of
+the source space. Supplying @racket[#f] to either does not select the
+preserve-source behavior of @racket[codec->image]. Native decoding can reject
+an unsupported destination description.
+
 @section{Pixel Descriptions}
 
 @defproc[(image-info? [v any/c])
@@ -50,7 +71,8 @@ cannot allocate a nonempty raster buffer. RGBX, grayscale, and RGB565 require
 @racket['opaque]. Alpha-only storage accepts @racket['premul] or @racket['opaque],
 rejects @racket['unpremul], and requires a false color-space description.
 
-The space is untagged, sRGB, linear sRGB, or copied @tech{ICC profile} bytes. Mutable ICC bytes
+The space is untagged for @racket[#f], sRGB for @racket['srgb], linear sRGB for
+@racket['linear-srgb], or described by copied @tech{ICC profile} bytes. Mutable ICC bytes
 are accepted and copied into immutable storage. The bytes must fit the current
 byte limit and contain a complete-length ICC header with an @tt{acsp} signature.
 This checks the descriptor header, not full native profile support. A live
@@ -76,8 +98,8 @@ Returns the declared storage-format symbol.
 
 @defproc[(image-info-alpha-type [info image-info?])
           (or/c 'opaque 'premul 'unpremul)]{
-Returns the declared alpha interpretation. Premultiplied RGB is stored after
-multiplication by alpha; unpremultiplied RGB is stored independently.
+Returns the declared alpha interpretation; see @tech{premultiplied alpha} and
+@tech{unpremultiplied alpha} above. @racket['opaque] specifies fully opaque pixels.
 }
 
 @defproc[(image-info-color-space [info image-info?])

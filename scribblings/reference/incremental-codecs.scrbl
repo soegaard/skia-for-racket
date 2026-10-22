@@ -21,6 +21,12 @@ not read a Racket port or keep arbitrary port callbacks. It decodes the first fr
 encoded dimensions and @tech{encoded orientation}, without subset selection, scaling, or a
 fallback to one-shot decoding.
 
+The default destination is unpremultiplied RGBA8888 in sRGB. In contrast,
+@racket[codec->image] defaults to premultiplied alpha and keeps the codec's color space. The
+@racket[#:color-space] argument accepts a @tech{color-space descriptor};
+@racket[#f] requests untagged output, not preservation of the source space.
+See @secref["skia-reference-streams-pixels-codecs"] for the decoding comparison.
+
 The encoded input and decoded pixels can remain in memory at the same time.
 Incremental decoding is not a promise of constant memory. The supported destination
 is byte RGBA8888 or BGRA8888, with @tech{premultiplied alpha} or
@@ -31,6 +37,13 @@ chunks can be accepted by feed without yet becoming visible to the native codec.
 Other formats are exposed only once the input is declared final, and their native
 incremental support may still be rejected. No input is spliced or re-encoded to
 simulate a decoder capability.
+
+Creating a session requires the same native callback bridge as
+@secref["skia-live-streams"], even though this interface does not read a port.
+Use @racket[live-streams-available?] to check whether that bridge can be
+initialized. The check can load native libraries; success does not guarantee
+that a particular format or destination supports incremental decoding.
+The bridge's process-wide initialization restriction also applies here.
 
 The session is an @tech{owned resource} tied to its creating Racket thread.
 Only the type predicate is independent of that thread. The state query also
@@ -55,7 +68,8 @@ and @racket[#f] otherwise.
           [#:limit limit exact-positive-integer? (current-skia-byte-limit)])
           codec-incremental-session?]{
 Returns a session in @racket['awaiting-input] state with no decoded destination.
-The destination color-space description follows @racket[make-image-info]. A supplied stride
+The destination color-space description follows @racket[make-image-info],
+with the sRGB default described above. A supplied stride
 must be positive, divisible by four, and at most @racket[2147483647]. Its lower
 bound relative to the image width is checked when the header reveals dimensions.
 A false stride selects tight storage then.
@@ -63,8 +77,8 @@ A false stride selects tight storage then.
 The limit must not exceed @racket[2147483647] or @racket[current-skia-byte-limit].
 It bounds the stored encoded input and destination allocations separately; it is
 not their combined heap budget. Later operations also honor a lowered current
-limit. The constructor requires native incremental support from the live-stream
-bridge, but does not start a port operation or decode pixels.
+limit. The constructor initializes the callback bridge described above, but
+does not start a port operation or decode pixels.
 }
 
 @defproc[(codec-incremental-feed! [session codec-incremental-session?] [data bytes?]
@@ -93,11 +107,17 @@ Once started, the decoder writes into the same destination buffer on successive
 calls. Before native use, all destination bytes, including padding, are initialized to zero.
 
 A native incomplete-input result means @racket['needs-input] before a final feed
-and terminal @racket['incomplete] afterward. Native success means complete;
-other native failures mean failed. Terminal calls return the existing progress
-without retrying or reopening the decoder. Wrapper exceptions mark failure,
-release the session's storage, and propagate to the caller. A byte-limit failure
-before the decoding attempt need not make the session terminal.
+and terminal @racket['incomplete] afterward. In the first case, supply more
+input and step again; in the second, the declared input ended before decoding
+could finish. Native success produces @racket['complete]; other native failures
+produce @racket['failed] progress rather than raising an exception. Inspect the
+returned progress even when the call returns normally.
+
+Terminal calls return the existing progress without retrying or reopening the
+decoder. Exceptions during the decoding attempt mark failure, release the
+session's storage, and propagate to the caller. A byte-limit failure before
+the attempt need not make the session terminal. See @racket[codec-incremental-state]
+for the states and whether more input can be supplied.
 
 The cancellation event is polled before each decoding step. Cancellation cannot
 interrupt a step already in progress. A ready event cancels a nonterminal session;
@@ -130,10 +150,20 @@ explicitly closed or released by its resource scope.
 
 @defproc[(codec-incremental-state [session codec-incremental-session?])
           (or/c 'awaiting-input 'needs-input 'complete 'incomplete 'failed 'cancelled 'closed)]{
-Returns the session state. Awaiting-input is the initial state. Needs-input
-allows more feed/step calls. Complete, incomplete, failed, and cancelled are
-terminal and require a new session to retry. Closing the resource causes this
-query to return @racket['closed].
+Returns the session state. @racket['awaiting-input] is the initial state;
+@racket['needs-input] means decoding has not finished and more input may be
+supplied. The following states are terminal:
+
+@itemlist[
+ @item{@racket['complete]: decoding succeeded.}
+ @item{@racket['incomplete]: decoding needed more input after the caller
+   declared the input final.}
+ @item{@racket['failed]: decoding or input processing failed for another reason.}
+ @item{@racket['cancelled]: cancellation ended the session before completion.}]
+
+None of the terminal states accepts further input or retries decoding; create
+a new session to retry. Closing the resource causes this query to return
+@racket['closed], regardless of its previous state.
 }
 
 @defproc[(codec-incremental-info [session codec-incremental-session?])

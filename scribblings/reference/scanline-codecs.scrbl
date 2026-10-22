@@ -28,6 +28,12 @@ use an @tech{incremental decoding session} for explicitly supplied chunks.
 Scanline output preserves @tech{encoded orientation}. The session's row order describes
 native consumption order, not EXIF orientation normalization.
 
+By default, decoded rows use unpremultiplied RGBA8888 in sRGB. These are
+destination choices, not promises to preserve the source's alpha representation
+or color space. See @secref["skia-reference-streams-pixels-codecs"] for the
+comparison with whole-image decoding, and @secref["skia-pixel-descriptions"]
+for the color-space descriptor accepted here.
+
 All session operations except the predicate require the creating Racket thread.
 The state query also works after closure. Other session queries require an open
 resource.
@@ -54,7 +60,9 @@ requested scale. These may differ from the exact requested ratio. Pixel-format
 and alpha combinations follow @racket[make-image-info], and native scanline support
 is checked separately.
 The default requests unpremultiplied RGBA8888 in sRGB. The destination description
-is independent of the encoded source metadata.
+is independent of the encoded source metadata. A @racket[#f] color-space
+descriptor requests untagged output, not preservation of the codec's space as
+in @racket[codec->image].
 
 The session checks that at least one output row fits the byte limit without
 allocating a full output raster. Requested batches are bounded separately.
@@ -94,12 +102,22 @@ No live port callback remains attached to the session.
 
 @defproc[(codec-scanline-state [session codec-scanline-session?])
           (or/c 'ready 'complete 'incomplete 'failed 'closed)]{
-Returns the session state. Ready means rows remain; complete means all rows
-have been consumed, possibly by skipping rather than decoding. Incomplete means
-a read decoded fewer rows than requested. Failed means a skip or an attempted
-operation failed. Neither incomplete nor failed permits further reading or
-skipping; close the session and start a new one. Closed takes precedence once
-the resource is released.
+Returns the session state:
+
+@itemlist[
+ @item{@racket['ready]: rows remain available for reading or skipping.}
+ @item{@racket['complete]: all rows were consumed, possibly by skipping rather
+   than decoding. This does not mean the caller received pixels for every row.}
+ @item{@racket['incomplete]: a read returned fewer decoded rows than requested.
+   The partial batch is returned normally, not as an exception.}
+ @item{@racket['failed]: a native skip returned @racket[#f], or an exception
+   occurred after a native read or skip was attempted.}
+ @item{@racket['closed]: the resource was released, regardless of its earlier state.}]
+
+Neither @racket['incomplete] nor @racket['failed] permits further reading or
+skipping; close the session and start a new one. Validation failures before a
+native attempt do not change the state. Failure to allocate temporary storage
+before a read also leaves the session usable.
 }
 
 @defproc[(codec-scanline-info [session codec-scanline-session?])
@@ -126,7 +144,11 @@ returned batches nevertheless contain decoded rows in increasing output-row orde
           exact-nonnegative-integer?]{
 Returns the number of requested rows consumed by reads and skips. This is a
 cursor in consumption order, not necessarily an output row number or the count
-of successfully decoded rows. A short read still advances by its requested count.
+of successfully decoded rows. Skia advances by the requested count even after
+a short read or unsuccessful native skip, so this query does too. Such a
+position is not a restart point: the session is incomplete or failed and
+cannot continue. Use @racket[scanline-batch-decoded-count] to find how many
+rows a read actually returned.
 }
 
 @defproc[(codec-scanline-next-row [session codec-scanline-session?])
@@ -156,7 +178,9 @@ batch allocation, including padding, must fit the smaller of the session's
 captured limit and @racket[current-skia-byte-limit].
 
 A short native read returns only successfully decoded rows and changes the state
-to @racket['incomplete]. Native fill rows are excluded. The cursor advances by
+to @racket['incomplete]; it is not raised as an exception and cannot be
+resumed with another read. Rows filled by Skia without successful decoding are
+excluded. The cursor follows @racket[codec-scanline-position], advancing by
 the requested count, not the returned count. Bottom-up short reads retain the
 successfully decoded rows in top-to-bottom order and report their actual first
 output row. @tech{Row padding} is initialized to zero.
@@ -205,7 +229,10 @@ Skips a count no greater than the remaining rows. Zero is accepted, including
 at completion. A successful skip returns @racket[#t]; a native skip failure
 returns @racket[#f] and marks the session failed. Either native result advances
 the cursor by the requested count. A successful final skip marks completion but
-does not supply decoded pixels for the skipped rows.
+does not supply decoded pixels for the skipped rows. After @racket[#f], close
+the session; do not retry the skip. This boolean failure result differs from a
+short read's partial batch. An exception after attempting the native skip also
+marks the session failed and propagates to the caller.
 }
 
 @section{Row Batches}

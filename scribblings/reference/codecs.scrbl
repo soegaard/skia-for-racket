@@ -22,6 +22,8 @@ inspection does not guarantee that pixel decoding will succeed.
 Encoded metadata describes the stored image before orientation normalization.
 A decoded image has its own storage and lifetime. Each frame decode starts with
 a fresh destination; callers do not supply a previous frame's pixels.
+The decoding defaults differ from the scanline and incremental interfaces;
+see the comparison in @secref["skia-reference-streams-pixels-codecs"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -60,8 +62,10 @@ pixels, normalize orientation, or enforce the full-raster allocation limits of
 @defproc[(codec-frame-count [codec codec?])
           exact-positive-integer?]{
 Returns the number of frame indices exposed by the codec. A still image has
-one frame, even when its native animation metadata table is empty. Successfully
-reading the frame count does not guarantee that every frame can be decoded.
+one frame. Use this count to select indices for @racket[codec->image], not
+@racket[encoded-image-info-frame-count]; the distinction is explained in
+@secref["skia-codec-frame-information"]. Successfully reading the frame count
+does not guarantee that every frame can be decoded.
 }
 
 @defproc[(codec-repetition-count [codec codec?])
@@ -75,7 +79,7 @@ the input has more than one frame.
 @defproc[(codec-color-space [codec codec?])
           (or/c color-space? #f)]{
 Returns an independently owned reference to the source color space, or
-@racket[#f] when the source is untagged. Closing the codec does not invalidate
+@racket[#f] when the codec reports no color space. Closing the codec does not invalidate
 the returned color-space resource. The query does not convert any samples.
 }
 
@@ -94,9 +98,12 @@ result, including incomplete input, raises an exception instead of returning
 partially initialized pixels.
 
 The codec reconstructs the requested frame's dependencies into a fresh buffer.
-Calls need not be made in frame order. A false color-space option preserves the
-source tag; a supplied live space requests conversion during decoding. The
-returned image keeps its own native reference to that color space.
+Calls need not be made in frame order. The @racket[#f] color-space default
+preserves the codec's color space; supplying an open @racket[color-space?]
+resource requests conversion during decoding. The returned image keeps its own
+native reference to that space. This differs from the descriptor arguments and
+sRGB defaults of scanline and incremental decoding; see
+@secref["skia-pixel-descriptions"].
 
 The default permutes pixels to top-left orientation without resampling. Origins
 that exchange axes also exchange the output width and height. Disabling
@@ -117,10 +124,7 @@ coordinates. This function neither scales the image nor selects a subset.
 A still PNG has one selectable frame; its animation-metadata count can be zero.
 
 @reference-figure["codec-image.png"
-                  "The actual codec-to-image result, enlarged with nearest-neighbor sampling: an opaque solid-blue image that is three pixels wide by two pixels high."]
-
-The figure is a labeled enlargement of the decoded 3 by 2 image, not a drawing made to resemble
-the source surface.
+                  "The decoded three-by-two image is solid blue, enlarged here with nearest sampling."]
 }
 
 @defproc[(image-frame-from-bytes [encoded bytes?] [index (integer-in 0 2147483647) 0]
@@ -231,15 +235,28 @@ queries when sizing an orientation-normalized result.
           exact-nonnegative-integer?]{
 Returns the native animation-metadata count captured by the probe. A still
 image commonly reports zero. This is not @racket[codec-frame-count], which
-exposes one selectable frame for a still image.
+exposes one selectable frame for a still image; see
+@secref["skia-codec-frame-information"].
 }
 
-@section{Animation Frame Information}
+@section[#:tag "skia-codec-frame-information"]{Animation Frame Information}
 
 Use @racket[codec-frame-info] to inspect a frame's duration and update behavior
 when implementing animation playback. Decode its pixels separately with
 @racket[codec->image]; that operation reconstructs the frame's dependencies
 without requiring you to supply earlier frames.
+
+Selectable frames and animation metadata are different:
+
+@itemlist[
+ @item{@racket[codec-frame-count] counts frames that can be selected for
+   decoding. It is always at least one, including for a still image.}
+ @item{@racket[encoded-image-info-frame-count] reports how many entries Skia
+   supplied in its animation metadata. A still image can have zero. Do not
+   use this value as the number of frames available to @racket[codec->image].}
+ @item{@racket[codec-frame-info] returns @racket[#f] for frame zero of a still
+   image when no animation metadata exists. This means there is no animation
+   record, not that the frame cannot be decoded.}]
 
 Frame information is stored in an immutable Racket structure. Durations are in milliseconds,
 indices are zero-based, and rectangles remain in encoded pixel coordinates.

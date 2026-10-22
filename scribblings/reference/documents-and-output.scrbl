@@ -1,5 +1,7 @@
 #lang scribble/manual
 
+@(require (for-label racket/base skia))
+
 @title[#:tag "skia-reference-documents-output" #:style 'toc]{Documents and Output}
 
 Use these interfaces to export drawings as PDF or SVG. Choose according to
@@ -23,6 +25,52 @@ not make the choice itself.
 Raster fallback normally uses the CPU. A
 @seclink["skia-gpu-output"]{GPU raster executor} can render a selected group on
 the GPU and read it back into a CPU-owned image for inclusion in the document.
+
+For an output page, also choose where the encoded document should go.
+@racket[output->bytes] returns a complete byte string; @racket[save-output]
+writes a complete file. The live writers, @racket[output->port] and
+@racket[output-write-stream!], send bytes to an existing port or
+@tech{native stream}. They are not interchangeable destinations with identical
+features:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Feature} @bold{Bytes or file} @bold{Port} @bold{Native stream})
+  (list "Formats" "PDF, SVG" "PDF, SVG" "PDF only")
+  (list "PDF pages" "One or more" "1–1024" "1–1024")
+  (list "SVG pages" "One" "One" "Not supported")
+  (list "Metadata and ID options" "Available" "No overrides" "No overrides")
+  (list "Named destinations" "Supported" "Not supported" "Not supported")
+  (list "Partial output on failure" "No" "Possible" "Possible"))]
+
+The byte-string and file interfaces accept title and description options,
+an SVG ID prefix, and PDF encoding-quality and PDF/A settings. The live
+writers accept text-mode, raster-DPI, and audit-policy options, but not those
+metadata or format-specific settings. All routes remain subject to their
+resource, dimension, and byte limits; the page counts above are not memory
+guarantees.
+
+The ordinary @racket[output->bytes] and @racket[save-output] functions do not
+add an audit. Their @racket[output->bytes/audit] and @racket[save-output/audit]
+counterparts return reports and default to the @racket['error] audit policy.
+Live document writers also default to @racket['error], but return a byte count,
+not an audit report. An audit checks compatibility; it does not automatically
+add raster fallback.
+
+Each live document writer records the drawing callbacks once into pictures,
+checks them before writing, and then replays them. The intermediate picture
+canvas cannot define @tech{named destinations} or links to them. Use the
+byte-string or file route, or the direct PDF/SVG document interfaces, when
+those annotations are needed.
+
+Drawing or preflight failure in a live writer occurs before any destination
+bytes are written. A later failure can leave a partial document. In contrast,
+byte-string export returns only completed output, and @racket[save-output]
+writes a temporary file before renaming it, leaving an existing destination
+unchanged on failure. A native-stream writer appends rather than replaces;
+after a failure that makes the stream unusable, close it instead of retrying.
+See @secref["skia-live-streams"] and @secref["skia-native-publication"] for
+port cleanup and native-stream restrictions.
 
 @local-table-of-contents[]
 

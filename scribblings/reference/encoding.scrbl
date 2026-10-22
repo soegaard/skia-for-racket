@@ -27,6 +27,43 @@ output directly, without requiring you to create an image first.
 
 @local-table-of-contents[#:style 'immediate-only]
 
+@section[#:tag "skia-encoding-destinations"]{Choosing an Output Destination}
+
+The byte-string and file interfaces above produce the complete encoded result
+before returning bytes or replacing a file. The live writers in
+@secref["skia-live-streams"] send encoded bytes to a port or native stream as
+encoding proceeds. All four destinations support PNG, JPEG, and WebP, but
+their failure behavior and accepted options differ:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Destination} @bold{Interface} @bold{On failure})
+  (list "Byte string" @racket[image->encoded-bytes] "No partial result is returned")
+  (list "File" @racket[save-image] "An existing destination is unchanged")
+  (list "Racket port" @racket[image->port] "A written prefix can remain")
+  (list "Native stream" @racket[image-write-stream!] "A written prefix can remain"))]
+
+Choose the byte-string or file interface when you need explicit color-space
+conversion or an ICC-profile override. The live writers have neither option;
+they use the image's existing color interpretation. The byte-string and file
+interfaces also accept fractional WebP quality, whereas the live writers
+require an exact integer.
+
+For @racket[image->encoded-bytes] and @racket[save-image], a non-@racket[#f]
+option belonging to another format raises an exception. The live writers
+instead validate every option, including inactive ones, then use only those
+for the selected format. Changing destinations can therefore require changes
+to the supplied options, not just to the destination argument.
+
+Live output does not require a complete encoded byte string, but it may still
+need decoded pixel storage. It is not a promise of constant memory. Port output
+offers cancellation and optional port closure; native-stream output offers
+neither keyword and appends to the stream's current contents. A failure after
+the native-stream writer takes exclusive use prevents further use of that
+stream; close it instead of retrying. See @secref["skia-native-publication"]
+for the stream's ownership and failure rules, and
+@secref["skia-encoding-file-writing"] for file replacement guarantees.
+
 @section[#:tag "skia-encoding-bytes"]{Encoding Images to Byte Strings}
 
 The byte-returning encoders produce new mutable byte strings. They neither
@@ -231,8 +268,9 @@ to select encoding options.
 
 @section[#:tag "skia-encoding-options"]{Shared Encoding Options}
 
-All encoders and file writers in this chapter accept @racket[#:color-space],
-@racket[#:icc-profile], and @racket[#:icc-description]. Use
+The byte-string encoders and file writers described here accept
+@racket[#:color-space], @racket[#:icc-profile], and @racket[#:icc-description].
+The live writers compared in @secref["skia-encoding-destinations"] do not. Use
 @racket[#:color-space] to convert colors before encoding, or
 @racket[#:icc-profile] to specify how the encoded color values should be
 interpreted. Neither option changes the source image or surface.

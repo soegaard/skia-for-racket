@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/live-streams))
+@(require (for-label racket/base racket/contract racket/port skia skia/live-streams))
 
 @title[#:tag "skia-live-streams"]{Live Port Input and Output}
 
@@ -16,10 +16,16 @@ synchronous: it returns after native work and cleanup have finished. No persiste
 image or codec is returned.
 
 The caller must give the operation exclusive use of its ports until it returns.
-Port callbacks must not re-enter live operations. Another active live port
-operation is rejected rather than nested. The implementation services port I/O
-outside native ownership scopes and does not promise callbacks on the initiating
-Racket thread.
+Only one live port operation can be active at a time, even when different Racket
+threads use different ports. A concurrent attempt raises an exception rather
+than waiting; port callbacks must not start another live operation either.
+The implementation services port I/O outside native ownership scopes and does
+not promise callbacks on the initiating Racket thread.
+
+The native callback bridge is installed once for the whole process. A second
+Racket place or independent module instance cannot install another provider;
+its initialization attempt raises an exception. Separate places therefore do
+not provide independent live-port bridges within one process.
 
 The positive exact @racket[#:limit] must not exceed @racket[2147483647] or
 @racket[current-skia-byte-limit]. It bounds logical transfer/storage quantities,
@@ -39,6 +45,8 @@ Racket ports and follow the rules in @secref["skia-native-publication"].
           void?]{
 Initializes and checks the live-stream support library and its native bridge.
 If either cannot be loaded or initialized, the function raises an exception.
+This includes an attempt to claim callbacks already installed by another place
+or module instance, as described above.
 Calling it from a callback servicing an ongoing live-port operation also raises
 an exception.
 Successful initialization does not establish support for every image format or
@@ -72,9 +80,13 @@ a decoded first image or picture, not a resumable port-backed decoder.
           [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
           image?]{
 Decodes the first image from live input and returns an independently owned CPU
-image. The default applies the @tech{encoded orientation}; disabling it preserves
-encoded pixel coordinates. Unsupported decoding and incomplete required input
-raise exceptions. The port need not remain open after successful return.
+image. The pixels are RGBA8888 with @tech{premultiplied alpha}, using the color
+space reported by the native codec. There is no destination color-space option.
+
+The default applies the @tech{encoded orientation}; disabling it preserves
+encoded pixel coordinates. Unlike @racket[image-from-port/buffered], this call
+finishes pixel decoding before returning. Unsupported decoding and incomplete
+required input raise exceptions. The port need not remain open after successful return.
 Use @racket[codec-from-port/buffered] for explicit animation-frame access.
 }
 
@@ -99,7 +111,12 @@ to the picture. Header validation is not safe deserialization of untrusted data.
           [#:cancel-evt cancel (or/c evt? #f) #f])
           exact-nonnegative-integer?]{
 Copies input through EOF to a distinct output port and returns the number of
-bytes written. The two close options concern their respective ports. Cancellation,
+bytes written. Use it when the transfer needs the live interface's byte limit,
+cancellation event, or close-on-exit options. For an ordinary port-to-port copy,
+@racket[copy-port] from @racketmodname[racket/port] is simpler and does not
+require Skia's native callback bridge.
+
+The two close options concern their respective ports. Cancellation,
 quota errors, or I/O errors can leave a written prefix. This operation uses the
 live native bridge even though it performs no image decoding.
 
@@ -126,6 +143,8 @@ for WebP quality.
 The live signatures have no ICC-profile override or destination color-space
 keyword. They retain the image's native color interpretation; they are not an
 implicit color conversion interface.
+See @secref["skia-encoding-destinations"] for a comparison with byte-string and
+file output, including what remains at the destination after a failure.
 
 @defproc[(image->port [image image?] [output output-port?]
           [format (or/c 'png 'jpeg 'webp)]
@@ -156,6 +175,10 @@ also apply.
 }
 
 @section{Writing Documents}
+
+Use these writers when the destination is already a port or native stream.
+They do not offer every option available for byte-string and file export;
+see the destination comparison in @secref["skia-reference-documents-output"].
 
 @defproc[(output->port [source (or/c output-page? (cons/c output-page? (listof output-page?)))]
           [output output-port?] [format (or/c 'pdf 'svg)]
@@ -232,7 +255,8 @@ The operation uses the same SKP representation and compatibility limitations as
           exact-nonnegative-integer?]{
 Writes one through 1024 output pages as PDF to a native output stream.
 It follows @racket[output->port]'s record-once and preflight rules, using the
-stream's budget. There is no format argument: SVG output is provided by
+stream's budget, with the same restrictions on metadata options and named
+destinations. There is no format argument: SVG output is provided by
 @racket[output->port], where its physical-size header can be handled correctly.
 The automatic text mode is native. The caller owns the output stream, which
 remains open after the operation.

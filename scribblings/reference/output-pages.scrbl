@@ -17,6 +17,11 @@ page dimensions and margins to PDF, SVG, or a raster image. Create it with
 @racket[make-output-page], then export with @racket[output->bytes] or render an
 image with @racket[output-page->image].
 
+For port and native-stream destinations, see @racket[output->port] and
+@racket[output-write-stream!]. They differ in available formats, metadata,
+annotations, and failure behavior; compare the routes in
+@secref["skia-reference-documents-output"] before choosing one.
+
 An @deftech{output page} is an immutable Racket structure containing dimensions,
 units, margins, a background, and a drawing callback.
 Exporting it invokes the callback again; it is not a recorded @tech{picture}. Resources
