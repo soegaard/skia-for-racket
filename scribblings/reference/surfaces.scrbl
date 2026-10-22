@@ -11,9 +11,10 @@ including the current @tech{canvas transform} and @tech{clip}. A surface has an
 associated canvas; canvases can also draw into recordings, documents, or
 @tech{GPU frames}.
 
-Use @racket[make-surface] to create a surface and @racket[surface-canvas] to
-obtain its canvas. See @secref["skia-resources"] for general rules about resource
-lifetimes and Racket threads.
+Use @racket[make-surface] for ordinary eight-bit RGBA drawing and
+@racket[surface-canvas] to obtain its canvas. For other pixel formats, use
+@racket[make-surface-from-info]. See @secref["skia-resources"] for general rules
+about resource lifetimes and Racket threads.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -58,6 +59,10 @@ components use @tech{premultiplied alpha}. The bitmap requires
 @racket[(current-skia-byte-limit)]. Creation can still fail if memory is
 unavailable.
 
+For another pixel format, such as alpha-only or floating-point storage, use
+@racket[make-surface-from-info] with a description created by
+@racket[make-image-info].
+
 The @racket[space] argument associates a @tech{color space} with the surface.
 The default, @racket[#f], means that no color space is associated with the
 surface.
@@ -98,7 +103,8 @@ Returns the stored width of @racket[surface] in pixels.
 Returns the stored height of @racket[surface] in pixels.
 }
 
-@defproc[(surface-backend [surface surface?]) symbol?]{
+@defproc[(surface-backend [surface surface?])
+          (or/c 'raster 'opengl 'metal 'direct3d)]{
 Returns @racket['raster] for a surface stored in CPU memory, or the selected
 backend for a @tech{GPU surface}. Surfaces created by @racket[make-surface]
 use @racket['raster].
@@ -112,8 +118,8 @@ if no color space is associated with it.
 @section[#:tag "skia-surface-readback"]{Snapshots and Pixel Copies}
 
 The operations in this section require a surface whose pixels are stored in
-CPU memory, such as one created by @racket[make-surface]. For GPU surfaces,
-see @secref["skia-gpu-surfaces"] for snapshots and
+CPU memory, such as one created by @racket[make-surface]. Supplying a GPU surface
+raises an exception. For GPU surfaces, see @secref["skia-gpu-surfaces"] for snapshots and
 @secref["skia-gpu-transfers"] for pixel copies.
 
 @defproc[(surface-snapshot [surface surface?]) image?]{
@@ -148,8 +154,9 @@ premultiplied storage can lose precision, especially for small alpha values.
 The original RGB values cannot be recovered when alpha is zero.
 
 The @racket[space] argument selects a destination @tech{color space} for the
-pixel conversion. The default, @racket[#f], specifies no destination color
-space. The byte string does not include color-space information.
+pixel conversion. With the default, @racket[#f], no color-space conversion is
+applied. Pixels are still converted to eight-bit RGBA using the requested alpha
+representation. The byte string does not include color-space information.
 
 The byte string's length is four times the product of the surface width and
 height. It must not exceed @racket[(current-skia-byte-limit)].

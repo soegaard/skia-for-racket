@@ -27,7 +27,7 @@ and saved states are unchanged.
 @section[#:tag "skia-canvas-save"]{Saving and Restoring State}
 
 The @deftech{save count} is the number of canvas states, including the base state.
-A new ordinary canvas has a save count of one. Saving pushes a copy of the
+The base state has a save count of one. Saving pushes a copy of the
 current transform and clip. Restoring removes saved states; it does not undo
 drawing or restore mutations of a @tech{paint} or @tech{path}.
 
@@ -143,6 +143,11 @@ axis and makes the transform noninvertible. Omitting @racket[y] uses
 @reference-figure["canvas-scale.png"
                   "A small gray reference rectangle and a larger blue rectangle produced by canvas scaling."]
 
+The next example compares the two call orders shown in the transform-order
+diagram in @secref["skia-canvas-transforms"]. For the blue rectangle, the
+translation call comes first, so its displacement is not scaled. For the orange
+rectangle, scaling comes first and multiplies the later horizontal displacement
+by 1.6.
 
 @racketblock[
 (with-skia ([surface (make-surface 240 110 #:background 'white)])
@@ -380,8 +385,8 @@ The figure enlarges the result to show the partially covered edge pixels.
                            [#:operation operation (or/c 'intersect 'difference) 'intersect]
                            [#:antialias? antialias? boolean? #f]) void?]{
 Like @racket[canvas-clip-rect!], but uses the filled region of @racket[path] and
-its @tech{fill rule}. Paint stroke settings do not affect this operation. Subsequent
-changes to the path, or releasing it, do not change the established clip.
+its @tech{fill rule}; it does not stroke the path. Subsequent changes to the
+path, or releasing it, do not change the established clip.
 
 
 @racketblock[
@@ -398,12 +403,7 @@ changes to the path, or releasing it, do not change the established clip.
                   "A blue fill is restricted to a circular path clip, leaving the surrounding surface white."]
 }
 
-@section[#:tag "skia-clip-queries"]{Rounded Clips and Clip Queries}
-
 @(declare-exporting skia)
-
-Clip queries describe the current canvas state. Their bounds may include
-areas outside the clip and do not establish whether a shape will draw visible pixels.
 
 @defproc[(canvas-clip-rounded-rect! [canvas canvas?]
           [shape rounded-rect?]
@@ -411,7 +411,7 @@ areas outside the clip and do not establish whether a shape will draw visible pi
           [#:antialias? antialias? boolean? #f])
           void?]{
 Like @racket[canvas-clip-rect!], but uses the rounded boundary of @racket[shape].
-Each corner's radius is preserved, including in SVG output.
+The corners may have different radii; SVG output preserves these differences too.
 
 
 @racketblock[
@@ -427,10 +427,18 @@ Each corner's radius is preserved, including in SVG output.
                   "A blue fill is clipped to a rounded rectangle with broad rounded corners."]
 }
 
+@section[#:tag "skia-clip-queries"]{Clip Queries}
+
+@(declare-exporting skia)
+
+Clip queries describe the current canvas state. Their bounds may include
+areas outside the clip and do not establish whether a shape will draw visible pixels.
+
 @defproc[(canvas-local-clip-bounds [canvas canvas?])
           (or/c #f (and/c (vector/c real? real? real? real?) immutable?))]{
 Returns an immutable vector containing the clip bounds' x, y, width, and height
-in current @tech{local coordinates}, or @racket[#f] if the bounds are unavailable.
+in current @tech{local coordinates}. Returns @racket[#f] if the clip is empty
+or the current transform cannot be inverted to obtain local bounds.
 The bounds may include areas outside the clip because of @tech{antialiasing} or the
 conversion from @tech{device coordinates}. Changing the transform can change these
 bounds without changing the clip.
@@ -440,7 +448,7 @@ bounds without changing the clip.
           (or/c #f (and/c (vector/c exact-integer? exact-integer? exact-integer? exact-integer?)
           immutable?))]{
 Returns an immutable vector containing the clip bounds' x, y, width, and height
-in @tech{device coordinates}, or @racket[#f] if the bounds are unavailable.
+in @tech{device coordinates}, or @racket[#f] if the clip is empty.
 Changing the canvas transform does not change these bounds.
 }
 
@@ -502,9 +510,11 @@ leaves the state unchanged.
 
 @section[#:tag "skia-canvas-backend"]{Backend Queries}
 
-@defproc[(canvas-execution-backend [canvas canvas?]) symbol?]{
-Returns the canvas's execution backend. Ordinary targets report
+@defproc[(canvas-execution-backend [canvas canvas?])
+          (or/c 'raster 'recording 'pdf 'svg 'opengl 'metal 'direct3d 'nodraw)]{
+Returns the canvas's execution backend. CPU surfaces, recordings, and documents report
 @racket['raster], @racket['recording], @racket['pdf], or @racket['svg]; GPU targets
-report the selected GPU backend, such as @racket['opengl], @racket['metal], or
-@racket['direct3d]. Specialized canvases report their declared execution backend.
+report the selected GPU backend: @racket['opengl], @racket['metal], or
+@racket['direct3d]. A no-draw canvas reports @racket['nodraw]. N-way and overdraw
+canvases report their targets' execution backend.
 }

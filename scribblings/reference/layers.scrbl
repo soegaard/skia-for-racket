@@ -22,9 +22,11 @@ Use an explicit clip to restrict drawing to an exact region.
 
 Canvas access follows the rules in @secref["skia-resources"] and, for GPU
 canvases, @secref["skia-gpu-surfaces"]. PDF and SVG may not preserve every layer
-effect. If an effect uses @tech{raster fallback}, the fallback must include any
-previous drawing needed by the effect. Drawing an isolated group does not copy
-the document's existing content into the group.
+effect. If a backdrop filter or initialization from previous content needs a
+background when using @tech{raster fallback}, draw that background inside the
+same rasterized group before creating the layer. Content already drawn elsewhere
+on the PDF or SVG page is not automatically copied into the group. See
+@racket[draw-rasterized] and @racket[draw-output-group].
 
 @bold{Conceptual diagram.} Drawing two translucent rectangles directly onto a
 surface makes their overlap more opaque. Drawing two opaque rectangles in a
@@ -40,7 +42,9 @@ same opacity as the rest of the group.
 
 @defproc[(call-with-canvas-layer [canvas canvas?]
           [thunk (-> any)]
-          [#:bounds bounds (or/c #f list? vector?) #f]
+          [#:bounds bounds (or/c #f
+                                (list/c real? real? real? real?)
+                                (vector/c real? real? real? real?)) #f]
           [#:paint paint (or/c paint? #f) #f])
           any]{
 Calls @racket[thunk] with no arguments inside a new layer and returns its results.
@@ -48,17 +52,27 @@ When the function returns, exits early, or raises an exception, the layer is
 drawn onto the previous target and the saved canvas state is restored.
 
 The @racket[paint] argument controls how the completed layer is drawn, not each
-drawing operation inside it. The @racket[bounds] argument is a list or vector
-of four real numbers: x, y, width, and height. Width and height must be
-nonnegative.
+drawing operation inside it. Its alpha, @tech{blend mode}, @tech{color filter},
+and @tech{image filter} apply to the completed layer; its RGB components are
+ignored.
+
+The @racket[bounds] argument gives x, y, width, and height. Width and height must
+be nonnegative.
 The default, @racket[#f], lets Skia choose the bounds.
 
 Restoring past the state saved by this call raises an exception. A continuation
 cannot reenter the callback after the call ends.
 
-An exception does not undo drawing in the layer, although an enclosing document
-helper may still abort the document. If @racket[thunk] releases the canvas's
-target, the layer is not drawn and the saved state is not restored.
+If @racket[thunk] raises an exception, the drawing completed so far is still
+drawn onto the previous target during cleanup. An enclosing PDF or SVG helper
+may then abort the whole document.
+
+If @racket[thunk] closes the canvas's target where closure is otherwise
+permitted, the layer is not drawn and the saved state is not restored. GPU
+and enclosing-scope restrictions on closure still apply; see
+@secref["skia-resources"]. In contrast, @racket[call-with-canvas-layer/options]
+forbids closing the target during its callback even when the simple helper
+would permit it.
 
 @racketblock[
 (with-skia ([surface (make-surface 160 100 #:background 'white)]
@@ -115,7 +129,10 @@ drawing backend.
 Returns @racket[#t] for a @tech{layer-options value} and @racket[#f] otherwise.
 }
 
-@defproc[(make-layer-options [#:bounds bounds (or/c #f list? vector?) #f]
+@defproc[(make-layer-options
+          [#:bounds bounds (or/c #f
+                                (list/c real? real? real? real?)
+                                (vector/c real? real? real? real?)) #f]
           [#:preserve-lcd-text? preserve-lcd-text? boolean? #f]
           [#:initialize-with-previous? initialize-with-previous? boolean? #f]
           [#:f16? f16? boolean? #f])
@@ -166,22 +183,24 @@ preservation, @racket[4] for initialization with previous content, and
 requested flags. Use the boolean accessors above to test individual requests.
 }
 
-@section{Backdrop Filters and Protected Layers}
+@section{Layers with Options and Backdrop Filters}
 
 @defproc[(call-with-canvas-layer/options [canvas canvas?]
           [thunk (-> any)]
           [#:options options layer-options? (make-layer-options)]
           [#:paint paint (or/c paint? #f) #f]
           [#:backdrop backdrop (or/c image-filter? #f) #f]
-          [#:clip clip (or/c #f list? vector?) #f])
+          [#:clip clip (or/c #f
+                            (list/c real? real? real? real?)
+                            (vector/c real? real? real? real?)) #f])
           any]{
 Calls @racket[thunk] with no arguments inside a new layer configured by
-@racket[options], and returns its results. The function must not require
-keyword arguments. As with @racket[call-with-canvas-layer], the layer is drawn
-onto the previous target and the saved state is restored when the function
-returns, exits early, or raises an exception.
+@racket[options], and returns its results. As with
+@racket[call-with-canvas-layer], the layer is drawn onto the previous target and
+the saved state is restored when the function returns, exits early, or raises
+an exception.
 
-The @racket[paint] argument controls how the completed layer is drawn.
+The @racket[paint] argument follows the rules of @racket[call-with-canvas-layer].
 The @racket[backdrop] filter processes the target's existing content to
 initialize the layer. It does not filter new drawing inside the layer.
 
@@ -191,9 +210,10 @@ layer bounds. The rectangle is intersected with the current clip before
 creating the layer, and the original clip is restored afterward. The bounds
 in @racket[options] do not provide this exact clipping.
 
-The canvas's target cannot be released during the callback. Restoring past
-the state saved by this call raises an exception. A continuation cannot
-reenter the callback after the call ends.
+Closing the canvas's target during the callback raises an exception, including
+for an ordinary CPU surface. Restoring past the state saved by this call also
+raises an exception. A continuation cannot reenter the callback after the call
+ends.
 
 @racketblock[
 (with-skia ([surface (make-surface 16 16)]
@@ -206,16 +226,21 @@ reenter the callback after the call ends.
    #:clip '(2 2 12 12)))
 ]
 
-The clip, rather than the layer bound, excludes the two-pixel border.
+The layer bounds cover the whole target; the explicit clip excludes the
+two-pixel border.
 
 @reference-figure["layer-options-clip.png"
                   "A nearest-neighbor enlargement of the actual transparent 16 by 16 layer result. The blue interior follows the explicit clip from two, two through thirteen, thirteen; the two-pixel checkerboard border is only a preview background."]
 
-The layer bounds cover the whole target. Only the explicit clip creates the transparent border.
+The next example compares three ways to start a layer over the same background:
+an empty layer, an unfiltered copy of previous content, and a backdrop blur.
+Each layer replaces the pixels inside the explicit clip using the
+@racket['src] blend mode, so the empty layer clears that region and the other
+two replace it with their initial content.
 
 @racketblock[
-(with-skia ([surface (make-surface 420 155 #:background 'white)]
-            [base (make-paint #:color "#DCEAF8")]
+(define surface (make-surface 420 155 #:background 'white))
+(with-skia ([base (make-paint #:color "#DCEAF8")]
             [stripe-a (make-paint #:color "#326DE6")]
             [stripe-b (make-paint #:color "#EFA02B")]
             [dot (make-paint #:color "#7D5BA6")]
@@ -265,8 +290,10 @@ The layer bounds cover the whole target. Only the explicit clip creates the tran
       (draw-image canvas image x 30)
       (draw-rect canvas x 30 120 85 border)
       (draw-rect canvas (+ x 25) 50 70 46 clip-outline))
-    (draw-simple-text canvas "same striped-and-circle backdrop; orange is the explicit clip" 12 135 font label)
-    surface))
+    (draw-simple-text canvas
+                      "same striped-and-circle backdrop; orange is the explicit clip"
+                      12 135 font label)))
+surface
 ]
 @reference-figure["layer-backdrop-initialization.png"
                   "Three identical striped blue-orange backgrounds with a purple circle are compared inside the same orange explicit clip. An empty source-replace layer clears the middle region, initialize-with-previous preserves it, and a backdrop blur replaces it with a softened view of the previous content."]
@@ -288,7 +315,9 @@ must restore the returned save count with @racket[canvas-restore-to-count!],
 including when drawing raises an exception or exits early.
 
 @defproc[(canvas-save-layer! [canvas canvas?]
-          [#:bounds bounds (or/c #f list? vector?) #f]
+          [#:bounds bounds (or/c #f
+                                (list/c real? real? real? real?)
+                                (vector/c real? real? real? real?)) #f]
           [#:paint paint (or/c paint? #f) #f])
           exact-positive-integer?]{
 Creates a layer and returns the previous @tech{save count}. Pass the result to
