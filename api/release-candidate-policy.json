@@ -3435,7 +3435,7 @@
     ".github/workflows/gpu-formats.yml": "483bc5ff6d3cf20f634c2dc4ae6e063a7598b6f11d4c4b8a62f9af3ddb9ee535",
     ".github/workflows/image-operations.yml": "00221adbf6677e17c7fd8bbff963ff36354a0a861ed9a0c559d3bdeb056ac3de",
     ".github/workflows/integer-pixels.yml": "c39513f7e85767e006558952e6adae6a4ff230861e7509c59600e3366bc22a87",
-    ".github/workflows/pages.yml": "75fc833dd06d0279d790d8940163105313583aa62b15732c26d764132fe94d80",
+    ".github/workflows/pages.yml": "b4ad0bcc102084e4398cfdc76023d247766477f42b0b90129cd5d126e78fe6af",
     ".github/workflows/release-candidate.yml": "ee0b2e8a78248e07ffc1c25a95d1ca5c834f3dbf1a2a600bc5bb24971a475251",
     ".github/workflows/render-canvas.yml": "f305bd43dc9cb0ef8e5e1227c8bb62fe0b9de06d19b353065185588cacba243f",
     ".github/workflows/streams.yml": "cdec4d730667e19412894b862ba26cab4d83b761b2e3593877f8639c05531678",
