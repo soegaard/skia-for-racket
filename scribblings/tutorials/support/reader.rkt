@@ -36,7 +36,8 @@
 ; tutorial-navigation : string? #:index? [boolean?] -> paragraph?
 ;   Builds the tutorial collection band with the current page's identity.
 (define (tutorial-navigation id #:index? [index? #f])
-  (documentation-navigation-band 'tutorials #:index? index? #:tutorial-id id))
+  (list (documentation-navigation-band 'tutorials #:index? index? #:tutorial-id id)
+        (documentation-notice 'tutorials)))
 
 ; api-link : -> element?
 ;   Links to the project's API overview.

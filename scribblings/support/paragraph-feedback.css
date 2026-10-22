@@ -53,3 +53,44 @@
 }
 .fb-actions { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.5em; }
 .fb-actions button { padding: 0.3em 0.8em; cursor: pointer; }
+
+/* Reusable authorship and feedback invitation for documentation collections.
+   Its body deliberately matches the feedback form's quiet surface. */
+.skia-ai-notice {
+  --skia-ai-notice-accent: var(--skia-doc-reference, #245db0);
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  border-inline-start: 0.3rem solid var(--skia-ai-notice-accent);
+  border-radius: 0.25rem;
+  background: #fafafa;
+}
+.skia-ai-notice--guide {
+  --skia-ai-notice-accent: var(--skia-doc-guide, #006b5e);
+}
+.skia-ai-notice--tutorials {
+  --skia-ai-notice-accent: var(--skia-doc-tutorials, #7540a8);
+}
+.skia-ai-notice__title {
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  background: var(--skia-ai-notice-accent);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  line-height: 1.25;
+}
+.skia-ai-notice__item {
+  display: block;
+  position: relative;
+  padding: 0.75rem 1rem 0 2.25rem;
+}
+.skia-ai-notice__title + .skia-ai-notice__item { padding-top: 0.8rem; }
+.skia-ai-notice__item:last-child { padding-bottom: 0.8rem; }
+.skia-ai-notice__item::before {
+  content: "•";
+  position: absolute;
+  inset-inline-start: 1.15rem;
+}

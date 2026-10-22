@@ -7,6 +7,7 @@
 @title[#:tag "skia-reference" #:style (skia-feedback-style)]{The Skia Reference}
 @(documentation-navigation-band 'reference #:index? #t)
 @author[(author+email "Jens Axel Søgaard" "jensaxel@soegaard.net")]
+@(documentation-notice 'reference)
 
 @defmodule[skia]
 

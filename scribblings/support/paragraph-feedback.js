@@ -29,7 +29,7 @@
 
   document.querySelectorAll(".maincolumn .main p").forEach(paragraph => {
     if (paragraph.closest(
-      ".refpara, .tocset, .navsettop, .navsetbottom, .SPretitle, .skia-doc-nav"
+      ".refpara, .tocset, .navsettop, .navsetbottom, .SPretitle, .skia-doc-nav, .skia-ai-notice"
     )) return;
     const text = paragraph.textContent.trim().replace(/\s+/g, " ");
     if (text.length < 20) return;

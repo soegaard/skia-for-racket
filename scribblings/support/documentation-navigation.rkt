@@ -24,7 +24,8 @@
          scribble/core
          scribble/html-properties
          "../tutorials/support/catalog.rkt"
-         "documentation-catalog.rkt")
+         "documentation-catalog.rkt"
+         "paragraph-feedback.rkt")
 
 (provide documentation-navigation-band
          tutorial-navigation-band
@@ -292,7 +293,8 @@
      (part-to-collect part)
      (if own-page?
          (cons (documentation-navigation-band 'reference)
-               (part-blocks part))
+               (cons (documentation-notice 'reference)
+                     (part-blocks part)))
          (part-blocks part))
      (for/list ([child (in-list (part-parts part))])
        (walk child toc?))))
@@ -312,7 +314,8 @@
    (part-title-content document)
    (part-style document)
    (part-to-collect document)
-   (cons (documentation-navigation-band 'reference) (part-blocks document))
+   (cons (documentation-navigation-band 'reference)
+         (cons (documentation-notice 'reference) (part-blocks document)))
    (part-parts document)))
 
 ; include-reference-section : syntax -> syntax
