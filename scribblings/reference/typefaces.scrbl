@@ -12,6 +12,15 @@ metrics. It does not select a drawing size. A @tech{font} combines a typeface
 with size and rendering settings. A @deftech{font manager} finds typefaces
 available through a platform font system or a supplied collection.
 
+Use a font manager to select an installed family or find a face that covers a
+character. Load a font file or byte string when the application supplies its own
+font. Family and style requests can select substitute faces; loading supplied
+font data does not silently substitute another face.
+
+The current API does not expose variable-font axes, such as optical size or a
+continuous weight setting. Selecting a weight or width requests a face; it is
+not an interface for setting arbitrary variation-axis values.
+
 Font managers, typefaces, and @tech{font-style sets} are @tech{owned resource}s.
 Their native operations require an open resource on its owning thread.
 Predicates identify their wrappers even after closure. Font availability,
@@ -136,7 +145,12 @@ string, cluster, or script. This operation neither shapes text nor installs a
 fallback policy in an existing font.
 }
 
-@section{Constructing and Inspecting Typefaces}
+@section[#:tag "skia-typeface-construction"]{Constructing Typefaces}
+
+These constructors return an owned typeface or raise an exception if one cannot
+be obtained. For a lookup that can report no match with @racket[#f], use
+@racket[font-manager-match-family] or @racket[font-manager-match-character].
+Successful family matching can still select a substitute face.
 
 @defproc[(typeface? [v any/c]) boolean?]{
 Returns @racket[#t] for a typeface resource and @racket[#f] otherwise.
@@ -167,10 +181,42 @@ agreement. Native failure raises an exception. Use
 Loads an owned typeface from an existing file. The zero-based @racket[index]
 selects a face within a collection and must fit the native signed-integer index.
 A path containing NUL, missing file, unsupported font, or native failure raises
-an exception. This loader uses the platform's native file-loading behavior;
-@racket[typeface-from-bytes] provides copied-byte loading with explicit
-collection-member selection.
+an exception.
+
+On macOS, the Skia version used by this library cannot select nonzero collection
+indices through this file loader, and some collections also fail at index zero.
+For TrueType collections on macOS, read the file into a byte string and use
+@racket[typeface-from-bytes], which handles collection-member selection.
 }
+
+@subsection{Loading Font Data from Bytes}
+
+@(declare-exporting skia skia/typefaces #:use-sources (skia/typefaces))
+
+@defproc[(typeface-from-bytes [data bytes?] [#:index index (integer-in 0 #x7fffffff) 0]) typeface?]{
+Creates an owned typeface from copied font data. The input must be nonempty
+and fit @racket[current-skia-byte-limit]. Later mutation or reclamation of
+@racket[data] does not change the face. The index is zero-based within a font
+collection. Invalid or unsupported font data and native failures raise exceptions.
+
+For a TrueType collection, @racket[index] selects the requested member, including
+on macOS. The operation does not silently substitute a different face.
+}
+
+@defproc[(font-manager-typeface-from-bytes [manager font-manager?] [data bytes?] [#:index index
+          (integer-in 0 #x7fffffff) 0]) typeface?]{
+Like @racket[typeface-from-bytes], but loads through @racket[manager]. The
+manager is required and must be open; @racket[#f] does not select a default.
+The result owns a native reference rather than borrowing the manager or input bytes.
+}
+
+@section{Inspecting Typefaces}
+
+Inspect the returned face when a family or style request may have selected a
+substitute. The measurements below describe the face's design, not a font's
+drawing size.
+
+@(declare-exporting skia)
 
 @defproc[(typeface-family-name [face typeface?]) string?]{
 Returns a copied family-name string for the actual selected face, which can
@@ -290,7 +336,8 @@ immutable name string. The index must be less than
 @racket[(font-style-set-count styles)].
 }
 
-@defproc[(font-style-set-styles [styles font-style-set?]) (vectorof font-style-entry?)]{
+@defproc[(font-style-set-styles [styles font-style-set?])
+          (and/c (vectorof font-style-entry?) immutable?)]{
 Returns an immutable vector of all style descriptions in enumeration order.
 The copied descriptions and UTF-8 name bytes count toward
 @racket[current-skia-byte-limit]; this is not an exact Racket heap-size estimate.
@@ -330,26 +377,13 @@ Matching selects an available style; it does not synthesize every requested styl
 Returns a style description for the actual face.
 }
 
-@section{Copied Font Data and Metadata}
+@section{Font Data and Metadata}
+
+These operations inspect font names, design information, and raw font tables.
+They are useful when working with font formats or passing font data to another
+library. For ordinary drawing, use a @tech{font}; raw table access is not needed.
 
 @(declare-exporting skia skia/typefaces #:use-sources (skia/typefaces))
-
-@defproc[(typeface-from-bytes [data bytes?] [#:index index (integer-in 0 #x7fffffff) 0]) typeface?]{
-Creates an owned typeface from copied font data. The input must be nonempty
-and fit @racket[current-skia-byte-limit]. Later mutation or reclamation of
-@racket[data] does not change the face. The index is zero-based within a font
-collection. Invalid or unsupported font data and native failures raise exceptions.
-
-For a TrueType collection, @racket[index] selects the requested member, including
-on macOS. The operation does not silently substitute a different face.
-}
-
-@defproc[(font-manager-typeface-from-bytes [manager font-manager?] [data bytes?] [#:index index
-          (integer-in 0 #x7fffffff) 0]) typeface?]{
-Like @racket[typeface-from-bytes], but loads through @racket[manager]. The
-manager is required and must be open; @racket[#f] does not select a default.
-The result owns a native reference rather than borrowing the manager or input bytes.
-}
 
 @defproc[(typeface-postscript-name [face typeface?]) (or/c (and/c string? immutable?) #f)]{
 Returns a copied PostScript name, or @racket[#f] when the native name is unavailable or empty.
@@ -385,7 +419,8 @@ Unlike @racket[font-table-tag], this function accepts only an integer.
 ]
 }
 
-@defproc[(typeface-table-tags [face typeface?]) (vectorof (integer-in 0 #xffffffff))]{
+@defproc[(typeface-table-tags [face typeface?])
+          (and/c (vectorof (integer-in 0 #xffffffff)) immutable?)]{
 Returns an immutable vector of available table tags. The native order is
 preserved; callers must not assume alphabetic ordering. A duplicate native tag
 or inconsistent count raises an exception.
@@ -415,7 +450,8 @@ A short native read raises an exception instead of returning partial data.
 }
 
 @defproc[(typeface-kerning-pair-adjustments [face typeface?] [glyphs (or/c (listof (integer-in 0
-          #xffff)) (vectorof (integer-in 0 #xffff)))]) (or/c (vectorof exact-integer?) #f)]{
+          #xffff)) (vectorof (integer-in 0 #xffff)))])
+          (or/c (and/c (vectorof exact-integer?) immutable?) #f)]{
 Returns an immutable vector of adjustments for successive glyph pairs,
 measured in font design units, or @racket[#f] when native pair adjustments are
 unavailable. With fewer than two glyphs the result is an empty vector. Every

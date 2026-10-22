@@ -2329,11 +2329,12 @@ class R3TextSemanticsTests(unittest.TestCase):
         self.assertIn('paragraph-relative Racket character index', self.text('text-layout'))
 
     def test_layout_requires_live_dependencies_without_claiming_owned_resource(self):
-        text = self.text('text-layout')
+        text = ' '.join(self.text('text-layout').split())
         self.assertIn('The result keeps the base shaper and font manager reachable', text)
-        self.assertIn('Both the shaper and manager must remain open', text)
-        self.assertIn('does not own a permanent native', text)
-        self.assertIn('Changes in available fonts can affect later drawing', text)
+        self.assertIn('both must remain open when drawing', text)
+        self.assertIn('records fallback family names and styles, not the exact fallback typeface', text)
+        self.assertIn('the selected face can differ or become unavailable', text)
+        self.assertIn('glyphs and positions are not recomputed', text)
 
     def test_shape_and_layout_directions_are_not_conflated(self):
         shaped = self.header('shaping', 'shape-text')[0]
@@ -2346,8 +2347,10 @@ class R3TextSemanticsTests(unittest.TestCase):
         self.assertIn('signed y advances', self.text('shaping'))
 
     def test_explicit_script_justification_limit_is_not_hidden(self):
-        self.assertIn('does not enable these script-specific justification opportunities',
-                      self.text('text-layout'))
+        text = ' '.join(self.text('text-layout').split())
+        self.assertIn('Supplying an explicit script still controls shaping, but disables', text)
+        self.assertIn('opportunity detection works through script inference', text)
+        self.assertIn('This limitation does not disable ordinary space expansion', text)
         self.assertIn('A break provider is not invoked when wrapping is disabled',
                       self.text('text-layout'))
 
@@ -2412,14 +2415,21 @@ class R3aEditorialCleanupTests(unittest.TestCase):
         self.assertEqual(text[start], '{')
         return text[start + 1:checks.brace_end(text, start) - 1]
 
-    def test_layout_keyword_caveat_is_in_the_entry_before_its_example(self):
+    def test_layout_entry_links_to_shared_keyword_caveats_before_its_example(self):
         entry = self.entry('text-layout', 'layout-text').split('@racketblock[', 1)[0]
         prose = ' '.join(entry.split())
-        self.assertIn('explicit @racket[#:script] affects shaping but does not enable', prose)
-        self.assertIn('CJK or Arabic expansion opportunities', prose)
-        self.assertIn('script inference when @racket[#:script] is @racket[#f]', prose)
-        self.assertIn('does not enable the script-specific CJK or Arabic expansion opportunities',
-                      prose)
+        self.assertIn('limitation on explicit scripts and script-specific justification', prose)
+        self.assertIn('@secref["skia-layout-justification"]', prose)
+        self.assertIn('@secref["skia-layout-alignment"]', prose)
+
+    def test_rtl_example_uses_the_bounds_origin_plus_width(self):
+        entry = self.entry('shaping', 'draw-shaped-run')
+        generator = (ROOT / 'tools/render-reference-images.rkt').read_text()
+        generator = generator.split('"rtl-shaping.png"', 1)[1].split("#:background 'white", 1)[0]
+        for source in (entry, generator):
+            self.assertIn('(define-values (left _top width _height) (text-blob-bounds blob))', source)
+            self.assertIn('(- 230 (+ left width))', source)
+            self.assertNotIn('(- 230 right)', source)
 
     def test_break_text_describes_results_and_keeps_boundary_caveats(self):
         prose = ' '.join(self.entry('fonts', 'font-break-text').split())
@@ -2559,7 +2569,10 @@ class R3BlobSemanticsTests(unittest.TestCase):
         self.assertIn('#:text', fields)
         self.assertNotIn('#:clusters', fields)
         self.assertIn("The original string cannot be reconstructed", self.text())
-        self.assertIn('check whether the run was shaped with that font', self.text())
+        self.assertIn('@secref["skia-shaped-run-reuse"]', self.text())
+        shaping = ' '.join(self.text('shaping').split())
+        self.assertIn('typeface and font settings must match; the library does not check this',
+                      shaping)
 
     def test_input_byte_offsets_are_distinguished_from_character_indices(self):
         prose = ' '.join(self.text().split())
@@ -2582,12 +2595,15 @@ class R3BlobSemanticsTests(unittest.TestCase):
                          ['or/c'] + [['quote', n] for n in
                                      ('default', 'horizontal', 'positioned', 'transformed')])
         self.assertEqual(self.header('text-run-info-positions')[1],
-                         ['vectorof', ['list/c', 'real?', 'real?']])
+                         ['and/c', ['vectorof', ['list/c', 'real?', 'real?']], 'immutable?'])
         self.assertEqual(self.header('text-run-info-transforms')[1],
-                         ['or/c', ['vectorof', ['list/c'] + ['real?'] * 4], '#f'])
-        self.assertEqual(self.header('text-run-info-utf8')[1], ['or/c', 'bytes?', '#f'])
+                         ['or/c', ['and/c', ['vectorof', ['list/c'] + ['real?'] * 4],
+                                   'immutable?'], '#f'])
+        self.assertEqual(self.header('text-run-info-utf8')[1],
+                         ['or/c', ['and/c', 'bytes?', 'immutable?'], '#f'])
         self.assertEqual(self.header('text-run-info-clusters')[1],
-                         ['or/c', ['vectorof', 'exact-nonnegative-integer?'], '#f'])
+                         ['or/c', ['and/c', ['vectorof', 'exact-nonnegative-integer?'],
+                                   'immutable?'], '#f'])
 
     def test_run_font_is_owned_and_independent_not_a_borrow(self):
         prose = ' '.join(self.text().split())
@@ -2604,7 +2620,7 @@ class R3BlobSemanticsTests(unittest.TestCase):
         self.assertIn('not as a promised sorted, merged union', prose)
         self.assertIn('not a pixel coverage readback', prose)
         self.assertEqual(self.header('text-blob-intercepts')[1],
-                         ['vectorof', ['list/c', 'real?', 'real?']])
+                         ['and/c', ['vectorof', ['list/c', 'real?', 'real?']], 'immutable?'])
 
     def test_text_on_path_uses_origin_distances_and_signed_normal_offsets(self):
         prose = ' '.join(self.text().split())

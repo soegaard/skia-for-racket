@@ -7,19 +7,42 @@
 
 @(declare-exporting skia)
 
-A @deftech{text blob} is an owned native object containing glyphs and their
-placement. It stores the @tech{font} information needed to draw them. A blob does
-not contain a @tech{paint}, perform paragraph wrapping, or turn @tech{glyph IDs} into a
-portable character string.
+Use a text blob when glyph placement is already decided and you want to draw it
+repeatedly, possibly with different paints or @tech{canvas transforms}. Convert
+a @tech{shaped run} with @racket[shaped-run->text-blob], supply positions directly
+with @racket[make-positioned-text-blob], or use a @tech{text-blob builder} to
+combine runs with different fonts or placement.
 
-Single-run construction and the multi-run builder API produce blobs that can
-be drawn repeatedly with different paints or @tech{canvas transforms}. Native
-operations require open resources on their owning thread. Drawing also follows
-the canvas's and paint's GPU-context conditions when applicable.
+A @deftech{text blob} is an @tech{owned resource} containing glyphs, their
+placement, and the @tech{font} settings needed to draw them. Unlike a shaped run,
+a completed blob does not require the original shaper or font to remain open.
+It does not contain a @tech{paint}, reshape text, or perform paragraph wrapping.
+Use @tech{text layout} to choose line breaks and alignment before drawing.
+
+Native operations require open resources on their owning thread. Drawing also
+follows the canvas's and paint's GPU-context conditions when applicable.
 
 @local-table-of-contents[#:style 'immediate-only]
 
-@section{Single-Run Text Blobs}
+@section{Creating and Drawing Blobs}
+
+The direct constructors require nonempty glyphs. The builder and on-path
+interfaces handle empty input differently:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Operation} @bold{Empty-input behavior})
+  (list @elem{@racket[make-positioned-text-blob] or @racket[shaped-run->text-blob]}
+        "Raises an exception.")
+  (list "Appending a run to a builder"
+        "Validates inputs and resources, but adds no run.")
+  (list @racket[text-blob-builder-finish!]
+        @elem{Returns @racket[#f] and closes the builder when it has no runs.})
+  (list @racket[shaped-run->text-blob/on-path]
+        @elem{Validates inputs and resources, then returns @racket[#f].}))]
+
+These cases do not create an empty drawable blob. See the individual operations
+for their validation and resource-lifetime rules.
 
 @defproc[(text-blob? [v any/c]) boolean?]{
 Returns @racket[#t] for a text-blob resource and @racket[#f] otherwise. Closure does not change
@@ -85,57 +108,14 @@ open. Outline output uses @racket[text-blob->path].
                   "Two black glyphs from a positioned text blob, with extra horizontal spacing between A and B."]
 }
 
-@defproc[(text-blob->path [blob text-blob?]) skia-path?]{
-Converts the blob's glyph outlines to a path at their recorded positions.
-
-The path contains monochrome outlines, without applying a paint or canvas
-transform. It is an owned resource and remains usable after the blob is closed.
-
-For a blob made by @racket[make-positioned-text-blob], glyphs without outlines
-are omitted. Blobs made with a text-blob builder or
-@racket[shaped-run->text-blob/on-path] use a stricter conversion: a glyph with
-visible bounds but no monochrome outline raises an exception instead of being
-silently dropped. This operation is not a general vectorization of color or
-bitmap glyphs.
-
-The builder can store multiple runs with independently captured font settings.
-Here the left panel is the completed two-run blob; the right panel draws the
-path returned by @racket[text-blob->path]. The source font changes size between
-appends, so the large exclamation mark belongs to a separate run.
-
-@racketblock[
-(with-skia ([surface (make-surface 420 175 #:background 'white)]
-            [font (make-font #:size 30)]
-            [builder (make-text-blob-builder)]
-            [source-paint (make-paint #:color "#326DE6")]
-            [outline-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
-            [label-font (make-font #:size 12)]
-            [label-paint (make-paint #:color "#526070")])
-  (text-blob-builder-add-run! builder font (font-text->glyphs font "small")
-                             #:origin '(18 92))
-  (font-set-size! font 52)
-  (text-blob-builder-add-run! builder font (font-text->glyphs font "!")
-                             #:origin '(130 92))
-  (with-skia ([blob (text-blob-builder-finish! builder)]
-              [outline (text-blob->path blob)])
-    (define canvas (surface-canvas surface))
-    (draw-simple-text canvas "completed blob: two runs" 18 24
-                      label-font label-paint)
-    (draw-text-blob canvas blob 0 0 source-paint)
-    (draw-simple-text canvas "text-blob->path" 228 24 label-font label-paint)
-    (with-canvas-state canvas
-      (canvas-translate! canvas 210 0)
-      (draw-path canvas outline outline-paint))))
-]
-@reference-figure["text-blob-multirun-outline.png"
-                  "A filled blue two-run text blob with small and large glyphs is shown beside the orange stroked path returned by text-blob->path."]
-}
-
-
 @section[#:tag "skia-text-blob-builders"]{Building Multiple Runs}
 
 @defmodule[skia/text-blobs #:no-declare]
 @(declare-exporting skia skia/text-blobs #:use-sources (skia/text-blobs))
+
+Use a builder to combine runs with different fonts, sizes, or positioning modes,
+or to append runs incrementally before creating one drawable blob. For one
+nonempty positioned run, @racket[make-positioned-text-blob] is simpler.
 
 A @deftech{text-blob builder} collects glyph runs into one text blob. Each run
 has a positioning mode and captures its font's settings when appended. Different
@@ -220,6 +200,8 @@ glyphs, and cluster associations agree; the library checks their representation
 and ranges, not whether the supplied glyphs and cluster offsets actually
 correspond to the text.
 
+@subsection{Appending Runs}
+
 @defproc[(text-blob-builder-add-run!
           [builder text-blob-builder?] [font font?]
           [glyphs (or/c (listof (integer-in 0 #xffff))
@@ -299,6 +281,18 @@ Appends a run with one absolute x coordinate per glyph and a shared @tech{baseli
 coordinate @racket[y], all relative to the blob's origin. The x values are not
 @tech{advances} to be accumulated. Their order is preserved; no sorting or @tech{shaping}
 is performed. The shared run-input and metadata rules apply.
+
+@racketblock[
+(with-skia ([surface (make-surface 240 90 #:background 'white)]
+            [font (make-font #:size 32)] [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#20344E")])
+  (define glyphs (font-text->glyphs font "ABC"))
+  (text-blob-builder-add-horizontal-run! builder font glyphs '(0 55 125) #:y 0)
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 20 58 paint)))
+]
+@reference-figure["horizontal-text-run.png"
+                  "The glyphs A, B, and C placed at explicit horizontal positions with uneven spacing."]
 }
 
 @defproc[(text-blob-builder-add-positioned-run!
@@ -374,6 +368,22 @@ the shared run-input and metadata rules apply.
 A blob containing any transformed run is rejected by
 @racket[text-blob-intercepts], even when the other runs use ordinary positions.
 Use @racket[make-atlas-transform] for placement by scale, angle, and anchor.
+
+@racketblock[
+(with-skia ([surface (make-surface 260 110 #:background 'white)]
+            [font (make-font #:size 34)] [builder (make-text-blob-builder)]
+            [paint (make-paint #:color "#20344E")])
+  (define glyphs (font-text->glyphs font "ABC"))
+  (text-blob-builder-add-transformed-run!
+   builder font glyphs
+   (list (make-atlas-transform 30 70 #:rotation -18)
+         (make-atlas-transform 100 55 #:scale 1.2 #:rotation 8)
+         (make-atlas-transform 185 75 #:scale 0.9 #:rotation 22)))
+  (with-skia ([blob (text-blob-builder-finish! builder)])
+    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
+]
+@reference-figure["transformed-text-run.png"
+                  "The glyphs A, B, and C individually translated, scaled, and rotated within one transformed text run."]
 }
 
 @defproc[(text-blob-builder-add-shaped-run!
@@ -382,9 +392,8 @@ Use @racket[make-atlas-transform] for placement by scale, angle, and anchor.
           [#:text text (or/c string? bytes? #f) #f]) void?]{
 Appends a positioned run using the glyphs and positions already stored in
 @racket[run], translated by @racket[origin]. The font is copied from the open
-@racket[shaper]; text is not shaped again. The caller must use a shaper whose
-captured font agrees with the one used to create the run. The function does not
-check whether the run was shaped with that font or select a fallback font.
+@racket[shaper]; text is not shaped again and no fallback font is selected.
+The shaper-matching rule in @secref["skia-shaped-run-reuse"] applies.
 
 When @racket[text] is supplied, the run's clusters supply its UTF-8 byte offsets
 and are checked against that text according to @secref["skia-text-run-metadata"].
@@ -426,6 +435,8 @@ append does not invalidate the captured blob font.
                   "The word office is drawn from a shaped run added to a text-blob builder."]
 }
 
+@subsection{Finishing the Blob}
+
 @defproc[(text-blob-builder-finish! [builder text-blob-builder?]) (or/c text-blob? #f)]{
 Creates an owned text blob containing the builder's runs in append order.
 The builder must be open. When it has no nonempty runs, the result is @racket[#f].
@@ -444,6 +455,10 @@ during scope cleanup is harmless.
 
 @(declare-exporting skia skia/text-blobs #:use-sources (skia/text-blobs))
 
+Use these queries to inspect the placement and optional text metadata stored
+in a blob. They do not reconstruct text that was not supplied when the blob was
+built.
+
 A @deftech{text run description} is an immutable Racket structure containing a
 run's positioning mode, glyphs, coordinates, and optional text metadata.
 Obtain an independently owned font separately with
@@ -455,7 +470,7 @@ by @racket[make-positioned-text-blob] has one run. A builder-produced blob count
 nonempty successful appends, even if native storage merges adjacent runs.
 }
 
-@defproc[(text-blob-runs [blob text-blob?]) (vectorof text-run-info?)]{
+@defproc[(text-blob-runs [blob text-blob?]) (and/c (vectorof text-run-info?) immutable?)]{
 Returns an immutable vector of run descriptions in append order.
 The run descriptions and their nested data are immutable. A blob made with
 @racket[make-positioned-text-blob] is described as one @racket['positioned] run
@@ -484,12 +499,14 @@ The mode describes stored placement, not whether the glyphs were originally
 obtained by shaping.
 }
 
-@defproc[(text-run-info-glyphs [run text-run-info?]) (vectorof (integer-in 0 #xffff))]{
+@defproc[(text-run-info-glyphs [run text-run-info?])
+          (and/c (vectorof (integer-in 0 #xffff)) immutable?)]{
 Returns the immutable vector of glyph IDs in stored order. Glyph IDs belong
 to the captured typeface and are not Unicode character codes.
 }
 
-@defproc[(text-run-info-positions [run text-run-info?]) (vectorof (list/c real? real?))]{
+@defproc[(text-run-info-positions [run text-run-info?])
+          (and/c (vectorof (list/c real? real?)) immutable?)]{
 Returns immutable glyph-origin pairs in blob coordinates. Default runs contain
 the positions computed from font advances; horizontal runs include the shared
 y coordinate; positioned runs contain their explicit positions. A transformed
@@ -498,7 +515,7 @@ run returns an empty vector here and stores its placement in
 }
 
 @defproc[(text-run-info-transforms [run text-run-info?])
-          (or/c (vectorof (list/c real? real? real? real?)) #f)]{
+          (or/c (and/c (vectorof (list/c real? real? real? real?)) immutable?) #f)]{
 Returns an immutable vector of four-coefficient lists for a transformed run,
 or @racket[#f] for the other positioning modes. Coefficients use the order
 @math{scos}, @math{ssin}, @math{tx}, and @math{ty}, even when the input
@@ -506,54 +523,82 @@ was supplied as atlas-transform values or vectors. The result is not a vector
 of affine matrices or a borrowed native buffer.
 }
 
-@defproc[(text-run-info-utf8 [run text-run-info?]) (or/c bytes? #f)]{
+@defproc[(text-run-info-utf8 [run text-run-info?]) (or/c (and/c bytes? immutable?) #f)]{
 Returns the immutable UTF-8 bytes supplied as run metadata, or @racket[#f]
 when metadata was omitted. Stored bytes describe the caller-supplied text;
 they are not inferred from glyph IDs. A Racket string input is encoded as UTF-8.
 }
 
 @defproc[(text-run-info-clusters [run text-run-info?])
-          (or/c (vectorof exact-nonnegative-integer?) #f)]{
+          (or/c (and/c (vectorof exact-nonnegative-integer?) immutable?) #f)]{
 Returns the immutable vector of UTF-8 scalar-start byte offsets supplied as
 metadata, or @racket[#f]. Each offset indexes @racket[(text-run-info-utf8 run)].
 There is one offset per glyph when metadata is present. The offsets can repeat
 or descend; they are not an index into the positions vector.
 }
 
-@section[#:tag "skia-text-blob-intercepts"]{Intercepts and Outlines}
+@section[#:tag "skia-text-blob-intercepts"]{Outlines and Intercepts}
 
-@(declare-exporting skia skia/text-blobs #:use-sources (skia/text-blobs))
+Convert glyphs to paths to fill or stroke their outlines directly. Such paths
+contain monochrome geometry, not the full appearance of bitmap-only or color
+glyphs. Missing-outline behavior depends on how the blob was constructed, as
+described below.
 
-@defproc[(text-blob-intercepts [blob text-blob?] [top real?] [bottom real?]
-                              [#:paint paint (or/c paint? #f) #f])
-          (vectorof (list/c real? real?))]{
-Returns an immutable vector of horizontal intervals where glyph outlines
-intersect the band between @racket[top] and @racket[bottom]. The value of
-@racket[top] must be strictly less than @racket[bottom]. Each interval is a list
-of its left and right endpoints, with left no greater than
-right. An empty vector means no intersections were reported.
+@(declare-exporting skia)
 
-Coordinates are relative to the blob's stored origin; a later draw translation,
-canvas transform, and clip are not included. The optional open paint supplies
-stroke and path-effect settings to the native query. The result is not a pixel
-coverage readback or the output bounds of an image filter. Intervals are returned
-in native order, not as a promised sorted, merged union.
+@defproc[(text-blob->path [blob text-blob?]) skia-path?]{
+Converts the blob's glyph outlines to a path at their recorded positions.
 
-The native backend omits transformed runs when computing intercepts. To avoid
-returning incomplete results, this function rejects any blob containing a
-transformed run. The result is subject to @racket[current-skia-byte-limit].
+The path contains monochrome outlines, without applying a paint or canvas
+transform. It is an owned resource and remains usable after the blob is closed.
+
+For a blob made by @racket[make-positioned-text-blob] or
+@racket[shaped-run->text-blob], glyphs without outlines are omitted.
+
+Blobs made with a text-blob builder or @racket[shaped-run->text-blob/on-path]
+use a stricter conversion: a glyph with visible bounds but no monochrome
+outline raises an exception. A glyph with no visible bounds, such as a space,
+does not cause that exception. Use ordinary blob drawing when the full glyph
+appearance, including bitmap or color rendering, is required; use a raster
+surface when the output target would otherwise require outline conversion.
+
+The builder can store multiple runs with independently captured font settings.
+Here the left panel is the completed two-run blob; the right panel draws the
+path returned by @racket[text-blob->path]. The source font changes size between
+appends, so the large exclamation mark belongs to a separate run.
 
 @racketblock[
-(with-skia ([font (make-font #:size 24)]
-            [blob
-             (make-positioned-text-blob font (font-text->glyphs font "AB")
-                                        '((0 30) (40 30)))])
-  (text-blob-intercepts blob 20 25))
+(with-skia ([surface (make-surface 420 175 #:background 'white)]
+            [font (make-font #:size 30)]
+            [builder (make-text-blob-builder)]
+            [source-paint (make-paint #:color "#326DE6")]
+            [outline-paint (make-paint #:color "#EFA02B" #:style 'stroke #:stroke-width 2)]
+            [label-font (make-font #:size 12)]
+            [label-paint (make-paint #:color "#526070")])
+  (text-blob-builder-add-run! builder font (font-text->glyphs font "small")
+                             #:origin '(18 92))
+  (font-set-size! font 52)
+  (text-blob-builder-add-run! builder font (font-text->glyphs font "!")
+                             #:origin '(130 92))
+  (with-skia ([blob (text-blob-builder-finish! builder)]
+              [outline (text-blob->path blob)])
+    (define canvas (surface-canvas surface))
+    (draw-simple-text canvas "completed blob: two runs" 18 24
+                      label-font label-paint)
+    (draw-text-blob canvas blob 0 0 source-paint)
+    (draw-simple-text canvas "text-blob->path" 228 24 label-font label-paint)
+    (with-canvas-state canvas
+      (canvas-translate! canvas 210 0)
+      (draw-path canvas outline outline-paint))))
 ]
-
-The exact intervals depend on the typeface; the two band coordinates and the
-stored glyph positions share the same coordinate system.
+@reference-figure["text-blob-multirun-outline.png"
+                  "A filled blue two-run text blob with small and large glyphs is shown beside the orange stroked path returned by text-blob->path."]
 }
+
+
+@subsection{Positioned Glyph Outlines}
+
+@(declare-exporting skia skia/text-blobs #:use-sources (skia/text-blobs))
 
 @defproc[(positioned-glyphs->path
           [font font?]
@@ -588,9 +633,65 @@ copied input and resulting geometry are checked against the byte limit.
                   "The word PATH is drawn as one filled blue vector path assembled from positioned glyph outlines."]
 }
 
+@subsection{Horizontal Intersections}
+
+@(declare-exporting skia skia/text-blobs #:use-sources (skia/text-blobs))
+
+Use intercepts to find where glyph outlines cross a horizontal band, for
+example when placing a rule near text. This query reports outline intervals,
+not rendered pixels.
+
+@defproc[(text-blob-intercepts [blob text-blob?] [top real?] [bottom real?]
+                              [#:paint paint (or/c paint? #f) #f])
+          (and/c (vectorof (list/c real? real?)) immutable?)]{
+Returns an immutable vector of horizontal intervals where glyph outlines
+intersect the band between @racket[top] and @racket[bottom]. The value of
+@racket[top] must be strictly less than @racket[bottom]. Each interval is a list
+of its left and right endpoints, with left no greater than
+right. An empty vector means no intersections were reported.
+
+Coordinates are relative to the blob's stored origin; a later draw translation,
+canvas transform, and clip are not included. The optional open paint supplies
+stroke and path-effect settings to the native query. The result is not a pixel
+coverage readback or the output bounds of an image filter. Intervals are returned
+in native order, not as a promised sorted, merged union.
+
+The native backend omits transformed runs when computing intercepts. To avoid
+returning incomplete results, this function rejects any blob containing a
+transformed run. The result is subject to @racket[current-skia-byte-limit].
+
+@racketblock[
+(with-skia ([font (make-font #:size 24)]
+            [blob
+             (make-positioned-text-blob font (font-text->glyphs font "AB")
+                                        '((0 30) (40 30)))])
+  (text-blob-intercepts blob 20 25))
+]
+
+The exact intervals depend on the typeface; the two band coordinates and the
+stored glyph positions share the same coordinate system.
+
+@racketblock[
+(with-skia ([surface (make-surface 240 100 #:background 'white)]
+            [font (make-font #:size 42)]
+            [blob (make-positioned-text-blob font (font-text->glyphs font "AB")
+                                             '((0 55) (70 55)))]
+            [text-paint (make-paint #:color "#20344E")])
+  (draw-text-blob (surface-canvas surface) blob 20 10 text-paint)
+  (text-blob-intercepts blob 35 45))
+]
+@reference-figure["text-blob-intercepts.png"
+                  "Two large glyphs crossed by a highlighted horizontal band, with the reported intercept intervals marked within that band."]
+}
+
 @section[#:tag "skia-text-on-path"]{Placing Shaped Text on a Path}
 
 @(declare-exporting skia skia/text-blobs #:use-sources (skia/text-blobs))
+
+Use these operations to place a previously shaped run along a curve. They
+rotate and position whole glyphs; they do not bend their outlines or fit an
+overlong run to the path. Create a blob once for repeated drawing, or use
+@racket[draw-shaped-run/on-path] for one drawing.
 
 @defproc[(shaped-run->text-blob/on-path
           [shaper shaper?] [run shaped-run?] [path skia-path?]
@@ -638,8 +739,8 @@ glyphs into this frame; it does not bend outlines or fit text to a contour.
 
 The result contains a transformed run and therefore cannot be queried with
 @racket[text-blob-intercepts]. It captures its own font state; closing the
-source path or shaper afterward does not invalidate it. The caller must supply
-a shaper whose captured font agrees with the shaped run.
+source path or shaper afterward does not invalidate it. The shaper-matching
+rule in @secref["skia-shaped-run-reuse"] applies.
 
 An empty run returns @racket[#f], but still validates the path, shaper, contour
 selection, offsets, and metadata. With @racket[text], the run's clusters are
@@ -738,45 +839,3 @@ For repeated drawing at the same placement, create a blob once with
 @reference-figure["text-path-offset-stage8.png"
                   "Dark text follows a pale horizontal path while a negative normal offset lifts its baseline above the guide."]
 }
-
-@section{Additional Visual Examples}
-
-@racketblock[
-(with-skia ([surface (make-surface 240 90 #:background 'white)]
-            [font (make-font #:size 32)] [builder (make-text-blob-builder)]
-            [paint (make-paint #:color "#20344E")])
-  (define glyphs (font-text->glyphs font "ABC"))
-  (text-blob-builder-add-horizontal-run! builder font glyphs '(0 55 125) #:y 0)
-  (with-skia ([blob (text-blob-builder-finish! builder)])
-    (draw-text-blob (surface-canvas surface) blob 20 58 paint)))
-]
-@reference-figure["horizontal-text-run.png"
-                  "The glyphs A, B, and C placed at explicit horizontal positions with uneven spacing."]
-
-@racketblock[
-(with-skia ([surface (make-surface 260 110 #:background 'white)]
-            [font (make-font #:size 34)] [builder (make-text-blob-builder)]
-            [paint (make-paint #:color "#20344E")])
-  (define glyphs (font-text->glyphs font "ABC"))
-  (text-blob-builder-add-transformed-run!
-   builder font glyphs
-   (list (make-atlas-transform 30 70 #:rotation -18)
-         (make-atlas-transform 100 55 #:scale 1.2 #:rotation 8)
-         (make-atlas-transform 185 75 #:scale 0.9 #:rotation 22)))
-  (with-skia ([blob (text-blob-builder-finish! builder)])
-    (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
-]
-@reference-figure["transformed-text-run.png"
-                  "The glyphs A, B, and C individually translated, scaled, and rotated within one transformed text run."]
-
-@racketblock[
-(with-skia ([surface (make-surface 240 100 #:background 'white)]
-            [font (make-font #:size 42)]
-            [blob (make-positioned-text-blob font (font-text->glyphs font "AB")
-                                             '((0 55) (70 55)))]
-            [text-paint (make-paint #:color "#20344E")])
-  (draw-text-blob (surface-canvas surface) blob 20 10 text-paint)
-  (text-blob-intercepts blob 35 45))
-]
-@reference-figure["text-blob-intercepts.png"
-                  "Two large glyphs crossed by a highlighted horizontal band, with the reported intercept intervals marked within that band."]

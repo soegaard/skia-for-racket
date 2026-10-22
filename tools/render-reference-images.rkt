@@ -3042,8 +3042,8 @@
                   [paint (make-paint #:color "#20344E")])
         (define run (shape-text shaper "שלום" #:direction 'rtl #:script 'hebr))
         (with-skia ([blob (shaped-run->text-blob shaper run)])
-          (define-values (_left _top right _bottom) (text-blob-bounds blob))
-          (draw-shaped-run canvas shaper run (- 230 right) 58 paint))))))
+          (define-values (left _top width _height) (text-blob-bounds blob))
+          (draw-shaped-run canvas shaper run (- 230 (+ left width)) 58 paint))))))
  #:background 'white)
 
 (render-reference-image

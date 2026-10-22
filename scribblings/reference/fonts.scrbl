@@ -60,9 +60,6 @@ The corresponding query and setter functions describe each setting.
   (skia-close! face)
   (font-size font))
 ]
-
-The font remains usable after the supplied wrapper is closed. The surrounding
-scope releases both wrappers; repeated closure of the face is harmless.
 }
 
 @section[#:tag "skia-simple-text"]{Simple Text Drawing and Measurement}
@@ -152,13 +149,80 @@ its target rectangle is @math{(origin-x+bx, baseline-y+by, bw, bh)}.
                   "The word Skia in black, with a gray baseline and a red rectangle around its measured ink bounds."]
 }
 
+@subsection{Measuring a Prefix}
+
+@(declare-exporting skia skia/fonts #:use-sources (skia/fonts))
+
+@defproc[(font-break-text [font font?] [text string?] [max-width (and/c real? (>=/c 0))]
+                     [#:paint paint (or/c paint? #f) #f]) (values exact-nonnegative-integer? real?)]{
+Returns the number of Racket characters in the longest leading unshaped prefix
+that fits @racket[max-width], followed by its measured width. The count is not
+a UTF-8 byte offset. The width must be nonnegative.
+
+The boundary need not be a word or grapheme boundary. This is not Unicode line
+breaking or shaping-aware wrapping. An empty input returns 0 and 0.0.
+
+@racketblock[
+(with-skia ([font (make-font #:size 24)])
+  (define text "AéB")
+  (define-values (count width) (font-break-text font text 40))
+  (list (substring text 0 count) width))
+]
+
+
+@racketblock[
+(with-skia ([surface (make-surface 320 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([font (make-font #:size 30)]
+              [gray (make-paint #:color "#A0A7B0")]
+              [blue (make-paint #:color "#326DE6")]
+              [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
+    (define text "Skia for Racket")
+    (draw-simple-text canvas text 15 55 font gray)
+    (define-values (count width) (font-break-text font text 145))
+    (draw-simple-text canvas (substring text 0 count) 15 55 font blue)
+    (draw-line canvas 15 70 (+ 15 width) 70 rule)))
+]
+@reference-figure["font-break-prefix-stage10.png"
+                  "The longest prefix fitting a width is colored blue, with a blue rule showing its measured advance."]
+}
+
 @section[#:tag "skia-font-settings"]{Font Settings}
 
-Use @racket[make-font] to choose settings when creating a font. The operations
-in this section inspect or change an existing font. Drawing with
-@racket[draw-simple-text] and measuring with @racket[measure-simple-text] do not
-require changing these settings. Existing @tech{shapers} and @tech{text blobs} keep their
-captured font settings.
+Use @racket[make-font] to choose settings when creating a font, or the operations
+below to inspect and change them later. Changes affect subsequent operations
+using this font. Existing @tech{shapers} and @tech{text blobs} keep their
+captured font settings; create a new shaper or blob to use changed settings.
+
+@defmodule[skia/fonts #:no-declare]
+
+The additional font controls and batch glyph queries are also provided by
+@racketmodname[skia/fonts].
+
+@subsection{Typeface}
+
+@(declare-exporting skia skia/fonts #:use-sources (skia/fonts))
+
+@defproc[(font-typeface [font font?]) typeface?]{
+Returns an independently owned reference to the current typeface, not a
+borrowed field of the font. Closing or changing the font does not invalidate
+the returned wrapper.
+
+@racketblock[
+(with-skia ([font (make-font #:size 24)]
+            [face (font-typeface font)])
+  (skia-close! font)
+  (typeface-family-name face))
+]
+}
+
+@defproc[(font-set-typeface! [font font?] [face typeface?]) void?]{
+Replaces the font's typeface, retaining its own native reference. The
+supplied face must be open; @racket[#f] is not accepted. Font size and rendering
+settings are unchanged.
+}
+
+@subsection{Size, Horizontal Scale, and Skew}
 
 @defproc[(font-size [font font?]) real?]{
 Returns the font's size in local drawing units.
@@ -166,8 +230,20 @@ Returns the font's size in local drawing units.
 
 @defproc[(font-set-size! [font font?] [value (and/c real? (>/c 0))]) void?]{
 Sets the font's size in local drawing units. The new size must be positive.
-Existing shapers and text blobs keep their captured font settings.
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 250 130 #:background 'white)]
+            [font (make-font #:size 18)]
+            [paint (make-paint #:color "#20344E")])
+  (draw-simple-text (surface-canvas surface) "Skia" 15 30 font paint)
+  (font-set-size! font 30)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 72 font paint)
+  (font-set-size! font 44)
+  (draw-simple-text (surface-canvas surface) "Skia" 100 112 font paint))
+]
+@reference-figure["font-sizes.png"
+                  "The word Skia drawn three times at increasing font sizes."]
 
 @defproc[(font-scale-x [font font?]) real?]{
 Returns the font's horizontal scale factor.
@@ -175,8 +251,18 @@ Returns the font's horizontal scale factor.
 
 @defproc[(font-set-scale-x! [font font?] [value (and/c real? (>/c 0))]) void?]{
 Sets the font's horizontal scale factor. The new factor must be positive.
-Existing shapers and text blobs keep their captured font settings.
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 260 100 #:background 'white)]
+            [normal (make-font #:size 34)] [wide (make-font #:size 34)]
+            [paint (make-paint #:color "#20344E")])
+  (font-set-scale-x! wide 1.7)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 42 normal paint)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 86 wide paint))
+]
+@reference-figure["font-scale-x.png"
+                  "The word Skia at normal width above a horizontally stretched version produced by font scale-x."]
 
 @defproc[(font-skew-x [font font?]) real?]{
 Returns the font's horizontal shear factor.
@@ -184,8 +270,20 @@ Returns the font's horizontal shear factor.
 
 @defproc[(font-set-skew-x! [font font?] [value real?]) void?]{
 Sets the font's horizontal shear factor. The factor is not an angle.
-Existing shapers and text blobs keep their captured font settings.
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 260 100 #:background 'white)]
+            [normal (make-font #:size 34)] [skewed (make-font #:size 34)]
+            [paint (make-paint #:color "#20344E")])
+  (font-set-skew-x! skewed 0.4)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 42 normal paint)
+  (draw-simple-text (surface-canvas surface) "Skia" 15 86 skewed paint))
+]
+@reference-figure["font-skew-x.png"
+                  "The word Skia at normal slant above a visibly skewed version produced by font skew-x."]
+
+@subsection{Glyph Rendering}
 
 @defproc[(font-edging [font font?]) (or/c 'alias 'antialias 'subpixel-antialias)]{
 Returns the font's requested glyph-edge rendering mode.
@@ -194,7 +292,6 @@ Returns the font's requested glyph-edge rendering mode.
 @defproc[(font-set-edging! [font font?] [value (or/c 'alias 'antialias 'subpixel-antialias)]) void?]{
 Sets the font's requested glyph-edge rendering mode. This controls edge coverage, not whether
 glyph origins use subpixel positions.
-Existing shapers and text blobs keep their captured font settings.
 }
 
 @defproc[(font-hinting [font font?]) (or/c 'none 'slight 'normal 'full)]{
@@ -204,7 +301,6 @@ Returns the font's requested hinting level.
 @defproc[(font-set-hinting! [font font?] [value (or/c 'none 'slight 'normal 'full)]) void?]{
 Sets the font's requested hinting level. Hinting adapts glyph rendering to the device grid; its
 effect depends on the font backend.
-Existing shapers and text blobs keep their captured font settings.
 }
 
 @defproc[(font-subpixel? [font font?]) boolean?]{
@@ -213,7 +309,6 @@ Reports whether subpixel glyph positioning is requested.
 
 @defproc[(font-set-subpixel! [font font?] [enabled? boolean?]) void?]{
 Sets whether subpixel glyph positioning is requested.
-This does not select a different typeface or reshape an existing run.
 }
 
 @defproc[(font-linear-metrics? [font font?]) boolean?]{
@@ -222,7 +317,6 @@ Reports whether linear scaling of metrics is requested instead of hinted metric 
 
 @defproc[(font-set-linear-metrics! [font font?] [enabled? boolean?]) void?]{
 Sets whether linear scaling of metrics is requested instead of hinted metric adjustments.
-This does not select a different typeface or reshape an existing run.
 }
 
 @defproc[(font-embolden? [font font?]) boolean?]{
@@ -230,8 +324,8 @@ Reports whether synthetic glyph emboldening is requested.
 }
 
 @defproc[(font-set-embolden! [font font?] [enabled? boolean?]) void?]{
-Sets whether synthetic glyph emboldening is requested.
-This does not select a different typeface or reshape an existing run.
+Sets whether synthetic glyph emboldening is requested. This thickens glyphs
+without selecting a bold typeface.
 
 
 @racketblock[
@@ -247,6 +341,37 @@ This does not select a different typeface or reshape an existing run.
                   "The word Skia is shown normally and again with the font embolden flag enabled."]
 }
 
+@subsubsection{Bitmap Glyphs and Pixel Alignment}
+
+@(declare-exporting skia skia/fonts #:use-sources (skia/fonts))
+
+@defproc[(font-embedded-bitmaps? [font font?]) boolean?]{
+Reports whether use of embedded glyph bitmaps is requested.
+}
+
+@defproc[(font-set-embedded-bitmaps! [font font?] [enabled? boolean?]) void?]{
+Sets the request for use of embedded glyph bitmaps.
+Its visible effect depends on the target transform and font backend.
+}
+
+@defproc[(font-force-auto-hinting? [font font?]) boolean?]{
+Reports whether use of the font backend's automatic hinter is requested.
+}
+
+@defproc[(font-set-force-auto-hinting! [font font?] [enabled? boolean?]) void?]{
+Sets the request for use of the font backend's automatic hinter.
+Its visible effect depends on the target transform and font backend.
+}
+
+@defproc[(font-baseline-snap? [font font?]) boolean?]{
+Reports whether baseline snapping to device pixels is requested.
+}
+
+@defproc[(font-set-baseline-snap! [font font?] [enabled? boolean?]) void?]{
+Sets the request for baseline snapping to device pixels.
+Its visible effect depends on the target transform and font backend.
+}
+
 @section[#:tag "skia-font-metrics"]{Font Metrics}
 
 Use @racket[measure-simple-text] for an unshaped string's advance or
@@ -256,8 +381,13 @@ as a whole and are useful for baseline placement and line spacing.
 @deftech{Font metrics} describe the selected font, not the visible extent of a particular
 string. Distances are scaled to the font's drawing size. Vertical coordinates
 are relative to the baseline, with negative coordinates above it in the usual
-downward-positive canvas. Font data and native backends determine the values;
-zero can indicate that a metric is unavailable.
+downward-positive canvas. Font data and native backends determine the values.
+
+Unavailable metrics use two conventions. Numeric metrics, including x-height
+and cap height, can be zero when the font does not provide a value. Underline
+and strikeout measurements instead return @racket[#f] when unavailable. Do not
+interpret a zero x-height or cap height as a guarantee that the corresponding
+letters have no visible height.
 
 The @deftech{baseline} is the reference line from which vertical font metrics
 are measured. The @deftech{ascent} and @deftech{descent} are the font's vertical
@@ -331,11 +461,11 @@ Returns the native rightmost horizontal font extent.
 }
 
 @defproc[(font-metrics-x-height [metrics font-metrics?]) real?]{
-Returns the font's x-height metric as a distance.
+Returns the font's x-height metric as a distance, or zero when unavailable.
 }
 
 @defproc[(font-metrics-cap-height [metrics font-metrics?]) real?]{
-Returns the font's capital-height metric as a distance.
+Returns the font's capital-height metric as a distance, or zero when unavailable.
 }
 
 @defproc[(font-metrics-underline-thickness [metrics font-metrics?]) (or/c real? #f)]{
@@ -396,12 +526,14 @@ guide; the advance is the next origin, not an ink bound.
 @reference-figure["font-metrics-guides.png"
                   "The word glyph is drawn between colored ascent, baseline, and descent guides, with a separate horizontal guide ending at its measured advance."]
 
-@section[#:tag "skia-font-glyph-mapping"]{Character Mapping and Outlines}
+@section[#:tag "skia-font-glyph-mapping"]{Character Mapping, Measurements, and Outlines}
 
 For unshaped text, use @racket[draw-simple-text], @racket[measure-simple-text],
 or @racket[simple-text-bounds]. Use @racket[draw-shaped-text] when shaping is
-needed. The operations in this section expose individual glyph IDs and outlines;
-they do not perform contextual @tech{shaping} or @tech{font fallback}.
+needed. The operations in this section expose individual glyph IDs, measurements,
+and outlines; they do not perform contextual @tech{shaping} or @tech{font fallback}.
+
+@subsection{Character Mapping}
 
 @defproc[(font-char->glyph [font font?] [character (or/c char? (integer-in 0 #xd7ff) (integer-in
           #xe000 #x10ffff))]) (integer-in 0 #xffff)]{
@@ -416,6 +548,70 @@ A missing mapping yields glyph zero. The nonempty result is a new mutable vector
 empty result is an empty vector. The native glyph buffer is bounded by
 @racket[current-skia-byte-limit].
 }
+
+@subsection[#:tag "skia-font-glyph-measurements"]{Glyph Measurements}
+
+Use these queries when you already have glyph IDs and need their individual
+advances, bounds, or unshaped positions. To measure a whole unshaped string, use
+@racket[measure-simple-text] or @racket[simple-text-bounds].
+
+Batch glyph queries return immutable vectors of copied measurements. Their
+inputs may be lists or vectors of unsigned 16-bit glyph IDs. Each ID must be
+less than the current typeface's glyph count. Estimated storage for the glyph IDs,
+temporary result buffers, and returned values must fit @racket[current-skia-byte-limit].
+This is not a limit on native font-cache memory.
+
+@(declare-exporting skia skia/fonts #:use-sources (skia/fonts))
+
+@defproc[(font-glyph-widths [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
+          (integer-in 0 #xffff)))]
+                     [#:paint paint (or/c paint? #f) #f]) (and/c (vectorof real?) immutable?)]{
+Returns one advance width per supplied glyph, without kerning or contextual
+positioning. The optional paint is passed to native measurement. An empty
+input returns an empty vector.
+}
+
+@defproc[(font-glyph-bounds [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
+          (integer-in 0 #xffff)))]
+                     [#:paint paint (or/c paint? #f) #f])
+          (and/c (vectorof (list/c real? real? real? real?)) immutable?)]{
+Returns one x/y/width/height list per glyph in an immutable vector. Each
+bound is relative to that glyph's own origin, not a position in a string.
+The optional paint participates in native bounds measurement.
+}
+
+@defproc[(font-glyph-widths+bounds [font font?] [glyphs (or/c (listof (integer-in 0 #xffff))
+          (vectorof (integer-in 0 #xffff)))]
+                     [#:paint paint (or/c paint? #f) #f])
+          (values (and/c (vectorof real?) immutable?)
+                  (and/c (vectorof (list/c real? real? real? real?)) immutable?))]{
+Returns the advance-width vector and bounds vector as two values, using
+the same native query and behavior as @racket[font-glyph-widths] and
+@racket[font-glyph-bounds]. Both vectors are empty for empty input.
+}
+
+@defproc[(font-glyph-positions [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
+          (integer-in 0 #xffff)))]
+                     [#:origin origin (or/c (list/c real? real?) (vector/c real? real?)) '(0 0)])
+                     (and/c (vectorof (list/c real? real?)) immutable?)]{
+Returns glyph origins obtained by accumulating ordinary advances from
+@racket[origin]. This does not apply shaping, pair kerning, or a canvas transform.
+}
+
+@defproc[(font-glyph-x-positions [font font?] [glyphs (or/c (listof (integer-in 0 #xffff))
+          (vectorof (integer-in 0 #xffff)))]
+                     [#:origin origin real? 0]) (and/c (vectorof real?) immutable?)]{
+Returns horizontal glyph origins accumulated from @racket[origin]. The result
+is the x-coordinate counterpart of @racket[font-glyph-positions], not a shaped
+text layout.
+}
+
+@subsection{Glyph Outlines}
+
+Use an outline when you want to fill or stroke glyph shapes as paths. Outlines
+do not preserve bitmap-only or color-glyph rendering.
+
+@(declare-exporting skia)
 
 @defproc[(font-glyph-path [font font?] [glyph (integer-in 0 #xffff)]) (or/c skia-path? #f)]{
 Returns an owned monochrome glyph-outline path, or @racket[#f] when the
@@ -453,112 +649,15 @@ outline and strokes the other. Neither row uses native text drawing.
                   "Two copies of path converted with simple-text-path: a filled blue monochrome outline above and the same orange stroked outline below."]
 }
 
-@section{Additional Font Controls and Glyph Queries}
+@subsubsection{Multiple Glyph Outlines}
 
-@defmodule[skia/fonts #:no-declare]
 @(declare-exporting skia skia/fonts #:use-sources (skia/fonts))
 
-The additional font-control and glyph-query bindings are also provided by
-@racketmodname[skia/fonts]. Use @racket[make-font] to set these controls during
-construction. Use @racket[measure-simple-text] or @racket[simple-text-bounds]
-to measure a complete unshaped string without working with individual glyph IDs.
-
-Batch glyph queries return immutable vectors of copied measurements. Their
-inputs may be lists or vectors of unsigned 16-bit glyph IDs. Each ID must be
-less than the current typeface's glyph count. Estimated storage for the glyph IDs,
-temporary result buffers, and returned values must fit @racket[current-skia-byte-limit].
-This is not a limit on native font-cache memory.
-
-@defproc[(font-embedded-bitmaps? [font font?]) boolean?]{
-Reports whether use of embedded glyph bitmaps is requested.
-}
-
-@defproc[(font-set-embedded-bitmaps! [font font?] [enabled? boolean?]) void?]{
-Sets the request for use of embedded glyph bitmaps.
-Its visible effect depends on the target transform and font backend.
-}
-
-@defproc[(font-force-auto-hinting? [font font?]) boolean?]{
-Reports whether use of the font backend's automatic hinter is requested.
-}
-
-@defproc[(font-set-force-auto-hinting! [font font?] [enabled? boolean?]) void?]{
-Sets the request for use of the font backend's automatic hinter.
-Its visible effect depends on the target transform and font backend.
-}
-
-@defproc[(font-baseline-snap? [font font?]) boolean?]{
-Reports whether baseline snapping to device pixels is requested.
-}
-
-@defproc[(font-set-baseline-snap! [font font?] [enabled? boolean?]) void?]{
-Sets the request for baseline snapping to device pixels.
-Its visible effect depends on the target transform and font backend.
-}
-
-@defproc[(font-typeface [font font?]) typeface?]{
-Returns an independently owned reference to the current typeface, not a
-borrowed field of the font. Closing or changing the font does not invalidate
-the returned wrapper.
-}
-
-@defproc[(font-set-typeface! [font font?] [face typeface?]) void?]{
-Replaces the font's typeface, retaining its own native reference. The
-supplied face must be open; @racket[#f] is not accepted. Font size and rendering
-settings are retained. Existing shapers and text blobs keep their snapshots.
-
-@racketblock[
-(with-skia ([font (make-font #:size 24)]
-            [face (font-typeface font)])
-  (skia-close! font)
-  (typeface-family-name face))
-]
-}
-
-@defproc[(font-glyph-widths [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
-          (integer-in 0 #xffff)))]
-                     [#:paint paint (or/c paint? #f) #f]) (vectorof real?)]{
-Returns one advance width per supplied glyph, without kerning or contextual
-positioning. The optional paint is passed to native measurement. An empty
-input returns an empty vector.
-}
-
-@defproc[(font-glyph-bounds [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
-          (integer-in 0 #xffff)))]
-                     [#:paint paint (or/c paint? #f) #f]) (vectorof (list/c real? real? real?
-                     real?))]{
-Returns one x/y/width/height list per glyph in an immutable vector. Each
-bound is relative to that glyph's own origin, not a position in a string.
-The optional paint participates in native bounds measurement.
-}
-
-@defproc[(font-glyph-widths+bounds [font font?] [glyphs (or/c (listof (integer-in 0 #xffff))
-          (vectorof (integer-in 0 #xffff)))]
-                     [#:paint paint (or/c paint? #f) #f]) (values (vectorof real?) (vectorof
-                     (list/c real? real? real? real?)))]{
-Returns the advance-width vector and bounds vector as two values, using
-the same native query and behavior as @racket[font-glyph-widths] and
-@racket[font-glyph-bounds]. Both vectors are empty for empty input.
-}
-
-@defproc[(font-glyph-positions [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
-          (integer-in 0 #xffff)))]
-                     [#:origin origin (or/c (list/c real? real?) (vector/c real? real?)) '(0 0)])
-                     (vectorof (list/c real? real?))]{
-Returns glyph origins obtained by accumulating ordinary advances from
-@racket[origin]. This does not apply shaping, pair kerning, or a canvas transform.
-}
-
-@defproc[(font-glyph-x-positions [font font?] [glyphs (or/c (listof (integer-in 0 #xffff))
-          (vectorof (integer-in 0 #xffff)))]
-                     [#:origin origin real? 0]) (vectorof real?)]{
-Returns horizontal glyph origins accumulated from @racket[origin]. The result
-is the x-coordinate counterpart of @racket[font-glyph-positions], not a shaped
-text layout.
-}
+The glyph-ID range and byte-limit rules in @secref["skia-font-glyph-measurements"]
+also apply to this batch query.
 
 @defproc[(font-glyph-paths [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
-          (integer-in 0 #xffff)))]) (vectorof (or/c skia-path? #f))]{
+          (integer-in 0 #xffff)))]) (and/c (vectorof (or/c skia-path? #f)) immutable?)]{
 Returns a path for each supplied glyph, or @racket[#f] for a glyph without an outline.
 
 The results are stored in an immutable vector. Each path is independently owned
@@ -595,74 +694,3 @@ Partial results are released if construction fails.
 @reference-figure["glyph-outline.png"
                   "The glyph A drawn only as its blue vector outline."]
 }
-
-@defproc[(font-break-text [font font?] [text string?] [max-width (and/c real? (>=/c 0))]
-                     [#:paint paint (or/c paint? #f) #f]) (values exact-nonnegative-integer? real?)]{
-Returns the number of Racket characters in the longest leading unshaped prefix
-that fits @racket[max-width], followed by its measured width. The count is not
-a UTF-8 byte offset. The width must be nonnegative.
-
-The boundary need not be a word or grapheme boundary. This is not Unicode line
-breaking or shaping-aware wrapping. An empty input returns 0 and 0.0.
-
-@racketblock[
-(with-skia ([font (make-font #:size 24)])
-  (define text "AéB")
-  (define-values (count width) (font-break-text font text 40))
-  (list (substring text 0 count) width))
-]
-
-
-@racketblock[
-(with-skia ([surface (make-surface 320 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([font (make-font #:size 30)]
-              [gray (make-paint #:color "#A0A7B0")]
-              [blue (make-paint #:color "#326DE6")]
-              [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
-    (define text "Skia for Racket")
-    (draw-simple-text canvas text 15 55 font gray)
-    (define-values (count width) (font-break-text font text 145))
-    (draw-simple-text canvas (substring text 0 count) 15 55 font blue)
-    (draw-line canvas 15 70 (+ 15 width) 70 rule)))
-]
-@reference-figure["font-break-prefix-stage10.png"
-                  "The longest prefix fitting a width is colored blue, with a blue rule showing its measured advance."]
-}
-
-@section{Additional Visual Examples}
-
-@racketblock[
-(with-skia ([surface (make-surface 250 130 #:background 'white)]
-            [font (make-font #:size 18)]
-            [paint (make-paint #:color "#20344E")])
-  (draw-simple-text (surface-canvas surface) "Skia" 15 30 font paint)
-  (font-set-size! font 30)
-  (draw-simple-text (surface-canvas surface) "Skia" 15 72 font paint)
-  (font-set-size! font 44)
-  (draw-simple-text (surface-canvas surface) "Skia" 100 112 font paint))
-]
-@reference-figure["font-sizes.png"
-                  "The word Skia drawn three times at increasing font sizes."]
-
-@racketblock[
-(with-skia ([surface (make-surface 260 100 #:background 'white)]
-            [normal (make-font #:size 34)] [wide (make-font #:size 34)]
-            [paint (make-paint #:color "#20344E")])
-  (font-set-scale-x! wide 1.7)
-  (draw-simple-text (surface-canvas surface) "Skia" 15 42 normal paint)
-  (draw-simple-text (surface-canvas surface) "Skia" 15 86 wide paint))
-]
-@reference-figure["font-scale-x.png"
-                  "The word Skia at normal width above a horizontally stretched version produced by font scale-x."]
-
-@racketblock[
-(with-skia ([surface (make-surface 260 100 #:background 'white)]
-            [normal (make-font #:size 34)] [skewed (make-font #:size 34)]
-            [paint (make-paint #:color "#20344E")])
-  (font-set-skew-x! skewed 0.4)
-  (draw-simple-text (surface-canvas surface) "Skia" 15 42 normal paint)
-  (draw-simple-text (surface-canvas surface) "Skia" 15 86 skewed paint))
-]
-@reference-figure["font-skew-x.png"
-                  "The word Skia at normal slant above a visibly skewed version produced by font skew-x."]

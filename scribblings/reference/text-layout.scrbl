@@ -7,6 +7,12 @@
 
 @(declare-exporting skia)
 
+Use @racket[layout-text] and @racket[draw-text-layout] for wrapping and alignment
+with one font. Use @racket[layout-mixed-text] and @racket[draw-mixed-text-layout]
+when a paragraph also needs mixed-direction ordering or @tech{font fallback}.
+For one run at a chosen baseline without line layout, @racket[draw-shaped-text]
+is simpler.
+
 A @deftech{text layout} arranges @tech{shaped runs} into horizontal lines. The layout
 origin is the upper-left corner of its layout box, not the @tech{baseline} origin
 used by @racket[draw-simple-text] and @racket[draw-shaped-text]. The lines
@@ -20,10 +26,6 @@ required shaper and, for mixed text, its font manager reachable. Both must remai
 open when the layout is drawn. Retaining a reference does not prevent explicit closure.
 
 @local-table-of-contents[#:style 'immediate-only]
-
-Use @racket[layout-text] and @racket[draw-text-layout] for a single-font layout.
-Use @racket[layout-mixed-text] and @racket[draw-mixed-text-layout] when text needs
-mixed-direction paragraph layout or font fallback.
 
 @section{Single-Font Layout}
 
@@ -44,16 +46,11 @@ Returns a layout using one shaper and the rules in
 positive. Script, language, and features are interpreted as
 in @racket[shape-text]. A language string must not contain NUL.
 
-For justification, an explicit @racket[#:script] affects shaping but does not
-enable the script-specific CJK or Arabic expansion opportunities. Those
-opportunities can be detected through script inference when @racket[#:script]
-is @racket[#f].
-
 Each line is shaped as a single run. This does not provide font fallback or
-full mixed-direction paragraph layout. With automatic direction, the line's
-alignment direction is inferred from descending cluster offsets; empty and
-one-glyph runs default to LTR. Supply an explicit direction when that ambiguity
-matters, or use @racket[layout-mixed-text] for paragraph bidi resolution.
+full mixed-direction paragraph layout. Automatic alignment direction can be
+ambiguous for short runs; see @secref["skia-layout-alignment"]. The current
+limitation on explicit scripts and script-specific justification is described
+in @secref["skia-layout-justification"].
 
 The layout keeps the shaper, not the original font supplied to @racket[make-shaper].
 It is not an independent native text blob. Drawing it after closing the shaper
@@ -139,21 +136,6 @@ The layout's shaper must remain open.
 
 @reference-figure["text-layout.png"
                   "A short black paragraph wrapped into several lines inside a 220-unit layout width."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 125 #:background 'white)]
-            [font (make-font #:size 18)]
-            [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout
-    (layout-text shaper
-                 "Skia makes drawing fast, portable, and expressive."
-                 #:width 280 #:align 'justify-all #:line-height 28))
-  (draw-text-layout (surface-canvas surface) layout 20 15 paint))
-]
-
-@reference-figure["justified-text.png"
-                  "A short paragraph whose lines are expanded to fill a 280-unit justified layout width."]
 }
 
 @section[#:tag "skia-mixed-layout"]{Mixed Scripts and Directions}
@@ -191,11 +173,12 @@ Automatic direction resolves each paragraph's base direction from its text.
 Runs are in visual order within each line. Their cluster offsets are
 relative to individual run text, not global paragraph positions.
 
-The result keeps the base shaper and font manager reachable. Fallback families
-and styles are recorded for later lookup; it does not own a permanent native
-font for every fallback run. Both the shaper and manager must remain open when
-drawing. Changes in available fonts can affect later drawing or make a recorded
-fallback family unavailable.
+The result keeps the base shaper and font manager reachable, and both must
+remain open when drawing. It records fallback family names and styles, not
+the exact fallback typeface resources used to measure and shape the text.
+Drawing looks up those choices again. If available fonts change between layout
+and drawing, the selected face can differ or become unavailable. The stored
+glyphs and positions are not recomputed to match a newly selected face.
 
 @racketblock[
 (with-skia ([font (make-font #:size 20)]
@@ -217,8 +200,9 @@ manager must be open, even for an empty line. The canvas transform and existing
 clip apply without an added box
 clip or automatic reflow.
 
-Fallback fonts and shapers are created as needed during this call and released
-on return or exceptional exit. Failure to recover a recorded fallback family
+Fallback fonts and shapers are created as needed and reused within this call,
+then released on return or exceptional exit. They are looked up and created
+again on a later drawing call. Failure to recover a recorded fallback family
 raises an exception. If drawing a later run fails, drawing already performed
 by earlier runs is not undone.
 
@@ -237,7 +221,13 @@ by earlier runs is not undone.
                   "A single mixed-direction line containing Latin ABC, Hebrew letters, and the digits 123 in their resolved visual order."]
 }
 
-@section[#:tag "skia-layout-options"]{Wrapping and Alignment}
+@section[#:tag "skia-layout-options"]{Layout Options}
+
+The width chooses where text can wrap, alignment positions each line
+horizontally, and line height sets the distance between baselines. These
+options describe a layout box, not a clip or a tight rectangle around the ink.
+
+@subsection[#:tag "skia-layout-wrapping"]{Wrapping}
 
 A positive @racket[#:width] enables greedy wrapping at Unicode line-break
 opportunities. An optional @tech{break provider} can add more opportunities.
@@ -252,6 +242,24 @@ and trailing hard breaks retain empty lines. With wrapping disabled by
 enabled, breakable whitespace at selected boundaries is trimmed; no-break spaces
 remain part of the text. A break provider is not invoked when wrapping is disabled.
 
+@subsection[#:tag "skia-layout-alignment"]{Direction and Alignment}
+
+Alignment positions each line's @tech{advance} interval within the layout box.
+It does not align tight ink bounds; glyph overhang can extend outside the box.
+The @racket['start] and @racket['end] choices depend on the line's direction;
+@racket['left] and @racket['right] do not.
+
+With @racket[layout-text] and @racket[#:direction 'auto], alignment uses RTL
+only when the first cluster offset is greater than the last. Empty runs,
+one-glyph runs, and runs whose glyphs all share one cluster default to LTR
+alignment. This does not reliably reveal every run's shaping direction.
+For known right-to-left text, supply @racket[#:direction 'rtl] when start/end
+alignment must be right-to-left, including for a single glyph.
+
+@racket[layout-mixed-text] instead resolves the paragraph's base direction
+from its text, or uses the supplied @racket[#:direction]. Use it when the text
+requires paragraph bidirectional ordering.
+
 The alignment choices are:
 
 @tabular[#:sep @hspace[2]
@@ -265,11 +273,36 @@ The alignment choices are:
   (list @indexed-racket['justify] "Expand eligible lines except the last line of each paragraph.")
   (list @indexed-racket['justify-all] "Expand eligible lines including paragraph-final lines."))]
 
+@racketblock[
+(with-skia ([surface (make-surface 300 120 #:background 'white)]
+            [font (make-font #:size 20)] [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout (layout-text shaper "Centered lines wrap inside a fixed width."
+                              #:width 260 #:align 'center #:line-height 30))
+  (draw-text-layout (surface-canvas surface) layout 20 15 paint))
+]
+@reference-figure["layout-center.png"
+                  "A wrapped paragraph whose line advances are centered within a fixed-width layout box."]
+
+@racketblock[
+(with-skia ([surface (make-surface 300 100 #:background 'white)]
+            [font (make-font #:size 22)] [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout (layout-text shaper "End aligned" #:width 250 #:align 'end))
+  (draw-text-layout (surface-canvas surface) layout 20 20 paint))
+]
+@reference-figure["layout-end.png"
+                  "A short left-to-right line positioned at the end, or right side, of its layout box."]
+
+@subsection[#:tag "skia-layout-justification"]{Justification}
+
+Use @racket['justify] or @racket['justify-all] when lines should expand to fill
+a requested width instead of keeping their natural spacing.
+
 The @deftech{justification} modes expand eligible lines toward the requested
 width. Both require a positive width. They do not shrink lines
 that are already too wide. Lines without expandable opportunities keep their
-natural @tech{advance} and use start alignment. Alignment concerns advances, not tight
-ink bounds; glyph overhang can extend beyond the nominal box.
+natural @tech{advance} and use start alignment.
 
 Justification can expand ordinary U+0020 spaces. Script-specific processing can
 also expand boundaries between adjacent CJK grapheme clusters and elongate
@@ -278,18 +311,41 @@ punctuation is not itself an expansion point. Arabic insertions are display-only
 @tech{cluster offsets} are remapped to the logical line text. This does not replace
 that text with a string containing the inserted elongations.
 
-For @racket[layout-text], CJK and Arabic opportunity detection uses script
-inference when @racket[#:script] is @racket[#f]. An explicit script is passed
-to shaping but does not enable these script-specific justification opportunities.
-Mixed-text layout instead determines scripts for its individual runs.
+In the current implementation of @racket[layout-text], CJK and Arabic
+opportunity detection works through script inference when @racket[#:script]
+is @racket[#f]. Supplying an explicit script still controls shaping, but
+disables these script-specific expansion opportunities. Leave the script
+unspecified to use their detection. This limitation does not disable ordinary
+space expansion. Mixed-text layout determines scripts for its individual runs.
 
-The baseline step is @racket[#:line-height] when supplied. Otherwise it uses a
-positive native font spacing, or a fallback of at least one drawing unit based
-on @tech{ascent}, @tech{descent}, and nonnegative @tech{leading}. An explicitly small positive line
-height is allowed and can make lines overlap. The first baseline is at
+@racketblock[
+(with-skia ([surface (make-surface 320 125 #:background 'white)]
+            [font (make-font #:size 18)]
+            [shaper (make-shaper font)]
+            [paint (make-paint #:color "#20344E")])
+  (define layout
+    (layout-text shaper
+                 "Skia makes drawing fast, portable, and expressive."
+                 #:width 280 #:align 'justify-all #:line-height 28))
+  (draw-text-layout (surface-canvas surface) layout 20 15 paint))
+]
+
+@reference-figure["justified-text.png"
+                  "A short paragraph whose lines are expanded to fill a 280-unit justified layout width."]
+
+@subsection[#:tag "skia-layout-line-spacing"]{Line Spacing and Box Height}
+
+Line height is the distance between successive baselines, not the height of
+each line's visible ink. The baseline step is @racket[#:line-height] when supplied.
+Otherwise it uses a positive native font spacing, or a fallback of at least one
+drawing unit based on @tech{ascent}, @tech{descent}, and nonnegative @tech{leading}.
+An explicitly small positive line height is allowed and can make lines overlap.
+The first baseline is at
 @math{max(0, -ascent)}. For @math{n} lines, the reported height is
 @math{max(0, -ascent) + (n - 1) line-height + max(0, descent)}.
 These metrics come from the base font, not a union of every fallback glyph's ink.
+A fallback glyph can therefore extend above or below the reported box; drawing
+does not clip it to that box.
 
 @bold{Conceptual diagram.} A layout is drawn from its box origin, not from a
 text baseline. The top panel separates the first baseline, baseline-to-baseline
@@ -300,12 +356,36 @@ wider and remains fully drawable.
 @reference-figure["concept-layout-box.png"
                   "An annotated three-line layout box marks its upper-left origin, first baseline, baseline-to-baseline line height, and reported height. A second panel shows an unbreakable word continuing past a requested-width guide without clipping."]
 
+@racketblock[
+(with-skia ([surface (make-surface 320 160 #:background 'white)]
+            [font (make-font #:size 18)] [shaper (make-shaper font)]
+            [blue (make-paint #:color "#326DE6")]
+            [orange (make-paint #:color "#EFA02B")])
+  (define text "One two three four five six seven eight.")
+  (draw-text-layout (surface-canvas surface)
+                    (layout-text shaper text #:width 130 #:line-height 20)
+                    10 10 blue)
+  (draw-text-layout (surface-canvas surface)
+                    (layout-text shaper text #:width 130 #:line-height 34)
+                    175 10 orange))
+]
+@reference-figure["layout-line-height.png"
+                  "The same wrapped paragraph shown with tight blue line spacing and looser orange line spacing."]
+
 @section[#:tag "skia-layout-inspection"]{Inspecting Layouts}
 
 Use @racket[draw-text-layout] or @racket[draw-mixed-text-layout] to draw a complete
 layout. These accessors expose its dimensions, lines, and runs for callers that
 need to inspect placement. Inspection does not reflow text or keep the required
 shaper and font manager open.
+
+The public line and run values do not include source ranges in the original
+input. Wrapping can trim boundary whitespace, a selected break can insert text,
+and mixed-text runs can omit bidi formatting controls. Their strings are
+therefore not always verbatim input slices. Cluster offsets refer to the
+corresponding line or run text, not automatically to the original paragraph.
+These values alone are not a complete caret, selection, or hit-testing map.
+See @secref["skia-text-indices"] for the different index units.
 
 @subsection{Single-Font Layout Values}
 
@@ -462,7 +542,7 @@ is used. A @racket[#f] result does not guarantee that the base shaper's font
 contains every required glyph.
 }
 
-@section{Additional Break Opportunities}
+@section[#:tag "skia-layout-break-opportunities"]{Additional Break Opportunities}
 
 Use @racket[layout-text] or @racket[layout-mixed-text] with @racket[#:width] for
 ordinary Unicode line breaking. Supply a @racket[#:break-provider] only when
@@ -553,42 +633,3 @@ Returns the paragraph-relative Racket character index of the break.
 @defproc[(layout-break-opportunity-insert [opportunity layout-break-opportunity?]) string?]{
 Returns the display insertion associated with the break.
 }
-
-@section{Additional Visual Examples}
-
-@racketblock[
-(with-skia ([surface (make-surface 300 120 #:background 'white)]
-            [font (make-font #:size 20)] [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout (layout-text shaper "Centered lines wrap inside a fixed width."
-                              #:width 260 #:align 'center #:line-height 30))
-  (draw-text-layout (surface-canvas surface) layout 20 15 paint))
-]
-@reference-figure["layout-center.png"
-                  "A wrapped paragraph whose line advances are centered within a fixed-width layout box."]
-
-@racketblock[
-(with-skia ([surface (make-surface 300 100 #:background 'white)]
-            [font (make-font #:size 22)] [shaper (make-shaper font)]
-            [paint (make-paint #:color "#20344E")])
-  (define layout (layout-text shaper "End aligned" #:width 250 #:align 'end))
-  (draw-text-layout (surface-canvas surface) layout 20 20 paint))
-]
-@reference-figure["layout-end.png"
-                  "A short left-to-right line positioned at the end, or right side, of its layout box."]
-
-@racketblock[
-(with-skia ([surface (make-surface 320 160 #:background 'white)]
-            [font (make-font #:size 18)] [shaper (make-shaper font)]
-            [blue (make-paint #:color "#326DE6")]
-            [orange (make-paint #:color "#EFA02B")])
-  (define text "One two three four five six seven eight.")
-  (draw-text-layout (surface-canvas surface)
-                    (layout-text shaper text #:width 130 #:line-height 20)
-                    10 10 blue)
-  (draw-text-layout (surface-canvas surface)
-                    (layout-text shaper text #:width 130 #:line-height 34)
-                    175 10 orange))
-]
-@reference-figure["layout-line-height.png"
-                  "The same wrapped paragraph shown with tight blue line spacing and looser orange line spacing."]
