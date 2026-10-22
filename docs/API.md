@@ -1512,23 +1512,28 @@ color; there is no separate normalized-alpha API.
 (make-color-shader color)
 (make-linear-gradient-shader x0 y0 x1 y1 colors
                              #:positions [positions #f]
-                             #:tile-mode [mode 'clamp])
+                             #:tile-mode [mode 'clamp]
+                             #:matrix [matrix #f])
 (make-radial-gradient-shader center-x center-y radius colors
                              #:positions [positions #f]
-                             #:tile-mode [mode 'clamp])
+                             #:tile-mode [mode 'clamp]
+                             #:matrix [matrix #f])
 (make-sweep-gradient-shader center-x center-y colors
                             #:positions [positions #f]
                             #:tile-mode [mode 'clamp]
                             #:start-angle [degrees 0]
-                            #:end-angle [degrees 360])
+                            #:end-angle [degrees 360]
+                            #:matrix [matrix #f])
 (make-two-point-conical-gradient-shader
  x0 y0 radius0 x1 y1 radius1 colors
  #:positions [positions #f]
- #:tile-mode [mode 'clamp])
+ #:tile-mode [mode 'clamp]
+ #:matrix [matrix #f])
 (make-image-shader image
                    #:tile-x [mode 'clamp]
                    #:tile-y [mode 'clamp]
-                   #:sampling [sampling 'nearest])
+                   #:sampling [sampling 'nearest]
+                   #:matrix [matrix #f])
 (make-blend-shader blend-mode destination-shader source-shader)
 ```
 
@@ -1569,7 +1574,9 @@ the Paints section. Its argument order follows Skia: first destination, then
 source. For example, `(make-blend-shader 'multiply a b)` evaluates `a` as the
 destination and `b` as the source before applying multiply.
 
-`shader-with-local-matrix` creates a shader with an affine local transform.
+The gradient and image constructors accept `#:matrix` for an optional affine
+local transform (`#f` means no transform). `shader-with-local-matrix` applies
+such a transform to an existing shader.
 Canvas transforms still affect the complete drawing operation. The pinned SVG
 serializer does not reliably serialize shader-local transforms; use a bounded
 `draw-rasterized` group for these shaders when exporting SVG.
@@ -1598,13 +1605,16 @@ requires a segment length greater than 1/4096, nonnegative deviation, and an
 optional 32-bit unsigned seed; a fixed seed makes Skia's perturbation deterministic for
 the same path. Trim positions are normalized contour fractions satisfying
 `0 <= start < stop <= 1`; mode is `'normal` or `'inverted`. The full normal
-span `(0,1)` is rejected because upstream represents it as no path effect (a
-no-op) rather than an allocated effect.
+span `(0,1)` returns a closeable identity effect. Attaching it clears any
+existing path effect, so `paint-path-effect` returns `#f` afterward.
 
 Compose applies `inner` and then `outer`, following Skia's composition model.
 Sum evaluates both effects and combines their resulting geometry. Both
 constructors retain the native references they need, so the input wrappers may
 be closed after successful construction.
+
+Identity path effects are omitted from both composition and sum, following
+Skia's no-effect convention. Two identities produce a new closeable identity.
 
 ## Color, mask, and image filters
 
@@ -1640,8 +1650,8 @@ getters return independent owned references.
 A color matrix is a list or vector of exactly 20 finite scalars in Skia's
 row-major 4×5 order. Conceptually it transforms `(R,G,B,A,1)` into new RGBA
 channels. `make-blend-color-filter` accepts the paint blend-mode names from the
-Paints section. `'dst` is rejected because upstream represents that exact no-op
-as a null filter rather than an allocated object. Compose evaluates `inner`
+Paints section. `'dst` returns an owned identity filter that preserves incoming
+colors, including extended RGB values. Compose evaluates `inner`
 first and then `outer`.
 
 `make-blur-mask-filter` applies a Gaussian mask blur. `sigma` must be positive.

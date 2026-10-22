@@ -110,14 +110,14 @@
       (check-= (color4f-red (paint-color4f paint)) 0.73535698 0.0001)
       (paint-set-color4f! paint (make-color4f 1.25 -0.25 0.5) #:color-space 'srgb)
       (near-vector (color4f->vector (paint-color4f paint)) '#(1.25 -0.25 0.5 1))))
-  (test-case "floating gradients reject repeated positions after binary32 rounding"
+  (test-case "floating gradients accept repeated and rounded-equal positions"
     (define colors (list (make-color4f 1 0 0) (make-color4f 0 0 1)))
     (for ([stops (list '(0 0) '(0.5 0.50000000001))])
-      (check-exn exn:fail?
-                 (lambda () (make-linear-gradient-color4f-shader
-                             '(0 0) '(10 0) colors #:color-space 'srgb #:stops stops))))
+      (with-skia ([shader (make-linear-gradient-color4f-shader
+                          0 0 10 0 colors #:color-space 'srgb #:positions stops)])
+        (check-true (shader? shader))))
     (with-skia ([shader (make-linear-gradient-color4f-shader
-                        '(0 0) '(10 0) colors #:color-space 'srgb #:stops '(0 1))])
+                        0 0 10 0 colors #:color-space 'srgb #:positions '(0 1))])
       (check-true (shader? shader))))
   (test-case "floating clear respects the clip while ignoring geometric translation"
     (with-skia ([surface (make-surface 4 1)])

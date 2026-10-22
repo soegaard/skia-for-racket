@@ -9,7 +9,7 @@
 
 (require "live-native-lease.rkt" ffi/unsafe ffi/unsafe/alloc ffi/unsafe/atomic
          racket/list racket/string "audit-trace.rkt" "gpu-domain.rkt" "gpu-native-scope.rkt")
-(provide owned? new-owned new-gpu-owned owned-closed? owned-close!
+(provide owned? new-owned new-identity-path-effect-owned new-gpu-owned owned-closed? owned-close!
          call-with-owned call-with-scoped-resource
          owned-gpu-domain owned-gpu-context owned-clear-recording-affinity!
          call-with-owned-canvas lifetime-native-call)
@@ -23,11 +23,22 @@
 ;; detached affinity descriptions, NOT the original mutable/closeable handles.
 (struct owned ([ptr #:mutable] release creator kind [gpu #:mutable] [slots #:mutable]))
 ;; Fields:
-;;   ptr: mutable owned native reference, or #f after close. release: destructor for one reference.
+;;   ptr: mutable owned native reference, the identity-path-effect sentinel, or #f after close.
+;;   The sentinel is passed to native calls as #f and has no native destructor.
+;;   release: destructor for one reference.
 ;;   creator: owning Racket thread. kind: resource-kind symbol.
 ;;   gpu: domain-resource cell or #f; when present, it owns native release scheduling. slots:
 ;;   immutable hash of detached dependency affinities. Slots do not retain original mutable child
 ;;   wrappers.
+
+; identity-path-effect : symbol?
+;   Distinguishes a live no-op path effect from a closed lifetime cell.
+(define identity-path-effect (gensym 'identity-path-effect))
+
+; new-identity-path-effect-owned : symbol? -> owned?
+;   Creates a thread-owned, closeable no-op path effect without a native allocation.
+(define (new-identity-path-effect-owned who)
+  (new-owned who 'path-effect (lambda () identity-path-effect) void))
 
 (struct affinity (domain context))
 ;; Fields:
@@ -283,7 +294,9 @@
            [else
             (check-thread who h)
             (unless (owned-ptr h) (error who "~a is closed" (owned-kind h)))
-            (if (owned-gpu h) (resource-pointer (owned-gpu h)) (owned-ptr h))])))
+            (cond [(eq? (owned-ptr h) identity-path-effect) #f]
+                  [(owned-gpu h) (resource-pointer (owned-gpu h))]
+                  [else (owned-ptr h)])])))
      (define a (allocating))
      (when a (collect! a handles))
      (parameterize ([uses (append (map cons handles pointers) (uses))])

@@ -56,6 +56,41 @@
 (define path-matrix-native-tests
   (test-suite
    "Path inspection and affine native boundaries"
+   (test-case "constructor matrices match a separate shader-local transform"
+     (define colors '(red blue))
+     (define floats (map color->color4f colors))
+     (define transform (matrix-compose (matrix-translate 7 3) (matrix-scale 1.5 2)))
+     (with-skia ([tile (make-surface 8 8 #:background 'red)])
+       (with-skia ([blue (make-paint #:color 'blue)])
+         (draw-rect (surface-canvas tile) 0 0 4 8 blue))
+       (with-skia ([image (surface-snapshot tile)])
+         (define factories
+           (list
+            (lambda (m) (make-linear-gradient-shader 0 0 20 0 colors #:matrix m))
+            (lambda (m) (make-radial-gradient-shader 10 10 12 colors #:matrix m))
+            (lambda (m) (make-sweep-gradient-shader 10 10 colors #:matrix m))
+            (lambda (m) (make-two-point-conical-gradient-shader 5 5 1 15 15 12 colors #:matrix m))
+            (lambda (m) (make-linear-gradient-color4f-shader 0 0 20 0 floats
+                         #:color-space 'srgb #:matrix m #:positions '(0 1)))
+            (lambda (m) (make-radial-gradient-color4f-shader 10 10 12 floats
+                         #:color-space 'srgb #:matrix m #:positions '#(0 1)))
+            (lambda (m) (make-sweep-gradient-color4f-shader 10 10 floats
+                         #:color-space 'srgb #:matrix m))
+            (lambda (m) (make-two-point-conical-gradient-color4f-shader 5 5 1 15 15 12 floats
+                         #:color-space 'srgb #:matrix m))
+            (lambda (m) (make-image-shader image #:matrix m #:tile-x 'repeat #:tile-y 'repeat))))
+         (for ([factory (in-list factories)])
+           (with-skia ([base (factory #f)]
+                       [separate (shader-with-local-matrix base transform)]
+                       [direct (factory transform)]
+                       [p1 (make-paint #:shader separate)] [p2 (make-paint #:shader direct)]
+                       [s1 (make-surface 40 30)] [s2 (make-surface 40 30)])
+             (skia-close! base)
+             (skia-close! separate)
+             (skia-close! direct)
+             (draw-paint (surface-canvas s1) p1)
+             (draw-paint (surface-canvas s2) p2)
+             (check-equal? (surface->rgba-bytes s1) (surface->rgba-bytes s2)))))))
    (test-case "read independently-created native translate matrix (M44 order)"
      (with-skia ([s (make-surface 40 40)])
        (define c (surface-canvas s))

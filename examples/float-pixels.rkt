@@ -11,7 +11,7 @@
 ;; A real float drawing target. Quantization is explicit, only for the PNG.
 (with-skia ([buffer (make-raster-buffer-from-info
                     (make-image-info 256 64 #:color-type 'rgba-f16 #:color-space 'srgb))]
-            [shader (make-linear-gradient-color4f-shader '(0 0) '(256 0)
+            [shader (make-linear-gradient-color4f-shader 0 0 256 0
                       (list (make-color4f 0.5 0.2 0.1) (make-color4f 0.501953125 0.8 0.9))
                       #:color-space 'srgb)]
             [paint (make-paint #:shader shader)])

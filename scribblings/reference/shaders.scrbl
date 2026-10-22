@@ -46,7 +46,12 @@ extends the first and last colors to interval endpoints when their positions
 are inside the interval. The temporary color and position arrays together must
 fit @racket[current-skia-byte-limit], at four bytes per color and per position.
 
-The gradient is parameterized in local coordinates before the @tech{canvas transform}.
+The gradient is parameterized in @tech{local coordinates} before the @tech{canvas transform}.
+The optional @racket[#:matrix] transforms the shader's placement, without
+changing the shape being drawn. For example, @racket[(matrix-translate 20 0)]
+moves its colors 20 units to the right. @racket[#f] leaves the placement unchanged.
+As with @racket[shader-with-local-matrix], singular matrices have no promised
+useful sampling behavior and may be rejected by Skia.
 These byte-color constructors do not accept a separate interpolation color space.
 Destination color processing and finite native precision still affect rendered
 pixels; a gradient is not a color-profile declaration.
@@ -61,7 +66,8 @@ Returns a shader that produces @racket[color] at every coordinate.
                                      [colors (or/c list? vector?)]
                                      [#:positions positions (or/c list? vector? #f) #f]
                                      [#:tile-mode tile-mode
-                                      (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]) shader?]{
+                                      (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
+                                     [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a gradient whose parameter is zero at the first endpoint and one at
 the second. The parameter is constant along lines perpendicular to the line
 joining the endpoints. The endpoints must differ after the wrapper's numeric
@@ -87,7 +93,8 @@ wrapper checks pass, for example when precision makes geometry degenerate.
                                      [colors (or/c list? vector?)]
                                      [#:positions positions (or/c list? vector? #f) #f]
                                      [#:tile-mode tile-mode
-                                      (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]) shader?]{
+                                      (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
+                                     [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a gradient centered at coordinates @racket[x] and @racket[y]. The
 parameter is distance from the center divided by @racket[radius]. The radius
 must be positive. Colors, positions, and tiling follow
@@ -109,7 +116,8 @@ must be positive. Colors, positions, and tiling follow
                                     [#:tile-mode tile-mode
                                      (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
                                     [#:start-angle start-angle real? 0]
-                                    [#:end-angle end-angle real? 360]) shader?]{
+                                    [#:end-angle end-angle real? 360]
+                                    [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns an angular gradient about coordinates @racket[x] and @racket[y]. Angles
 are degrees, with zero on the positive x axis and increasing angles clockwise
 in downward-y coordinates. Start and end angles map to parameters zero and one;
@@ -134,7 +142,8 @@ the start must be less than the end. Color stops and tiling follow
           [x1 real?] [y1 real?] [radius1 (and/c real? (>=/c 0))]
           [colors (or/c list? vector?)]
           [#:positions positions (or/c list? vector? #f) #f]
-          [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]) shader?]{
+          [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
+          [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a gradient described by two circles. The first circle corresponds to
 parameter zero and the second to one. The native conical interpolation varies
 both center and radius; it is not simply distance from one fixed center.
@@ -172,12 +181,13 @@ A circle pair rejected by native Skia raises an exception rather than returning
 @defproc[(make-image-shader [image image?]
                            [#:tile-x tile-x (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
                            [#:tile-y tile-y (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
-                           [#:sampling sampling (or/c 'nearest 'linear) 'nearest]) shader?]{
+                           [#:sampling sampling (or/c 'nearest 'linear) 'nearest]
+                           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a shader that samples @racket[image], with image pixels initially
 aligned to local drawing units. The input ownership and GPU restrictions in
 @secref["skia-shaders"] apply to the image as well.
-Use @racket[shader-with-local-matrix]
-to change the image's local placement or scale.
+Use @racket[#:matrix] to change the image's local placement or scale, or
+@racket[shader-with-local-matrix] to transform an existing shader.
 
 @racketblock[
 (with-skia ([source (make-surface 20 20 #:background 'red)]

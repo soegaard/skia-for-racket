@@ -221,18 +221,16 @@ The geometric transform does not change the filled region.
 The shaders copy their color data. Later changes to caller-supplied vectors or
 ICC byte strings do not affect the shader's colors or source interpretation.
 Their wrappers are owned resources.
-Native construction failure raises an exception. The floating-point gradient
-interface uses @racket[#:stops] rather than the byte-color interface's
-@racket[#:positions], and its positions must increase strictly.
+Native construction failure raises an exception. Floating-point gradients use
+the same coordinate arguments and @racket[#:positions] keyword as byte-color
+gradients, with an additional required @racket[#:color-space] argument.
 
 A color list or vector contains at least two @tech{floating-point colors}.
 Its count must fit a signed native integer. The byte-limit check counts 64 bytes
 per color, and the total must fit @racket[current-skia-byte-limit]. A
-nonfalse stops list or vector must have the same length. @tech{Gradient stop} positions lie between
-zero and one and must remain strictly increasing after @tech{binary32} rounding;
-two distinct Racket numbers that round to the same stop are rejected. Omitted
-stops are evenly distributed. This interface therefore does not accept equal
-stops for abrupt color transitions.
+nonfalse positions list or vector must have the same length. @tech{Gradient stop}
+positions lie between zero and one in nondecreasing order. Equal positions
+create abrupt color transitions. Omitted positions are evenly distributed.
 
 @tech{Tile modes} have the meanings described for the basic gradient shaders. An
 optional @racket[#:matrix] is a local affine transform of the shader. The wrapper
@@ -247,14 +245,13 @@ The color is not first reduced to a packed eight-bit value.
 }
 
 @defproc[(make-linear-gradient-color4f-shader
-          [start (or/c (list/c real? real?) (vector/c real? real?))]
-          [end (or/c (list/c real? real?) (vector/c real? real?))]
+          [x0 real?] [y0 real?] [x1 real?] [y1 real?]
           [colors (or/c (listof color4f?) (vectorof color4f?))]
           [#:color-space space (or/c 'srgb 'linear-srgb bytes?)]
-          [#:stops stops (or/c #f (listof real?) (vectorof real?)) #f]
+          [#:positions positions (or/c #f (listof real?) (vectorof real?)) #f]
           [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
-Returns a linear gradient from @racket[start] to @racket[end]. The endpoints
+Returns a linear gradient from @math{(x0,y0)} to @math{(x1,y1)}. The endpoints
 must be distinct after native point conversion.
 The color, stop, tile, and local-matrix rules are specified in
 @secref["skia-float-shaders"].
@@ -262,8 +259,8 @@ The color, stop, tile, and local-matrix rules are specified in
 @racketblock[
 (with-skia ([shader
              (make-linear-gradient-color4f-shader
-              '(0 0) '(64 0) (list (make-color4f 1 0 0) (make-color4f 0 0 1))
-              #:color-space 'srgb #:stops '(0 1))]
+              0 0 64 0 (list (make-color4f 1 0 0) (make-color4f 0 0 1))
+              #:color-space 'srgb #:positions '(0 1))]
             [paint (make-paint #:shader shader)]
             [surface (make-surface 64 16)])
   (draw-paint (surface-canvas surface) paint))
@@ -274,14 +271,14 @@ The color, stop, tile, and local-matrix rules are specified in
 }
 
 @defproc[(make-radial-gradient-color4f-shader
-          [center (or/c (list/c real? real?) (vector/c real? real?))]
+          [cx real?] [cy real?]
           [radius (and/c real? (>/c 0))]
           [colors (or/c (listof color4f?) (vectorof color4f?))]
           [#:color-space space (or/c 'srgb 'linear-srgb bytes?)]
-          [#:stops stops (or/c #f (listof real?) (vectorof real?)) #f]
+          [#:positions positions (or/c #f (listof real?) (vectorof real?)) #f]
           [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
-Returns a radial gradient from @racket[center] outward to @racket[radius].
+Returns a radial gradient from @math{(cx,cy)} outward to @racket[radius].
 The radius must be positive. The shared gradient rules are specified in
 @secref["skia-float-shaders"].
 
@@ -291,7 +288,7 @@ The radius must be positive. The shared gradient rules are specified in
   (define canvas (surface-canvas surface))
   (with-skia ([shader
                (make-radial-gradient-color4f-shader
-                '(90 50) 55
+                90 50 55
                 (list (make-color4f 1 1 1) (make-color4f 0.2 0.43 0.9))
                 #:color-space 'srgb)]
               [paint (make-paint #:shader shader)])
@@ -302,14 +299,14 @@ The radius must be positive. The shared gradient rules are specified in
 }
 
 @defproc[(make-sweep-gradient-color4f-shader
-          [center (or/c (list/c real? real?) (vector/c real? real?))]
+          [cx real?] [cy real?]
           [colors (or/c (listof color4f?) (vectorof color4f?))]
           [#:color-space space (or/c 'srgb 'linear-srgb bytes?)]
           [#:start-angle start-angle real? 0] [#:end-angle end-angle real? 360]
-          [#:stops stops (or/c #f (listof real?) (vectorof real?)) #f]
+          [#:positions positions (or/c #f (listof real?) (vectorof real?)) #f]
           [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
-Returns an angular gradient around @racket[center]. Angles are in degrees;
+Returns an angular gradient around @math{(cx,cy)}. Angles are in degrees;
 the end angle must exceed the start angle. Positive angles follow clockwise
 rotation in downward-positive drawing coordinates. Stops, tiling, and the local
 matrix follow @secref["skia-float-shaders"].
@@ -320,7 +317,7 @@ matrix follow @secref["skia-float-shaders"].
   (define canvas (surface-canvas surface))
   (with-skia ([shader
                (make-sweep-gradient-color4f-shader
-                '(90 50)
+                90 50
                 (list (make-color4f 1 0 0)
                       (make-color4f 0 1 0)
                       (make-color4f 0 0 1)
@@ -334,13 +331,11 @@ matrix follow @secref["skia-float-shaders"].
 }
 
 @defproc[(make-two-point-conical-gradient-color4f-shader
-          [start (or/c (list/c real? real?) (vector/c real? real?))]
-          [start-radius (and/c real? (>=/c 0))]
-          [end (or/c (list/c real? real?) (vector/c real? real?))]
-          [end-radius (and/c real? (>=/c 0))]
+          [x0 real?] [y0 real?] [radius0 (and/c real? (>=/c 0))]
+          [x1 real?] [y1 real?] [radius1 (and/c real? (>=/c 0))]
           [colors (or/c (listof color4f?) (vectorof color4f?))]
           [#:color-space space (or/c 'srgb 'linear-srgb bytes?)]
-          [#:stops stops (or/c #f (listof real?) (vectorof real?)) #f]
+          [#:positions positions (or/c #f (listof real?) (vectorof real?)) #f]
           [#:tile-mode tile-mode (or/c 'clamp 'repeat 'mirror 'decal) 'clamp]
           [#:matrix matrix (or/c matrix? #f) #f]) shader?]{
 Returns a gradient between circles with the given centers and nonnegative
@@ -354,7 +349,7 @@ represent. The remaining rules follow @secref["skia-float-shaders"].
   (define canvas (surface-canvas surface))
   (with-skia ([shader
                (make-two-point-conical-gradient-color4f-shader
-                '(55 52) 5 '(135 52) 58
+                55 52 5 135 52 58
                 (list (make-color4f 1 0.63 0.17) (make-color4f 0.2 0.43 0.9))
                 #:color-space 'srgb)]
               [paint (make-paint #:shader shader)])

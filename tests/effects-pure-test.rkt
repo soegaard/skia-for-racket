@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require rackunit rackunit/text-ui ffi/unsafe
-         "../main.rkt" "../private/effects-util.rkt" "../private/types.rkt")
+         "../main.rkt" "../private/effects-util.rkt" "../private/color-filter-util.rkt" "../private/types.rkt")
 (provide effects-pure-tests)
 
 ;;;
@@ -24,6 +24,26 @@
 (define effects-pure-tests
   (test-suite
    "0.66 effect validation without loading Skia"
+   (test-case "identity trim composition is closeable without native allocation"
+     (with-skia ([a (make-trim-path-effect 0 1)]
+                 [b (make-trim-path-effect 0 1)]
+                 [composed (make-compose-path-effect a b)]
+                 [summed (make-sum-path-effect a b)])
+       (skia-close! a)
+       (skia-close! b)
+       (check-false (skia-closed? composed))
+       (check-false (skia-closed? summed))
+       (check-exn #rx"closed" (lambda () (make-compose-path-effect a summed)))
+       (check-exn #rx"closed" (lambda () (make-sum-path-effect summed b)))
+       (define results (make-channel))
+       (define worker
+         (thread
+          (lambda ()
+            (channel-put results
+              (with-handlers ([exn:fail? exn-message])
+                (make-compose-path-effect composed summed))))))
+       (check-regexp-match #rx"another Racket thread" (channel-get results))
+       (thread-wait worker)))
    (test-case "new constructors are public procedures"
      (for ([p (in-list (list make-1d-path-effect make-2d-line-path-effect make-2d-path-effect
                             make-table-mask-filter make-gamma-mask-filter make-clip-mask-filter
@@ -61,11 +81,23 @@
        (check-exn exn:fail? (lambda () (make-table-mask-filter t)))))
    (test-case "table snapshot and byte budget"
      (define input (make-bytes 256 32))
-     (define copy (effect-table 'test input))
+     (define copy (checked-filter-table 'test input))
      (bytes-fill! input 0)
      (check-true (immutable? copy)) (check-equal? (bytes-ref copy 42) 32)
      (parameterize ([current-skia-byte-limit 255])
        (check-exn exn:fail? (lambda () (make-table-mask-filter input)))))
+   (test-case "table lists and vectors share byte validation and snapshot semantics"
+     (define entries (build-list 256 values))
+     (define input (list->vector entries))
+     (define copy (checked-filter-table 'test input))
+     (vector-set! input 42 0)
+     (check-equal? copy (checked-filter-table 'test entries))
+     (check-equal? (bytes-ref copy 42) 42)
+     (for ([bad (in-list '(-1 256 1.5 #f))])
+       (vector-set! input 42 bad)
+       (check-exn exn:fail? (lambda () (make-table-mask-filter input))))
+     (parameterize ([current-skia-byte-limit 255])
+       (check-exn exn:fail? (lambda () (make-table-mask-filter entries)))))
    (test-case "clip thresholds are not silently normalized"
      (for ([p (in-list '((-1 3) (0 256) (10 10) (11 10) (0 1.5) (#f 4)))])
        (check-exn exn:fail? (lambda () (apply make-clip-mask-filter p))))

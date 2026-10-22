@@ -1082,10 +1082,10 @@
  (lambda (canvas)
    (with-skia ([shader
                 (make-linear-gradient-color4f-shader
-                 '(0 0) '(64 0)
+                 0 0 64 0
                  (list (make-color4f 1 0 0) (make-color4f 0 0 1))
                  #:color-space 'srgb
-                 #:stops '(0 1))]
+                 #:positions '(0 1))]
                [paint (make-paint #:shader shader)])
      (draw-paint canvas paint))))
 
@@ -3989,7 +3989,7 @@
  (lambda (canvas)
    (with-skia ([shader
                 (make-radial-gradient-color4f-shader
-                 '(90 50) 55
+                 90 50 55
                  (list (make-color4f 1 1 1) (make-color4f 0.2 0.43 0.9))
                  #:color-space 'srgb)]
                [paint (make-paint #:shader shader)])
@@ -4001,7 +4001,7 @@
  (lambda (canvas)
    (with-skia ([shader
                 (make-sweep-gradient-color4f-shader
-                 '(90 50)
+                 90 50
                  (list (make-color4f 1 0 0)
                        (make-color4f 0 1 0)
                        (make-color4f 0 0 1)
@@ -4016,7 +4016,7 @@
  (lambda (canvas)
    (with-skia ([shader
                 (make-two-point-conical-gradient-color4f-shader
-                 '(55 52) 5 '(135 52) 58
+                 55 52 5 135 52 58
                  (list (make-color4f 1 0.63 0.17) (make-color4f 0.2 0.43 0.9))
                  #:color-space 'srgb)]
                [paint (make-paint #:shader shader)])

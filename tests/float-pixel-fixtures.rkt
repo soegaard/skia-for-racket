@@ -49,13 +49,13 @@
      (define shader
        (case name
          [(solid) (make-color4f-shader fixed #:color-space 'srgb)]
-         [(linear) (make-linear-gradient-color4f-shader '(0 0) '(64 0)
+         [(linear) (make-linear-gradient-color4f-shader 0 0 64 0
                      (list (make-color4f 0.25 0.5 0.75) (make-color4f 0.75 0.5 0.25)) #:color-space
                      'srgb)]
-         [(radial) (make-radial-gradient-color4f-shader '(32 16) 128 same #:color-space 'srgb)]
-         [(sweep) (make-sweep-gradient-color4f-shader '(32 16) same #:color-space 'srgb)]
+         [(radial) (make-radial-gradient-color4f-shader 32 16 128 same #:color-space 'srgb)]
+         [(sweep) (make-sweep-gradient-color4f-shader 32 16 same #:color-space 'srgb)]
          [(conical)
-           (make-two-point-conical-gradient-color4f-shader '(32 16) 0 '(32 16) 128 same
+           (make-two-point-conical-gradient-color4f-shader 32 16 0 32 16 128 same
              #:color-space 'srgb)]
          [else (error 'draw-float-scene "unknown scene")]))
      (call-with-skia-resource shader

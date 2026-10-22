@@ -25,19 +25,19 @@
     (check-exn exn:fail? (lambda () (make-runtime-effect "")))
     (check-exn exn:fail? (lambda () (make-runtime-effect "bad\u0000source")))
     (check-exn exn:fail? (lambda () (make-runtime-effect "x" #:kind 'vertex))))
-  (test-case "invalid finite blend modes and the color-filter identity exception"
+  (test-case "invalid blend modes and identity-filter colors"
     (check-exn exn:fail? (lambda () (make-blend-mode-blender 'unsupported)))
-    (check-exn exn:fail? (lambda () (make-blend-color-filter 'red 'dst))))
-  (test-case "table domains differ for mask and color filters"
-    (check-exn exn:fail? (lambda () (make-table-mask-filter (make-list 256 0))))
+    (check-exn exn:fail? (lambda () (make-blend-color-filter 'not-a-color 'dst))))
+  (test-case "mask and color tables require exactly 256 byte entries"
+    (check-exn exn:fail? (lambda () (make-table-mask-filter (make-list 256 256))))
     (check-exn exn:fail? (lambda () (make-table-color-filter (make-bytes 255))))
     (check-exn exn:fail? (lambda () (make-clip-mask-filter 128 128)))
     (check-exn exn:fail? (lambda () (make-hsla-matrix-filter '(1 0 0)))))
-  (test-case "invalid path effects include non-obvious no-op cases"
+  (test-case "invalid path effect parameters"
     (check-exn exn:fail? (lambda () (make-dash-path-effect '(0 0))))
     (check-exn exn:fail? (lambda () (make-dash-path-effect '(2 3 4))))
     (check-exn exn:fail? (lambda () (make-discrete-path-effect 1/4096 1)))
-    (check-exn exn:fail? (lambda () (make-trim-path-effect 0 1))))
+    (check-exn exn:fail? (lambda () (make-trim-path-effect 1 0))))
   (test-case "graph options reject unsupported sampling and tiling"
     (check-exn exn:fail? (lambda () (make-blur-image-filter 1 1 #:tile-mode 'mirror)))
     (check-exn exn:fail?

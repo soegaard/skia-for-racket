@@ -493,6 +493,18 @@
     [(eq? name 'sk_blender_new_mode)
      (define a (allocating))
      (when a (set-box! (allocation-special a) (if (= (car args) 3) '() '(blend-mode))))]
+    [(memq name '(sk_shader_new_linear_gradient sk_shader_new_radial_gradient
+                  sk_shader_new_sweep_gradient sk_shader_new_two_point_conical_gradient
+                  sk_shader_new_linear_gradient_color4f sk_shader_new_radial_gradient_color4f
+                  sk_shader_new_sweep_gradient_color4f
+                  sk_shader_new_two_point_conical_gradient_color4f
+                  sk_image_make_shader sk_image_make_raw_shader))
+     ;; A constructor-local matrix has the same output limitations as a
+     ;; later shader-with-local-matrix call. Each listed ABI puts it last.
+     (define a (allocating))
+     (when (and a (last args))
+       (set-box! (allocation-deps a)
+                 (union (unbox (allocation-deps a)) '(shader-local-matrix))))]
     [(memq name '(sk_paint_set_color sk_paint_set_color4f))
      (define h (handle-for (car args)))
      (when h (put-slot! h 'float-color (if (eq? name 'sk_paint_set_color4f) '(float-color) '())))]

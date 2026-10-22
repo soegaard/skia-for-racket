@@ -37,6 +37,18 @@
 (define float-pixel-pure-tests
   (test-suite
    "Floating colors and storage (pure)"
+   (test-case "gradient signatures use scalar coordinates and positions without legacy forms"
+     (for ([factory (in-list (list make-linear-gradient-color4f-shader
+                                  make-radial-gradient-color4f-shader
+                                  make-sweep-gradient-color4f-shader
+                                  make-two-point-conical-gradient-color4f-shader))]
+           [arity (in-list '(5 4 3 7))])
+       (check-equal? (procedure-arity factory) arity)
+       (define-values (required allowed) (procedure-keywords factory))
+       (check-equal? required '(#:color-space))
+       (check-not-false (memq '#:positions allowed))
+       (check-not-false (memq '#:matrix allowed))
+       (check-false (memq '#:stops allowed))))
    (test-case "Color4f is detached unpremultiplied data"
      (define c (make-color4f -0.5 1.25 2 0.5))
      (check-equal? (color4f->vector c) '#(-0.5 1.25 2.0 0.5))
@@ -157,15 +169,15 @@
        (check-= (ptr-ref c _float i) v 0.000001)))
    (test-case "gradient inputs reject before native loading"
      (bad (lambda ()
-            (make-linear-gradient-color4f-shader '(0 0) '(1 0) '(red blue) #:color-space 'srgb)))
-     (bad (lambda () (make-radial-gradient-color4f-shader '(0 0) 0 '() #:color-space 'srgb)))
+            (make-linear-gradient-color4f-shader 0 0 1 0 '(red blue) #:color-space 'srgb)))
+     (bad (lambda () (make-radial-gradient-color4f-shader 0 0 0 '() #:color-space 'srgb)))
      (bad (lambda ()
-            (make-sweep-gradient-color4f-shader '(0 0) '() #:color-space 'srgb #:start-angle 360
+            (make-sweep-gradient-color4f-shader 0 0 '() #:color-space 'srgb #:start-angle 360
               #:end-angle 0))))
-   (test-case "stops that collapse at float32 precision are rejected"
+   (test-case "decreasing positions are rejected even when they round to equal floats"
      (define cs (list (make-color4f 0 0 0) (make-color4f 1 1 1)))
-     (bad (lambda () (make-linear-gradient-color4f-shader '(0 0) '(1 0) cs #:color-space 'srgb
-                        #:stops '(0.5 0.500000000001)))))
+     (bad (lambda () (make-linear-gradient-color4f-shader 0 0 1 0 cs #:color-space 'srgb
+                        #:positions '(0.500000000001 0.5)))))
    (test-case "missing color interpretation is never guessed"
      (bad (lambda () (make-color4f-shader (make-color4f 0 0 0) #:color-space #f))))
    (test-case "new float native accessors reject invalid owners"

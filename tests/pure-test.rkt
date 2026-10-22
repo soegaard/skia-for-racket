@@ -207,7 +207,9 @@
      (check-exn exn:fail? (lambda () (make-trim-path-effect -0.1 1)))
      (check-exn exn:fail? (lambda () (make-trim-path-effect 0.8 0.2)))
      (check-exn exn:fail? (lambda () (make-trim-path-effect 0.5 0.5)))
-     (check-exn exn:fail? (lambda () (make-trim-path-effect 0 1)))
+     (with-skia ([identity (make-trim-path-effect 0 1)])
+       (check-true (path-effect? identity))
+       (check-false (skia-closed? identity)))
      (check-exn exn:fail? (lambda () (make-trim-path-effect 0 1.1)))
      (check-exn exn:fail? (lambda () (make-trim-path-effect 0 1 #:mode 'wrong)))
      (check-exn exn:fail:contract?
@@ -264,7 +266,7 @@
      (check-exn exn:fail:contract?
                 (lambda () (make-color-matrix-filter
                             (append (make-list 19 0) (list +nan.0)))))
-     (check-exn exn:fail? (lambda () (make-blend-color-filter 'red 'dst)))
+     (check-exn exn:fail? (lambda () (make-blend-color-filter 'not-a-color 'dst)))
      (check-exn exn:fail:contract? (lambda () (make-blend-color-filter 'red 'wrong)))
      (check-exn exn:fail:contract? (lambda () (make-blur-mask-filter 0)))
      (check-exn exn:fail:contract? (lambda () (make-blur-mask-filter 2 #:style 'wrong)))

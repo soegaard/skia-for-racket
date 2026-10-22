@@ -361,11 +361,11 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | canvas-clear-color4f! | stable | 0 | procedure | 2 | none | none |
 | draw-color4f | stable | 0 | procedure | 2 | none | #:blend-mode |
 | make-color4f-shader | stable | 0 | procedure | 1 | #:color-space | #:color-space |
-| make-linear-gradient-color4f-shader | stable | 0 | procedure | 3 | #:color-space | #:color-space, #:matrix, #:stops, #:tile-mode |
+| make-linear-gradient-color4f-shader | stable | 0 | procedure | 5 | #:color-space | #:color-space, #:matrix, #:positions, #:tile-mode |
 | make-paint/color4f | stable | 0 | procedure | 1 | #:color-space | #:antialias?, #:color-space, #:stroke-width, #:style |
-| make-radial-gradient-color4f-shader | stable | 0 | procedure | 3 | #:color-space | #:color-space, #:matrix, #:stops, #:tile-mode |
-| make-sweep-gradient-color4f-shader | stable | 0 | procedure | 2 | #:color-space | #:color-space, #:end-angle, #:matrix, #:start-angle, #:stops, #:tile-mode |
-| make-two-point-conical-gradient-color4f-shader | stable | 0 | procedure | 5 | #:color-space | #:color-space, #:matrix, #:stops, #:tile-mode |
+| make-radial-gradient-color4f-shader | stable | 0 | procedure | 4 | #:color-space | #:color-space, #:matrix, #:positions, #:tile-mode |
+| make-sweep-gradient-color4f-shader | stable | 0 | procedure | 3 | #:color-space | #:color-space, #:end-angle, #:matrix, #:positions, #:start-angle, #:tile-mode |
+| make-two-point-conical-gradient-color4f-shader | stable | 0 | procedure | 7 | #:color-space | #:color-space, #:matrix, #:positions, #:tile-mode |
 | paint-color4f | stable | 0 | procedure | 1 | none | none |
 | paint-set-color4f! | stable | 0 | procedure | 2 | #:color-space | #:color-space |
 ### fonts.rkt
@@ -1255,14 +1255,14 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | make-hsla-matrix-filter | stable | 0 | procedure | 1 | none | none |
 | make-image-info | stable | 0 | procedure | 2 | none | #:alpha-type, #:color-space, #:color-type |
 | make-image-lattice | stable | 0 | procedure | 2 | none | #:bounds, #:cell-types, #:colors |
-| make-image-shader | stable | 0 | procedure | 1 | none | #:sampling, #:tile-x, #:tile-y |
+| make-image-shader | stable | 0 | procedure | 1 | none | #:matrix, #:sampling, #:tile-x, #:tile-y |
 | make-image-source-filter | stable | 0 | procedure | 1 | none | #:crop, #:destination, #:sampling, #:source |
 | make-layer-options | stable | 0 | procedure | 0 | none | #:bounds, #:f16?, #:initialize-with-previous?, #:preserve-lcd-text? |
 | make-layout-break-opportunity | stable | 0 | procedure | 1, 2 | none | none |
 | make-lerp-color-filter | stable | 0 | procedure | 3 | none | none |
 | make-lighting-color-filter | stable | 0 | procedure | 2 | none | none |
-| make-linear-gradient-color4f-shader | stable | 0 | procedure | 3 | #:color-space | #:color-space, #:matrix, #:stops, #:tile-mode |
-| make-linear-gradient-shader | stable | 0 | procedure | 5 | none | #:positions, #:tile-mode |
+| make-linear-gradient-color4f-shader | stable | 0 | procedure | 5 | #:color-space | #:color-space, #:matrix, #:positions, #:tile-mode |
+| make-linear-gradient-shader | stable | 0 | procedure | 5 | none | #:matrix, #:positions, #:tile-mode |
 | make-linear-srgb-color-space | stable | 0 | procedure | 0 | none | none |
 | make-linear-to-srgb-gamma-color-filter | stable | 0 | procedure | 0 | none | none |
 | make-luma-color-filter | stable | 0 | procedure | 0 | none | none |
@@ -1289,8 +1289,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | make-point-lit-diffuse-image-filter | stable | 0 | procedure | 2 | none | #:coefficient, #:crop, #:input, #:surface-scale |
 | make-point-lit-specular-image-filter | stable | 0 | procedure | 2 | none | #:coefficient, #:crop, #:input, #:shininess, #:surface-scale |
 | make-positioned-text-blob | stable | 0 | procedure | 3 | none | none |
-| make-radial-gradient-color4f-shader | stable | 0 | procedure | 3 | #:color-space | #:color-space, #:matrix, #:stops, #:tile-mode |
-| make-radial-gradient-shader | stable | 0 | procedure | 4 | none | #:positions, #:tile-mode |
+| make-radial-gradient-color4f-shader | stable | 0 | procedure | 4 | #:color-space | #:color-space, #:matrix, #:positions, #:tile-mode |
+| make-radial-gradient-shader | stable | 0 | procedure | 4 | none | #:matrix, #:positions, #:tile-mode |
 | make-raster-buffer | stable | 0 | procedure | 2 | none | #:color-space, #:row-bytes |
 | make-raster-buffer-from-info | stable | 0 | procedure | 1 | none | #:row-bytes |
 | make-raw-image-shader | stable | 0 | procedure | 1 | none | #:matrix, #:sampling, #:tile-x, #:tile-y |
@@ -1310,8 +1310,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | make-surface-from-info | stable | 0 | procedure | 1 | none | #:background, #:row-bytes |
 | make-surface-properties | stable | 0 | procedure | 0 | none | #:always-dither?, #:device-independent-fonts?, #:dynamic-msaa?, #:pixel-geometry |
 | make-svg-document | stable | 0 | procedure | 2 | none | #:description, #:id-prefix, #:title |
-| make-sweep-gradient-color4f-shader | stable | 0 | procedure | 2 | #:color-space | #:color-space, #:end-angle, #:matrix, #:start-angle, #:stops, #:tile-mode |
-| make-sweep-gradient-shader | stable | 0 | procedure | 3 | none | #:end-angle, #:positions, #:start-angle, #:tile-mode |
+| make-sweep-gradient-color4f-shader | stable | 0 | procedure | 3 | #:color-space | #:color-space, #:end-angle, #:matrix, #:positions, #:start-angle, #:tile-mode |
+| make-sweep-gradient-shader | stable | 0 | procedure | 3 | none | #:end-angle, #:matrix, #:positions, #:start-angle, #:tile-mode |
 | make-table-argb-color-filter | stable | 0 | procedure | 0 | none | #:alpha, #:blue, #:green, #:red |
 | make-table-color-filter | stable | 0 | procedure | 1 | none | none |
 | make-table-mask-filter | stable | 0 | procedure | 1 | none | none |
@@ -1320,8 +1320,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | make-transfer-function | stable | 0 | procedure | 7 | none | none |
 | make-trim-path-effect | stable | 0 | procedure | 2 | none | #:mode |
 | make-turbulence-shader | stable | 0 | procedure | 3, 4 | none | #:tile-size |
-| make-two-point-conical-gradient-color4f-shader | stable | 0 | procedure | 5 | #:color-space | #:color-space, #:matrix, #:stops, #:tile-mode |
-| make-two-point-conical-gradient-shader | stable | 0 | procedure | 7 | none | #:positions, #:tile-mode |
+| make-two-point-conical-gradient-color4f-shader | stable | 0 | procedure | 7 | #:color-space | #:color-space, #:matrix, #:positions, #:tile-mode |
+| make-two-point-conical-gradient-shader | stable | 0 | procedure | 7 | none | #:matrix, #:positions, #:tile-mode |
 | make-typeface | stable | 0 | procedure | 0 | none | none |
 | make-vertices | stable | 0 | procedure | 2 | none | #:colors, #:indices, #:texture-coordinates |
 | mask-filter? | stable | 0 | procedure | 1 | none | none |

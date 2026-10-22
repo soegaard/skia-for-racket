@@ -127,10 +127,14 @@ backend, but does not promise identical geometry across Skia versions.
           [#:mode mode (or/c 'normal 'inverted) 'normal]) path-effect?]{
 Returns an effect selecting the interval from @racket[start] to @racket[stop]
 in the path's length parameterization, or its complement in inverted mode.
-The arguments must satisfy @math{start < stop}. Normal mode rejects the full
-interval from 0 to 1 because it produces no native effect object. Inverted
-mode permits that interval and removes the whole path. These fractions are
+The arguments must satisfy @math{start < stop}. Normal mode accepts the full
+interval from 0 to 1 and returns an identity effect that leaves the path unchanged.
+Inverted mode removes the whole path for that interval. These fractions are
 not x coordinates or individual curve parameters.
+
+The identity effect is a resource and follows the usual closing and thread
+rules. Attaching it to a paint has the same effect as clearing the path effect;
+@racket[paint-path-effect] then returns @racket[#f].
 
 @racketblock[
 (with-skia ([path (make-path)]
@@ -165,6 +169,8 @@ not x coordinates or individual curve parameters.
 
 @defproc[(make-compose-path-effect [outer path-effect?] [inner path-effect?]) path-effect?]{
 Returns an effect that applies @racket[inner] first, then @racket[outer].
+An identity effect leaves the other effect unchanged; two identity effects
+produce another independently closeable identity effect.
 Swapping the arguments can change the result. The shared resource rules in
 @secref["skia-path-effects"] apply.
 
@@ -187,7 +193,10 @@ Swapping the arguments can change the result. The shared resource rules in
 @defproc[(make-sum-path-effect [first path-effect?] [second path-effect?]) path-effect?]{
 Returns an effect that applies both effects to the original geometry and
 combines the resulting paths. Unlike composition, neither effect receives
-the other's output.
+the other's output. Identity effects are omitted from the sum, following
+Skia's no-effect convention: combining an identity with another effect returns
+that effect, not an extra copy of the original path. Two identities produce
+another independently closeable identity effect.
 
 
 @racketblock[
@@ -343,11 +352,12 @@ For that operation use @racket[make-blur-image-filter].
 
 @(declare-exporting skia skia/effects #:use-sources (skia/effects))
 
-@defproc[(make-table-mask-filter [table bytes?]) mask-filter?]{
-Returns a coverage remapping specified by exactly 256 bytes. Entry
+@defproc[(make-table-mask-filter [table (or/c bytes? (listof byte?) (vectorof byte?))]) mask-filter?]{
+Returns a coverage remapping specified by exactly 256 byte values. Entry
 @math{i} gives the replacement for input coverage @math{i}, from 0 through
-255. The bytes are copied. The table must fit the current byte limit.
-Unlike color-filter tables, this constructor does not accept lists or vectors.
+255. The table may be a byte string, list, or vector. Its entries are copied,
+so later changes to the input do not affect the filter. The table must fit
+the current byte limit.
 }
 
 @defproc[(make-gamma-mask-filter [gamma (and/c real? (>/c 0))]) mask-filter?]{

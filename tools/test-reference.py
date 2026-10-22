@@ -99,11 +99,11 @@ PROCEDURES.update({
     'canvas-clip-rect!': (32, ['antialias?', 'operation']),
     'canvas-clip-path!': (4, ['antialias?', 'operation']),
     'paint->fill-path': (4, ['cull', 'matrix']),
-    'make-linear-gradient-shader': (32, ['positions', 'tile-mode']),
-    'make-radial-gradient-shader': (16, ['positions', 'tile-mode']),
-    'make-sweep-gradient-shader': (8, ['end-angle', 'positions', 'start-angle', 'tile-mode']),
-    'make-two-point-conical-gradient-shader': (128, ['positions', 'tile-mode']),
-    'make-image-shader': (2, ['sampling', 'tile-x', 'tile-y']),
+    'make-linear-gradient-shader': (32, ['matrix', 'positions', 'tile-mode']),
+    'make-radial-gradient-shader': (16, ['matrix', 'positions', 'tile-mode']),
+    'make-sweep-gradient-shader': (8, ['end-angle', 'matrix', 'positions', 'start-angle', 'tile-mode']),
+    'make-two-point-conical-gradient-shader': (128, ['matrix', 'positions', 'tile-mode']),
+    'make-image-shader': (2, ['matrix', 'sampling', 'tile-x', 'tile-y']),
     'draw-polygon': (8, ['closed?']),
     'make-path': (3, ['fill-rule']),
     'path-add-rect!': (32, ['direction']),
@@ -2750,11 +2750,10 @@ class R3EffectsSemanticsTests(unittest.TestCase):
         for module in ('effects', 'color-filters', 'runtime-effects'):
             self.assertEqual(text.count('@defmodule[skia/' + module + ' #:no-declare]'), 1)
 
-    def test_color_blend_contract_excludes_only_dst(self):
+    def test_color_blend_contract_includes_dst(self):
         ordinary = self.header('make-blend-mode-blender', 'paints')[0][1][1]
-        restricted = self.header('make-blend-color-filter', 'color-filters')[0][2][1]
-        expected = [x for x in ordinary if x != ['quote', 'dst']]
-        self.assertEqual(restricted, expected)
+        modes = self.header('make-blend-color-filter', 'color-filters')[0][2][1]
+        self.assertEqual(modes, ordinary)
         self.assertEqual(len(ordinary) - 1, 29)
 
     def test_blend_graph_uses_the_complete_blend_mode_set(self):
@@ -2762,15 +2761,16 @@ class R3EffectsSemanticsTests(unittest.TestCase):
         self.assertEqual(self.header('make-blend-image-filter', 'image-filters')[0][1][1],
                          ordinary)
 
-    def test_mask_tables_and_color_tables_have_different_domains(self):
-        self.assertEqual(self.header('make-table-mask-filter', 'path-effects')[0][1][1], 'bytes?')
+    def test_mask_tables_and_color_tables_have_the_same_domain(self):
+        self.assertEqual(self.header('make-table-mask-filter', 'path-effects')[0][1][1],
+                         self.header('make-table-color-filter', 'color-filters')[0][1][1])
         self.assertEqual(self.header('make-table-color-filter', 'color-filters')[0][1][1],
                          ['or/c', 'bytes?', ['listof', 'byte?'], ['vectorof', 'byte?']])
 
     def test_no_op_trim_and_dash_restrictions_are_visible(self):
         text = ' '.join(self.text('path-effects').split())
         self.assertIn('an all-zero pattern is rejected', text)
-        self.assertIn('Normal mode rejects the full interval from 0 to 1', text)
+        self.assertIn('Normal mode accepts the full interval from 0 to 1', text)
         self.assertIn('must exceed 1/4096', text)
 
     def test_path_composition_and_sum_are_distinguished(self):
@@ -2949,7 +2949,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
         self.assertEqual({row['file']: row['git_blob'] for row in manifest['snapshots']}, {
-            'api/public-api-headless.json': '83c229a242a3e2f155b4ee65f6134744d41e4255',
+            'api/public-api-headless.json': '042613b4b95a3ed45d7631464c292f7c914c64a9',
             'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
 
     def test_standard_space_definitions_preserve_the_legacy_section_target(self):
@@ -2977,16 +2977,16 @@ class R3dColorSemanticsTests(unittest.TestCase):
                                   '#:antialias?'})
         self.assertIn("this constructor does not accept its complete", self.text('float-colors'))
 
-    def test_float_gradient_stop_keyword_and_strict_rounding_rule(self):
+    def test_float_gradients_use_positions_and_accept_hard_stops(self):
         text = ' '.join(self.text('float-colors').split())
-        self.assertIn('strictly increasing after @tech{binary32} rounding', text)
-        self.assertIn('two distinct Racket numbers that round to the same stop are rejected', text)
+        self.assertIn('nondecreasing order', text)
+        self.assertIn('Equal positions create abrupt color transitions', text)
         for name in FLOAT_COLOR_EXPORTS:
             if 'gradient' not in name:
                 continue
             fields = {f[0] for f in self.header(name, 'float-colors')[0][1:]}
-            self.assertIn('#:stops', fields)
-            self.assertNotIn('#:positions', fields)
+            self.assertIn('#:positions', fields)
+            self.assertNotIn('#:stops', fields)
 
     def test_extended_RGB_is_not_accidentally_narrowed_to_drawing_scalars(self):
         h = self.header('make-color4f', 'float-colors')
@@ -4112,7 +4112,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_new_scope_keeps_actual_pinned_inventory_hashes(self):
         expected = {row['file']: row['git_blob'] for row in self.manifest['snapshots']}
         self.assertEqual(expected, {
-            'api/public-api-headless.json': '83c229a242a3e2f155b4ee65f6134744d41e4255',
+            'api/public-api-headless.json': '042613b4b95a3ed45d7631464c292f7c914c64a9',
             'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
 
 

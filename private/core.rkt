@@ -215,7 +215,7 @@
          racket/path
          racket/vector
          "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt" "pdf-util.rkt"
-         "svg-util.rkt"
+         "svg-util.rkt" "shader-util.rkt"
          "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt" "joining.rkt"
          "../color.rkt")
 (provide current-skia-byte-limit
@@ -417,7 +417,8 @@
 
 (struct path-effect (handle) #:constructor-name make-path-effect-record)
 ;; Fields:
-;;   handle: owned native path-effect lifetime cell; the wrapper releases one native reference when
+;;   handle: owned path-effect lifetime cell, including a closeable no-op when Skia needs no
+;;   native effect. A non-identity wrapper releases one native reference when
 ;;   closed.
 
 (struct color-filter (handle) #:constructor-name make-color-filter-record)
@@ -2512,12 +2513,15 @@
   (new-shader 'make-color-shader (lambda () (sk_shader_new_color argb))))
 
 ; make-linear-gradient-shader : real? real? real? real? (or/c list? vector?) [#:positions (or/c
-;   list? vector? #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] -> shader?
+;   list? vector? #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)]
+;   [#:matrix (or/c matrix? #f)] -> shader?
 ;   Returns a gradient whose parameter is zero at the first endpoint and one at the second.
 (define (make-linear-gradient-shader x0 y0 x1 y1 colors
                                      #:positions [positions #f]
-                                     #:tile-mode [tile-mode 'clamp])
+                                     #:tile-mode [tile-mode 'clamp]
+                                     #:matrix [matrix #f])
   (define who 'make-linear-gradient-shader)
+  (define lm (shader-local-matrix who matrix))
   (define fx0 (scalar who x0))
   (define fy0 (scalar who y0))
   (define fx1 (scalar who x1))
@@ -2535,15 +2539,18 @@
    who
    (lambda ()
      (sk_shader_new_linear_gradient points native-colors native-pos
-                                    (length packed) tile #f))))
+                                    (length packed) tile lm))))
 
 ; make-radial-gradient-shader : real? real? (and/c real? (>/c 0)) (or/c list? vector?) [#:positions
-;   (or/c list? vector? #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] -> shader?
+;   (or/c list? vector? #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)]
+;   [#:matrix (or/c matrix? #f)] -> shader?
 ;   Returns a gradient centered at coordinates x and y.
 (define (make-radial-gradient-shader cx cy radius colors
                                      #:positions [positions #f]
-                                     #:tile-mode [tile-mode 'clamp])
+                                     #:tile-mode [tile-mode 'clamp]
+                                     #:matrix [matrix #f])
   (define who 'make-radial-gradient-shader)
+  (define lm (shader-local-matrix who matrix))
   (define center (make-sk-point (scalar who cx) (scalar who cy)))
   (define r (positive-scalar who radius))
   (define tile (choice who tile-mode tile-mode-values))
@@ -2553,18 +2560,20 @@
    who
    (lambda ()
      (sk_shader_new_radial_gradient center r native-colors native-pos
-                                    (length packed) tile #f))))
+                                    (length packed) tile lm))))
 
 ; make-sweep-gradient-shader : real? real? (or/c list? vector?) [#:positions (or/c list? vector?
 ;   #f)] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] [#:start-angle real?] [#:end-angle
-;   real?] -> shader?
+;   real?] [#:matrix (or/c matrix? #f)] -> shader?
 ;   Returns an angular gradient about coordinates x and y.
 (define (make-sweep-gradient-shader cx cy colors
                                     #:positions [positions #f]
                                     #:tile-mode [tile-mode 'clamp]
                                     #:start-angle [start-angle 0]
-                                    #:end-angle [end-angle 360])
+                                    #:end-angle [end-angle 360]
+                                    #:matrix [matrix #f])
   (define who 'make-sweep-gradient-shader)
+  (define lm (shader-local-matrix who matrix))
   (define center (make-sk-point (scalar who cx) (scalar who cy)))
   (define start (scalar who start-angle))
   (define end (scalar who end-angle))
@@ -2578,16 +2587,18 @@
    who
    (lambda ()
      (sk_shader_new_sweep_gradient center native-colors native-pos
-                                   (length packed) tile start end #f))))
+                                   (length packed) tile start end lm))))
 
 ; make-two-point-conical-gradient-shader : real? real? (and/c real? (>=/c 0)) real? real? (and/c
 ;   real? (>=/c 0)) (or/c list? vector?) [#:positions (or/c list? vector? #f)] [#:tile-mode (or/c
-;   'clamp 'repeat 'mirror 'decal)] -> shader?
+;   'clamp 'repeat 'mirror 'decal)] [#:matrix (or/c matrix? #f)] -> shader?
 ;   Returns a gradient described by two circles.
 (define (make-two-point-conical-gradient-shader x0 y0 radius0 x1 y1 radius1 colors
                                                 #:positions [positions #f]
-                                                #:tile-mode [tile-mode 'clamp])
+                                                #:tile-mode [tile-mode 'clamp]
+                                                #:matrix [matrix #f])
   (define who 'make-two-point-conical-gradient-shader)
+  (define lm (shader-local-matrix who matrix))
   (define fx0 (scalar who x0))
   (define fy0 (scalar who y0))
   (define fx1 (scalar who x1))
@@ -2607,17 +2618,20 @@
    who
    (lambda ()
      (sk_shader_new_two_point_conical_gradient
-      start r0 end r1 native-colors native-pos (length packed) tile #f))))
+      start r0 end r1 native-colors native-pos (length packed) tile lm))))
 
 ; make-image-shader : image? [#:tile-x (or/c 'clamp 'repeat 'mirror 'decal)] [#:tile-y (or/c 'clamp
-;   'repeat 'mirror 'decal)] [#:sampling (or/c 'nearest 'linear)] -> shader?
+;   'repeat 'mirror 'decal)] [#:sampling (or/c 'nearest 'linear)]
+;   [#:matrix (or/c matrix? #f)] -> shader?
 ;   Returns a shader that samples image, with image pixels initially aligned to local drawing
 ;   units.
 (define (make-image-shader im
                            #:tile-x [tile-x 'clamp]
                            #:tile-y [tile-y 'clamp]
-                           #:sampling [mode 'nearest])
+                           #:sampling [mode 'nearest]
+                           #:matrix [matrix #f])
   (define who 'make-image-shader)
+  (define lm (shader-local-matrix who matrix))
   (define ih (image-h who im))
   (define tx (choice who tile-x tile-mode-values))
   (define ty (choice who tile-y tile-mode-values))
@@ -2628,7 +2642,7 @@
    (lambda (ip)
      (make-shader-record
       (new-owned who 'shader
-                 (lambda () (sk_image_make_shader ip tx ty smp #f))
+                 (lambda () (sk_image_make_shader ip tx ty smp lm))
                  sk_shader_unref)))))
 
 ; make-blend-shader : (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out 'dst-out
@@ -2732,14 +2746,13 @@
                            "start and stop must satisfy 0 <= start < stop <= 1"
                            "start" start "stop" stop))
   (define m (choice who mode trim-path-effect-mode-values))
-  ;; Upstream treats the full normal span as a no-op and returns NULL rather
-  ;; than a path-effect object. Keep the public constructor total over its
-  ;; documented domain by rejecting that no-op explicitly.
-  (when (and (= m 0) (= a 0.0) (= b 1.0))
-    (raise-arguments-error who
-                           "the full normal interval is a no-op, not a native path effect"
-                           "start" start "stop" stop "mode" mode))
-  (new-path-effect who (lambda () (sk_path_effect_create_trim a b m))))
+  (define fa (filter-float who a))
+  (define fb (filter-float who b))
+  ;; Include intervals rounded to the full span, since Skia optimizes those
+  ;; away too. Other null results still signal a construction failure.
+  (if (and (= m 0) (= fa 0.0) (= fb 1.0))
+      (make-path-effect-record (new-identity-path-effect-owned who))
+      (new-path-effect who (lambda () (sk_path_effect_create_trim fa fb m)))))
 
 ; make-compose-path-effect : path-effect? path-effect? -> path-effect?
 ;   Returns an effect that applies inner first, then outer.
@@ -2747,24 +2760,25 @@
   (define who 'make-compose-path-effect)
   (define oh (path-effect-h who outer))
   (define ih (path-effect-h who inner))
-  (new-path-effect
-   who
-   (lambda ()
-     (call-with-owned who (list oh ih)
-       (lambda (op ip) (sk_path_effect_create_compose op ip))))))
+  (call-with-owned who (list oh ih)
+    (lambda (op ip)
+      (if (or op ip)
+          (new-path-effect who (lambda () (sk_path_effect_create_compose op ip)))
+          (make-path-effect-record (new-identity-path-effect-owned who))))))
 
 ; make-sum-path-effect : path-effect? path-effect? -> path-effect?
 ;   Returns an effect that applies both effects to the original geometry and combines the resulting
-;   paths.
+;   paths; identity effects are omitted, following Skia's no-effect convention.
 (define (make-sum-path-effect first second)
   (define who 'make-sum-path-effect)
   (define fh (path-effect-h who first))
   (define sh (path-effect-h who second))
-  (new-path-effect
-   who
-   (lambda ()
-     (call-with-owned who (list fh sh)
-       (lambda (fp sp) (sk_path_effect_create_sum fp sp))))))
+  (call-with-owned who (list fh sh)
+    (lambda (fp sp)
+      ;; Skia omits absent effects from sums, just as from compositions.
+      (if (or fp sp)
+          (new-path-effect who (lambda () (sk_path_effect_create_sum fp sp)))
+          (make-path-effect-record (new-identity-path-effect-owned who))))))
 
 ;;;
 ;;; Color, Mask, and Image Filters
@@ -2801,7 +2815,7 @@
   (define native (native-array values _float))
   (new-color-filter who (lambda () (sk_colorfilter_new_color_matrix native))))
 
-; make-blend-color-filter : color? (or/c 'clear 'src 'src-over 'dst-over 'src-in 'dst-in 'src-out
+; make-blend-color-filter : color? (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out
 ;   'dst-out 'src-atop 'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
 ;   'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation 'color
 ;   'luminosity) -> color-filter?
@@ -2811,13 +2825,35 @@
   (define who 'make-blend-color-filter)
   (define argb (color->argb color))
   (define blend (choice who mode blend-values))
-  ;; SkColorFilters::Blend returns null for Dst because it is exactly the
-  ;; identity operation, so represent that explicitly instead of reporting a
-  ;; misleading allocation failure.
-  (when (eq? mode 'dst)
-    (raise-arguments-error who "'dst is a no-op and has no native color-filter object"
-                           "mode" mode))
-  (new-color-filter who (lambda () (sk_colorfilter_new_mode argb blend))))
+  (if (eq? mode 'dst)
+      (new-identity-color-filter who)
+      (new-color-filter who (lambda () (sk_colorfilter_new_mode argb blend)))))
+
+; new-identity-color-filter : symbol? -> color-filter?
+;   Returns a native pass-through filter, including for extended floating-point colors.
+(define (new-identity-color-filter who)
+  ;; An identity color matrix clamps RGB to [0,1] in m119. A pass-through
+  ;; program preserves extended colors and remains a real native filter for
+  ;; paint getters, shader children, image filters, and composition.
+  (define source #"half4 main(half4 color) { return color; }")
+  (skia-check!)
+  (call-with-native-temporary
+   who 'sksl-source
+   (lambda () (sk_string_new_with_copy source (bytes-length source))) sk_string_destructor
+   (lambda (sp)
+     (call-with-native-temporary
+      who 'sksl-diagnostic sk_string_new_empty sk_string_destructor
+      (lambda (diagnostic)
+        (call-with-native-temporary
+         who 'runtime-effect
+         (lambda () (sk_runtimeeffect_make_for_color_filter sp diagnostic)) sk_runtimeeffect_unref
+         (lambda (ep)
+           (call-with-native-temporary
+            who 'runtime-uniform-data
+            (lambda () (sk_data_new_with_copy #"" 0)) sk_data_unref
+            (lambda (dp)
+              (new-color-filter who
+                (lambda () (sk_runtimeeffect_make_color_filter ep dp #f 0))))))))))))
 
 ; make-compose-color-filter : color-filter? color-filter? -> color-filter?
 ;   Returns a filter applying inner before outer.

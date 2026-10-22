@@ -1067,8 +1067,9 @@ must not use the narrower descriptor predicate as their entire input contract.
 Floating RGB values are inexact Racket numbers within the full finite binary32
 magnitude, but construction does not round them to binary32. Alpha is checked
 after conversion to an inexact Racket number. Drawing converts to native floats.
-Gradient stops must be strictly increasing after binary32 rounding, unlike the
-nondecreasing positions of the byte-color gradient interface. Sample conversion
+Both gradient families accept nondecreasing positions, including repeated
+positions for abrupt transitions, through `#:positions`. Both use separate
+coordinate arguments and support an optional `#:matrix`. Sample conversion
 through `image-convert-color-space` is the existing eight-bit CPU path; it rejects
 floating-point images rather than silently reducing their precision.
 
@@ -1191,8 +1192,8 @@ input denotes the dynamic source. Filters attached to a paint do not automatical
 process unrelated pixels already on the canvas. Crops are local output bounds,
 not a request to change the current canvas clip.
 
-Specific exceptions are local to the relevant entries: full normal trim and the
-identity destination-only blend-color filter are rejected; mirror blur/convolution
+Full normal trim and destination-only blend-color filters return identity resources.
+Remaining restrictions are local to the relevant entries: mirror blur/convolution
 tiling is unsupported; non-decal convolution tiling requires a crop. Native-float
 rounding rules are distinguished from restrictions applied before rounding.
 

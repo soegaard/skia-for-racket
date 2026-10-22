@@ -12,10 +12,10 @@
 ;;; Imports and Exports
 ;;;
 
-(require ffi/unsafe racket/list racket/match racket/vector
+(require ffi/unsafe racket/list racket/vector
          "color4f.rkt" (submod "color4f.rkt" internals)
          "private/core.rkt" "private/check.rkt" "private/native.rkt" "private/types.rkt"
-         "private/lifetime.rkt" "private/float-color-native.rkt"
+         "private/lifetime.rkt" "private/float-color-native.rkt" "private/shader-util.rkt"
          "matrix.rkt" (only-in (submod "image-info.rkt" internals) copy-descriptor)
          (submod "private/core.rkt" float-color-internals))
 (provide make-paint/color4f paint-color4f paint-set-color4f!
@@ -105,24 +105,6 @@
 ;;; Gradient Geometry and Color Preparation
 ;;;
 
-; point : symbol? (or/c list? vector?) -> sk-point?
-;   Validates an x/y pair and converts it to a native point.
-(define (point who value)
-  (match value
-    [(list x y) (make-sk-point (scalar who x) (scalar who y))]
-    [(vector x y) (make-sk-point (scalar who x) (scalar who y))]
-    [_ (raise-argument-error who "(list x y) or #(x y)" value)]))
-
-; local-matrix : symbol? (or/c #f matrix?) -> (or/c #f sk-matrix?)
-;   Converts an optional affine local transform to Skia's 3-by-3 layout.
-(define (local-matrix who matrix)
-  (cond
-    [(not matrix) #f]
-    [(matrix? matrix)
-     (make-sk-matrix (matrix-xx matrix) (matrix-xy matrix) (matrix-x0 matrix)
-                     (matrix-yx matrix) (matrix-yy matrix) (matrix-y0 matrix) 0.0 0.0 1.0)]
-    [else (raise-argument-error who "#f or affine matrix?" matrix)]))
-
 ; sequence : symbol? (or/c list? vector?) -> list?
 ;   Normalizes gradient input sequences while preserving their order.
 (define (sequence who value)
@@ -130,28 +112,26 @@
         [else (raise-argument-error who "list or vector" value)]))
 
 ; with-gradient : symbol? any/c any/c symbol? (or/c #f matrix?) any/c procedure? -> shader?
-;   Validates gradient colors and strictly increasing float32 stops, retaining native buffers
+;   Validates gradient colors and nondecreasing positions, keeping native buffers alive
 ;   through construction.
-(define (with-gradient who colors stops tile matrix space build)
+(define (with-gradient who colors positions-input tile matrix space build)
   (define xs (sequence who colors))
   (define n (length xs))
   (unless (and (<= 2 n #x7fffffff) (<= (* n 64) (current-skia-byte-limit)))
     (error who "gradient needs at least two colors and must fit the byte/count limits"))
   (for ([c (in-list xs)]) (checked-color4f who c))
   (define positions
-    (and stops
-         (for/list ([v (in-list (sequence who stops))])
-           (define t (scalar who v))
-           (unless (<= 0 t 1) (error who "gradient stops must lie in [0,1]"))
-           ;; Validate ordering AFTER conversion to C float; do not accept
-           ;; distinct doubles that collapse to one stop at the native boundary.
-           (floating-point-bytes->real (real->floating-point-bytes t 4 #f) #f))))
+    (and positions-input
+         (for/list ([v (in-list (sequence who positions-input))])
+           (unless (and (real? v) (<= 0 v 1))
+             (raise-argument-error who "real in [0,1]" v))
+           (scalar who v))))
   (when positions
-    (unless (= (length positions) n) (error who "color/stop counts differ"))
+    (unless (= (length positions) n) (error who "color/position counts differ"))
     (for ([a (in-list positions)] [b (in-list (cdr positions))])
-      (unless (< a b) (error who "stops must increase strictly at float32 precision"))))
+      (unless (<= a b) (error who "positions must be nondecreasing"))))
   (define mode (choice who tile tile-mode-values))
-  (define lm (local-matrix who matrix))
+  (define lm (shader-local-matrix who matrix))
   (call-with-float-source-space who space
     (lambda (cp)
       (define cs (malloc (* n 4) _float 'atomic))
@@ -167,17 +147,16 @@
 ;;; Gradient Shader Factories
 ;;;
 
-; make-linear-gradient-color4f-shader : (or/c (list/c real? real?) (vector/c real? real?)) (or/c
-;   (list/c real? real?) (vector/c real? real?)) (or/c (listof color4f?) (vectorof color4f?))
-;   #:color-space (or/c 'srgb 'linear-srgb bytes?) [#:stops (or/c #f (listof real?) (vectorof
-;   real?))] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] [#:matrix (or/c matrix? #f)] ->
-;   shader?
-;   Returns a linear gradient from start to end.
-(define (make-linear-gradient-color4f-shader start end colors #:color-space space
-                                            #:stops [stops #f] #:tile-mode [tile 'clamp]
+; make-linear-gradient-color4f-shader : real? real? real? real? (or/c list? vector?)
+;   #:color-space (or/c 'srgb 'linear-srgb bytes?) [#:positions (or/c #f list? vector?)]
+;   [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] [#:matrix (or/c matrix? #f)] -> shader?
+;   Returns a linear gradient from (x0, y0) to (x1, y1).
+(define (make-linear-gradient-color4f-shader x0 y0 x1 y1 colors #:color-space space
+                                            #:positions [positions #f] #:tile-mode [tile 'clamp]
                                             #:matrix [matrix #f])
   (define who 'make-linear-gradient-color4f-shader)
-  (define a (point who start)) (define b (point who end))
+  (define a (make-sk-point (scalar who x0) (scalar who y0)))
+  (define b (make-sk-point (scalar who x1) (scalar who y1)))
   (when (and (= (sk-point-x a) (sk-point-x b)) (= (sk-point-y a) (sk-point-y b)))
     (error who "linear gradient endpoints must differ"))
   (define points (malloc 4 _float 'atomic))
@@ -185,52 +164,55 @@
         [i (in-naturals)])
     (ptr-set! points _float i v))
   (begin0
-    (with-gradient who colors stops tile matrix space
+    (with-gradient who colors positions tile matrix space
       (lambda (cs cp ps n mode lm) (sk_shader_new_linear_gradient_color4f points cs cp ps n mode lm)))
     (void/reference-sink points)))
 
-; make-radial-gradient-color4f-shader : (or/c (list/c real? real?) (vector/c real? real?)) (and/c
-;   real? (>/c 0)) (or/c (listof color4f?) (vectorof color4f?)) #:color-space (or/c 'srgb
-;   'linear-srgb bytes?) [#:stops (or/c #f (listof real?) (vectorof real?))] [#:tile-mode (or/c
-;   'clamp 'repeat 'mirror 'decal)] [#:matrix (or/c matrix? #f)] -> shader?
-;   Returns a radial gradient from center outward to radius.
-(define (make-radial-gradient-color4f-shader center radius colors #:color-space space
-                                            #:stops [stops #f] #:tile-mode [tile 'clamp]
+; make-radial-gradient-color4f-shader : real? real? (and/c real? (>/c 0)) (or/c list? vector?)
+;   #:color-space (or/c 'srgb 'linear-srgb bytes?) [#:positions (or/c #f list? vector?)]
+;   [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] [#:matrix (or/c matrix? #f)] -> shader?
+;   Returns a radial gradient from (cx, cy) outward to radius.
+(define (make-radial-gradient-color4f-shader cx cy radius colors #:color-space space
+                                            #:positions [positions #f] #:tile-mode [tile 'clamp]
                                             #:matrix [matrix #f])
   (define who 'make-radial-gradient-color4f-shader)
-  (define c (point who center)) (define r (positive-scalar who radius))
-  (with-gradient who colors stops tile matrix space
+  (define c (make-sk-point (scalar who cx) (scalar who cy)))
+  (define r (positive-scalar who radius))
+  (with-gradient who colors positions tile matrix space
     (lambda (cs cp ps n mode lm) (sk_shader_new_radial_gradient_color4f c r cs cp ps n mode lm))))
 
-; make-sweep-gradient-color4f-shader : (or/c (list/c real? real?) (vector/c real? real?)) (or/c
-;   (listof color4f?) (vectorof color4f?)) #:color-space (or/c 'srgb 'linear-srgb bytes?)
-;   [#:start-angle real?] [#:end-angle real?] [#:stops (or/c #f (listof real?) (vectorof real?))]
-;   [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] [#:matrix (or/c matrix? #f)] -> shader?
-;   Returns an angular gradient around center.
-(define (make-sweep-gradient-color4f-shader center colors #:color-space space
+; make-sweep-gradient-color4f-shader : real? real? (or/c list? vector?)
+;   #:color-space (or/c 'srgb 'linear-srgb bytes?) [#:positions (or/c #f list? vector?)]
+;   [#:start-angle real?] [#:end-angle real?] [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)]
+;   [#:matrix (or/c matrix? #f)] -> shader?
+;   Returns an angular gradient around (cx, cy).
+(define (make-sweep-gradient-color4f-shader cx cy colors #:color-space space
                                            #:start-angle [start 0] #:end-angle [end 360]
-                                           #:stops [stops #f] #:tile-mode [tile 'clamp]
+                                           #:positions [positions #f] #:tile-mode [tile 'clamp]
                                            #:matrix [matrix #f])
   (define who 'make-sweep-gradient-color4f-shader)
-  (define c (point who center)) (define a (scalar who start)) (define b (scalar who end))
+  (define c (make-sk-point (scalar who cx) (scalar who cy)))
+  (define a (scalar who start))
+  (define b (scalar who end))
   (unless (< a b) (error who "sweep end angle must exceed start angle"))
-  (with-gradient who colors stops tile matrix space
+  (with-gradient who colors positions tile matrix space
     (lambda (cs cp ps n mode lm) (sk_shader_new_sweep_gradient_color4f c cs cp ps n mode a b lm))))
 
-; make-two-point-conical-gradient-color4f-shader : (or/c (list/c real? real?) (vector/c real?
-;   real?)) (and/c real? (>=/c 0)) (or/c (list/c real? real?) (vector/c real? real?)) (and/c real?
-;   (>=/c 0)) (or/c (listof color4f?) (vectorof color4f?)) #:color-space (or/c 'srgb 'linear-srgb
-;   bytes?) [#:stops (or/c #f (listof real?) (vectorof real?))] [#:tile-mode (or/c 'clamp 'repeat
-;   'mirror 'decal)] [#:matrix (or/c matrix? #f)] -> shader?
+; make-two-point-conical-gradient-color4f-shader : real? real? (and/c real? (>=/c 0))
+;   real? real? (and/c real? (>=/c 0)) (or/c list? vector?)
+;   #:color-space (or/c 'srgb 'linear-srgb bytes?) [#:positions (or/c #f list? vector?)]
+;   [#:tile-mode (or/c 'clamp 'repeat 'mirror 'decal)] [#:matrix (or/c matrix? #f)] -> shader?
 ;   Returns a gradient between circles with the given centers and nonnegative radii.
-(define (make-two-point-conical-gradient-color4f-shader start start-radius end end-radius colors
-                                                       #:color-space space #:stops [stops #f]
+(define (make-two-point-conical-gradient-color4f-shader x0 y0 radius0 x1 y1 radius1 colors
+                                                       #:color-space space #:positions [positions #f]
                                                        #:tile-mode [tile 'clamp] #:matrix [matrix #f])
   (define who 'make-two-point-conical-gradient-color4f-shader)
-  (define a (point who start)) (define b (point who end))
-  (define ar (nonnegative-scalar who start-radius)) (define br (nonnegative-scalar who end-radius))
+  (define a (make-sk-point (scalar who x0) (scalar who y0)))
+  (define b (make-sk-point (scalar who x1) (scalar who y1)))
+  (define ar (nonnegative-scalar who radius0))
+  (define br (nonnegative-scalar who radius1))
   (when (and (= (sk-point-x a) (sk-point-x b)) (= (sk-point-y a) (sk-point-y b)) (= ar br))
     (error who "conical gradient circles must differ"))
-  (with-gradient who colors stops tile matrix space
+  (with-gradient who colors positions tile matrix space
     (lambda (cs cp ps n mode lm)
       (sk_shader_new_two_point_conical_gradient_color4f a ar b br cs cp ps n mode lm))))

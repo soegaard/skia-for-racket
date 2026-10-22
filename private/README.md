@@ -36,6 +36,7 @@ or change module dependencies.
 | [advanced-canvas-types.rkt](advanced-canvas-types.rkt) | Defines the native save-layer record passed to the pinned Skia ABI. |
 | [check.rkt](check.rkt) | Checks dimensions, scalars, strings, glyphs, and symbolic options; reports argument names, positions, and calling forms for drawing primitives. |
 | [core.rkt](core.rkt) | Implements owned resources, canvas operations, image codecs, documents, and text layout. |
+| [shader-util.rkt](shader-util.rkt) | Converts optional affine transforms shared by shader constructors. |
 | [lifetime.rkt](lifetime.rkt) | Owns native references, scoped borrows, and propagated GPU affinity. |
 | [native.rkt](native.rkt) | Declares lazy Skia FFI entry points and checks native readiness. |
 | [native-abi.rkt](native-abi.rkt) | Checks Skia versions and native layout sizes before using the FFI. |

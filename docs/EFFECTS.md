@@ -10,7 +10,7 @@ existing CPU/GPU/canvas callback lifetimes. Import `skia` or `skia/effects`.
 (make-1d-path-effect path advance [phase 0] #:style [style 'translate])
 (make-2d-line-path-effect width matrix)
 (make-2d-path-effect matrix path)
-(make-table-mask-filter bytes256)
+(make-table-mask-filter table)
 (make-gamma-mask-filter gamma)
 (make-clip-mask-filter minimum maximum)
 (make-shader-mask-filter shader)
@@ -49,7 +49,8 @@ that parameter is not a total native-memory or iteration-cost guarantee.
 
 ### Coverage masks
 
-Table masks copy exactly 256 bytes. Gamma is a positive finite C float. Clip
+Table masks accept a byte string, list, or vector of exactly 256 byte values
+and copy the entries. Gamma is a positive finite C float. Clip
 thresholds must satisfy `0 <= minimum < maximum <= 255`; requests that the native
 factory would silently normalize are rejected instead.
 

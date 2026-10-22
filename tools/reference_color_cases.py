@@ -38,12 +38,12 @@ COLOR_PROCEDURES.update({
     'paint-set-color4f!': (4, ['color-space']),
     'draw-color4f': (4, ['blend-mode']),
     'make-color4f-shader': (2, ['color-space']),
-    'make-linear-gradient-color4f-shader': (8, ['color-space', 'matrix', 'stops', 'tile-mode']),
-    'make-radial-gradient-color4f-shader': (8, ['color-space', 'matrix', 'stops', 'tile-mode']),
+    'make-linear-gradient-color4f-shader': (32, ['color-space', 'matrix', 'positions', 'tile-mode']),
+    'make-radial-gradient-color4f-shader': (16, ['color-space', 'matrix', 'positions', 'tile-mode']),
     'make-sweep-gradient-color4f-shader':
-        (4, ['color-space', 'end-angle', 'matrix', 'start-angle', 'stops', 'tile-mode']),
+        (8, ['color-space', 'end-angle', 'matrix', 'start-angle', 'positions', 'tile-mode']),
     'make-two-point-conical-gradient-color4f-shader':
-        (32, ['color-space', 'matrix', 'stops', 'tile-mode']),
+        (128, ['color-space', 'matrix', 'positions', 'tile-mode']),
 })
 COLOR_REQUIRED_KEYWORDS = {
     name: ['color-space'] for name, (_, keywords) in COLOR_PROCEDURES.items()

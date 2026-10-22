@@ -17,7 +17,7 @@
 (require ffi/unsafe racket/list
          "private/core.rkt" "private/native.rkt" "private/types.rkt"
          "private/check.rkt" "private/filter-util.rkt" "private/effects-util.rkt"
-         "private/lifetime.rkt" "matrix.rkt"
+         "private/lifetime.rkt" "private/color-filter-util.rkt" "matrix.rkt"
          (submod "private/core.rkt" effects-internals)
          (only-in (submod "private/core.rkt" runtime-internals)
                   blender-resource? blender-resource-handle make-blender-record))
@@ -80,11 +80,11 @@
 ;;; Mask Filters
 ;;;
 
-; make-table-mask-filter : bytes? -> mask-filter?
-;   Returns a coverage remapping specified by exactly 256 bytes.
+; make-table-mask-filter : (or/c bytes? (listof byte?) (vectorof byte?)) -> mask-filter?
+;   Returns a coverage remapping specified by exactly 256 byte values.
 (define (make-table-mask-filter table)
   (define who 'make-table-mask-filter)
-  (define copied (effect-table who table))
+  (define copied (checked-filter-table who table))
   (new-mask-filter who (lambda () (sk_maskfilter_new_table copied))))
 
 ; make-gamma-mask-filter : (and/c real? (>/c 0)) -> mask-filter?

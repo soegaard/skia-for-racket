@@ -40,6 +40,44 @@
 (define effects-native-tests
   (test-suite
    "0.66 actual effect pixels and retained inputs"
+   (test-case "identity trim preserves closed curves and clears existing paint effects"
+     (with-skia ([identity (make-trim-path-effect 0 1)]
+                 [dash (make-dash-path-effect '(5 3))]
+                 [path (make-path '((move 4 4) (cubic 45 2 20 40 4 4) (close)))]
+                 [plain (make-paint #:style 'stroke #:stroke-width 3)]
+                 [paint (make-paint #:style 'stroke #:stroke-width 3 #:path-effect dash)])
+       (paint-set-path-effect! paint identity)
+       (check-false (paint-path-effect paint))
+       (skia-close! identity)
+       (check-equal? (capture (lambda (c) (draw-path c path paint)))
+                     (capture (lambda (c) (draw-path c path plain))))))
+   (test-case "identity compositions retain the other native path effect"
+     (for ([combine (in-list (list make-compose-path-effect make-sum-path-effect))])
+       (for ([reverse? (in-list '(#f #t))])
+         (with-skia ([identity (make-trim-path-effect 0 1)]
+                     [dash (make-dash-path-effect '(5 3))]
+                     [combined (if reverse? (combine dash identity) (combine identity dash))]
+                     [path (make-path '((move 4 20) (line 55 20)))]
+                     [expected (make-paint #:style 'stroke #:stroke-width 3 #:path-effect dash)]
+                     [actual (make-paint #:style 'stroke #:stroke-width 3 #:path-effect combined)])
+           (skia-close! identity)
+           (skia-close! dash)
+           (skia-close! combined)
+           (check-equal? (capture (lambda (c) (draw-path c path actual)))
+                         (capture (lambda (c) (draw-path c path expected))))))))
+   (test-case "mask table representations produce the same copied coverage"
+     (define (render table)
+       (capture
+        (lambda (c)
+          (with-skia ([mask (make-table-mask-filter table)]
+                      [paint (make-paint #:color 'red #:mask-filter mask)])
+            (when (bytes? table) (bytes-fill! table 0))
+            (when (vector? table) (vector-fill! table 0))
+            (skia-close! mask)
+            (draw-rect c 8 8 40 28 paint)))))
+     (define expected (render (make-list 256 64)))
+     (check-equal? (render (make-vector 256 64)) expected)
+     (check-equal? (render (make-bytes 256 64)) expected))
    (test-case "1D stamps retain copied geometry after reset and close"
      (define b (capture-effect-scene 'stamp-1d))
      (near-pixel (effect-pixel b 9 25) '(255 0 0 255))

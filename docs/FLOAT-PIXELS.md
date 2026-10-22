@@ -178,22 +178,22 @@ calling-convention mistakes, rather than trusting a matching symbol name.
 
 ```racket
 (make-color4f-shader color #:color-space descriptor)
-(make-linear-gradient-color4f-shader start end colors #:color-space descriptor
-                                    #:stops #f #:tile-mode 'clamp #:matrix #f)
-(make-radial-gradient-color4f-shader center radius colors #:color-space descriptor
-                                    #:stops #f #:tile-mode 'clamp #:matrix #f)
-(make-sweep-gradient-color4f-shader center colors #:color-space descriptor
+(make-linear-gradient-color4f-shader x0 y0 x1 y1 colors #:color-space descriptor
+                                    #:positions #f #:tile-mode 'clamp #:matrix #f)
+(make-radial-gradient-color4f-shader cx cy radius colors #:color-space descriptor
+                                    #:positions #f #:tile-mode 'clamp #:matrix #f)
+(make-sweep-gradient-color4f-shader cx cy colors #:color-space descriptor
                                    #:start-angle 0 #:end-angle 360
-                                   #:stops #f #:tile-mode 'clamp #:matrix #f)
-(make-two-point-conical-gradient-color4f-shader start start-radius end end-radius colors
+                                   #:positions #f #:tile-mode 'clamp #:matrix #f)
+(make-two-point-conical-gradient-color4f-shader x0 y0 radius0 x1 y1 radius1 colors
                                               #:color-space descriptor
-                                              #:stops #f #:tile-mode 'clamp #:matrix #f)
+                                              #:positions #f #:tile-mode 'clamp #:matrix #f)
 ```
 
-Points are `(list x y)` or `#(x y)`. Colors/stops are lists or vectors. At least
-two Color4f stops are required. Explicit stop positions must be in [0,1] and
-strictly increasing **after binary32 conversion**; duplicate hard stops are
-not exposed by this wrapper. Tile modes use the existing clamp/repeat/mirror/decal
+Coordinates use separate real arguments, as in the byte-color gradient API.
+Colors and positions are lists or vectors. At least two colors are required.
+Explicit positions must be in [0,1] and nondecreasing; equal positions create
+abrupt transitions. Tile modes use the existing clamp/repeat/mirror/decal
 table; local matrices are the existing affine `matrix?` values. Shaders retain
 independent native inputs. Closing temporary color-space wrappers does not
 invalidate a shader. No array pointer or native callback is public.

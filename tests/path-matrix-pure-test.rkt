@@ -52,6 +52,25 @@
      (check-equal? (matrix-x0 m) 5.0)
      (check-true (immutable? (matrix->vector m)))
      (check-exn exn:fail? (lambda () (vector-set! (matrix->vector m) 0 8))))
+   (test-case "shader constructor matrices reject invalid values before loading Skia"
+     (define colors '(red blue))
+     (define floats (map color->color4f colors))
+     (for ([thunk (in-list
+                   (list
+                    (lambda () (make-linear-gradient-shader 0 0 10 0 colors #:matrix 'bad))
+                    (lambda () (make-radial-gradient-shader 0 0 10 colors #:matrix 'bad))
+                    (lambda () (make-sweep-gradient-shader 0 0 colors #:matrix 'bad))
+                    (lambda () (make-two-point-conical-gradient-shader 0 0 1 0 0 10 colors
+                                #:matrix 'bad))
+                    (lambda () (make-linear-gradient-color4f-shader 0 0 10 0 floats
+                                #:color-space 'srgb #:matrix 'bad))
+                    (lambda () (make-radial-gradient-color4f-shader 0 0 10 floats
+                                #:color-space 'srgb #:matrix 'bad))
+                    (lambda () (make-sweep-gradient-color4f-shader 0 0 floats
+                                #:color-space 'srgb #:matrix 'bad))
+                    (lambda () (make-two-point-conical-gradient-color4f-shader 0 0 1 0 0 10 floats
+                                #:color-space 'srgb #:matrix 'bad))))])
+       (check-exn exn:fail:contract? thunk)))
    (test-case "invalid matrix coefficients are rejected"
      (for ([v (in-list (list +nan.0 +inf.0 -inf.0 1e100 'x #f 1+2i))])
        (check-exn exn:fail:contract? (lambda () (make-matrix v)))))

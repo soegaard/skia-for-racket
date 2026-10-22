@@ -1744,10 +1744,10 @@
           "allowed_keywords": [
             "color-space",
             "matrix",
-            "stops",
+            "positions",
             "tile-mode"
           ],
-          "arity_mask": "8",
+          "arity_mask": "32",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-linear-gradient-color4f-shader",
@@ -1776,10 +1776,10 @@
           "allowed_keywords": [
             "color-space",
             "matrix",
-            "stops",
+            "positions",
             "tile-mode"
           ],
-          "arity_mask": "8",
+          "arity_mask": "16",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-radial-gradient-color4f-shader",
@@ -1793,11 +1793,11 @@
             "color-space",
             "end-angle",
             "matrix",
+            "positions",
             "start-angle",
-            "stops",
             "tile-mode"
           ],
-          "arity_mask": "4",
+          "arity_mask": "8",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-sweep-gradient-color4f-shader",
@@ -1810,10 +1810,10 @@
           "allowed_keywords": [
             "color-space",
             "matrix",
-            "stops",
+            "positions",
             "tile-mode"
           ],
-          "arity_mask": "32",
+          "arity_mask": "128",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-two-point-conical-gradient-color4f-shader",
@@ -9690,6 +9690,7 @@
         },
         {
           "allowed_keywords": [
+            "matrix",
             "sampling",
             "tile-x",
             "tile-y"
@@ -9760,10 +9761,10 @@
           "allowed_keywords": [
             "color-space",
             "matrix",
-            "stops",
+            "positions",
             "tile-mode"
           ],
-          "arity_mask": "8",
+          "arity_mask": "32",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-linear-gradient-color4f-shader",
@@ -9774,6 +9775,7 @@
         },
         {
           "allowed_keywords": [
+            "matrix",
             "positions",
             "tile-mode"
           ],
@@ -10111,10 +10113,10 @@
           "allowed_keywords": [
             "color-space",
             "matrix",
-            "stops",
+            "positions",
             "tile-mode"
           ],
-          "arity_mask": "8",
+          "arity_mask": "16",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-radial-gradient-color4f-shader",
@@ -10125,6 +10127,7 @@
         },
         {
           "allowed_keywords": [
+            "matrix",
             "positions",
             "tile-mode"
           ],
@@ -10358,11 +10361,11 @@
             "color-space",
             "end-angle",
             "matrix",
+            "positions",
             "start-angle",
-            "stops",
             "tile-mode"
           ],
-          "arity_mask": "4",
+          "arity_mask": "8",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-sweep-gradient-color4f-shader",
@@ -10374,6 +10377,7 @@
         {
           "allowed_keywords": [
             "end-angle",
+            "matrix",
             "positions",
             "start-angle",
             "tile-mode"
@@ -10473,10 +10477,10 @@
           "allowed_keywords": [
             "color-space",
             "matrix",
-            "stops",
+            "positions",
             "tile-mode"
           ],
-          "arity_mask": "32",
+          "arity_mask": "128",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "make-two-point-conical-gradient-color4f-shader",
@@ -10487,6 +10491,7 @@
         },
         {
           "allowed_keywords": [
+            "matrix",
             "positions",
             "tile-mode"
           ],

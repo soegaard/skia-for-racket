@@ -205,14 +205,15 @@ to the same input and mixes their results.
 @defproc[(make-blend-color-filter
           [color color?]
           [mode
-           (or/c 'clear 'src 'src-over 'dst-over 'src-in 'dst-in 'src-out 'dst-out 'src-atop
+           (or/c 'clear 'src 'dst 'src-over 'dst-over 'src-in 'dst-in 'src-out 'dst-out 'src-atop
             'dst-atop 'xor 'plus 'modulate 'screen 'overlay 'darken 'lighten 'color-dodge
             'color-burn 'hard-light 'soft-light 'difference 'exclusion 'multiply 'hue 'saturation
             'color 'luminosity)]) color-filter?]{
 Returns a filter that blends a constant source color with each incoming
 color as the destination. The blend modes have the meanings specified in
-@secref["skia-blend-modes"]. The mode @racket['dst] is rejected because it is
-an identity operation with no native filter object. Other combinations may
+@secref["skia-blend-modes"]. The mode @racket['dst] returns an identity filter:
+it leaves incoming colors unchanged, including extended RGB values.
+Other combinations may
 also be rejected when the native factory cannot produce a filter.
 This operation is separate from blending the final paint into the drawing target.
 }

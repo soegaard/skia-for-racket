@@ -50,6 +50,31 @@
 (define float-pixel-native-tests
   (test-suite
    "Floating pixels and colors (native)"
+   (test-case "destination-only filter preserves extended color through retained composition"
+     (with-float-buffer 'rgba-f32
+       (lambda (b)
+         (with-skia ([identity (make-blend-color-filter 'red 'dst)]
+                     [composed (make-compose-color-filter identity identity)]
+                     [paint (make-paint/color4f (make-color4f -0.25 1.5 0.5)
+                                              #:color-space 'srgb)])
+           (paint-set-color-filter! paint composed)
+           (with-skia ([queried (paint-color-filter paint)])
+             (check-true (color-filter? queried)))
+           (skia-close! identity)
+           (skia-close! composed)
+           (call-with-raster-buffer-canvas b (lambda (c) (draw-paint c paint)))
+           (near (sample b) '(-0.25 1.5 0.5 1) 0.00001)))))
+   (test-case "equal float positions make a hard transition"
+     (with-float-buffer 'rgba-f32
+       (lambda (b)
+         (with-skia ([shader (make-linear-gradient-color4f-shader
+                             0 0 64 0
+                             (list (make-color4f 1 0 0) (make-color4f 0 0 1))
+                             #:positions '(0.5 0.5) #:color-space 'srgb)]
+                     [paint (make-paint #:shader shader)])
+           (call-with-raster-buffer-canvas b (lambda (c) (draw-paint c paint)))
+           (near (sample b 16 0) '(1 0 0 1))
+           (near (sample b 48 0) '(0 0 1 1)))) #:width 64 #:height 1))
    (test-case "both float formats allocate initialized transparent storage"
      (for ([f (in-vector float-pixel-formats)])
        (with-float-buffer f (lambda (b) (near (sample b) '(0 0 0 0))))))
@@ -178,7 +203,7 @@
          (near (sample b 16 8)
            (list (+ 0.25 (* 0.5 (/ 16.5 64))) 0.5 (- 0.75 (* 0.5 (/ 16.5 64))) 1) 0.002))))
    (test-case "linear gradient interpolates differences smaller than one byte step"
-     (with-skia ([shader (make-linear-gradient-color4f-shader '(0 0) '(64 0)
+     (with-skia ([shader (make-linear-gradient-color4f-shader 0 0 64 0
                           (list (make-color4f 0.5 0.5 0.5) (make-color4f 0.501953125 0.5 0.5))
                            #:color-space 'srgb)]
                  [paint (make-paint #:shader shader)])
@@ -299,11 +324,11 @@
      (define stops (list (make-color4f 0.25 0.5 0.75) (make-color4f 0.75 0.5 0.25)))
      (for ([factory (in-list
                       (list (lambda ()
-                              (make-radial-gradient-color4f-shader '(0 0) 64 stops #:color-space
+                              (make-radial-gradient-color4f-shader 0 0 64 stops #:color-space
                                 'srgb))
-                        (lambda () (make-sweep-gradient-color4f-shader '(32 16) stops #:color-space
+                        (lambda () (make-sweep-gradient-color4f-shader 32 16 stops #:color-space
                                      'srgb))
-                        (lambda () (make-two-point-conical-gradient-color4f-shader '(0 0) 0 '(0 0)
+                        (lambda () (make-two-point-conical-gradient-color4f-shader 0 0 0 0 0
                                      64 stops #:color-space 'srgb))))])
        (with-skia ([shader (factory)] [paint (make-paint #:shader shader)])
          (with-float-buffer 'rgba-f32

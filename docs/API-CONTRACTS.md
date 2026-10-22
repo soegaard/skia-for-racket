@@ -220,6 +220,15 @@ consumer acceptance, and the final **0.78d release gate**, remain necessary.
 
 ### Maintainer commands
 
+The Chapter 3 API revision standardizes gradient coordinates and `#:positions`,
+adds `#:matrix` to byte-color gradients and ordinary image shaders, extends
+mask-table inputs to lists and vectors, and accepts identity trim and `'dst`
+color-filter requests. No legacy gradient forms or keyword aliases remain.
+The headless signature snapshot and generated index were refreshed from
+Racket 9.3.0.2 reflection with nonexistent native-library overrides. That
+observation did not call exported procedures, render, or run tests; it is not
+behavioral, GPU, GUI, or release-acceptance evidence.
+
 ```bash
 python3 tools/test-public-api.py
 python3 tools/validate-public-api.py --source-only

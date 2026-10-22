@@ -127,6 +127,16 @@
                        (lambda () (box 'parent))))))
      (hash-set! resources child (provenance 'shader '(linear-gradient) (hasheq)))
      (check-not-false (memq 'runtime-shader (features parent))))
+   (test-case "constructor matrices preserve local-transform output limitations"
+     (for ([matrix (in-list (list #f (box 'matrix)))])
+       (define h
+         (audit-allocate 'make-linear-gradient-shader 'shader
+           (lambda ()
+             (audit-native-call 'sk_shader_new_linear_gradient
+                                (list 'points 'colors #f 2 0 matrix) void)
+             (box 'shader))))
+       (check-not-false (memq 'linear-gradient (features h)))
+       (check-equal? (and (memq 'shader-local-matrix (features h)) #t) (and matrix #t))))
    (test-case "paint-copy snapshots slots"
      (define p (fake 'paint 'make-paint)) (attach! p (fake 'shader 'runtime-effect->shader))
      (define q (audit-use (list p) (list (box 'p)) (lambda () (fake 'paint 'paint-copy))))

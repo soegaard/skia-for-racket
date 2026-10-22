@@ -9,7 +9,7 @@
 
 ;; Checks only: requiring this module does not load Skia or acquire a GPU.
 (require racket/match "check.rkt" "filter-util.rkt" "types.rkt" "../matrix.rkt")
-(provide effect-positive effect-nonnegative effect-matrix effect-table
+(provide effect-positive effect-nonnegative effect-matrix
          effect-clip effect-noise effect-path-size!)
 
 ; effect-positive : symbol? real? -> inexact-real?
@@ -34,15 +34,6 @@
     (raise-arguments-error who "lattice matrix must have a representable inverse" "matrix" m))
   (make-sk-matrix (matrix-xx m) (matrix-xy m) (matrix-x0 m)
                   (matrix-yx m) (matrix-yy m) (matrix-y0 m) 0.0 0.0 1.0))
-
-; effect-table : symbol? bytes? -> bytes?
-;   Copies exactly 256 coverage entries into an immutable, budget-checked table.
-(define (effect-table who table)
-  (unless (and (bytes? table) (= (bytes-length table) 256))
-    (raise-argument-error who "bytes? containing exactly 256 coverage entries" table))
-  (unless (<= 256 (current-skia-byte-limit))
-    (error who "coverage table exceeds current-skia-byte-limit"))
-  (bytes->immutable-bytes (bytes-copy table)))
 
 ; effect-clip : symbol? byte? byte? -> (values byte? byte?)
 ;   Requires ordered distinct coverage thresholds from 0 through 255.

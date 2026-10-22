@@ -37,6 +37,14 @@
 (define lifetime-tests
   (test-suite
    "Ownership and scoped cleanup (no native library)"
+   (test-case "identity path effect distinguishes a null native effect from closure"
+     (define h (new-identity-path-effect-owned 'test))
+     (check-false (owned-closed? h))
+     (check-false (call-with-owned 'test (list h) values))
+     (owned-close! 'test h)
+     (owned-close! 'test h)
+     (check-true (owned-closed? h))
+     (check-exn #rx"closed" (lambda () (call-with-owned 'test (list h) values))))
    (test-case "double close releases exactly once"
      (define count (box 0))
      (define h (make-fake count))
