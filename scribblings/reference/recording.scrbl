@@ -2,10 +2,11 @@
 
 @title[#:tag "skia-reference-recording" #:style 'toc]{Recording}
 
-@tech{Pictures} record drawing commands and the data needed to replay them. @tech{Recorded
-drawables} can be referenced by another recording or replay their commands
-immediately into a canvas. Neither representation reruns the Racket function
-that originally produced the drawing.
+Use a @tech{picture} to record drawing commands once and replay them at different
+positions or scales. Pictures are the usual choice for reusable artwork.
+@tech{Recorded drawables} add a choice when drawing into another recording:
+store a reference to the drawable or replay its commands into that recording.
+Neither representation reruns the Racket function that originally produced the drawing.
 
 @local-table-of-contents[]
 

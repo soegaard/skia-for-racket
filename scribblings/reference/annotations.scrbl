@@ -29,6 +29,16 @@ are subject to @racket[current-skia-byte-limit].
 
 @section{Backend Behavior}
 
+On PDF and SVG canvases, annotation points and link rectangles use
+@tech{local coordinates}. The current @tech{canvas transform} is applied when
+the annotation is added; later transform changes do not move it.
+
+Link rectangles are transformed and clipped, then represented as axis-aligned
+rectangles. A rotated link can therefore include points outside the rotated
+shape, and a complex clip does not give the link matching holes. PDF uses the
+bounds of the clipped shape; SVG uses conservative clip bounds. Named destination
+points, unlike link rectangles, are not removed by clipping.
+
 @defproc[(canvas-annotation-backend [canvas canvas?])
           (or/c 'pdf 'svg 'raster 'recording)]{
 Reports the annotation behavior of a live supported canvas. Ordinary PDF and SVG
@@ -57,6 +67,10 @@ The URI must be a nonempty printable ASCII string with valid percent escapes.
 Spaces, non-ASCII characters, quotes, angle brackets, backslashes, carets,
 backticks, braces, vertical bars, and DEL must not appear literally. Supported
 explicit schemes are HTTP, HTTPS, and mailto; relative URIs are also accepted.
+This scheme restriction is imposed by the Racket interface, not by the PDF or
+SVG formats. Other schemes, including @tt{file:}, @tt{tel:}, and application-specific
+schemes, raise an exception. Accepting a URI is not a guarantee that its target
+is safe to open.
 HTTP(S) requires an authority and mailto requires a nonempty target. A leading
 fragment marker is rejected: use @racket[canvas-link-destination!] for a link
 inside the current document. Validation does not access the network or establish
@@ -71,14 +85,15 @@ Defines a destination at the given point in a PDF or SVG document.
 The @racket[name] must be valid for a @tech{named destination} and must not already
 be defined in that document, even at the same point. PDF destinations can be
 referenced across pages.
-For SVG, the current affine @tech{canvas transform} is applied to the point when the
-destination is defined. The resulting position is stored and added as a named
-view when the SVG is finalized.
+
+In both PDF and SVG, the current @tech{canvas transform} is applied when the
+destination is defined. SVG requires an affine transform; the transformed
+position is stored and added as a named view when the SVG is finalized.
 
 A picture-recording canvas rejects this operation; define document destinations
 after replaying a picture on a live PDF or SVG canvas. An ordinary raster canvas
 performs no destination registration after validating arguments, subject to the
-active output policy. Keeping a name in Racket does not extend a page's lifetime.
+active output policy.
 }
 
 @defproc[(canvas-link-destination! [canvas canvas?] [x real?] [y real?]

@@ -88,6 +88,7 @@ Shared collection navigation comes from [../support/](../support/README.md).
 - [shaders.scrbl](shaders.scrbl) — API specification for Shaders.
 - [shaping.scrbl](shaping.scrbl) — API specification for Shaping.
 - [specialized-canvases.scrbl](specialized-canvases.scrbl) — API specification for Specialized Canvases.
+- [standard-conversion.scrbl](standard-conversion.scrbl) — Shared Racket conversion protocol, supported formats, defaults, and resource requirements.
 - [streams-pixels-codecs.scrbl](streams-pixels-codecs.scrbl) — Subject-group assembly for Streams Pixels Codecs.
 - [streams.scrbl](streams.scrbl) — API specification for Streams.
 - [structured-drawing.scrbl](structured-drawing.scrbl) — Meshes, patches, nine-patch and lattice images, portable image-grid drawing, grid plans, and native atlas drawing.

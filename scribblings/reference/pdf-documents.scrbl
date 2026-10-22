@@ -100,10 +100,7 @@ resume drawing on an expired page.
 This example completes a page but deliberately does not save a file.
 
 @reference-figure["pdf-document.png"
-                  "A raster content preview of the same blue-rectangle drawing commands as the PDF page. It is not a rendering or verification of the exported PDF file."]
-
-This preview makes the page callback's content visible without claiming that a PDF renderer was
-used as part of an ordinary Reference build.
+                  "Raster preview of the PDF page's drawing commands: a blue rectangle inset from the page edges."]
 }
 
 @defform[(with-document-page
@@ -143,9 +140,10 @@ Returns an owned document in the @racket['open] state with no completed pages.
 No file is opened. Native construction failure raises an exception.
 
 Metadata strings must not contain NUL; their combined UTF-8 size must fit
-@racket[current-skia-byte-limit]. Omitted dates are unspecified, not requests
-to insert the current time. A supplied date must have a valid calendar date in
-years 1 through 9999 and valid time components, without leap seconds. Its weekday
+@racket[current-skia-byte-limit]. When a date is @racket[#f], the corresponding
+timestamp is omitted from the PDF metadata. The library does not insert the
+current time. A supplied date must have a valid calendar date in years 1 through
+9999 and valid time components, without leap seconds. Its weekday
 must be from 0 through 6. Its UTC offset must be a whole number of minutes,
 between -86340 and 86340 seconds.
 The literal creator and producer defaults shown in the signature are the values
@@ -250,19 +248,10 @@ not finish or close the supplied document.
 ]
 
 @reference-figure["pdf-two-pages.png"
-                  "Two raster content previews of the drawing commands for the PDF's two 120-by-80 pages. Both blue squares begin at (10,10); page 1 is 20 by 20 and page 2 is 40 by 40. This is not a rendering or verification of the exported PDF."]
-
-The paired preview makes the page order and geometry visible without claiming that an ordinary
-Reference build has rendered or inspected the written PDF file.
+                  "Raster previews of the two pages' drawing commands. Both blue squares begin at (10,10); the first is 20 by 20 and the second is 40 by 40."]
 }
 
-@subsection{Standard Conversion}
-
-PDF documents participate in @racketmodname[file/convertible] as
-@racket['pdf-bytes]. This delegates to @racket[document->pdf-bytes]: the
-document must already be finished and still open. Conversion neither finishes,
-aborts, nor closes the document, so an open document, active page, aborted
-document, released document, or wrong-thread resource reports the same error as
-the ordinary reader. Unsupported conversion requests return the exact supplied
-default unchanged before any resource check. A supported request never catches
-an exporter failure to substitute that default.
+For conversion through @racketmodname[file/convertible], a PDF document accepts
+@racket['pdf-bytes] and must already be finished and still open. Conversion does
+not finish or close it. See @secref["skia-standard-conversion"] for the shared
+conversion rules.

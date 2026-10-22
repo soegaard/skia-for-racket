@@ -121,7 +121,8 @@ code.
   (list @racket['rasterized] "Content is rendered into an explicit raster representation.")
   (list @racket['discarded] "Document features such as interactivity are lost.")
   (list @racket['unknown] "Output compatibility has not been established for the operation or resource.")
-  (list @racket['unsupported] "Reserved blocking status for an unsupported operation."))]
+  (list @racket['unsupported]
+        "Reserved blocking status; no entry in the current capability table produces it."))]
 
 @examples[#:eval policy-eval
   (eval:check
@@ -163,6 +164,9 @@ resources, callback exceptions, and document-finalization errors propagate.
 Exports each page once and returns completed mutable document bytes and an immutable report. The
 default @racket['report] policy collects observations without repairing unsupported native
 behavior. The resulting file can still omit an effect when the caller chooses that policy.
+The file-writing counterpart, @racket[save-output/audit], defaults to
+@racket['error] instead. Supply @racket[#:policy] explicitly when the two operations
+should use the same checks.
 
 The @racket['error] policy raises an exception satisfying @racket[exn:fail:output-audit?]
 before an operation classified as @racket['needs-raster],
@@ -208,9 +212,13 @@ The result is @racket['(#t #f)]. The report describes observed operations, not a
 @defparam[current-output-audit-event-limit limit exact-positive-integer?]{
 Limits the number of collected events. Its initial value is 100000. If recording
 the next event would exceed the limit, the audit raises an exception without
-returning a complete report or output. This is an event-count bound, not a bound
-on callback time or total native memory. Using an active collector from a thread
-other than the one that created it also raises an exception.
+returning a report or completed output, even under the @racket['report] policy.
+It does not silently truncate the report: omitted events could hide a feature
+that should cause a strict policy to reject the export.
+
+This is an event-count bound, not a bound on callback time or total native memory.
+Using an active collector from a thread other than the one that created it also
+raises an exception.
 }
 
 @defproc[(call-with-output-label [label string?] [thunk (-> any)])

@@ -61,8 +61,7 @@ The paired horizontal and vertical margins must leave a positive content area.
 The background is @racket[#f] for no background drawing or a
 @tech{color specification}. The clip flag controls clipping to the content area.
 
-The callback must accept one canvas argument and have no required keyword
-arguments. It draws in page units with its origin at the content area's upper-left.
+The callback draws in page units with its origin at the content area's upper-left.
 Its results are discarded. Any paint or image captured by the callback must
 remain open whenever the callback uses it.
 
@@ -191,9 +190,15 @@ and never silently drops extra pages. All page descriptions and format settings
 are validated before the first callback is invoked.
 
 Automatic text mode selects @racket['native] for PDF and @racket['outline] for
-SVG. Explicit modes override that choice. Neither mode is a guarantee of
-searchable text or exact reproduction of glyphs with no monochrome outline.
-Use explicit @tech{raster fallback} when pixels, rather than outlines, must be preserved.
+SVG. Outlines avoid depending on the SVG viewer's fonts, but outlined text is
+not searchable or selectable. Pass @racket[#:text-mode 'native] to request native
+text instead; its appearance and text extraction depend on the backend and viewer.
+See @racket[current-text-output-mode] for the drawing helpers affected by this choice.
+
+Outline output has the @seclink["skia-text-outline-policy"]{missing-outline
+restrictions} of text-to-path conversion; it cannot preserve bitmap or color
+glyph rendering. Use explicit @tech{raster fallback} when the rendered pixels
+must be preserved.
 
 The title is PDF title metadata or SVG title metadata. The description becomes
 the PDF subject or SVG description. The PDF settings for raster DPI, encoding
@@ -224,10 +229,7 @@ The same callback runs once for each export and once for the explicit raster pre
 its paint inside each call. At 25.4 DPI, the preview has one pixel per millimeter.
 
 @reference-figure["output-page-preview.png"
-                  "A proportional 120 by 80 screen preview rasterized from the documented 60 by 40 millimeter page. The blue circle's center is at 30, 30 and its radius is 16 in preview pixels, including the five-millimeter margins."]
-
-This is a scaled screen preview built through @racket[output-page->image], not proof of a
-physical print size.
+                  "Preview rendered with output-page->image at 25.4 DPI and enlarged from 60 by 40 to 120 by 80 pixels for display."]
 }
 
 @defproc[(save-output [source (or/c output-page? (listof output-page?))]
@@ -245,21 +247,12 @@ resolved before callbacks run. Its parent directory must exist. Saving
 uses the temporary-file and rename rules of @racket[save-pdf] or @racket[save-svg].
 }
 
-@subsection{Standard Conversion}
-
-Output pages also implement @racketmodname[file/convertible]. They accept
-@racket['png-bytes], @racket['svg-bytes], and @racket['pdf-bytes]. PNG first
-rasterizes through @racket[output-page->image] at its fixed 96-DPI default
-(including its ceiling pixel rounding), then uses @racket[image->png-bytes]. It
-therefore produces a raster result. SVG and PDF use @racket[output->bytes] with
-their existing defaults. Each supported conversion invokes the page callback
-once; a later conversion intentionally invokes it again. Temporary raster
-images are released even if the callback raises or escapes. This matters for
-deferred Scribble rendering: resources captured by a page must stay live until
-the renderer requests its chosen format. Unsupported requests return the exact
-supplied default unchanged and do not draw the page. GPU values captured by a
-callback retain their ordinary explicit-transfer rules; conversion adds no
-implicit transfer.
+For conversion through @racketmodname[file/convertible], an output page accepts
+@racket['png-bytes], @racket['svg-bytes], and @racket['pdf-bytes]. PNG uses the
+96-DPI default of @racket[output-page->image]. Each supported conversion runs
+the drawing callback again, so resources it captures must remain usable until
+conversion occurs, including when a Scribble renderer requests the result later.
+See @secref["skia-standard-conversion"] for the shared conversion rules and defaults.
 
 @section[#:tag "skia-raster-fallback"]{Text Representation and Explicit Raster Fallback}
 

@@ -266,7 +266,7 @@ backing scale through @racket[#:backing-scale].
 When given a Skia image, @tt{pict:bitmap} obtains PNG bytes through
 @racketmodname[file/convertible] and constructs an independent raster pict.
 The original Skia image can be closed after the pict is constructed.
-See @secref["skia-encoding-convertible"] for the shared PNG conversion rules,
+See @secref["skia-standard-conversion"] for the shared PNG conversion rules,
 including the requirement to transfer GPU images explicitly before conversion.
 
 @section[#:tag "skia-image-pixel-copies"]{Raw Pixel Construction and Readback}

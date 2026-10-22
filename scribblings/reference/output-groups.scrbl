@@ -90,8 +90,11 @@ callback again.
 Callback values are ignored, and its canvas expires on exit. Failure before replay draws no
 group to the destination, but ordinary callback side effects persist. Failures during actual
 replay or drawing the raster image can leave the destination pixels partially changed.
-A policy rejection raises @racket[exn:fail:output-group?] with its report. The optional label is copied without the
-200-character restriction of @racket[call-with-output-label].
+A policy rejection raises @racket[exn:fail:output-group?] with its report.
+
+The optional label identifies the group in its report and is copied when supplied.
+It may be an empty string and has no length limit. This differs from
+@racket[call-with-output-label], which requires 1 through 200 characters.
 }
 
 @racketblock[

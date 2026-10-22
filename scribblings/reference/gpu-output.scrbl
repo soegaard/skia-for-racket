@@ -45,8 +45,7 @@ GPU raster execution. See @secref["skia-output-groups"].
           [#:on-unavailable on-unavailable (or/c 'error 'cpu) 'error])
          any]{
 Calls @racket[proc] with a scoped @tech{raster executor} and returns its values.
-The function must accept one positional argument and no required keywords. The
-@racket[make-context] function is invoked lazily when the scope first needs
+The @racket[make-context] function is invoked lazily when the scope first needs
 GPU raster execution, and a created context is closed when the dynamic extent
 ends. The executor must not escape the call.
 

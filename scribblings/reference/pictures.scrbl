@@ -44,9 +44,12 @@ returns the finished picture. The callback's results are discarded. The
 recorder is released on success or escape; the returned picture is not released.
 Do not use the callback's canvas after the callback returns.
 
-Unlike @racket[picture-recorder-begin-recording!], this helper requires exact positive
-integer extents and applies the usual @racket[(* 4 width height)] byte-limit
-check, even though it records commands rather than allocating a raster page.
+This convenience function requires exact positive integer extents and checks
+that @racket[(* 4 width height)] does not exceed @racket[current-skia-byte-limit].
+It does not allocate a raster page, and this check does not measure or bound the
+memory used by the recorded commands. For noninteger extents, a nonzero origin,
+or recording bounds without this RGBA-size check, use
+@racket[picture-recorder-begin-recording!]; see @secref["skia-picture-recorders"].
 
 @racketblock[
 (with-skia ([picture
@@ -62,7 +65,7 @@ check, even though it records commands rather than allocating a raster page.
 @reference-figure["recording.png"
                   "A recorded blue rectangle replayed onto a larger white surface with a margin around it."]
 
-The paint has already been closed when the picture is replayed.
+In this example, the paint is closed before the picture is replayed.
 }
 
 @section{Playback and Inspection}

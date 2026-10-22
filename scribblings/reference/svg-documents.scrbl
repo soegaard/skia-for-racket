@@ -162,18 +162,10 @@ before the rename does not replace an existing file with partial XML.
 ]
 
 @reference-figure["svg-document.png"
-                  "A raster content preview of the same centered blue-circle drawing commands as the SVG example. It is not a rendering or verification of the exported SVG file."]
-
-The preview shows the callback's geometry only; SVG representation and file saving remain
-separate checks.
+                  "Raster preview of the SVG example's drawing commands: a blue circle centered in the viewport."]
 }
 
-@subsection{Standard Conversion}
-
-SVG documents participate in @racketmodname[file/convertible] as
-@racket['svg-bytes]. It has exactly @racket[svg-document->bytes]'s lifecycle:
-the document must have finished successfully and must remain open. Conversion
-does not complete, abort, or release it. Unsupported requests return their
-supplied default unchanged without checking the document; supported requests
-preserve ordinary unfinished, aborted, closed, and wrong-thread errors rather
-than replacing them with that default.
+For conversion through @racketmodname[file/convertible], an SVG document accepts
+@racket['svg-bytes] and must already be finished and still open. Conversion does
+not finish or close it. See @secref["skia-standard-conversion"] for the shared
+conversion rules.

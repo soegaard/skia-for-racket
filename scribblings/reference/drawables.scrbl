@@ -8,11 +8,12 @@
 @defmodule[skia/drawables #:no-declare]
 @(declare-exporting skia skia/drawables #:use-sources (skia/drawables))
 
-For ordinary recording and replay, the @tech{picture} interface is sufficient.
-Use a recorded drawable when you need @racket[draw-drawable]'s choice between
-storing a reference to a drawable in another recording and immediately replaying
-its commands into that recording. Create one with @racket[call-with-drawable] or
-convert an existing picture with @racket[picture->drawable].
+Use a @tech{picture} for ordinary recording and replay. A recorded drawable adds
+a choice when the destination canvas is itself recording: @racket[draw-drawable]
+can store a reference to the drawable or replay its commands into that recording.
+On an ordinary drawing surface, both modes draw the content immediately.
+Create a drawable with @racket[call-with-drawable] or convert an existing picture
+with @racket[picture->drawable].
 
 A @deftech{recorded drawable} owns native drawing content captured from a
 @tech{picture}. Playback does not invoke a Racket callback. This API exposes recorded
@@ -49,9 +50,11 @@ then returns the captured recorded drawable. Callback results are discarded.
 The canvas is borrowed only for the callback; it must not escape for later use.
 Temporary recording resources are released on success or escape.
 
-Dimensions and the usual four-bytes-per-pixel logical budget follow
-@racket[call-with-picture], although the helper records commands rather than
-allocating that raster image.
+Dimensions and the RGBA-size check follow @racket[call-with-picture]. This is a
+restriction of the convenience function, not an allocation of raster pixels or
+a measurement of recording memory. To use other recording bounds, record a
+picture with @racket[picture-recorder-begin-recording!] and convert it with
+@racket[picture->drawable].
 
 @racketblock[
 (define calls 0)
@@ -83,28 +86,38 @@ The callback count is 1 despite two playbacks.
           [#:matrix matrix (or/c matrix? #f) #f]
           [#:mode mode (or/c 'retained 'immediate) 'retained])
           void?]{
-Draws the recorded content with an optional affine transform. Retained mode
-uses the canvas drawable operation, allowing a recording to keep a native reference
-to the drawable for later playback.
-Immediate mode executes the drawable's native drawing on the current canvas.
-Neither mode calls back into the original Racket authoring function.
+Draws the recorded content with an optional affine transform.
+
+When the destination is recording, @racket['retained] mode lets the recording
+store a reference to the drawable; @racket['immediate] mode replays the drawable's
+commands into that recording. On an ordinary drawing surface, both modes draw
+immediately. Neither mode invokes the original Racket drawing callback.
 
 The current canvas state and restrictions on resources used by the drawable
 still apply. The optional transform is not a projective matrix, and mode does
 not choose CPU versus GPU execution.
 
+The following example uses both modes while recording a parent picture, then
+replays that picture on a surface. The choice concerns how content enters the
+parent recording; it does not give the fixed drawable two different appearances.
+
 @racketblock[
-(with-skia ([surface (make-surface 120 50 #:background 'white)]
-            [drawable
+(with-skia ([drawable
              (call-with-drawable 40 30
                (lambda (canvas)
                  (with-skia ([paint (make-paint #:color 'red)])
-                   (draw-rect canvas 5 5 30 20 paint))))])
-  (draw-drawable (surface-canvas surface) drawable
-                 #:matrix (matrix-translate 5 10))
-  (draw-drawable (surface-canvas surface) drawable
-                 #:matrix (matrix-translate 65 10)
-                 #:mode 'immediate))
+                   (draw-rect canvas 5 5 30 20 paint))))]
+            [parent
+             (call-with-picture 120 50
+               (lambda (recording)
+                 (draw-drawable recording drawable
+                                #:matrix (matrix-translate 5 10)
+                                #:mode 'retained)
+                 (draw-drawable recording drawable
+                                #:matrix (matrix-translate 65 10)
+                                #:mode 'immediate)))]
+            [surface (make-surface 120 50 #:background 'white)])
+  (draw-picture (surface-canvas surface) parent))
 ]
 
 }
@@ -141,16 +154,22 @@ Returns native bounds as a vector of coordinates, width, and height. They are
 not a proof of exact visible ink or a replacement for effect padding.
 }
 
-@defproc[(drawable-generation-id [drawable drawable?])
-          exact-nonnegative-integer?]{
-Returns the native generation identifier. It is process-local metadata, not
-a persistent content hash or a count of authoring callbacks.
-}
-
 @defproc[(drawable-approximate-bytes-used [drawable drawable?])
           exact-nonnegative-integer?]{
 Returns the native storage estimate. It is not the total memory used by
 all referenced images, typefaces, or other resources.
+}
+
+@subsection[#:tag "skia-drawable-generations"]{Generation Identifiers}
+
+These operations expose upstream Skia's generation tracking and change
+notification. The recorded drawables provided here have fixed content, so
+ordinary recording and replay do not require change notification.
+
+@defproc[(drawable-generation-id [drawable drawable?])
+          exact-nonnegative-integer?]{
+Returns the native generation identifier. It is process-local metadata, not
+a persistent content hash or a count of drawing callbacks.
 }
 
 @defproc[(drawable-notify-drawing-changed! [drawable drawable?])

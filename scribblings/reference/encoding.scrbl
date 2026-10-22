@@ -223,31 +223,12 @@ The following example permits running the same save more than once:
 
 @section[#:tag "skia-encoding-convertible"]{Standard PNG Conversion}
 
-Images and surfaces implement @racketmodname[file/convertible]'s protocol.
-Use it when another Racket library accepts convertible values. For direct
-control over encoding options, call an encoder instead.
-
-For an open CPU resource, @racket[(convert image 'png-bytes)] calls
-@racket[image->png-bytes], and @racket[(convert surface 'png-bytes)] calls
-@racket[surface->png-bytes], each with its default options. The corresponding
-encoder's color and alpha behavior, resource requirements, byte limit, and
-error behavior apply.
-
-Other conversion requests return the supplied default unchanged, including
-when it is a function, without inspecting or decoding the resource. For a
-@racket['png-bytes] request, conversion errors raise exceptions even when a
-default value is supplied.
-
-GPU images and surfaces also satisfy @racket[convertible?], but a
-@racket['png-bytes] request raises an exception: conversion does not read
-pixels back from the GPU implicitly. First obtain a CPU image through an
-explicit @tech{GPU readback} operation and convert that image.
-
-@racketblock[
-(require file/convertible skia)
-(with-skia ([image (rgba-bytes->image 1 1 (bytes 255 0 0 255))])
-  (convert image 'png-bytes))
-]
+Images and surfaces accept @racket['png-bytes] through
+@racketmodname[file/convertible], using the corresponding encoder's defaults.
+The resource must be open and CPU-compatible; GPU pixels require explicit
+@tech{GPU readback} first. See @secref["skia-standard-conversion"] for the
+conversion table, shared error rules, and an example. Call an encoder directly
+to select encoding options.
 
 @section[#:tag "skia-encoding-options"]{Shared Encoding Options}
 
