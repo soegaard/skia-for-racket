@@ -138,8 +138,9 @@ not change later outline conversion. Closing the blob releases its native blob
 and its private font; a returned path remains usable. The snapshot adds a small
 native font object plus glyph/position metadata, without copying font files.
 
-Both `text-blob->path` and `shaped-run->path` omit glyphs with no monochrome
-outline, including some bitmap/color glyphs. An explicit rasterized group is the
+Both `text-blob->path` and `shaped-run->path` raise for visible glyphs with no
+monochrome outline by default. Use `#:missing-outline 'skip` to omit them.
+Spaces without visible bounds do not raise. An explicit rasterized group is the
 alternative when those glyphs must retain their rendered appearance.
 
 ### Pictures freeze earlier drawing decisions

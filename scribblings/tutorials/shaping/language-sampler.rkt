@@ -180,7 +180,7 @@
                 "office affinity"
                 #:language "en"))
   (draw-label canvas "LATIN / DEFAULT FEATURES" 58 190)
-  (draw-shaped-run canvas latin-shaper run
+  (draw-shaped-run canvas run
                    58 250 paint)
   (draw-label canvas
               (format "~a glyphs"
@@ -200,7 +200,7 @@
   (define x
     (right-aligned-run-x run 842))
   (draw-label canvas "ARABIC / RTL" 58 330)
-  (draw-shaped-run canvas arabic-shaper run
+  (draw-shaped-run canvas run
                    x 390 paint)
   (draw-label canvas
               (format "~a glyphs"
@@ -220,7 +220,7 @@
   (define x
     (right-aligned-run-x run 842))
   (draw-label canvas "HEBREW / RTL" 58 470)
-  (draw-shaped-run canvas hebrew-shaper run
+  (draw-shaped-run canvas run
                    x 530 paint)
   (draw-label canvas
               (format "~a glyphs"
@@ -245,9 +245,9 @@
                 #:features '("liga=0")))
   (draw-rule canvas 590)
   (draw-label canvas "OPENTYPE FEATURE" 58 630)
-  (draw-shaped-run canvas latin-shaper default-run
+  (draw-shaped-run canvas default-run
                    250 680 default-paint)
-  (draw-shaped-run canvas latin-shaper no-liga-run
+  (draw-shaped-run canvas no-liga-run
                    570 680 alternate-paint)
   (draw-label canvas "default" 250 714)
   (draw-label canvas "liga=0" 570 714))

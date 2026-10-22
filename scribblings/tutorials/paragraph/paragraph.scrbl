@@ -249,9 +249,10 @@ uses the base shaper. Otherwise, it names a selected fallback family. Which
 families appear depends on the fonts installed on the computer. A default
 font that already covers a script may need no fallback for that script.
 
-The caller's shaper and font manager must remain open while the mixed layout
-is drawn. The layout retains references to them; it does not permanently own
-the temporary fallback fonts used during shaping.
+The layout owns snapshots of the base font and the exact fallback faces it uses.
+The caller's shaper and font manager may be closed after construction. Keep the
+layout open while drawing it, and release it with @racket[skia-close!] or
+@racket[with-skia] when it is no longer needed.
 
 @section{Let the Paragraph Choose Its Direction}
 

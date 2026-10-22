@@ -904,7 +904,7 @@
      (with-skia ([f (make-font #:size 32)] [p (make-paint #:style 'stroke #:stroke-width 2)])
        (check-true (> (measure-simple-text f "Hello") 0))
        (check-true (> (measure-simple-text f "Hello" #:paint p) 0))
-       (define-values (x y w h) (simple-text-bounds f "Hello"))
+       (define-values (x y w h) (vector->values (simple-text-bounds f "Hello")))
        (for ([v (in-list (list x y w h))]) (check-true (real? v)))
        (check-true (> w 0))
        (check-true (> h 0))))
@@ -1097,7 +1097,7 @@
                  [s (make-surface 160 60)])
        (define glyphs (font-text->glyphs f "AB"))
        (with-skia ([blob (make-positioned-text-blob f glyphs '((0 0) (36 0)))])
-         (define-values (_x _y w h) (text-blob-bounds blob))
+         (define-values (_x _y w h) (vector->values (text-blob-bounds blob)))
          (check-true (> w 0))
          (check-true (> h 0))
          (check-true (exact-nonnegative-integer? (text-blob-unique-id blob)))
@@ -1111,7 +1111,7 @@
                  [f (make-font tf #:size 28)])
        (define g (font-char->glyph f #\X))
        (with-skia ([blob (make-positioned-text-blob f (vector g g) '((0 0) (100 0)))])
-         (define-values (_x _y w _h) (text-blob-bounds blob))
+         (define-values (_x _y w _h) (vector->values (text-blob-bounds blob)))
          (check-true (> w 90)))))
    (test-case "text blob retains font data after font wrapper closure"
      (define tf (make-typeface))
@@ -1139,8 +1139,8 @@
                  [sh (make-shaper f)])
        (define run (shape-text sh "abc"))
        (check-equal? (shaped-run-glyph-count run) 3)
-       (check-equal? (length (shaped-run-clusters run)) 3)
-       (check-equal? (length (shaped-run-positions run)) 3)
+       (check-equal? (vector-length (shaped-run-clusters run)) 3)
+       (check-equal? (vector-length (shaped-run-positions run)) 3)
        (check-true (> (abs (shaped-run-advance-x run)) 0))))
    (test-case "HarfBuzz shaping produces drawable positioned text"
      (with-skia ([tf (make-typeface)]
@@ -1149,7 +1149,7 @@
                  [p (make-paint #:color 'black)]
                  [s (make-surface 180 70)])
        (define run (shape-text sh "Skia"))
-       (draw-shaped-run (surface-canvas s) sh run 12 48 p)
+       (draw-shaped-run (surface-canvas s) run 12 48 p)
        (define pixels (surface->rgba-bytes s))
        (check-true
         (for/or ([i (in-range 3 (bytes-length pixels) 4)])
@@ -1159,14 +1159,14 @@
      (define f (make-font tf #:size 32))
      (define sh (make-shaper f))
      (define run (shape-text sh "blob"))
-     (define blob (shaped-run->text-blob sh run))
+     (define blob (shaped-run->text-blob run))
      (skia-close! sh)
      (skia-close! f)
      (skia-close! tf)
      (with-skia ([s (make-surface 150 60)]
                  [p (make-paint #:color 'blue)])
        (draw-text-blob (surface-canvas s) blob 8 42 p)
-       (define-values (_x _y w h) (text-blob-bounds blob))
+       (define-values (_x _y w h) (vector->values (text-blob-bounds blob)))
        (check-true (> w 0))
        (check-true (> h 0)))
      (skia-close! blob))
@@ -1192,8 +1192,8 @@
                         [sh (make-shaper f)])
               (define run (shape-text sh "مرحبا" #:direction 'rtl #:script 'arab #:language "ar"))
               (check-true (positive? (shaped-run-glyph-count run)))
-              (check-equal? (length (shaped-run-glyphs run))
-                            (length (shaped-run-positions run)))))))))
+              (check-equal? (vector-length (shaped-run-glyphs run))
+                            (vector-length (shaped-run-positions run)))))))))
 
    ;;;
    ;;; Paragraph Layout, Alignment, and Justification
@@ -1323,9 +1323,7 @@ third"))
               (define line (first (text-layout-lines layout)))
               (check-eq? (text-layout-line-direction line) 'rtl)
               (check-true (> (text-layout-line-origin-x line) 0))
-              ;; Auto shaping still exposes descending HarfBuzz clusters for
-              ;; this ordinary RTL run, which the paragraph layer uses for
-              ;; start/end alignment direction.
+              ;; Automatic alignment follows HarfBuzz's resolved run direction.
               (define auto-layout (layout-text sh "مرحبا" #:width 240
                                                #:script 'arab #:language "ar"))
               (check-eq? (text-layout-line-direction
@@ -1343,14 +1341,16 @@ third"))
        (check-true
         (for/or ([i (in-range 3 (bytes-length pixels) 4)])
           (> (bytes-ref pixels i) 0)))))
-   (test-case "paragraph layout reports closed shaper on drawing"
+   (test-case "paragraph layout outlives its source shaper but not its own closure"
      (with-skia ([tf (make-typeface)]
                  [f (make-font tf #:size 24)])
        (define sh (make-shaper f))
-       (define layout (layout-text sh "retained layout"))
+       (define layout (layout-text sh "owned layout"))
        (skia-close! sh)
        (with-skia ([surface (make-surface 200 70)]
                    [p (make-paint #:color 'black)])
+         (check-not-exn (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 p)))
+         (skia-close! layout)
          (check-exn #rx"closed"
                     (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 p))))))
 
@@ -1467,13 +1467,16 @@ third"))
        (define pixels (surface->rgba-bytes surface))
        (check-true (for/or ([i (in-range 3 (bytes-length pixels) 4)])
                      (> (bytes-ref pixels i) 0)))))
-   (test-case "mixed text layout reports closed dependencies"
+   (test-case "mixed text layout owns its font dependencies"
      (define fm (default-font-manager))
      (with-skia ([tf (make-typeface)] [f (make-font tf #:size 24)])
        (define sh (make-shaper f))
        (define layout (layout-mixed-text sh fm "abc שלום"))
        (skia-close! fm)
        (with-skia ([surface (make-surface 200 80)] [p (make-paint #:color 'black)])
+         (skia-close! sh)
+         (check-not-exn (lambda () (draw-mixed-text-layout (surface-canvas surface) layout 0 0 p)))
+         (skia-close! layout)
          (check-exn #rx"closed"
                     (lambda ()
                       (draw-mixed-text-layout (surface-canvas surface) layout 0 0 p))))
@@ -1666,7 +1669,7 @@ third"))
          (define logical-bytes
            (bytes-length (string->bytes/utf-8 (mixed-text-run-text r))))
          (check-true
-          (for/and ([cluster (in-list
+          (for/and ([cluster (in-vector
                               (shaped-run-clusters
                                (mixed-text-run-shaped-run r)))])
             (<= 0 cluster logical-bytes))))))

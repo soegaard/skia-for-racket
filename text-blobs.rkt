@@ -5,7 +5,7 @@
 ;;;
 
 ;; Builds text blobs from ordered glyph runs and places shaped glyphs along paths.
-;; This public text layer retains the needed font state while exposing detached run metadata and
+;; This public text layer saves the needed font state while exposing immutable run metadata and
 ;; reusable native glyph drawings.
 
 ;;;
@@ -145,6 +145,13 @@
     (for ([c (in-list clusters)] [i (in-naturals)]) (ptr-set! cp _uint32 i c)))
   (void/reference-sink rb text))
 
+; immutable-coordinate-vectors : (listof list?) -> vector?
+;   Copies coordinate tuples into immutable vectors, in glyph order.
+(define (immutable-coordinate-vectors tuples)
+  (vector->immutable-vector
+   (for/vector ([tuple (in-list tuples)])
+     (vector->immutable-vector (list->vector tuple)))))
+
 ; append-run! : symbol? text-blob-builder? font? list? symbol? any/c list? any/c any/c -> void?
 ;   Appends a retained font/run snapshot, closing the builder if an allocated native run cannot be
 ;   completed.
@@ -177,9 +184,9 @@
               [(transformed) '()]))
           (define info
             (text-run-info kind (vector->immutable-vector (list->vector gs))
-                           (vector->immutable-vector (list->vector positions))
+                           (immutable-coordinate-vectors positions)
                            (and (eq? kind 'transformed)
-                                (vector->immutable-vector (list->vector coords)))
+                                (immutable-coordinate-vectors coords))
                            text (and clusters (vector->immutable-vector (list->vector clusters)))))
           (define run (retained-text-run snapshot info))
           (define native-run (make-sk-textblob-runbuffer #f #f #f #f))
@@ -259,12 +266,14 @@
   (define-values (bs cs) (text-run-metadata who text clusters (length gs)))
   (append-run! who b f gs 'transformed coords '(0.0 0.0) bs cs))
 
-; text-blob-builder-add-shaped-run! : text-blob-builder? shaper? shaped-run? [#:origin (or/c (list/c
-;   real? real?) (vector/c real? real?))] [#:text (or/c string? bytes? #f)] -> void?
+; text-blob-builder-add-shaped-run! : text-blob-builder? shaped-run? [#:origin (or/c (list/c
+;   real? real?) (vector/c real? real?))] -> void?
 ;   Appends a positioned run using the glyphs and positions already stored in run, translated by
 ;   origin.
-(define (text-blob-builder-add-shaped-run! b sh run #:origin [origin '(0 0)] #:text [text #f])
+(define (text-blob-builder-add-shaped-run! b run #:origin [origin '(0 0)])
   (define who 'text-blob-builder-add-shaped-run!)
+  (define sh (checked-run-shaper who run))
+  (define text (and (positive? (shaped-run-glyph-count run)) (shaped-run-text run)))
   (define at (text-run-point who origin))
   (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
   (define glyphs (text-run-glyphs who (shaped-run-glyphs run)))
@@ -311,7 +320,7 @@
 ;;;
 
 ; retained-runs : text-blob? -> (listof retained-text-run?)
-;   Exposes retained runs in drawing order, adapting a legacy single-run blob to the same
+;   Exposes retained runs in drawing order, adapting a directly constructed single-run blob to the same
 ;   representation.
 (define (retained-runs blob)
   (if (multi-text-blob? blob) (multi-text-blob-runs blob)
@@ -319,7 +328,7 @@
              (text-blob-font blob)
              (text-run-info 'positioned
                             (vector->immutable-vector (list->vector (text-blob-glyphs blob)))
-                            (vector->immutable-vector (list->vector (text-blob-positions blob)))
+                            (immutable-coordinate-vectors (text-blob-positions blob))
                             #f #f #f)))))
 
 ; text-blob-run-count : text-blob? -> exact-nonnegative-integer?
@@ -329,7 +338,7 @@
     (lambda (_) (if (multi-text-blob? blob) (length (multi-text-blob-runs blob)) 1))))
 
 ; text-blob-runs : text-blob? -> (vectorof text-run-info?)
-;   Returns an immutable vector of detached run descriptions in append order.
+;   Returns an immutable vector of immutable run descriptions in append order.
 (define (text-blob-runs blob)
   (define who 'text-blob-runs)
   (call-with-owned who (list (text-blob-h who blob))
@@ -347,7 +356,7 @@
       (call-with-owned who (list (font-h who (retained-text-run-font (list-ref runs index))))
         (lambda (fp) (copy-font who fp))))))
 
-; text-blob-intercepts : text-blob? real? real? [#:paint (or/c paint? #f)] -> (vectorof (list/c
+; text-blob-intercepts : text-blob? real? real? [#:paint (or/c paint? #f)] -> (vectorof (vector/c
 ;   real? real?))
 ;   Returns an immutable vector of horizontal intervals where glyph outlines intersect the band
 ;   between top and bottom.
@@ -383,22 +392,28 @@
               (define a (scalar who (ptr-ref output _float i)))
               (define b (scalar who (ptr-ref output _float (add1 i))))
               (unless (<= a b) (error who "reversed native interval"))
-              (list a b)))
+              (vector-immutable a b)))
            (void/reference-sink bounds output))]))))
 
 ; positioned-glyphs->path : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0
 ;   65535))) (or/c (listof (or/c (list/c real? real?) (vector/c real? real?))) (vectorof (or/c
-;   (list/c real? real?) (vector/c real? real?)))) -> skia-path?
+;   (list/c real? real?) (vector/c real? real?))))
+;   [#:missing-outline (or/c 'error 'skip)] -> skia-path?
 ;   Returns an owned path containing the font's monochrome glyph outlines at the supplied
 ;   positions.
-(define (positioned-glyphs->path f glyphs positions)
+(define (positioned-glyphs->path f glyphs positions #:missing-outline [missing-outline 'error])
   (define who 'positioned-glyphs->path)
+  (check-missing-outline who missing-outline)
   (define gs (text-run-glyphs who glyphs))
   (define coords (text-run-points who positions (length gs)))
   (text-run-budget who (* 26 (length gs)))
   (call-with-owned who (list (font-h who f))
     (lambda (fp)
       (check-face-glyphs who fp gs)
+      (when (eq? missing-outline 'error)
+        (for ([g (in-list gs)])
+          (define outline (checked-glyph-outline who f g missing-outline))
+          (when outline (skia-close! outline))))
       (define out (make-path))
       (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! out) (raise e))])
         (unless (null? gs)
@@ -418,15 +433,16 @@
 ;;; Shaped Text on Paths
 ;;;
 
-; shaped-run->text-blob/on-path : shaper? shaped-run? skia-path? [#:start-offset real?]
+; shaped-run->text-blob/on-path : shaped-run? skia-path? [#:start-offset real?]
 ;   [#:normal-offset real?] [#:contour exact-nonnegative-integer?] [#:force-closed? boolean?]
-;   [#:text (or/c string? bytes? #f)] -> (or/c text-blob? #f)
+;   -> (or/c text-blob? #f)
 ;   Returns an owned blob that places the run's glyphs along the selected measured contour.
-(define (shaped-run->text-blob/on-path sh run path
+(define (shaped-run->text-blob/on-path run path
                                       #:start-offset [start 0] #:normal-offset [normal 0]
-                                      #:contour [contour 0] #:force-closed? [closed? #f]
-                                      #:text [text #f])
+                                      #:contour [contour 0] #:force-closed? [closed? #f])
   (define who 'shaped-run->text-blob/on-path)
+  (define sh (checked-run-shaper who run))
+  (define text (and (positive? (shaped-run-glyph-count run)) (shaped-run-text run)))
   (define first (scalar who start)) (define delta (scalar who normal))
   (boolean who closed?)
   (unless (exact-nonnegative-integer? contour)
@@ -460,17 +476,17 @@
            #:text text #:clusters (and text (shaped-run-clusters run)))
           (text-blob-builder-finish! builder))))))
 
-; draw-shaped-run/on-path : canvas? shaper? shaped-run? skia-path? paint? [#:start-offset real?]
+; draw-shaped-run/on-path : canvas? shaped-run? skia-path? paint? [#:start-offset real?]
 ;   [#:normal-offset real?] [#:contour exact-nonnegative-integer?] [#:force-closed? boolean?] ->
 ;   void?
 ;   Places and draws the run using the same contour and offset rules as
 ;   shaped-run->text-blob/on-path.
-(define (draw-shaped-run/on-path canvas sh run path paint
+(define (draw-shaped-run/on-path canvas run path paint
                                   #:start-offset [start 0] #:normal-offset [normal 0]
                                   #:contour [contour 0] #:force-closed? [closed? #f])
   (call-on-canvas 'draw-shaped-run/on-path canvas (list (paint-h 'draw-shaped-run/on-path paint))
                   (lambda ignored (void)))
-  (define blob (shaped-run->text-blob/on-path sh run path #:start-offset start #:normal-offset normal
+  (define blob (shaped-run->text-blob/on-path run path #:start-offset start #:normal-offset normal
                                             #:contour contour #:force-closed? closed?))
   (when blob
     (call-with-skia-resource blob (lambda (b) (draw-text-blob canvas b 0 0 paint))))

@@ -63,7 +63,6 @@ The run can be drawn with @racket[draw-shaped-run]:
   (define paint
     (make-paint #:color "#326DE6"))
   (draw-shaped-run canvas
-                   latin-shaper
                    office-run
                    60 110
                    paint))
@@ -122,17 +121,16 @@ final advance as a blue line:
   (define baseline 125)
 
   (draw-shaped-run canvas
-                   latin-shaper
                    skia-run
                    x baseline
                    paint)
 
   (for ([position
-         (in-list
+         (in-vector
           (shaped-run-positions skia-run))])
     (draw-circle canvas
-                 (+ x (first position))
-                 (+ baseline (second position))
+                 (+ x (vector-ref position 0))
+                 (+ baseline (vector-ref position 1))
                  4
                  marker))
 
@@ -192,7 +190,6 @@ The @racket["liga=0"] feature disables standard ligatures.
     (make-paint #:color "#20304C"))
 
   (draw-shaped-run canvas
-                   latin-shaper
                    liga-on
                    70 95
                    default-paint)
@@ -202,7 +199,6 @@ The @racket["liga=0"] feature disables standard ligatures.
                     label-font label-paint)
 
   (draw-shaped-run canvas
-                   latin-shaper
                    liga-off
                    340 95
                    off-paint)
@@ -338,7 +334,6 @@ the sign of the advance:
                x baseline
                5 origin)
   (draw-shaped-run canvas
-                   arabic-shaper
                    arabic-run
                    x baseline
                    paint))
@@ -389,7 +384,6 @@ First select a suitable face and create a shaper:
     (right-aligned-run-x
      hebrew-run 570))
   (draw-shaped-run canvas
-                   hebrew-shaper
                    hebrew-run
                    x 110
                    paint))
@@ -500,7 +494,7 @@ Each language row shapes its own run:
               "LATIN / DEFAULT FEATURES"
               58 190)
   (draw-shaped-run canvas
-                   latin-shaper run
+                   run
                    58 250 paint)
   (draw-label canvas
               (format "~a glyphs"
@@ -520,7 +514,7 @@ Each language row shapes its own run:
     (right-aligned-run-x run 842))
   (draw-label canvas "ARABIC / RTL" 58 330)
   (draw-shaped-run canvas
-                   arabic-shaper run
+                   run
                    x 390 paint)
   (draw-label canvas
               (format "~a glyphs"
@@ -542,7 +536,7 @@ Each language row shapes its own run:
     (right-aligned-run-x run 842))
   (draw-label canvas "HEBREW / RTL" 58 470)
   (draw-shaped-run canvas
-                   hebrew-shaper run
+                   run
                    x 530 paint)
   (draw-label canvas
               (format "~a glyphs"
@@ -572,10 +566,10 @@ The final row compares an OpenType feature:
               "OPENTYPE FEATURE"
               58 630)
   (draw-shaped-run canvas
-                   latin-shaper default-run
+                   default-run
                    250 680 default-paint)
   (draw-shaped-run canvas
-                   latin-shaper no-liga-run
+                   no-liga-run
                    570 680 alternate-paint)
   (draw-label canvas "default" 250 714)
   (draw-label canvas "liga=0" 570 714))

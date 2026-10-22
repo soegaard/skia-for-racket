@@ -72,7 +72,7 @@
            (for ([p (in-vector paths)] [xy (in-vector positions)])
              (unless p (error 'font-query-scene "fixture unexpectedly has no outline"))
              (with-canvas-state canvas
-               (canvas-translate! canvas (+ 20 (car xy)) (+ 60 (cadr xy)))
+               (canvas-translate! canvas (+ 20 (vector-ref xy 0)) (+ 60 (vector-ref xy 1)))
                (draw-path canvas p paint))))
          (lambda () (for ([p (in-vector paths)] #:when p) (skia-close! p))))])))
 

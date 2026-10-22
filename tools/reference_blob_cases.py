@@ -27,14 +27,14 @@ BLOB_PROCEDURES = {
     'text-blob-builder-add-horizontal-run!': (16, ['clusters', 'text', 'y']),
     'text-blob-builder-add-positioned-run!': (16, ['clusters', 'text']),
     'text-blob-builder-add-transformed-run!': (16, ['clusters', 'text']),
-    'text-blob-builder-add-shaped-run!': (8, ['origin', 'text']),
+    'text-blob-builder-add-shaped-run!': (4, ['origin']),
     'text-blob-run-font': (4, []),
     'text-blob-intercepts': (8, ['paint']),
-    'positioned-glyphs->path': (8, []),
+    'positioned-glyphs->path': (8, ['missing-outline']),
     'shaped-run->text-blob/on-path':
-        (8, ['contour', 'force-closed?', 'normal-offset', 'start-offset', 'text']),
+        (4, ['contour', 'force-closed?', 'normal-offset', 'start-offset']),
     'draw-shaped-run/on-path':
-        (32, ['contour', 'force-closed?', 'normal-offset', 'start-offset']),
+        (16, ['contour', 'force-closed?', 'normal-offset', 'start-offset']),
     'make-atlas-transform': (4, ['anchor', 'rotation', 'scale']),
 }
 assert len(BLOB_EXPORTS) == 23 and len(ATLAS_EXPORTS) == 3

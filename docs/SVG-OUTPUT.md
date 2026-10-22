@@ -121,17 +121,17 @@ font and the run's explicit glyph positions, including its shaping offsets:
             [sh (make-shaper f)]
             [p (make-paint #:color 'black)])
   (define run (shape-text sh "office affinity AV" #:language "en"))
-  (with-skia ([outline (shaped-run->path sh run)])
+  (with-skia ([outline (shaped-run->path run)])
     (with-canvas-state canvas
       (canvas-translate! canvas 30 90)
       (draw-path canvas outline p))))
 ```
 
-Supply the shaper used for that run. The returned path is independent of the
+Keep the run's originating shaper open during conversion. The returned path is independent of the
 shaper and remains usable after the shaper is closed. An empty run produces an
-empty path. Like `simple-text-path`, it only represents available outlines:
-empty/bitmap-only glyphs without outlines are omitted, so it is not a way to
-preserve color emoji. Render such text into an explicit rasterized group.
+empty path. Like `simple-text-path`, it raises for a visible glyph with no
+monochrome outline unless `#:missing-outline 'skip` is supplied. Spaces without
+visible bounds do not raise. This does not preserve color emoji. Render such text into an explicit rasterized group.
 
 Both path helpers work with raster and PDF canvases too. Outlining loses text
 selection/search, increases geometry, and is not a substitute for font embedding.

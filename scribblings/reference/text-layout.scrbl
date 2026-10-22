@@ -21,9 +21,11 @@ supply baseline positions relative to that box.
 For the baseline-relative @tech{font metrics} that determine a layout's first baseline
 and reported height, see @secref["skia-font-metrics"].
 
-Layout values and their lines are Racket structures. A layout keeps its
-required shaper and, for mixed text, its font manager reachable. Both must remain
-open when the layout is drawn. Retaining a reference does not prevent explicit closure.
+A layout is an owned resource with private snapshots of all fonts it uses.
+The caller's shaper and font manager may be closed after construction.
+Keep the layout open while drawing it or converting one of its runs; use
+@racket[with-skia] or @racket[skia-close!] to release its snapshots.
+The line and run metadata can still be inspected after closure.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -47,14 +49,13 @@ positive. Script, language, and features are interpreted as
 in @racket[shape-text]. A language string must not contain NUL.
 
 Each line is shaped as a single run. This does not provide font fallback or
-full mixed-direction paragraph layout. Automatic alignment direction can be
-ambiguous for short runs; see @secref["skia-layout-alignment"]. The current
-limitation on explicit scripts and script-specific justification is described
-in @secref["skia-layout-justification"].
+full mixed-direction paragraph layout. Automatic alignment uses the direction
+HarfBuzz resolved for each line. Explicit scripts and inferred scripts both
+enable the applicable script-specific justification rules.
 
-The layout keeps the shaper, not the original font supplied to @racket[make-shaper].
-It is not an independent native text blob. Drawing it after closing the shaper
-raises an exception, including for an empty line.
+The layout owns a private copy of the shaper's font. Closing the caller's
+shaper does not invalidate it. Drawing a closed layout raises an exception,
+including for an empty line.
 
 @racketblock[
 (with-skia ([surface (make-surface 320 90 #:background 'white)]
@@ -121,7 +122,7 @@ per-character fallback.
 Draws the layout box with origin at @racket[x] and @racket[y], using each line's
 stored x offset and baseline. The @tech{canvas transform}
 and existing clip apply; this operation does not clip to the box or reflow text.
-The layout's shaper must remain open.
+The layout must remain open.
 
 @racketblock[
 (with-skia ([surface (make-surface 260 150 #:background 'white)]
@@ -173,12 +174,10 @@ Automatic direction resolves each paragraph's base direction from its text.
 Runs are in visual order within each line. Their cluster offsets are
 relative to individual run text, not global paragraph positions.
 
-The result keeps the base shaper and font manager reachable, and both must
-remain open when drawing. It records fallback family names and styles, not
-the exact fallback typeface resources used to measure and shape the text.
-Drawing looks up those choices again. If available fonts change between layout
-and drawing, the selected face can differ or become unavailable. The stored
-glyphs and positions are not recomputed to match a newly selected face.
+The result owns snapshots of the base font and the exact fallback faces selected
+during construction. Drawing uses those snapshots without looking up family
+names again. Closing the caller's shaper or manager, or changing the available
+fonts afterward, does not change an existing layout.
 
 @racketblock[
 (with-skia ([font (make-font #:size 20)]
@@ -195,16 +194,12 @@ contain every glyph.
 
 @defproc[(draw-mixed-text-layout [canvas canvas?] [layout mixed-text-layout?] [x real?] [y real?]
           [paint paint?]) void?]{
-Draws the stored layout at its upper-left box origin. The base shaper and font
-manager must be open, even for an empty line. The canvas transform and existing
-clip apply without an added box
-clip or automatic reflow.
+Draws the stored layout at its upper-left box origin. The layout must be open,
+even for an empty line. The canvas transform and existing clip apply without
+an added box clip or automatic reflow.
 
-Fallback fonts and shapers are created as needed and reused within this call,
-then released on return or exceptional exit. They are looked up and created
-again on a later drawing call. Failure to recover a recorded fallback family
-raises an exception. If drawing a later run fails, drawing already performed
-by earlier runs is not undone.
+Drawing uses the layout's saved fonts. If drawing a later run fails, drawing
+already performed by earlier runs is not undone.
 
 @racketblock[
 (with-skia ([surface (make-surface 300 90 #:background 'white)]
@@ -249,12 +244,10 @@ It does not align tight ink bounds; glyph overhang can extend outside the box.
 The @racket['start] and @racket['end] choices depend on the line's direction;
 @racket['left] and @racket['right] do not.
 
-With @racket[layout-text] and @racket[#:direction 'auto], alignment uses RTL
-only when the first cluster offset is greater than the last. Empty runs,
-one-glyph runs, and runs whose glyphs all share one cluster default to LTR
-alignment. This does not reliably reveal every run's shaping direction.
-For known right-to-left text, supply @racket[#:direction 'rtl] when start/end
-alignment must be right-to-left, including for a single glyph.
+With @racket[layout-text] and @racket[#:direction 'auto], alignment uses the
+direction resolved by HarfBuzz, including for single-glyph runs and runs whose
+glyphs share one cluster. An empty automatically directed line uses LTR.
+An explicit @racket[#:direction] selects the shaping and alignment direction.
 
 @racket[layout-mixed-text] instead resolves the paragraph's base direction
 from its text, or uses the supplied @racket[#:direction]. Use it when the text
@@ -311,12 +304,10 @@ punctuation is not itself an expansion point. Arabic insertions are display-only
 @tech{cluster offsets} are remapped to the logical line text. This does not replace
 that text with a string containing the inserted elongations.
 
-In the current implementation of @racket[layout-text], CJK and Arabic
-opportunity detection works through script inference when @racket[#:script]
-is @racket[#f]. Supplying an explicit script still controls shaping, but
-disables these script-specific expansion opportunities. Leave the script
-unspecified to use their detection. This limitation does not disable ordinary
-space expansion. Mixed-text layout determines scripts for its individual runs.
+In @racket[layout-text], an explicit @racket[#:script] and an inferred script
+enable the same script-specific expansion opportunities. Script tags may be
+symbols or strings, such as @racket['arab] or @racket["Arab"].
+Mixed-text layout determines scripts for its individual runs.
 
 @racketblock[
 (with-skia ([surface (make-surface 320 125 #:background 'white)]
@@ -376,23 +367,52 @@ wider and remains fully drawable.
 
 Use @racket[draw-text-layout] or @racket[draw-mixed-text-layout] to draw a complete
 layout. These accessors expose its dimensions, lines, and runs for callers that
-need to inspect placement. Inspection does not reflow text or keep the required
-shaper and font manager open.
+need to inspect placement. Inspection does not reflow text.
 
-The public line and run values do not include source ranges in the original
-input. Wrapping can trim boundary whitespace, a selected break can insert text,
-and mixed-text runs can omit bidi formatting controls. Their strings are
-therefore not always verbatim input slices. Cluster offsets refer to the
-corresponding line or run text, not automatically to the original paragraph.
-These values alone are not a complete caret, selection, or hit-testing map.
-See @secref["skia-text-indices"] for the different index units.
+@subsection[#:tag "skia-layout-source-maps"]{Source Text and Character Maps}
+
+Each layout stores an immutable copy of the original input. Line source ranges
+are half-open @racket[#(start end)] character ranges in that original string,
+not UTF-8 byte offsets. They include whitespace consumed while wrapping but
+exclude hard line separators. Trimmed whitespace between lines belongs to the
+line that consumes it; trailing whitespace belongs to the final line.
+
+A line's source map is an immutable vector parallel to its logical line text.
+Each original character maps to an immutable @racket[#(start end)] range of one
+character; each character inserted by a selected break maps to @racket[#f].
+A mixed run's map follows its run text: bidi controls removed before shaping
+have no entry. Its source range spans the mapped characters, or is @racket[#f]
+if the run contains only inserted text.
+
+Cluster offsets remain UTF-8 byte offsets into the corresponding shaped run's
+text. Convert a cluster offset to a character index before consulting a source
+map. Justification's display-only Arabic elongations map back to their logical
+cluster; they do not add characters to the line or run text.
+Source maps identify input text; they do not provide caret positions or a
+complete selection or hit-testing algorithm. See @secref["skia-text-indices"].
+
+@racketblock[
+(with-skia ([font (make-font #:size 20)]
+            [shaper (make-shaper font)]
+            [layout (layout-text shaper "A\r\nB")])
+  (skia-close! shaper)
+  (map text-layout-line-source-range (text-layout-lines layout)))
+]
+
+The result is @racket['(#(0 1) #(3 4))]: the CRLF separator occupies
+two input characters but belongs to neither line. The layout's own font
+snapshot remains available after the caller's shaper closes.
 
 @subsection{Single-Font Layout Values}
 
 The lines in a single-font layout are @tt{text-layout-line} structures.
 
 @defproc[(text-layout? [v any/c]) boolean?]{
-Returns @racket[#t] for a single-font text-layout value and @racket[#f] otherwise.
+Returns @racket[#t] for a single-font layout resource and @racket[#f] otherwise.
+}
+
+@defproc[(text-layout-text [layout text-layout?]) (and/c string? immutable?)]{
+Returns the original input text, before wrapping, trimming, or display insertions.
 }
 
 @defproc[(text-layout-lines [layout text-layout?]) (listof text-layout-line?)]{
@@ -417,6 +437,19 @@ Returns the number of lines, including empty lines in the layout.
 
 @defproc[(text-layout-line? [v any/c]) boolean?]{
 Returns @racket[#t] for a single-font line structure and @racket[#f] otherwise.
+}
+
+@defproc[(text-layout-line-source-range [value text-layout-line?])
+          (and/c (vector/c exact-nonnegative-integer? exact-nonnegative-integer?) immutable?)]{
+Returns the original-input character range described in @secref["skia-layout-source-maps"].
+}
+
+@defproc[(text-layout-line-source-map [value text-layout-line?])
+          (and/c (vectorof (or/c #f (and/c (vector/c exact-nonnegative-integer?
+                                                                  exact-nonnegative-integer?)
+                                          immutable?))) immutable?)]{
+Returns the character map parallel to @racket[text-layout-line-text]; see
+@secref["skia-layout-source-maps"].
 }
 
 @defproc[(text-layout-line-text [line text-layout-line?]) string?]{
@@ -450,7 +483,11 @@ The lines in a mixed-text layout are @tt{mixed-text-line} structures. Each line
 contains @tt{mixed-text-run} structures in visual order.
 
 @defproc[(mixed-text-layout? [v any/c]) boolean?]{
-Returns @racket[#t] for a mixed-text-layout value and @racket[#f] otherwise.
+Returns @racket[#t] for a mixed-text layout resource and @racket[#f] otherwise.
+}
+
+@defproc[(mixed-text-layout-text [layout mixed-text-layout?]) (and/c string? immutable?)]{
+Returns the original input text, including hard separators and bidi controls.
 }
 
 @defproc[(mixed-text-layout-lines [layout mixed-text-layout?]) (listof mixed-text-line?)]{
@@ -475,6 +512,19 @@ Returns the number of lines, including empty lines in the layout.
 
 @defproc[(mixed-text-line? [v any/c]) boolean?]{
 Returns @racket[#t] for a mixed-text line structure and @racket[#f] otherwise.
+}
+
+@defproc[(mixed-text-line-source-range [value mixed-text-line?])
+          (and/c (vector/c exact-nonnegative-integer? exact-nonnegative-integer?) immutable?)]{
+Returns the original-input character range described in @secref["skia-layout-source-maps"].
+}
+
+@defproc[(mixed-text-line-source-map [value mixed-text-line?])
+          (and/c (vectorof (or/c #f (and/c (vector/c exact-nonnegative-integer?
+                                                                  exact-nonnegative-integer?)
+                                          immutable?))) immutable?)]{
+Returns the character map parallel to @racket[mixed-text-line-text]; see
+@secref["skia-layout-source-maps"].
 }
 
 @defproc[(mixed-text-line-text [line mixed-text-line?]) string?]{
@@ -504,6 +554,19 @@ Returns the line's resolved paragraph direction for alignment.
 
 @defproc[(mixed-text-run? [v any/c]) boolean?]{
 Returns @racket[#t] for a mixed-text run structure and @racket[#f] otherwise.
+}
+
+@defproc[(mixed-text-run-source-range [value mixed-text-run?])
+          (or/c #f (and/c (vector/c exact-nonnegative-integer? exact-nonnegative-integer?) immutable?))]{
+Returns the original-input character range described in @secref["skia-layout-source-maps"].
+}
+
+@defproc[(mixed-text-run-source-map [value mixed-text-run?])
+          (and/c (vectorof (or/c #f (and/c (vector/c exact-nonnegative-integer?
+                                                                  exact-nonnegative-integer?)
+                                          immutable?))) immutable?)]{
+Returns the character map parallel to @racket[mixed-text-run-text]; see
+@secref["skia-layout-source-maps"].
 }
 
 @defproc[(mixed-text-run-text [run mixed-text-run?]) string?]{

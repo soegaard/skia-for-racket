@@ -125,7 +125,7 @@
                          font wave-glyphs
                          '((0 0) (48 -18) (96 0) (144 18)))])
         (draw-text-blob c wave 715 525 blue)
-        (define-values (bx by bw bh) (text-blob-bounds wave))
+        (define-values (bx by bw bh) (vector->values (text-blob-bounds wave)))
         (draw-simple-text c
                           (format "bounds ~a×~a" (inexact->exact (round bw))
                                   (inexact->exact (round bh)))

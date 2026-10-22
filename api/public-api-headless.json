@@ -6974,7 +6974,7 @@
         },
         {
           "allowed_keywords": [],
-          "arity_mask": "64",
+          "arity_mask": "32",
           "export_kind": "value",
           "kind": "procedure",
           "name": "draw-shaped-run",
@@ -6988,7 +6988,7 @@
             "normal-offset",
             "start-offset"
           ],
-          "arity_mask": "32",
+          "arity_mask": "16",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "draw-shaped-run/on-path",
@@ -11206,6 +11206,15 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
+          "name": "mixed-text-layout-text",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
           "name": "mixed-text-layout-width",
           "phase": "0",
           "required_keywords": []
@@ -11252,6 +11261,24 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "mixed-text-line-runs",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "mixed-text-line-source-map",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "mixed-text-line-source-range",
           "phase": "0",
           "required_keywords": []
         },
@@ -11333,6 +11360,24 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "mixed-text-run-shaped-run",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "mixed-text-run-source-map",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "mixed-text-run-source-range",
           "phase": "0",
           "required_keywords": []
         },
@@ -13494,7 +13539,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "missing-outline"
+          ],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -14507,8 +14554,10 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
-          "arity_mask": "4",
+          "allowed_keywords": [
+            "missing-outline"
+          ],
+          "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
           "name": "shaped-run->path",
@@ -14517,7 +14566,7 @@
         },
         {
           "allowed_keywords": [],
-          "arity_mask": "4",
+          "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
           "name": "shaped-run->text-blob",
@@ -14529,10 +14578,9 @@
             "contour",
             "force-closed?",
             "normal-offset",
-            "start-offset",
-            "text"
+            "start-offset"
           ],
-          "arity_mask": "8",
+          "arity_mask": "4",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "shaped-run->text-blob/on-path",
@@ -14571,6 +14619,15 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
+          "name": "shaped-run-direction",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
           "name": "shaped-run-glyph-count",
           "phase": "0",
           "required_keywords": []
@@ -14590,6 +14647,15 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "shaped-run-positions",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "shaped-run-text",
           "phase": "0",
           "required_keywords": []
         },
@@ -14623,7 +14689,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "missing-outline"
+          ],
           "arity_mask": "28",
           "export_kind": "value",
           "kind": "procedure",
@@ -15160,7 +15228,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "missing-outline"
+          ],
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
@@ -15217,10 +15287,9 @@
         },
         {
           "allowed_keywords": [
-            "origin",
-            "text"
+            "origin"
           ],
-          "arity_mask": "8",
+          "arity_mask": "4",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "text-blob-builder-add-shaped-run!",
@@ -15390,6 +15459,24 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
+          "name": "text-layout-line-source-map",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "text-layout-line-source-range",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
           "name": "text-layout-line-text",
           "phase": "0",
           "required_keywords": []
@@ -15418,6 +15505,15 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "text-layout-lines",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "text-layout-text",
           "phase": "0",
           "required_keywords": []
         },
@@ -18930,7 +19026,7 @@
             "normal-offset",
             "start-offset"
           ],
-          "arity_mask": "32",
+          "arity_mask": "16",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "draw-shaped-run/on-path",
@@ -18947,7 +19043,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "missing-outline"
+          ],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -18960,10 +19058,9 @@
             "contour",
             "force-closed?",
             "normal-offset",
-            "start-offset",
-            "text"
+            "start-offset"
           ],
-          "arity_mask": "8",
+          "arity_mask": "4",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "shaped-run->text-blob/on-path",
@@ -19010,10 +19107,9 @@
         },
         {
           "allowed_keywords": [
-            "origin",
-            "text"
+            "origin"
           ],
-          "arity_mask": "8",
+          "arity_mask": "4",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "text-blob-builder-add-shaped-run!",

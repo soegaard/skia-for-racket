@@ -106,8 +106,8 @@ operation into shaped-text measurement.
 }
 
 @defproc[(simple-text-bounds [font font?] [text string?]
-                     [#:paint paint (or/c paint? #f) #f]) (values real? real? real? real?)]{
-Returns the unshaped text's bounds as four values: x, y, width, and height,
+                     [#:paint paint (or/c paint? #f) #f]) (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the unshaped text's bounds as an immutable @racket[#(x y width height)] vector,
 relative to a baseline origin at zero. Negative x or y values are possible.
 The optional paint participates in native bounds measurement; the result does
 not include a canvas transform or clip and is not a guarantee about every
@@ -116,7 +116,7 @@ filter's final output extent.
 @racketblock[
 (with-skia ([font (make-font #:size 24)])
   (define advance (measure-simple-text font "A "))
-  (define-values (x y width height) (simple-text-bounds font "A "))
+  (define-values (x y width height) (vector->values (simple-text-bounds font "A ")))
   (list advance (list x y width height)))
 ]
 
@@ -139,7 +139,7 @@ its target rectangle is @math{(origin-x+bx, baseline-y+by, bw, bh)}.
             [baseline-paint (make-paint #:color "#888888" #:style 'stroke #:stroke-width 1)])
   (define x 25)
   (define y 62)
-  (define-values (bx by bw bh) (simple-text-bounds font "Skia"))
+  (define-values (bx by bw bh) (vector->values (simple-text-bounds font "Skia")))
   (draw-line (surface-canvas surface) 10 y 235 y baseline-paint)
   (draw-simple-text (surface-canvas surface) "Skia" x y font text-paint)
   (draw-rect (surface-canvas surface) (+ x bx) (+ y by) bw bh bounds-paint))
@@ -542,10 +542,9 @@ mapping returns zero. The result is not a shaped cluster and does not describe
 fallback, combining marks, or contextual forms.
 }
 
-@defproc[(font-text->glyphs [font font?] [text string?]) (vectorof (integer-in 0 #xffff))]{
+@defproc[(font-text->glyphs [font font?] [text string?]) (and/c (vectorof (integer-in 0 #xffff)) immutable?)]{
 Maps the characters in @racket[text] to glyph IDs without shaping or fallback.
-A missing mapping yields glyph zero. The nonempty result is a new mutable vector; the
-empty result is an empty vector. The native glyph buffer is bounded by
+A missing mapping yields glyph zero. The result is an immutable vector, empty for an empty string. The native glyph buffer is bounded by
 @racket[current-skia-byte-limit].
 }
 
@@ -574,8 +573,8 @@ input returns an empty vector.
 @defproc[(font-glyph-bounds [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
           (integer-in 0 #xffff)))]
                      [#:paint paint (or/c paint? #f) #f])
-          (and/c (vectorof (list/c real? real? real? real?)) immutable?)]{
-Returns one x/y/width/height list per glyph in an immutable vector. Each
+          (and/c (vectorof (and/c (vector/c real? real? real? real?) immutable?)) immutable?)]{
+Returns one immutable @racket[#(x y width height)] vector per glyph in an immutable vector. Each
 bound is relative to that glyph's own origin, not a position in a string.
 The optional paint participates in native bounds measurement.
 }
@@ -584,7 +583,7 @@ The optional paint participates in native bounds measurement.
           (vectorof (integer-in 0 #xffff)))]
                      [#:paint paint (or/c paint? #f) #f])
           (values (and/c (vectorof real?) immutable?)
-                  (and/c (vectorof (list/c real? real? real? real?)) immutable?))]{
+                  (and/c (vectorof (and/c (vector/c real? real? real? real?) immutable?)) immutable?))]{
 Returns the advance-width vector and bounds vector as two values, using
 the same native query and behavior as @racket[font-glyph-widths] and
 @racket[font-glyph-bounds]. Both vectors are empty for empty input.
@@ -593,7 +592,7 @@ the same native query and behavior as @racket[font-glyph-widths] and
 @defproc[(font-glyph-positions [font font?] [glyphs (or/c (listof (integer-in 0 #xffff)) (vectorof
           (integer-in 0 #xffff)))]
                      [#:origin origin (or/c (list/c real? real?) (vector/c real? real?)) '(0 0)])
-                     (and/c (vectorof (list/c real? real?)) immutable?)]{
+                     (and/c (vectorof (and/c (vector/c real? real?) immutable?)) immutable?)]{
 Returns glyph origins obtained by accumulating ordinary advances from
 @racket[origin]. This does not apply shaping, pair kerning, or a canvas transform.
 }
@@ -613,6 +612,20 @@ do not preserve bitmap-only or color-glyph rendering.
 
 @(declare-exporting skia)
 
+@subsection[#:tag "skia-text-outline-policy"]{Missing Outlines}
+
+Whole-text path conversions produce monochrome contours, not bitmap or color
+glyph appearances. By default, a glyph with visible bounds but no monochrome
+outline raises an exception. Set @racket[#:missing-outline 'skip] to deliberately
+omit such glyphs. Spaces and other glyphs without visible bounds are omitted
+under either policy. Empty text produces an owned empty path.
+
+This rule applies to @racket[simple-text-path], @racket[shaped-run->path],
+@racket[positioned-glyphs->path], and @racket[text-blob->path]. For complete
+bitmap or color glyph appearance, draw text to a raster surface instead.
+The single-glyph queries below return @racket[#f] for a missing outline so that
+callers can decide how to handle it.
+
 @defproc[(font-glyph-path [font font?] [glyph (integer-in 0 #xffff)]) (or/c skia-path? #f)]{
 Returns an owned monochrome glyph-outline path, or @racket[#f] when the
 font supplies no outline for the glyph. A bitmap-only glyph need not have a
@@ -620,11 +633,13 @@ path. The returned path incorporates font size, scale, and skew and remains
 usable after the font is closed. It has not been placed at a text position.
 }
 
-@defproc[(simple-text-path [font font?] [text string?] [x real? 0] [y real? 0]) skia-path?]{
+@defproc[(simple-text-path [font font?] [text string?] [x real? 0] [y real? 0]
+          [#:missing-outline missing-outline (or/c 'error 'skip) 'error]) skia-path?]{
 Returns an owned path for the unshaped string placed at the given baseline
 origin. The font is not closed or mutated.
 The result contains monochrome outlines; it is not a general conversion of
-bitmap or color glyph rendering into vectors.
+bitmap or color glyph rendering into vectors. The missing-outline policy is
+explained in @secref["skia-text-outline-policy"].
 
 The converted outline can be filled or stroked like any other path. The example
 uses @racket[simple-text-path] twice with the same text and font, then fills one

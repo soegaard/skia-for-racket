@@ -253,7 +253,7 @@ The next example shows the origin, baseline, advance, and bounds together:
   (define advance
     (measure-simple-text font text))
   (define-values (bx by bw bh)
-    (simple-text-bounds font text))
+    (vector->values (simple-text-bounds font text)))
 
   (draw-line canvas
              45 baseline

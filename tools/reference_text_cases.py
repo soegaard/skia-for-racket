@@ -45,16 +45,18 @@ fixed('''font-manager? font-manager-family-count font-manager-families
  font-embedded-bitmaps? font-force-auto-hinting? font-baseline-snap? font-typeface
  shaper? make-shaper shaped-run? shaped-run-glyphs shaped-run-clusters shaped-run-positions
  shaped-run-advance-x shaped-run-advance-y shaped-run-glyph-count
- text-blob? text-blob-bounds text-blob-unique-id text-blob->path
+ shaped-run-text shaped-run-direction shaped-run->text-blob
+ text-blob? text-blob-bounds text-blob-unique-id
  layout-break-opportunity? layout-break-opportunity-index layout-break-opportunity-insert
- text-layout? text-layout-lines text-layout-width text-layout-height text-layout-line-height
- text-layout-line-count text-layout-line? text-layout-line-text text-layout-line-run
+ text-layout? text-layout-text text-layout-lines text-layout-width text-layout-height text-layout-line-height
+ text-layout-line-count text-layout-line? text-layout-line-text
+ text-layout-line-source-range text-layout-line-source-map text-layout-line-run
  text-layout-line-origin-x text-layout-line-baseline text-layout-line-width text-layout-line-direction
- mixed-text-layout? mixed-text-layout-lines mixed-text-layout-width mixed-text-layout-height
+ mixed-text-layout? mixed-text-layout-text mixed-text-layout-lines mixed-text-layout-width mixed-text-layout-height
  mixed-text-layout-line-height mixed-text-layout-line-count
- mixed-text-line? mixed-text-line-text mixed-text-line-runs mixed-text-line-origin-x
+ mixed-text-line? mixed-text-line-source-range mixed-text-line-source-map mixed-text-line-text mixed-text-line-runs mixed-text-line-origin-x
  mixed-text-line-baseline mixed-text-line-width mixed-text-line-direction
- mixed-text-run? mixed-text-run-text mixed-text-run-shaped-run mixed-text-run-origin-x
+ mixed-text-run? mixed-text-run-source-range mixed-text-run-source-map mixed-text-run-text mixed-text-run-shaped-run mixed-text-run-origin-x
  mixed-text-run-width mixed-text-run-direction mixed-text-run-level mixed-text-run-script
  mixed-text-run-family''', 1)
 fixed(' '.join('font-metrics-' + suffix for suffix in (
@@ -66,11 +68,10 @@ fixed('''font-manager-family-name font-manager-style-set font-manager-style-set-
  font-set-size! font-set-scale-x! font-set-skew-x! font-set-edging! font-set-hinting!
  font-set-subpixel! font-set-linear-metrics! font-set-embolden!
  font-set-embedded-bitmaps! font-set-force-auto-hinting! font-set-baseline-snap!
- font-set-typeface! font-char->glyph font-text->glyphs font-glyph-path font-glyph-paths
- shaped-run->text-blob shaped-run->path''', 2)
+ font-set-typeface! font-char->glyph font-text->glyphs font-glyph-path font-glyph-paths''', 2)
 fixed('make-positioned-text-blob', 3)
-fixed('draw-text-blob draw-text-layout draw-mixed-text-layout', 5)
-fixed('draw-simple-text draw-shaped-run', 6)
+fixed('draw-text-blob draw-text-layout draw-mixed-text-layout draw-shaped-run', 5)
+fixed('draw-simple-text', 6)
 
 STYLE = ['slant', 'weight', 'width']
 SHAPE = ['direction', 'features', 'language', 'script']
@@ -90,7 +91,9 @@ TEXT_PROCEDURES.update({
                      'size', 'skew-x', 'subpixel?']),
     'measure-simple-text': (4, ['paint']),
     'simple-text-bounds': (4, ['paint']),
-    'simple-text-path': (28, []),
+    'simple-text-path': (28, ['missing-outline']),
+    'shaped-run->path': (2, ['missing-outline']),
+    'text-blob->path': (2, ['missing-outline']),
     'font-glyph-widths': (4, ['paint']),
     'font-glyph-bounds': (4, ['paint']),
     'font-glyph-widths+bounds': (4, ['paint']),
@@ -103,6 +106,6 @@ TEXT_PROCEDURES.update({
     'layout-mixed-text': (8, LAYOUT),
     'make-layout-break-opportunity': (6, []),
 })
-assert len(TEXT_PROCEDURES) == 169
+assert len(TEXT_PROCEDURES) == 179
 assert len(TYPEFACE_EXPORTS) == 32 and len(FONT_EXPORTS) == 15
 assert set(TYPEFACE_EXPORTS + FONT_EXPORTS) <= TEXT_PROCEDURES.keys()

@@ -2206,7 +2206,7 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_text_subset_has_one_definition_per_reviewed_call_shape(self):
         entries = {row['name']: row for row in self.check()['definitions']}
-        self.assertEqual(len(TEXT_PROCEDURES), 169)
+        self.assertEqual(len(TEXT_PROCEDURES), 179)
         for name, (mask, keywords) in TEXT_PROCEDURES.items():
             with self.subTest(name=name):
                 self.assertEqual(entries[name]['arity_mask'], str(mask))
@@ -2328,13 +2328,13 @@ class R3TextSemanticsTests(unittest.TestCase):
         self.assertIn('not a Racket character', self.text('shaping'))
         self.assertIn('paragraph-relative Racket character index', self.text('text-layout'))
 
-    def test_layout_requires_live_dependencies_without_claiming_owned_resource(self):
+    def test_layout_owns_exact_font_snapshots(self):
         text = ' '.join(self.text('text-layout').split())
-        self.assertIn('The result keeps the base shaper and font manager reachable', text)
-        self.assertIn('both must remain open when drawing', text)
-        self.assertIn('records fallback family names and styles, not the exact fallback typeface', text)
-        self.assertIn('the selected face can differ or become unavailable', text)
-        self.assertIn('glyphs and positions are not recomputed', text)
+        self.assertIn('A layout is an owned resource', text)
+        self.assertIn('exact fallback faces selected during construction', text)
+        self.assertIn('without looking up family names again', text)
+        self.assertIn("Closing the caller's shaper or manager", text)
+        self.assertIn('half-open @racket[#(start end)] character ranges', text)
 
     def test_shape_and_layout_directions_are_not_conflated(self):
         shaped = self.header('shaping', 'shape-text')[0]
@@ -2346,11 +2346,11 @@ class R3TextSemanticsTests(unittest.TestCase):
         self.assertEqual(layout_dir, ['or/c'] + [['quote', s] for s in ('auto', 'ltr', 'rtl')])
         self.assertIn('signed y advances', self.text('shaping'))
 
-    def test_explicit_script_justification_limit_is_not_hidden(self):
+    def test_explicit_scripts_enable_justification(self):
         text = ' '.join(self.text('text-layout').split())
-        self.assertIn('Supplying an explicit script still controls shaping, but disables', text)
-        self.assertIn('opportunity detection works through script inference', text)
-        self.assertIn('This limitation does not disable ordinary space expansion', text)
+        self.assertIn('an explicit @racket[#:script] and an inferred script', text)
+        self.assertIn('enable the same script-specific expansion opportunities', text)
+        self.assertIn('direction resolved by HarfBuzz', text)
         self.assertIn('A break provider is not invoked when wrapping is disabled',
                       self.text('text-layout'))
 
@@ -2361,7 +2361,7 @@ class R3TextSemanticsTests(unittest.TestCase):
             self.assertFalse(any(form in ('examples', 'interaction', 'interaction-eval')
                                  for form, _, _ in forms))
             total += sum(form == 'racketblock' for form, _, _ in forms)
-        self.assertEqual(total, 60)
+        self.assertEqual(total, 61)
 
     def test_new_complete_file_examples_explicitly_allow_replacement(self):
         for chapter in self.chapters:
@@ -2418,16 +2418,16 @@ class R3aEditorialCleanupTests(unittest.TestCase):
     def test_layout_entry_links_to_shared_keyword_caveats_before_its_example(self):
         entry = self.entry('text-layout', 'layout-text').split('@racketblock[', 1)[0]
         prose = ' '.join(entry.split())
-        self.assertIn('limitation on explicit scripts and script-specific justification', prose)
-        self.assertIn('@secref["skia-layout-justification"]', prose)
-        self.assertIn('@secref["skia-layout-alignment"]', prose)
+        self.assertIn('Explicit scripts and inferred scripts both enable', prose)
+        self.assertIn('script-specific justification rules', prose)
+        self.assertIn('Automatic alignment uses the direction HarfBuzz resolved', prose)
 
     def test_rtl_example_uses_the_bounds_origin_plus_width(self):
         entry = self.entry('shaping', 'draw-shaped-run')
         generator = (ROOT / 'tools/render-reference-images.rkt').read_text()
         generator = generator.split('"rtl-shaping.png"', 1)[1].split("#:background 'white", 1)[0]
         for source in (entry, generator):
-            self.assertIn('(define-values (left _top width _height) (text-blob-bounds blob))', source)
+            self.assertIn('(define-values (left _top width _height) (vector->values (text-blob-bounds blob)))', source)
             self.assertIn('(- 230 (+ left width))', source)
             self.assertNotIn('(- 230 right)', source)
 
@@ -2537,7 +2537,7 @@ class R3BlobSemanticsTests(unittest.TestCase):
                     if form == 'defproc' and header[0][0] == name)
 
     def test_nullable_finishing_and_path_results_are_explicit(self):
-        for name in ('text-blob-builder-finish!', 'shaped-run->text-blob/on-path'):
+        for name in ('make-positioned-text-blob', 'text-blob-builder-finish!', 'shaped-run->text-blob/on-path'):
             self.assertEqual(self.header(name)[1], ['or/c', 'text-blob?', '#f'])
         self.assertEqual(self.header('positioned-glyphs->path')[1], 'skia-path?')
         self.assertEqual(self.header('draw-shaped-run/on-path')[1], 'void?')
@@ -2566,13 +2566,13 @@ class R3BlobSemanticsTests(unittest.TestCase):
 
     def test_shaped_append_does_not_offer_caller_supplied_cluster_offsets(self):
         fields = {f[0]: f for f in self.header('text-blob-builder-add-shaped-run!')[0][1:]}
-        self.assertIn('#:text', fields)
+        self.assertNotIn('#:text', fields)
+        self.assertNotIn('shaper', fields)
         self.assertNotIn('#:clusters', fields)
-        self.assertIn("The original string cannot be reconstructed", self.text())
-        self.assertIn('@secref["skia-shaped-run-reuse"]', self.text())
+        self.assertIn("source text and cluster offsets are stored automatically", self.text())
+        self.assertIn("originating shaper's font", self.text())
         shaping = ' '.join(self.text('shaping').split())
-        self.assertIn('typeface and font settings must match; the library does not check this',
-                      shaping)
+        self.assertIn('A run remembers its originating shaper', shaping)
 
     def test_input_byte_offsets_are_distinguished_from_character_indices(self):
         prose = ' '.join(self.text().split())
@@ -2595,9 +2595,9 @@ class R3BlobSemanticsTests(unittest.TestCase):
                          ['or/c'] + [['quote', n] for n in
                                      ('default', 'horizontal', 'positioned', 'transformed')])
         self.assertEqual(self.header('text-run-info-positions')[1],
-                         ['and/c', ['vectorof', ['list/c', 'real?', 'real?']], 'immutable?'])
+                         ['and/c', ['vectorof', ['and/c', ['vector/c', 'real?', 'real?'], 'immutable?']], 'immutable?'])
         self.assertEqual(self.header('text-run-info-transforms')[1],
-                         ['or/c', ['and/c', ['vectorof', ['list/c'] + ['real?'] * 4],
+                         ['or/c', ['and/c', ['vectorof', ['and/c', ['vector/c'] + ['real?'] * 4, 'immutable?']],
                                    'immutable?'], '#f'])
         self.assertEqual(self.header('text-run-info-utf8')[1],
                          ['or/c', ['and/c', 'bytes?', 'immutable?'], '#f'])
@@ -2610,7 +2610,7 @@ class R3BlobSemanticsTests(unittest.TestCase):
         self.assertIn('Copies the font settings captured by the selected run into a new font', prose)
         self.assertIn('Closing the blob does not close the returned font', prose)
         self.assertIn('not close the returned font', prose)
-        self.assertIn('Returns an immutable vector of four-coefficient lists for a transformed run', prose)
+        self.assertIn('Returns an immutable vector of immutable four-coefficient vectors for a transformed run', prose)
 
     def test_intercepts_reject_partial_answers_for_transformed_runs(self):
         prose = ' '.join(self.text().split())
@@ -2635,8 +2635,8 @@ class R3BlobSemanticsTests(unittest.TestCase):
     def test_direct_path_drawing_has_no_metadata_keyword_and_validates_empty_input(self):
         fields = {f[0]: f for f in self.header('draw-shaped-run/on-path')[0][1:]}
         self.assertNotIn('#:text', fields)
-        self.assertIn('#:text', {f[0]: f for f in
-                                self.header('shaped-run->text-blob/on-path')[0][1:]})
+        self.assertNotIn('#:text', {f[0]: f for f in
+                                   self.header('shaped-run->text-blob/on-path')[0][1:]})
         self.assertIn('canvas and paint are validated even for an empty run', self.text())
         self.assertIn('then released, including when drawing raises an', self.text())
 

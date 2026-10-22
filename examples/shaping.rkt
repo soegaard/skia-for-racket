@@ -108,8 +108,8 @@
 
     (define liga-on (shape-text latin-shaper "office" #:language "en"))
     (define liga-off (shape-text latin-shaper "office" #:language "en" #:features '("liga=0")))
-    (draw-shaped-run c latin-shaper liga-on 385 485 blue)
-    (draw-shaped-run c latin-shaper liga-off 385 555 orange)
+    (draw-shaped-run c liga-on 385 485 blue)
+    (draw-shaped-run c liga-off 385 555 orange)
     (draw-simple-text c
                       (format "default ~a glyphs; liga=0 ~a"
                               (shaped-run-glyph-count liga-on)
@@ -117,7 +117,7 @@
                       375 610 small-font text-paint)
 
     (define cluster-run (shape-text latin-shaper "Skia" #:language "en"))
-    (draw-shaped-run c latin-shaper cluster-run 710 500 blue)
+    (draw-shaped-run c cluster-run 710 500 blue)
     (draw-simple-text c (format "clusters: ~s" (shaped-run-clusters cluster-run))
                       700 555 small-font text-paint)
     (define position-text (format "positions: ~s" (shaped-run-positions cluster-run)))

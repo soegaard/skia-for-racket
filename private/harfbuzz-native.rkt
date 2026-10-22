@@ -251,6 +251,10 @@
 ;   Calls the native hb_buffer_guess_segment_properties entry point using the declared FFI layout.
 (define-hb-native hb_buffer_guess_segment_properties (_fun _pointer -> _void))
 
+; hb_buffer_get_direction : (_fun _pointer -> _int) (FFI)
+;   Reads the direction resolved for a shaped buffer.
+(define-hb-native hb_buffer_get_direction (_fun _pointer -> _int))
+
 ; hb_buffer_set_direction : (_fun _pointer _int -> _void) (FFI)
 ;   Calls the native hb_buffer_set_direction entry point using the declared FFI layout.
 (define-hb-native hb_buffer_set_direction (_fun _pointer _int -> _void))

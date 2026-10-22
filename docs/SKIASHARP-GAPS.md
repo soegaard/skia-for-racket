@@ -1811,7 +1811,7 @@ No general promise of byte-identical output across platforms or backends.
 
 **supported-with-limits**; next stage: **none scheduled**; origin: `m119`.
 
-Single-use owned builder; default, horizontal, XY and RSXform runs retain private font snapshots. Input glyphs, placements and optional UTF-8/scalar-start byte clusters are copied. Empty runs validate then add nothing; empty finish returns #f. Appends become terminal on native allocation/fill failure. Path text samples one explicitly selected contour using shaped positions, without rekerning, character-to-glyph assumptions, clipping or wrapping. Original shaped-run/shaper identity remains the caller responsibility.
+Single-use owned builder; default, horizontal, XY and RSXform runs retain private font snapshots. Input glyphs, placements and optional UTF-8/scalar-start byte clusters are copied. Empty runs validate then add nothing; empty finish returns #f. Appends become terminal on native allocation/fill failure. Path text samples one explicitly selected contour using shaped positions, without rekerning, character-to-glyph assumptions, clipping or wrapping. Shaped runs remember their originating shaper and source text; drawing and conversion require that shaper to remain open.
 
 **Document behavior:** Native PDF text preservation is tested for ordinary multi-font runs with valid text/cluster mappings. RSXform/path-text vector export uses explicit outlines; it is not promised searchable. New blob outline conversion rejects visibly bounded glyphs lacking outlines. No hidden raster fallback.
 

@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "2d6e2c100bada538743b757b444f649e709b4927"
+      "git_blob": "fa6efa92bccf64391478c362cfa0cc4714024a0e"
     },
     {
       "file": "api/public-api-gui.json",
@@ -13344,6 +13344,106 @@
       "canonical_module": "skia/racket-draw",
       "exports": [
         "skia/racket-draw"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-text",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "shaped-run-direction",
+      "chapter": "scribblings/reference/shaping.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-text",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-layout-text",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-source-range",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "text-layout-line-source-map",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-source-range",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-line-source-map",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-source-range",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "mixed-text-run-source-map",
+      "chapter": "scribblings/reference/text-layout.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia"
       ],
       "phase": "0",
       "space": null

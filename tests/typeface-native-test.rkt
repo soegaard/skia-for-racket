@@ -234,7 +234,7 @@
        (with-skia ([font (make-font face #:size 30)] [shaper (make-shaper font)])
          (skia-close! face) (skia-close! font)
          (define run (shape-text shaper fixture-text))
-         (check-equal? (shaped-run-glyphs run) '(2 3))
+         (check-equal? (shaped-run-glyphs run) '#(2 3))
          (check-true (positive? (shaped-run-advance-x run)))))))
    (test-case "style-set scoped cleanup runs on exceptions and continuation escape"
      (define escaped #f)

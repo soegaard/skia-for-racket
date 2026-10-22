@@ -37,8 +37,8 @@ The figure below shows how these lifetimes are related. A CPU surface
 owns its borrowed canvas, which becomes invalid when the surface closes; an
 independently owned snapshot can remain open afterward. Similarly, a buffer's
 @tech{pixmap} and subset are callback-scoped views even if the caller keeps references
-to their wrappers. Ordinary Racket structures can also contain resources: @tech{text
-layouts} contain references to @tech{shapers} that must remain open when drawn.
+to their wrappers. @tech{Text layouts} own private font snapshots and must remain open when drawn;
+the caller's original @tech{shaper} and font manager can be closed independently.
 @tech{GPU leases} and @tech[#:key "GPU frame"]{frames} have their own activation and thread rules.
 
 @reference-figure["concept-resource-lifetimes.png"

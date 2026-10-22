@@ -17,7 +17,7 @@
 (require racket/list racket/math
          (prefix-in sk: "../main.rkt")
          (only-in (submod "core.rkt" dc-text-internals)
-                  shaper-font call-with-choice-shaper fallback-choice-from-run)
+                  shaper-font shaped-run-shaper)
          "dc-support.rkt" "dc-text-spec.rkt" "dc-native-util.rkt")
 (provide dc-measure-text dc-render-text! dc-glyph-exists?)
 
@@ -72,29 +72,33 @@
            (define descent (max 0.0 (sk:font-metrics-descent metrics)))
            (define leading (max 0.0 (sk:font-metrics-leading metrics)))
            (define cursor 0.0)
-           (define units
-             (for/list ([str (in-list (dc-text-spec-units request))])
-               (define layout
-                 (sk:layout-mixed-text sh fm str #:features (dc-font-spec-features spec)))
-               ;; This bridge exposes no pointer. It reuses the exact existing
-               ;; fallback face/weight/width/slant choice used by drawing.
-               (for* ([line (in-list (sk:mixed-text-layout-lines layout))]
-                      [run (in-list (sk:mixed-text-line-runs line))])
-                 (call-with-choice-shaper
-                  'skia-dc-text sh fm (fallback-choice-from-run run)
-                  (lambda (selected)
-                    (define m (sk:font-get-metrics (shaper-font selected)))
-                    (set! ascent (max ascent (- (sk:font-metrics-ascent m))))
-                    (set! descent (max descent (sk:font-metrics-descent m)))
-                    (set! leading (max leading (sk:font-metrics-leading m))))))
-               (define natural (sk:mixed-text-layout-width layout))
-               (define width (if (eq? (dc-font-spec-hinting spec) 'aligned) (round natural) natural))
-               (define unit (text-unit layout cursor width))
-               (set! cursor (dc-real 'skia-dc-text (+ cursor width)))
-               unit))
-           (define height (dc-real 'skia-dc-text (+ ascent descent leading)))
-           (define extent (vector cursor height descent leading))
-           (proc units extent sh fm (+ leading ascent) metrics))))]))
+           (define layouts '())
+           (dynamic-wind
+             void
+             (lambda ()
+               (define units
+                 (for/list ([str (in-list (dc-text-spec-units request))])
+                   (define layout
+                     (sk:layout-mixed-text sh fm str #:features (dc-font-spec-features spec)))
+                   (set! layouts (cons layout layouts))
+                   ;; This bridge exposes no pointer. It reuses the exact existing
+                   ;; fallback face/weight/width/slant choice used by drawing.
+                   (for* ([line (in-list (sk:mixed-text-layout-lines layout))]
+                          [run (in-list (sk:mixed-text-line-runs line))])
+                     (define selected (shaped-run-shaper (sk:mixed-text-run-shaped-run run)))
+                     (define m (sk:font-get-metrics (shaper-font selected)))
+                     (set! ascent (max ascent (- (sk:font-metrics-ascent m))))
+                     (set! descent (max descent (sk:font-metrics-descent m)))
+                     (set! leading (max leading (sk:font-metrics-leading m))))
+                   (define natural (sk:mixed-text-layout-width layout))
+                   (define width (if (eq? (dc-font-spec-hinting spec) 'aligned) (round natural) natural))
+                   (define unit (text-unit layout cursor width))
+                   (set! cursor (dc-real 'skia-dc-text (+ cursor width)))
+                   unit))
+               (define height (dc-real 'skia-dc-text (+ ascent descent leading)))
+               (define extent (vector cursor height descent leading))
+               (proc units extent sh fm (+ leading ascent) metrics))
+             (lambda () (for-each sk:skia-close! layouts))))))]))
 
 ;;;
 ;;; Measurement and Drawing

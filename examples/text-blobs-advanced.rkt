@@ -19,9 +19,9 @@
               [builder (make-text-blob-builder)]
               [curve (make-path '((move 30 200) (cubic 100 100 260 100 350 200)))])
     (define text "Retained text")
-    (text-blob-builder-add-shaped-run! builder sh (shape-text sh text) #:origin '(30 65) #:text text)
+    (text-blob-builder-add-shaped-run! builder (shape-text sh text) #:origin '(30 65) )
     (with-skia ([blob (text-blob-builder-finish! builder)]
-                [curved (shaped-run->text-blob/on-path sh (shape-text sh "Along a curve") curve)])
+                [curved (shaped-run->text-blob/on-path (shape-text sh "Along a curve") curve)])
       (skia-close! sh) (skia-close! font) (skia-close! curve)
       (define page
         (make-output-page 400 250

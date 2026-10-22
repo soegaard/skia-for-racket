@@ -26,23 +26,10 @@ follows the canvas's and paint's GPU-context conditions when applicable.
 
 @section{Creating and Drawing Blobs}
 
-The direct constructors require nonempty glyphs. The builder and on-path
-interfaces handle empty input differently:
-
-@tabular[#:sep @hspace[2]
- (list
-  (list @bold{Operation} @bold{Empty-input behavior})
-  (list @elem{@racket[make-positioned-text-blob] or @racket[shaped-run->text-blob]}
-        "Raises an exception.")
-  (list "Appending a run to a builder"
-        "Validates inputs and resources, but adds no run.")
-  (list @racket[text-blob-builder-finish!]
-        @elem{Returns @racket[#f] and closes the builder when it has no runs.})
-  (list @racket[shaped-run->text-blob/on-path]
-        @elem{Validates inputs and resources, then returns @racket[#f].}))]
-
-These cases do not create an empty drawable blob. See the individual operations
-for their validation and resource-lifetime rules.
+All blob constructors return @racket[#f] when there are no glyphs to store.
+They still validate their inputs and required resources. An empty append adds
+no run to a builder, and finishing an empty builder returns @racket[#f] and
+closes it. These cases do not create an empty drawable blob.
 
 @defproc[(text-blob? [v any/c]) boolean?]{
 Returns @racket[#t] for a text-blob resource and @racket[#f] otherwise. Closure does not change
@@ -53,10 +40,11 @@ the result.
           (vectorof (integer-in 0 #xffff)))]
                 [positions
                  (or/c (listof (or/c (list/c real? real?) (vector/c real? real?)))
-                       (vectorof (or/c (list/c real? real?) (vector/c real? real?))))]) text-blob?]{
+                       (vectorof (or/c (list/c real? real?) (vector/c real? real?))))]) (or/c text-blob? #f)]{
 Creates a text blob from the supplied glyphs and positions.
 
-The glyph and position lists or vectors must be nonempty and have equal lengths.
+The glyph and position lists or vectors must have equal lengths.
+Empty inputs return @racket[#f] after validating the font.
 Positions are relative to the blob's origin. Glyph IDs belong to the font's
 typeface; this is not a character-mapping or @tech{shaping} operation.
 The size of the copied input data is bounded by
@@ -72,12 +60,12 @@ blob. The paint and canvas origin are selected separately when drawing.
              (make-positioned-text-blob
               font (font-text->glyphs font "AB") '((0 0) (40 0)))])
   (skia-close! font)
-  (call-with-values (lambda () (text-blob-bounds blob)) list))
+  (vector->list (text-blob-bounds blob)))
 ]
 }
 
-@defproc[(text-blob-bounds [blob text-blob?]) (values real? real? real? real?)]{
-Returns the native blob bounds as x, y, width, and height, relative to
+@defproc[(text-blob-bounds [blob text-blob?]) (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the native blob bounds as an immutable @racket[#(x y width height)] vector, relative to
 its stored origin. The bounds can be conservative and include no later canvas
 transform, paint stroke, or @tech{image filter}. They are not the blob's @tech{advance}.
 }
@@ -305,9 +293,8 @@ is performed. The shared run-input and metadata rules apply.
           [#:clusters clusters (or/c (listof exact-nonnegative-integer?)
                                      (vectorof exact-nonnegative-integer?) #f) #f]) void?]{
 Appends a run with an explicit two-dimensional origin for each glyph, relative
-to the blob's origin. No additional run-origin translation is applied. Unlike
-@racket[make-positioned-text-blob], this function accepts empty lists or vectors as
-an append that creates no run. The shared run-input and metadata rules apply.
+to the blob's origin. No additional run-origin translation is applied. Empty
+lists or vectors create no run. The shared run-input and metadata rules apply.
 
 @racketblock[
 (with-skia ([font (make-font #:size 24)]
@@ -387,20 +374,15 @@ Use @racket[make-atlas-transform] for placement by scale, angle, and anchor.
 }
 
 @defproc[(text-blob-builder-add-shaped-run!
-          [builder text-blob-builder?] [shaper shaper?] [run shaped-run?]
-          [#:origin origin (or/c (list/c real? real?) (vector/c real? real?)) '(0 0)]
-          [#:text text (or/c string? bytes? #f) #f]) void?]{
-Appends a positioned run using the glyphs and positions already stored in
-@racket[run], translated by @racket[origin]. The font is copied from the open
-@racket[shaper]; text is not shaped again and no fallback font is selected.
-The shaper-matching rule in @secref["skia-shaped-run-reuse"] applies.
+          [builder text-blob-builder?] [run shaped-run?]
+          [#:origin origin (or/c (list/c real? real?) (vector/c real? real?)) '(0 0)]) void?]{
+Appends the run's glyphs and positions, translated by @racket[origin], using
+its originating shaper's font. The shaper must be open. Text is not shaped
+again and no fallback font is selected.
 
-When @racket[text] is supplied, the run's clusters supply its UTF-8 byte offsets
-and are checked against that text according to @secref["skia-text-run-metadata"].
-The original string cannot be reconstructed from the shaped run alone. With
-@racket[#f], neither text nor clusters are stored as blob metadata. The run's
-glyphs and positions are still used. An empty run follows the same validation
-and no-append rules as the glyph-based append functions.
+The run's source text and cluster offsets are stored automatically as blob
+metadata. An empty run follows the same validation and no-append rules as
+the glyph-based append functions.
 
 @racketblock[
 (with-skia ([font (make-font #:size 24)]
@@ -408,7 +390,7 @@ and no-append rules as the glyph-based append functions.
             [builder (make-text-blob-builder)])
   (define text "AB")
   (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
-  (text-blob-builder-add-shaped-run! builder shaper run #:origin '(12 40) #:text text)
+  (text-blob-builder-add-shaped-run! builder run #:origin '(12 40) )
   (with-skia ([blob (text-blob-builder-finish! builder)])
     (skia-close! shaper)
     (text-run-info-positioning (vector-ref (text-blob-runs blob) 0))))
@@ -426,8 +408,8 @@ append does not invalidate the captured blob font.
             [paint (make-paint #:color "#20344E")])
   (define text "office")
   (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
-  (text-blob-builder-add-shaped-run! builder shaper run
-                                    #:origin '(25 62) #:text text)
+  (text-blob-builder-add-shaped-run! builder run
+                                    #:origin '(25 62) )
   (with-skia ([blob (text-blob-builder-finish! builder)])
     (draw-text-blob (surface-canvas surface) blob 0 0 paint)))
 ]
@@ -506,8 +488,8 @@ to the captured typeface and are not Unicode character codes.
 }
 
 @defproc[(text-run-info-positions [run text-run-info?])
-          (and/c (vectorof (list/c real? real?)) immutable?)]{
-Returns immutable glyph-origin pairs in blob coordinates. Default runs contain
+          (and/c (vectorof (and/c (vector/c real? real?) immutable?)) immutable?)]{
+Returns immutable @racket[#(x y)] glyph-origin vectors in blob coordinates. Default runs contain
 the positions computed from font advances; horizontal runs include the shared
 y coordinate; positioned runs contain their explicit positions. A transformed
 run returns an empty vector here and stores its placement in
@@ -515,8 +497,8 @@ run returns an empty vector here and stores its placement in
 }
 
 @defproc[(text-run-info-transforms [run text-run-info?])
-          (or/c (and/c (vectorof (list/c real? real? real? real?)) immutable?) #f)]{
-Returns an immutable vector of four-coefficient lists for a transformed run,
+          (or/c (and/c (vectorof (and/c (vector/c real? real? real? real?) immutable?)) immutable?) #f)]{
+Returns an immutable vector of immutable four-coefficient vectors for a transformed run,
 or @racket[#f] for the other positioning modes. Coefficients use the order
 @math{scos}, @math{ssin}, @math{tx}, and @math{ty}, even when the input
 was supplied as atlas-transform values or vectors. The result is not a vector
@@ -541,26 +523,24 @@ or descend; they are not an index into the positions vector.
 
 Convert glyphs to paths to fill or stroke their outlines directly. Such paths
 contain monochrome geometry, not the full appearance of bitmap-only or color
-glyphs. Missing-outline behavior depends on how the blob was constructed, as
-described below.
+glyphs. All whole-text conversions use the same
+@secref["skia-text-outline-policy"] rule.
 
 @(declare-exporting skia)
 
-@defproc[(text-blob->path [blob text-blob?]) skia-path?]{
+@defproc[(text-blob->path [blob text-blob?]
+          [#:missing-outline missing-outline (or/c 'error 'skip) 'error]) skia-path?]{
 Converts the blob's glyph outlines to a path at their recorded positions.
 
 The path contains monochrome outlines, without applying a paint or canvas
 transform. It is an owned resource and remains usable after the blob is closed.
 
-For a blob made by @racket[make-positioned-text-blob] or
-@racket[shaped-run->text-blob], glyphs without outlines are omitted.
-
-Blobs made with a text-blob builder or @racket[shaped-run->text-blob/on-path]
-use a stricter conversion: a glyph with visible bounds but no monochrome
-outline raises an exception. A glyph with no visible bounds, such as a space,
-does not cause that exception. Use ordinary blob drawing when the full glyph
-appearance, including bitmap or color rendering, is required; use a raster
-surface when the output target would otherwise require outline conversion.
+A glyph with visible bounds but no monochrome outline raises an exception by
+default, regardless of how the blob was constructed. Use
+@racket[#:missing-outline 'skip] to omit it. Spaces and other glyphs without
+visible bounds do not cause that exception.
+Use ordinary blob drawing when bitmap or color rendering is required; use a
+raster surface when the output target would otherwise require outline conversion.
 
 The builder can store multiple runs with independently captured font settings.
 Here the left panel is the completed two-run blob; the right panel draws the
@@ -605,7 +585,8 @@ appends, so the large exclamation mark belongs to a separate run.
           [glyphs (or/c (listof (integer-in 0 #xffff))
                         (vectorof (integer-in 0 #xffff)))]
           [positions (or/c (listof (or/c (list/c real? real?) (vector/c real? real?)))
-                            (vectorof (or/c (list/c real? real?) (vector/c real? real?))))])
+                            (vectorof (or/c (list/c real? real?) (vector/c real? real?))))]
+          [#:missing-outline missing-outline (or/c 'error 'skip) 'error])
           skia-path?]{
 Returns an owned path containing the font's monochrome glyph outlines at the
 supplied positions. Glyph and position counts must agree, and all IDs must belong
@@ -614,8 +595,8 @@ the font.
 
 The path is independent of the input lists or vectors and the font's lifetime. Font
 size, scale, and skew are applied, but no paint, canvas transform, shaping, or
-fallback is added. Glyphs without monochrome outlines contribute no contour;
-this is not a general conversion of bitmap or color glyphs to vectors. The
+fallback is added. A visible glyph without an outline raises an exception unless
+@racket[#:missing-outline 'skip] is supplied. See @secref["skia-text-outline-policy"]. The
 copied input and resulting geometry are checked against the byte limit.
 
 
@@ -643,11 +624,11 @@ not rendered pixels.
 
 @defproc[(text-blob-intercepts [blob text-blob?] [top real?] [bottom real?]
                               [#:paint paint (or/c paint? #f) #f])
-          (and/c (vectorof (list/c real? real?)) immutable?)]{
+          (and/c (vectorof (and/c (vector/c real? real?) immutable?)) immutable?)]{
 Returns an immutable vector of horizontal intervals where glyph outlines
 intersect the band between @racket[top] and @racket[bottom]. The value of
-@racket[top] must be strictly less than @racket[bottom]. Each interval is a list
-of its left and right endpoints, with left no greater than
+@racket[top] must be strictly less than @racket[bottom]. Each interval is an
+immutable @racket[#(left right)] vector, with left no greater than
 right. An empty vector means no intersections were reported.
 
 Coordinates are relative to the blob's stored origin; a later draw translation,
@@ -694,15 +675,14 @@ overlong run to the path. Create a blob once for repeated drawing, or use
 @racket[draw-shaped-run/on-path] for one drawing.
 
 @defproc[(shaped-run->text-blob/on-path
-          [shaper shaper?] [run shaped-run?] [path skia-path?]
+          [run shaped-run?] [path skia-path?]
           [#:start-offset start real? 0]
           [#:normal-offset normal real? 0]
           [#:contour contour exact-nonnegative-integer? 0]
-          [#:force-closed? closed? boolean? #f]
-          [#:text text (or/c string? bytes? #f) #f]) (or/c text-blob? #f)]{
+          [#:force-closed? closed? boolean? #f]) (or/c text-blob? #f)]{
 Returns an owned blob that places the run's glyphs along the selected measured
-contour. It uses the run's existing glyph positions and the shaper's captured
-font; it does not reshape text or bend individual glyph outlines.
+contour. It uses the run's existing glyph positions and originating shaper's
+captured font; it does not reshape text or bend individual glyph outlines.
 
 The zero-based @racket[contour] selects by the same contour iteration used by
 @racket[make-path-measure] and @racket[path-measure-next-contour!]. The
@@ -739,14 +719,11 @@ glyphs into this frame; it does not bend outlines or fit text to a contour.
 
 The result contains a transformed run and therefore cannot be queried with
 @racket[text-blob-intercepts]. It captures its own font state; closing the
-source path or shaper afterward does not invalidate it. The shaper-matching
-rule in @secref["skia-shaped-run-reuse"] applies.
+source path or shaper afterward does not invalidate it.
 
-An empty run returns @racket[#f], but still validates the path, shaper, contour
-selection, offsets, and metadata. With @racket[text], the run's clusters are
-validated against the supplied UTF-8 text; with @racket[#f], both text and
-clusters are absent from the resulting blob metadata. The rules in
-@secref["skia-text-run-metadata"] apply. If Skia cannot construct the blob,
+The run's source text and cluster offsets are stored automatically.
+An empty run returns @racket[#f], but still validates the path, originating
+shaper, contour selection, and offsets. If Skia cannot construct the blob,
 the function raises an exception without returning a partial blob.
 
 @racketblock[
@@ -762,9 +739,9 @@ the function raises an exception without returning a partial blob.
             [label (make-paint #:color "#20344E")])
   (define text "AB")
   (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
-  (with-skia ([blob (shaped-run->text-blob/on-path shaper run path
+  (with-skia ([blob (shaped-run->text-blob/on-path run path
                                                  #:start-offset 20 #:normal-offset 5
-                                                 #:text text)])
+                                                 )])
     (skia-close! path)
     (skia-close! shaper)
     (define canvas (surface-canvas surface))
@@ -788,7 +765,7 @@ exact glyph positions also depend on shaping.
 }
 
 @defproc[(draw-shaped-run/on-path
-          [canvas canvas?] [shaper shaper?] [run shaped-run?]
+          [canvas canvas?] [run shaped-run?]
           [path skia-path?] [paint paint?]
           [#:start-offset start real? 0]
           [#:normal-offset normal real? 0]
@@ -815,7 +792,7 @@ For repeated drawing at the same placement, create a blob once with
   (draw-path (surface-canvas surface) path guide)
   (define run (shape-text shaper "Text follows the curve"
                           #:direction 'ltr #:script 'latn #:language "en"))
-  (draw-shaped-run/on-path (surface-canvas surface) shaper run path text-paint
+  (draw-shaped-run/on-path (surface-canvas surface) run path text-paint
                            #:start-offset 10))
 ]
 
@@ -833,7 +810,7 @@ For repeated drawing at the same placement, create a blob once with
   (draw-path (surface-canvas surface) path guide)
   (define run (shape-text shaper "offset from the path"
                           #:direction 'ltr #:script 'latn))
-  (draw-shaped-run/on-path (surface-canvas surface) shaper run path paint
+  (draw-shaped-run/on-path (surface-canvas surface) run path paint
                            #:start-offset 25 #:normal-offset -14))
 ]
 @reference-figure["text-path-offset-stage8.png"

@@ -49,6 +49,7 @@
 ; coordinates-near : list? list? -> void?
 ;   Checks matching coordinate counts and a 0.0001 absolute tolerance.
 (define (coordinates-near actual expected)
+  (when (vector? actual) (set! actual (vector->list actual)))
   (check-equal? (length actual) (length expected))
   (for ([a (in-list actual)] [b (in-list expected)]) (check-= a b 0.0001)))
 
@@ -130,7 +131,7 @@
   (test-case "positioning modes preserve absolute coordinates and copied inputs"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [builder (make-text-blob-builder)])
-      (define glyphs (glyphs-ab font))
+      (define glyphs (vector-copy (glyphs-ab font)))
       (define saved-glyphs (vector-copy glyphs))
       (define positions (vector (vector 7 11) (vector 47 13)))
       (define transforms (vector (vector 1 0 5 6) (make-atlas-transform 40 50 #:scale 2)))
@@ -145,11 +146,11 @@
         (check-true (immutable? runs))
         (check-equal? (map text-run-info-positioning (vector->list runs))
                       '(horizontal positioned transformed))
-        (check-equal? (text-run-info-positions (vector-ref runs 0)) '#((30.0 20.0) (10.0 20.0)))
-        (check-equal? (text-run-info-positions (vector-ref runs 1)) '#((7.0 11.0) (47.0 13.0)))
+        (check-equal? (text-run-info-positions (vector-ref runs 0)) '#(#(30.0 20.0) #(10.0 20.0)))
+        (check-equal? (text-run-info-positions (vector-ref runs 1)) '#(#(7.0 11.0) #(47.0 13.0)))
         (check-equal? (text-run-info-positions (vector-ref runs 2)) #())
         (check-equal? (text-run-info-transforms (vector-ref runs 2))
-                      '#((1.0 0.0 5.0 6.0) (2.0 0.0 40.0 50.0)))
+                      '#(#(1.0 0.0 5.0 6.0) #(2.0 0.0 40.0 50.0)))
         (check-false (text-run-info-transforms (vector-ref runs 0)))
         (for ([run (in-vector runs)])
           (check-true (text-run-info? run))
@@ -219,21 +220,21 @@
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [shaper (make-shaper font)] [builder (make-text-blob-builder)])
       (define run (shape-ab shaper))
-      (text-blob-builder-add-shaped-run! builder shaper run #:origin '(7 11) #:text "AB")
-      (text-blob-builder-add-shaped-run! builder shaper run)
-      (text-blob-builder-add-shaped-run! builder shaper (shape-text shaper ""))
+      (text-blob-builder-add-shaped-run! builder run #:origin '(7 11) )
+      (text-blob-builder-add-shaped-run! builder run)
+      (text-blob-builder-add-shaped-run! builder (shape-text shaper ""))
       (skia-close! shaper)
       (with-skia ([blob (text-blob-builder-finish! builder)])
         (define runs (text-blob-runs blob))
         (check-equal? (vector-length runs) 2)
         (check-equal? (text-run-info-positioning (vector-ref runs 0)) 'positioned)
         (check-equal? (vector->list (text-run-info-positions (vector-ref runs 0)))
-                      (for/list ([p (in-list (shaped-run-positions run))])
-                        (list (+ 7 (car p)) (+ 11 (cadr p)))))
-        (check-equal? (vector->list (text-run-info-clusters (vector-ref runs 0)))
+                      (for/list ([p (in-vector (shaped-run-positions run))])
+                        (vector-immutable (+ 7 (vector-ref p 0)) (+ 11 (vector-ref p 1)))))
+        (check-equal? (text-run-info-clusters (vector-ref runs 0))
                       (shaped-run-clusters run))
         (check-equal? (text-run-info-utf8 (vector-ref runs 0)) #"AB")
-        (check-false (text-run-info-clusters (vector-ref runs 1))))))
+        (check-equal? (text-run-info-clusters (vector-ref runs 1)) (shaped-run-clusters run)))))
 
   ;;;
   ;;; Outlines and Intercepts
@@ -248,7 +249,7 @@
         (define intervals (text-blob-intercepts ordinary 20 25 #:paint paint))
         (check-true (immutable? intervals))
         (check-true (<= (vector-length intervals) 2))
-        (for ([pair (in-vector intervals)]) (check-true (<= (car pair) (cadr pair))))
+        (for ([pair (in-vector intervals)]) (check-true (<= (vector-ref pair 0) (vector-ref pair 1))))
         (check-exn exn:fail? (lambda () (text-blob-intercepts ordinary 25 25))))
       (text-blob-builder-add-run! builder font glyphs)
       (text-blob-builder-add-transformed-run! builder font glyphs
@@ -276,13 +277,13 @@
                 [path (make-path '((move 10 40) (line 310 40)))])
       (define run (shape-ab shaper))
       (define points (shaped-run-positions run))
-      (with-skia ([blob (shaped-run->text-blob/on-path shaper run path
+      (with-skia ([blob (shaped-run->text-blob/on-path run path
                                                      #:start-offset 20 #:normal-offset 5
-                                                     #:text "AB")])
+                                                     )])
         (define info (vector-ref (text-blob-runs blob) 0))
         (check-equal? (text-run-info-positioning info) 'transformed)
-        (for ([transform (in-vector (text-run-info-transforms info))] [p (in-list points)])
-          (coordinates-near transform (list 1 0 (+ 30 (car p)) (+ 45 (cadr p)))))
+        (for ([transform (in-vector (text-run-info-transforms info))] [p (in-vector points)])
+          (coordinates-near transform (list 1 0 (+ 30 (vector-ref p 0)) (+ 45 (vector-ref p 1)))))
         (skia-close! path)
         (skia-close! shaper)
         (skia-close! font)
@@ -294,12 +295,12 @@
                 [shaper (make-shaper font)]
                 [path (make-path '((move 0 0) (line 100 0) (move 100 100) (line 100 400)))])
       (define run (shape-ab shaper))
-      (with-skia ([blob (shaped-run->text-blob/on-path shaper run path
+      (with-skia ([blob (shaped-run->text-blob/on-path run path
                                                      #:contour 1 #:normal-offset 5)])
         (define info (vector-ref (text-blob-runs blob) 0))
         (for ([transform (in-vector (text-run-info-transforms info))]
-              [p (in-list (shaped-run-positions run))])
-          (coordinates-near transform (list 0 1 (- 95 (cadr p)) (+ 100 (car p))))))))
+              [p (in-vector (shaped-run-positions run))])
+          (coordinates-near transform (list 0 1 (- 95 (vector-ref p 1)) (+ 100 (vector-ref p 0))))))))
   (test-case "path placement rejects excessive origins instead of clamping or wrapping"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [shaper (make-shaper font)]
@@ -307,13 +308,13 @@
       (define run (shape-ab shaper))
       (for ([closed? '(#f #t)])
         (check-exn exn:fail?
-                   (lambda () (shaped-run->text-blob/on-path shaper run path
+                   (lambda () (shaped-run->text-blob/on-path run path
                                                              #:start-offset 100000
                                                              #:force-closed? closed?))))
       (check-exn exn:fail?
-                 (lambda () (shaped-run->text-blob/on-path shaper run path #:contour 2)))
+                 (lambda () (shaped-run->text-blob/on-path run path #:contour 2)))
       (check-exn exn:fail?
-                 (lambda () (shaped-run->text-blob/on-path shaper run path #:start-offset -1000)))
+                 (lambda () (shaped-run->text-blob/on-path run path #:start-offset -1000)))
       (check-false (skia-closed? path))
       (check-false (skia-closed? shaper))))
   (test-case "empty path placement validates resources and draws nothing"
@@ -321,15 +322,15 @@
                 [path (make-path)] [surface (make-surface 4 4 #:background 'white)]
                 [paint (make-paint)])
       (define run (shape-text shaper ""))
-      (check-false (shaped-run->text-blob/on-path shaper run path))
+      (check-false (shaped-run->text-blob/on-path run path))
       (check-exn exn:fail?
-                 (lambda () (shaped-run->text-blob/on-path shaper run path #:text "A")))
-      (check-exn exn:fail? (lambda () (draw-shaped-run/on-path #f shaper run path paint)))
+                 (lambda () (shaped-run->text-blob/on-path run path )))
+      (check-exn exn:fail? (lambda () (draw-shaped-run/on-path #f run path paint)))
       (define before (surface->rgba-bytes surface))
-      (check-true (void? (draw-shaped-run/on-path (surface-canvas surface) shaper run path paint)))
+      (check-true (void? (draw-shaped-run/on-path (surface-canvas surface) run path paint)))
       (check-equal? (surface->rgba-bytes surface) before)
       (skia-close! path)
-      (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path shaper run path)))))
+      (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path run path)))))
   (test-case "direct text-on-path drawing matches drawing the retained placement"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [shaper (make-shaper font)]
@@ -342,10 +343,10 @@
       (define c2 (surface-canvas second))
       (canvas-translate! c1 5 7)
       (canvas-translate! c2 5 7)
-      (with-skia ([blob (shaped-run->text-blob/on-path shaper run path
+      (with-skia ([blob (shaped-run->text-blob/on-path run path
                                                      #:start-offset 20 #:normal-offset 5)])
         (draw-text-blob c1 blob 0 0 paint))
-      (draw-shaped-run/on-path c2 shaper run path paint #:start-offset 20 #:normal-offset 5)
+      (draw-shaped-run/on-path c2 run path paint #:start-offset 20 #:normal-offset 5)
       (check-equal? (surface->rgba-bytes first) (surface->rgba-bytes second))
       (check-false (skia-closed? path))
       (check-false (skia-closed? shaper))

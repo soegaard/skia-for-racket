@@ -940,6 +940,10 @@ The following links cover the font and text interfaces.
 
 @racket[shaped-run-glyph-count]
 
+@racket[shaped-run-text]
+
+@racket[shaped-run-direction]
+
 @racket[shaped-run->text-blob]
 
 @racket[draw-shaped-run]
@@ -968,6 +972,8 @@ The following links cover the font and text interfaces.
 
 @racket[text-layout-lines]
 
+@racket[text-layout-text]
+
 @racket[text-layout-width]
 
 @racket[text-layout-height]
@@ -979,6 +985,10 @@ The following links cover the font and text interfaces.
 @racket[text-layout-line?]
 
 @racket[text-layout-line-text]
+
+@racket[text-layout-line-source-range]
+
+@racket[text-layout-line-source-map]
 
 @racket[text-layout-line-run]
 
@@ -1006,6 +1016,8 @@ The following links cover the font and text interfaces.
 
 @racket[mixed-text-layout-lines]
 
+@racket[mixed-text-layout-text]
+
 @racket[mixed-text-layout-width]
 
 @racket[mixed-text-layout-height]
@@ -1017,6 +1029,10 @@ The following links cover the font and text interfaces.
 @racket[mixed-text-line?]
 
 @racket[mixed-text-line-text]
+
+@racket[mixed-text-line-source-range]
+
+@racket[mixed-text-line-source-map]
 
 @racket[mixed-text-line-runs]
 
@@ -1031,6 +1047,10 @@ The following links cover the font and text interfaces.
 @racket[mixed-text-run?]
 
 @racket[mixed-text-run-text]
+
+@racket[mixed-text-run-source-range]
+
+@racket[mixed-text-run-source-map]
 
 @racket[mixed-text-run-shaped-run]
 

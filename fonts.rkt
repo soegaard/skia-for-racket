@@ -158,14 +158,14 @@
                  (define right (scalar who (ptr-ref bounds _float (+ j 2))))
                  (define bottom (scalar who (ptr-ref bounds _float (+ j 3))))
                  ;; Match simple-text-bounds: x, y, width, height, not LTRB.
-                 (list left top (nonnegative-scalar who (- right left))
+                 (vector-immutable left top (nonnegative-scalar who (- right left))
                        (nonnegative-scalar who (- bottom top)))))
               #()))
         (void/reference-sink gs input widths bounds)
         (values ws bs)]))))
 
 ; font-glyph-widths+bounds : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0
-;   65535))) [#:paint (or/c paint? #f)] -> (values (vectorof real?) (vectorof (list/c real? real?
+;   65535))) [#:paint (or/c paint? #f)] -> (values (vectorof real?) (vectorof (vector/c real? real?
 ;   real? real?)))
 ;   Returns the advance-width vector and bounds vector as two values, using the same native query
 ;   and semantics as font-glyph-widths and font-glyph-bounds.
@@ -180,14 +180,14 @@
   widths)
 
 ; font-glyph-bounds : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0 65535)))
-;   [#:paint (or/c paint? #f)] -> (vectorof (list/c real? real? real? real?))
-;   Returns one x/y/width/height list per glyph in an immutable vector.
+;   [#:paint (or/c paint? #f)] -> (vectorof (vector/c real? real? real? real?))
+;   Returns one x/y/width/height immutable vector per glyph in an immutable vector.
 (define (font-glyph-bounds f glyphs #:paint [p #f])
   (define-values (widths bounds) (query-widths+bounds 'font-glyph-bounds f glyphs p #f #t))
   bounds)
 
 ; font-glyph-positions : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0 65535)))
-;   [#:origin (or/c (list/c real? real?) (vector/c real? real?))] -> (vectorof (list/c real? real?))
+;   [#:origin (or/c (list/c real? real?) (vector/c real? real?))] -> (vectorof (vector/c real? real?))
 ;   Returns glyph origins obtained by accumulating ordinary advances from origin.
 (define (font-glyph-positions f glyphs #:origin [origin '(0 0)])
   (define who 'font-glyph-positions)
@@ -208,7 +208,7 @@
          (define result
            (vector->immutable-vector
             (for/vector ([i (in-range n)])
-              (list (scalar who (ptr-ref output _float (* i 2)))
+              (vector-immutable (scalar who (ptr-ref output _float (* i 2)))
                     (scalar who (ptr-ref output _float (+ 1 (* i 2))))))))
          (void/reference-sink gs input output start)
          result]))))

@@ -16,7 +16,8 @@ The process of @deftech{shaping} maps text to glyphs and positions using a
 contextual forms, position marks, and apply kerning. A @deftech{shaper} uses
 HarfBuzz with one captured @tech{font}. A @deftech{shaped run} is an immutable
 Racket structure containing @tech{glyph IDs}, @tech{cluster offsets}, positions,
-and @tech{advances}. Drawing a run also requires its shaper.
+and @tech{advances}, together with its original text and resolved direction.
+It also remembers the shaper that created it.
 
 Shaping one run is not paragraph layout. It does not choose fallback fonts,
 split mixed scripts into separate runs, or apply the Unicode bidirectional
@@ -89,12 +90,11 @@ Use @racket[draw-shaped-text] to shape and draw text in one call. Use
 @racket[shape-text] and @racket[draw-shaped-run] separately to inspect a run
 before drawing or to draw it more than once.
 
-A run stores glyph IDs and placement, but neither the original text nor the
-identity of the font used to shape it. Keep the shaper that created the run for
-later drawing or conversion. If another shaper is supplied, its captured
-typeface and font settings must match; the library does not check this.
-Using a different font can draw different glyphs or place them incorrectly.
-The shaper must be open when used, even though the run itself is a Racket value.
+A run remembers its originating shaper; drawing and conversion do not take a
+second shaper argument. That shaper must remain open for these operations,
+including for an empty run. Closing it does not prevent inspection of the
+run's immutable text and glyph data. To reuse drawing after closing the shaper,
+convert the run to an independently owned @tech{text blob} first.
 
 @defproc[(shape-text [shaper shaper?] [text string?]
                 [#:direction direction (or/c 'auto 'ltr 'rtl 'ttb 'btt) 'auto]
@@ -102,7 +102,7 @@ The shaper must be open when used, even though the run itself is a Racket value.
                 [#:language language (or/c string? #f) #f]
                 [#:features features (or/c (listof string?) (vectorof string?)) '()]) shaped-run?]{
 Shapes @racket[text] with the captured font and returns a shaped run.
-An empty string produces empty glyph, cluster, and position lists and zero
+An empty string produces empty glyph, cluster, and position vectors and zero
 advances. Glyph zero denotes a missing glyph; this operation does not invoke
 @tech{font fallback}.
 
@@ -114,7 +114,7 @@ to find another font. The feature strings use HarfBuzz syntax, for example
 @racket["kern=0"] or @racket["liga=1"]. Malformed feature strings are rejected;
 a syntactically accepted feature need not be implemented by the selected font.
 
-The glyph, cluster, and position lists have equal lengths and are in native
+The glyph, cluster, and position vectors have equal lengths and are in native
 shaping order, which can differ from logical character order. Glyph count need
 not equal character count. Returned glyph IDs must fit the unsigned 16-bit
 Skia representation; an incompatible native result raises an exception.
@@ -133,8 +133,8 @@ offsets, see @secref["skia-text-indices"].
     (define kerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn))
     (define unkerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn
                                  #:features '("kern=0")))
-    (draw-shaped-run canvas shaper kerned 20 42 blue)
-    (draw-shaped-run canvas shaper unkerned 20 94 orange)))
+    (draw-shaped-run canvas kerned 20 42 blue)
+    (draw-shaped-run canvas unkerned 20 94 orange)))
 ]
 @reference-figure["shaping-kern-stage10.png"
                   "AVATAR is shaped with normal kerning in blue and with kerning disabled in orange."]
@@ -147,19 +147,18 @@ offsets, see @secref["skia-text-indices"].
   (define default-run (shape-text shaper "office" #:language "en"))
   (define no-liga-run (shape-text shaper "office" #:language "en"
                                   #:features '("liga=0")))
-  (draw-shaped-run (surface-canvas surface) shaper default-run 20 42 blue)
-  (draw-shaped-run (surface-canvas surface) shaper no-liga-run 20 92 orange))
+  (draw-shaped-run (surface-canvas surface) default-run 20 42 blue)
+  (draw-shaped-run (surface-canvas surface) no-liga-run 20 92 orange))
 ]
 @reference-figure["ligature-shaping.png"
                   "The word office shaped once with default features and once with standard ligatures disabled; the exact difference is font-dependent."]
 }
 
-@defproc[(draw-shaped-run [canvas canvas?] [shaper shaper?] [run shaped-run?] [x real?] [y real?]
+@defproc[(draw-shaped-run [canvas canvas?] [run shaped-run?] [x real?] [y real?]
           [paint paint?]) void?]{
 Draws the run with its origin translated by @racket[x] and @racket[y].
-For a nonempty run, the canvas, shaper, and paint must satisfy their native-use
-lifetime rules. Use a matching shaper as described in
-@secref["skia-shaped-run-reuse"]. The operation does not close its arguments.
+The canvas, paint, and run's originating shaper must be usable, even for
+an empty run. The operation does not close its arguments.
 
 An empty run draws nothing. When outline output is selected, drawing has the
 limitations of @racket[shaped-run->path].
@@ -179,9 +178,9 @@ shaping, and keeps that one face for the whole run. It does not use mixed-text f
     (unless (for/and ([char (in-string hebrew)]) (positive? (font-char->glyph font char)))
       (error 'hebrew-example "the selected typeface does not cover the displayed text"))
     (define run (shape-text shaper hebrew #:direction 'rtl #:script 'hebr))
-    (with-skia ([blob (shaped-run->text-blob shaper run)])
-      (define-values (left _top width _height) (text-blob-bounds blob))
-      (draw-shaped-run (surface-canvas surface) shaper run (- 230 (+ left width)) 58 paint))))
+    (with-skia ([blob (shaped-run->text-blob run)])
+      (define-values (left _top width _height) (vector->values (text-blob-bounds blob)))
+      (draw-shaped-run (surface-canvas surface) run (- 230 (+ left width)) 58 paint))))
 ]
 @reference-figure["rtl-shaping.png"
                   "The Hebrew word שלום is shaped with one verified Hebrew-capable face; the right edge of its blob bounds is aligned at x = 230 rather than treating the supplied baseline origin as a right-edge anchor."]
@@ -241,8 +240,8 @@ positions:
 
 Do not use a cluster offset directly with @racket[string-ref] or
 @racket[substring], which expect character indices. A glyph's position is a
-drawing coordinate, not either kind of text index. Layout results also do not
-provide a complete mapping back to the original input; see
+drawing coordinate, not either kind of text index. Layout source maps use
+character ranges in the original input; see
 @secref["skia-layout-inspection"].
 
 @section[#:tag "skia-shaped-run-inspection"]{Inspecting Shaped Runs}
@@ -256,18 +255,29 @@ character indices.
 Returns @racket[#t] for a shaped-run value and @racket[#f] otherwise.
 }
 
-@defproc[(shaped-run-glyphs [run shaped-run?]) (listof (integer-in 0 #xffff))]{
-Returns the copied glyph IDs in shaping order, including zero for missing glyphs.
+@defproc[(shaped-run-text [run shaped-run?]) (and/c string? immutable?)]{
+Returns the logical text used to shape this run. Cluster offsets index its UTF-8
+encoding. For a justified layout run, display-only Arabic elongations are
+mapped back to this logical text.
 }
 
-@defproc[(shaped-run-clusters [run shaped-run?]) (listof exact-nonnegative-integer?)]{
+@defproc[(shaped-run-direction [run shaped-run?]) (or/c 'ltr 'rtl 'ttb 'btt)]{
+Returns the resolved shaping direction, including when @racket['auto] was
+requested. An empty automatically directed run uses @racket['ltr].
+}
+
+@defproc[(shaped-run-glyphs [run shaped-run?]) (and/c (vectorof (integer-in 0 #xffff)) immutable?)]{
+Returns the glyph IDs in shaping order, including zero for missing glyphs.
+}
+
+@defproc[(shaped-run-clusters [run shaped-run?]) (and/c (vectorof exact-nonnegative-integer?) immutable?)]{
 Returns UTF-8 byte offsets corresponding to the glyphs. For a run returned
 by @racket[shape-text], these offsets refer to that call's input string, not an
 entire paragraph containing the string.
 }
 
-@defproc[(shaped-run-positions [run shaped-run?]) (listof (list/c real? real?))]{
-Returns glyph positions relative to the run origin. Horizontal positions
+@defproc[(shaped-run-positions [run shaped-run?]) (and/c (vectorof (and/c (vector/c real? real?) immutable?)) immutable?)]{
+Returns glyph positions as immutable @racket[#(x y)] vectors relative to the run origin. Horizontal positions
 accumulate advances and include HarfBuzz x offsets, scaled by font size and
 horizontal scale. Vertical positions accumulate the signed y advances and
 subtract the scaled y offsets. The operation does not apply a @tech{canvas transform}.
@@ -285,9 +295,9 @@ coordinates. The paragraph-layout operations support horizontal text only.
               [text-paint (make-paint #:color "#20344E")]
               [mark (make-paint #:color "#E94F37")])
     (define run (shape-text shaper "office" #:direction 'ltr #:script 'latn))
-    (draw-shaped-run canvas shaper run 20 62 text-paint)
-    (for ([position (in-list (shaped-run-positions run))])
-      (draw-circle canvas (+ 20 (car position)) (+ 62 (cadr position)) 2.5 mark))))
+    (draw-shaped-run canvas run 20 62 text-paint)
+    (for ([position (in-vector (shaped-run-positions run))])
+      (draw-circle canvas (+ 20 (vector-ref position 0)) (+ 62 (vector-ref position 1)) 2.5 mark))))
 ]
 @reference-figure["shaped-positions-stage10.png"
                   "Small red dots mark the stored glyph origins beneath the shaped word office."]
@@ -310,7 +320,7 @@ See the advance-versus-ink-bounds explanation in @secref["skia-font-metrics"].
               [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
     (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
     (define advance (abs (shaped-run-advance-x run)))
-    (draw-shaped-run canvas shaper run 20 58 text-paint)
+    (draw-shaped-run canvas run 20 58 text-paint)
     (draw-line canvas 20 75 (+ 20 advance) 75 rule)))
 ]
 @reference-figure["shaped-advance-stage10.png"
@@ -333,31 +343,32 @@ Use @racket[draw-shaped-run] for direct drawing. Conversion is useful when a
 caller needs a reusable @tech{text blob} or a @tech{path}. Each converted resource
 has its own lifetime and must be released separately.
 
-@defproc[(shaped-run->text-blob [shaper shaper?] [run shaped-run?]) text-blob?]{
-Returns an owned text blob containing the run's glyphs and positions,
-using the shaper's captured font. An empty run is rejected. The blob captures
-its own font state and remains usable after the shaper is closed.
+@defproc[(shaped-run->text-blob [run shaped-run?]) (or/c text-blob? #f)]{
+Returns an owned text blob containing the run's glyphs, positions, source text,
+and cluster offsets, using its originating shaper's font. An empty run returns
+@racket[#f]. The originating shaper must be open.
 
-The shaper-matching rule in @secref["skia-shaped-run-reuse"] applies.
+The blob captures its own font state and remains usable after the shaper is closed.
 }
 
-@defproc[(shaped-run->path [shaper shaper?] [run shaped-run?]) skia-path?]{
-Converts the run's glyph outlines to a path at their stored positions.
+@defproc[(shaped-run->path [run shaped-run?]
+          [#:missing-outline missing-outline (or/c 'error 'skip) 'error]) skia-path?]{
+Converts the run's monochrome glyph outlines to an owned path at their stored
+positions. The originating shaper must be open. The run origin is zero;
+empty runs yield an empty path.
 
-The path is an owned resource and contains only monochrome outlines.
-The run origin is zero. Use a matching shaper as described in
-@secref["skia-shaped-run-reuse"]. Empty runs yield an empty path.
-
-Glyphs without monochrome outlines are omitted; bitmap-only and color glyph
-appearance is not preserved by this conversion. The path remains usable after
-the shaper is closed and does not include paint settings.
+A glyph with visible bounds but no monochrome outline raises an exception by
+default. Use @racket[#:missing-outline 'skip] to omit such glyphs deliberately.
+Spaces and other glyphs with no visible bounds contribute no contours.
+See @secref["skia-text-outline-policy"] for the shared conversion rule.
+The path remains usable after the shaper is closed and does not include paint settings.
 
 @racketblock[
 (with-skia ([surface (make-surface 240 110 #:background 'white)]
             [font (make-font #:size 60)] [shaper (make-shaper font)]
             [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
   (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
-  (with-skia ([path (shaped-run->path shaper run)])
+  (with-skia ([path (shaped-run->path run)])
     (with-canvas-state (surface-canvas surface)
       (canvas-translate! (surface-canvas surface) 20 78)
       (draw-path (surface-canvas surface) path paint))))

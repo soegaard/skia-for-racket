@@ -1754,6 +1754,21 @@ exported procedures. No rendering or test suites were run for this update;
 those checks remain outstanding. The generated HTML and historical release
 receipts were not refreshed.
 
+## Chapter 6 text API update
+
+Shaped runs now remember their source text, resolved direction, and originating
+shaper; consumers no longer accept a second shaper or redundant text metadata.
+Layouts own private font snapshots, including exact fallback faces. Text results
+use immutable coordinate vectors, empty blob constructors return false, and
+whole-text outline conversion has an explicit error/skip policy. Layout source
+maps use original-input character ranges.
+
+The headless inventory and call-shape fixtures were updated from source, not
+recaptured through runtime reflection. The historical capture receipt is
+unchanged. Reader-only syntax checks and source inspection do not certify native
+behavior. No rendering or test suites were run for this change; generated HTML,
+images, and release receipts were not refreshed.
+
 ## Source inventory
 
 partial fixture. Commit the updated manifest together with the source changes.

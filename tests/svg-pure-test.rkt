@@ -120,7 +120,7 @@
      (parameterize ([current-skia-byte-limit 100])
        (check-exn exn:fail? (lambda () (rasterized-dimensions 'test 10 10 1)))))
    (test-case "outline helper validates public objects"
-     (check-exn exn:fail:contract? (lambda () (shaped-run->path #f #f))))
+     (check-exn exn:fail:contract? (lambda () (shaped-run->path #f))))
    (test-case "SVG output paths reject invalid destinations"
      (check-exn exn:fail:contract? (lambda () (svg-output-path 'test #f 'error)))
      (check-exn exn:fail:contract? (lambda () (svg-output-path 'test "x" 'append)))

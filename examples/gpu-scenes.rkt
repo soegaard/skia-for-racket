@@ -127,7 +127,7 @@
                  [paint (make-paint #:color "#176F9B")])
        (draw-simple-text c "office affinity AV" 28 100 font paint)
        (define run (shape-text shaper "office affinity AV" #:language "en"))
-       (draw-shaped-run c shaper run 28 148 paint)
+       (draw-shaped-run c run 28 148 paint)
        (with-canvas-state c
          (canvas-translate! c 34 214) (canvas-rotate! c -4)
          (draw-simple-text c "x + y = 2026" 0 0 font paint)))]

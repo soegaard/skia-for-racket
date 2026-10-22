@@ -1596,7 +1596,7 @@ library eagerly. `make-shaper` is the first operation that needs HarfBuzz.
     (shape-text shaper "office"
                 #:language "en"
                 #:features '("kern=1")))
-  (draw-shaped-run canvas shaper run 40 90 paint))
+  (draw-shaped-run canvas run 40 90 paint))
 ```
 
 `shape-text` returns an immutable `shaped-run?` containing glyph IDs, UTF-8
@@ -1612,7 +1612,7 @@ breaking, or paragraph layout.
 Version 0.11 builds a lightweight paragraph layer above shaped runs. `layout-text`
 performs explicit-newline handling, Unicode line breaking, alignment,
 and font-metric-based baseline placement. `draw-text-layout` draws the
-result with the same shaper retained by the layout.
+result using the layout's private font snapshot.
 
 ```racket
 (with-skia ([font (make-font #:size 28)]
@@ -1625,17 +1625,16 @@ result with the same shaper retained by the layout.
   (draw-text-layout canvas layout 20 20 paint))
 ```
 
-A layout is a pure Racket value containing shaped lines and keeps its shaper
-wrapper reachable. Explicitly closing that shaper invalidates subsequent drawing
-from the layout. With `#:width`, version 0.13 selects greedy line fits from UAX
+A layout is an owned resource containing shaped lines and private font snapshots.
+The caller's shaper can close after construction. Keep the layout open while
+drawing, and release it with `with-skia` or `skia-close!`. With `#:width`, version 0.13 selects greedy line fits from UAX
 #14 opportunities; a span with no legal opportunity is not emergency-split and
 may expand the reported layout width beyond `#:width`.
 
 `layout-text` remains a single-run-per-line API: it does not perform UAX #9
 mixed-direction bidi resolution or script/font run segmentation. With
 `#:direction 'auto`, HarfBuzz guesses the shaping direction; start/end alignment
-infers RTL from descending HarfBuzz cluster offsets and otherwise defaults to
-LTR. Use `layout-mixed-text` when a line needs mixed-direction or fallback runs.
+uses the resolved shaping direction, including for single-glyph runs. Use `layout-mixed-text` when a line needs mixed-direction or fallback runs.
 
 
 ## Mixed-script and bidirectional layout
@@ -1659,9 +1658,10 @@ and chooses fallback system fonts at grapheme-cluster boundaries.
 
 `mixed-text-layout?` exposes visual lines, and each `mixed-text-run?` exposes
 its text, shaped run, visual x origin, bidi level/direction, script, and
-fallback family (or `#f` for the base shaper). The layout is a pure Racket
-value but retains references to the caller-owned base shaper and font manager;
-both must remain live while drawing it.
+fallback family (or `#f` for the base shaper). The layout owns snapshots of the
+base font and exact fallback faces; the caller's shaper and manager may close.
+Both layout types expose original input text and character source maps for
+lines and mixed runs, including trimmed text and break insertions.
 
 The mixed bidi resolver now implements ordinary UAX #9 resolution plus explicit
 embeddings, overrides, and isolates. `LRE/RLE/LRO/RLO/PDF` use the directional

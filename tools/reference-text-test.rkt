@@ -63,11 +63,11 @@
       (same-run before (shape-text shaper "AB" #:direction 'ltr #:script 'latn))
       (check-equal? (font-metrics-ascent metrics) saved-ascent)
       (check-false (skia-resource? metrics))
-      (with-skia ([blob (shaped-run->text-blob shaper before)])
+      (with-skia ([blob (shaped-run->text-blob before)])
         (skia-close! shaper)
         (check-true (text-blob? blob))
-        (check-equal? (length (call-with-values (lambda () (text-blob-bounds blob)) list)) 4)
-        (check-equal? (shaped-run-glyph-count before) (length (shaped-run-glyphs before))))))
+        (check-equal? (length (vector->list (text-blob-bounds blob))) 4)
+        (check-equal? (shaped-run-glyph-count before) (vector-length (shaped-run-glyphs before))))))
   (test-case "typeface getter is owned, not a borrow"
     (with-skia ([source-face (test-face)]
                 [font (make-font source-face #:size 24)]
@@ -119,7 +119,7 @@
       (check-true (immutable? bounds))
       (check-equal? (vector-length widths) (vector-length glyphs))
       (define positions (font-glyph-positions font glyphs #:origin '(7 11)))
-      (check-equal? (vector-ref positions 0) '(7.0 11.0))
+      (check-equal? (vector-ref positions 0) '#(7.0 11.0))
       (check-equal? (font-glyph-widths font '()) #())
       (check-equal? (font-glyph-paths font '()) #())
       (check-exn exn:fail?
@@ -143,26 +143,26 @@
       (define run (shape-text shaper "éA" #:direction 'ltr #:script 'latn
                               #:features '("liga=0" "kern=0")))
       (define clusters (shaped-run-clusters run))
-      (check-not-false (member 2 clusters))
-      (check-true (andmap (lambda (index) (and (memv index '(0 2)) #t)) clusters))
-      (check-equal? (length clusters) (length (shaped-run-positions run)))
-      (check-equal? (shaped-run-glyph-count run) (length (shaped-run-glyphs run)))
+      (check-not-false (memv 2 (vector->list clusters)))
+      (check-true (andmap (lambda (index) (and (memv index '(0 2)) #t)) (vector->list clusters)))
+      (check-equal? (vector-length clusters) (vector-length (shaped-run-positions run)))
+      (check-equal? (shaped-run-glyph-count run) (vector-length (shaped-run-glyphs run)))
       (define empty (shape-text shaper ""))
-      (check-equal? (shaped-run-glyphs empty) '())
+      (check-equal? (shaped-run-glyphs empty) #())
       (check-equal? (shaped-run-advance-x empty) 0.0)
-      (check-exn exn:fail? (lambda () (shaped-run->text-blob shaper empty)))
+      (check-false (shaped-run->text-blob empty))
       (check-exn exn:fail? (lambda () (shape-text shaper "A" #:features '("not a feature"))))))
   (test-case "positioned blobs copy input positions and font settings"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)])
-      (define glyphs (font-text->glyphs font "AB"))
+      (define glyphs (vector-copy (font-text->glyphs font "AB")))
       (define positions (vector (vector 0 0) (vector 40 0)))
       (with-skia ([blob (make-positioned-text-blob font glyphs positions)])
-        (define before (call-with-values (lambda () (text-blob-bounds blob)) list))
+        (define before (vector->list (text-blob-bounds blob)))
         (vector-set! (vector-ref positions 1) 0 400)
         (vector-set! glyphs 0 0)
         (font-set-size! font 48)
         (skia-close! font)
-        (check-equal? (call-with-values (lambda () (text-blob-bounds blob)) list) before))))
+        (check-equal? (vector->list (text-blob-bounds blob)) before))))
 
   ;;;
   ;;; Layout Boundaries and Retained Dependencies
@@ -208,18 +208,20 @@
                    (layout-text shaper "AB" #:width 200 #:break-provider
                                  (lambda (paragraph language)
                                    (list (make-layout-break-opportunity 1 "-") 1)))))))
-  (test-case "layout metadata survives closure but drawing requires the retained shaper"
+  (test-case "layout metadata survives closure but drawing requires the layout"
     (with-skia ([face (test-face)] [font (make-font face #:size 24)]
                 [shaper (make-shaper font)]
                 [surface (make-surface 40 40)] [paint (make-paint)])
       (define layout (layout-text shaper ""))
-      (check-false (skia-resource? layout))
+      (check-true (skia-resource? layout))
       (define width (text-layout-width layout))
       (skia-close! shaper)
+      (check-not-exn (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 paint)))
+      (skia-close! layout)
       (check-equal? (text-layout-width layout) width)
       (check-exn exn:fail?
                  (lambda () (draw-text-layout (surface-canvas surface) layout 0 0 paint)))))
-  (test-case "mixed layout records bidi runs and requires its manager at drawing time"
+  (test-case "mixed layout records bidi runs independently of its source manager"
     (with-skia ([face (test-face)] [font (make-font face #:size 20)]
                 [shaper (make-shaper font)] [manager (make-font-manager)]
                 [surface (make-surface 300 100)] [paint (make-paint)])
@@ -230,5 +232,9 @@
         (check-equal? (mixed-text-run-direction run)
                       (if (odd? (mixed-text-run-level run)) 'rtl 'ltr)))
       (skia-close! manager)
+      (skia-close! shaper)
+      (check-not-exn
+       (lambda () (draw-mixed-text-layout (surface-canvas surface) layout 0 0 paint)))
+      (skia-close! layout)
       (check-exn exn:fail?
                  (lambda () (draw-mixed-text-layout (surface-canvas surface) layout 0 0 paint))))))

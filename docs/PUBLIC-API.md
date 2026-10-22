@@ -979,8 +979,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | draw-rect | stable | 0 | procedure | 6 | none | none |
 | draw-region | stable | 0 | procedure | 3 | none | none |
 | draw-rounded-rect | stable | 0 | procedure | 3, 8 | none | none |
-| draw-shaped-run | stable | 0 | procedure | 6 | none | none |
-| draw-shaped-run/on-path | stable | 0 | procedure | 5 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset |
+| draw-shaped-run | stable | 0 | procedure | 5 | none | none |
+| draw-shaped-run/on-path | stable | 0 | procedure | 4 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset |
 | draw-shaped-text | stable | 0 | procedure | 6 | none | #:direction, #:features, #:language, #:script |
 | draw-simple-text | stable | 0 | procedure | 6 | none | none |
 | draw-text-blob | stable | 0 | procedure | 5 | none | none |
@@ -1400,6 +1400,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | mixed-text-layout-line-count | stable | 0 | procedure | 1 | none | none |
 | mixed-text-layout-line-height | stable | 0 | procedure | 1 | none | none |
 | mixed-text-layout-lines | stable | 0 | procedure | 1 | none | none |
+| mixed-text-layout-text | stable | 0 | procedure | 1 | none | none |
 | mixed-text-layout-width | stable | 0 | procedure | 1 | none | none |
 | mixed-text-layout? | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-baseline | stable | 0 | procedure | 1 | none | none |
@@ -1407,6 +1408,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | mixed-text-line-origin-x | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-runs | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-text | stable | 0 | procedure | 1 | none | none |
+| mixed-text-line-source-map | stable | 0 | procedure | 1 | none | none |
+| mixed-text-line-source-range | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-width | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line? | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-direction | stable | 0 | procedure | 1 | none | none |
@@ -1416,6 +1419,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | mixed-text-run-script | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-shaped-run | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-text | stable | 0 | procedure | 1 | none | none |
+| mixed-text-run-source-map | stable | 0 | procedure | 1 | none | none |
+| mixed-text-run-source-range | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-width | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run? | stable | 0 | procedure | 1 | none | none |
 | named-transfer-function | stable | 0 | procedure | 1 | none | none |
@@ -1642,7 +1647,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | pixmap-write-rgba! | stable | 0 | procedure | 2 | none | #:premultiplied?, #:row-bytes |
 | pixmap-write-storage! | stable | 0 | procedure | 2 | none | #:row-bytes |
 | pixmap? | stable | 0 | procedure | 1 | none | none |
-| positioned-glyphs->path | stable | 0 | procedure | 3 | none | none |
+| positioned-glyphs->path | stable | 0 | procedure | 3 | none | #:missing-outline |
 | primaries->xyz-d50 | stable | 0 | procedure | 4 | none | none |
 | raster-buffer->image | stable | 0 | procedure | 1 | none | none |
 | raster-buffer->rgba-bytes | stable | 0 | procedure | 1 | none | #:premultiplied? |
@@ -1747,19 +1752,21 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | shader-with-local-matrix | stable | 0 | procedure | 2 | none | none |
 | shader? | stable | 0 | procedure | 1 | none | none |
 | shape-text | stable | 0 | procedure | 2 | none | #:direction, #:features, #:language, #:script |
-| shaped-run->path | stable | 0 | procedure | 2 | none | none |
-| shaped-run->text-blob | stable | 0 | procedure | 2 | none | none |
-| shaped-run->text-blob/on-path | stable | 0 | procedure | 3 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset, #:text |
+| shaped-run->path | stable | 0 | procedure | 1 | none | #:missing-outline |
+| shaped-run->text-blob | stable | 0 | procedure | 1 | none | none |
+| shaped-run->text-blob/on-path | stable | 0 | procedure | 2 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset |
 | shaped-run-advance-x | stable | 0 | procedure | 1 | none | none |
 | shaped-run-advance-y | stable | 0 | procedure | 1 | none | none |
 | shaped-run-clusters | stable | 0 | procedure | 1 | none | none |
 | shaped-run-glyph-count | stable | 0 | procedure | 1 | none | none |
+| shaped-run-direction | stable | 0 | procedure | 1 | none | none |
+| shaped-run-text | stable | 0 | procedure | 1 | none | none |
 | shaped-run-glyphs | stable | 0 | procedure | 1 | none | none |
 | shaped-run-positions | stable | 0 | procedure | 1 | none | none |
 | shaped-run? | stable | 0 | procedure | 1 | none | none |
 | shaper? | stable | 0 | procedure | 1 | none | none |
 | simple-text-bounds | stable | 0 | procedure | 2 | none | #:paint |
-| simple-text-path | stable | 0 | procedure | 2, 3, 4 | none | none |
+| simple-text-path | stable | 0 | procedure | 2, 3, 4 | none | #:missing-outline |
 | skia-available? | stable | 0 | procedure | 0 | none | none |
 | skia-cache-statistics | stable | 0 | procedure | 0 | none | none |
 | skia-check! | stable | 0 | procedure | 0 | none | none |
@@ -1817,12 +1824,12 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | svg-document-width | stable | 0 | procedure | 1 | none | none |
 | svg-document? | stable | 0 | procedure | 1 | none | none |
 | svg-path->path | stable | 0 | procedure | 1 | none | #:fill-rule |
-| text-blob->path | stable | 0 | procedure | 1 | none | none |
+| text-blob->path | stable | 0 | procedure | 1 | none | #:missing-outline |
 | text-blob-bounds | stable | 0 | procedure | 1 | none | none |
 | text-blob-builder-add-horizontal-run! | stable | 0 | procedure | 4 | none | #:clusters, #:text, #:y |
 | text-blob-builder-add-positioned-run! | stable | 0 | procedure | 4 | none | #:clusters, #:text |
 | text-blob-builder-add-run! | stable | 0 | procedure | 3 | none | #:clusters, #:origin, #:text |
-| text-blob-builder-add-shaped-run! | stable | 0 | procedure | 3 | none | #:origin, #:text |
+| text-blob-builder-add-shaped-run! | stable | 0 | procedure | 2 | none | #:origin |
 | text-blob-builder-add-transformed-run! | stable | 0 | procedure | 4 | none | #:clusters, #:text |
 | text-blob-builder-finish! | stable | 0 | procedure | 1 | none | none |
 | text-blob-builder-run-count | stable | 0 | procedure | 1 | none | none |
@@ -1841,9 +1848,12 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | text-layout-line-origin-x | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-run | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-text | stable | 0 | procedure | 1 | none | none |
+| text-layout-line-source-map | stable | 0 | procedure | 1 | none | none |
+| text-layout-line-source-range | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-width | stable | 0 | procedure | 1 | none | none |
 | text-layout-line? | stable | 0 | procedure | 1 | none | none |
 | text-layout-lines | stable | 0 | procedure | 1 | none | none |
+| text-layout-text | stable | 0 | procedure | 1 | none | none |
 | text-layout-width | stable | 0 | procedure | 1 | none | none |
 | text-layout? | stable | 0 | procedure | 1 | none | none |
 | text-run-info-clusters | stable | 0 | procedure | 1 | none | none |
@@ -2313,14 +2323,14 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
-| draw-shaped-run/on-path | stable | 0 | procedure | 5 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset |
+| draw-shaped-run/on-path | stable | 0 | procedure | 4 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset |
 | make-text-blob-builder | stable | 0 | procedure | 0 | none | none |
-| positioned-glyphs->path | stable | 0 | procedure | 3 | none | none |
-| shaped-run->text-blob/on-path | stable | 0 | procedure | 3 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset, #:text |
+| positioned-glyphs->path | stable | 0 | procedure | 3 | none | #:missing-outline |
+| shaped-run->text-blob/on-path | stable | 0 | procedure | 2 | none | #:contour, #:force-closed?, #:normal-offset, #:start-offset |
 | text-blob-builder-add-horizontal-run! | stable | 0 | procedure | 4 | none | #:clusters, #:text, #:y |
 | text-blob-builder-add-positioned-run! | stable | 0 | procedure | 4 | none | #:clusters, #:text |
 | text-blob-builder-add-run! | stable | 0 | procedure | 3 | none | #:clusters, #:origin, #:text |
-| text-blob-builder-add-shaped-run! | stable | 0 | procedure | 3 | none | #:origin, #:text |
+| text-blob-builder-add-shaped-run! | stable | 0 | procedure | 2 | none | #:origin |
 | text-blob-builder-add-transformed-run! | stable | 0 | procedure | 4 | none | #:clusters, #:text |
 | text-blob-builder-finish! | stable | 0 | procedure | 1 | none | none |
 | text-blob-builder-run-count | stable | 0 | procedure | 1 | none | none |

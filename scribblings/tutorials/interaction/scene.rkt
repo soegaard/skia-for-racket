@@ -224,7 +224,7 @@
     (define label (format "P~a" index))
     (define-values (preferred-x preferred-y)
       (control-point-label-position point index))
-    (define-values (bx by bw bh) (simple-text-bounds label-font label))
+    (define-values (bx by bw bh) (vector->values (simple-text-bounds label-font label)))
     (define-values (label-x label-y)
       (fit-label-origin preferred-x preferred-y bx by bw bh width height))
     (when (equal? selected index)
@@ -313,7 +313,7 @@
          [y (list 16 (- (second size) 16))])
     (define point (control-point x y))
     (define-values (preferred-x preferred-y) (control-point-label-position point index))
-    (define-values (bx by bw bh) (simple-text-bounds label-font (format "P~a" index)))
+    (define-values (bx by bw bh) (vector->values (simple-text-bounds label-font (format "P~a" index))))
     (define-values (label-x label-y)
       (fit-label-origin preferred-x preferred-y bx by bw bh (first size) (second size)))
     (when label-x

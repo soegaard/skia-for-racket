@@ -268,3 +268,25 @@ and positional/keyword introspection under
 The reflection implementation deliberately accounts for value-like bindings in
 the syntax export list. Return-value arity inference and class instantiation are
 not used as substitutes for documented contracts.
+
+## Text runs and layout resources
+
+A shaped run remembers its originating shaper, immutable source text, and
+resolved direction. Its drawing and conversion operations take the run, not a
+second shaper. The originating shaper must be open for native use, even for an
+empty run. Blob conversion copies the font state and text metadata.
+
+Single-font and mixed-text layouts are owned resources. They own private font
+snapshots, including the exact selected fallback faces. Callers may close their
+original shaper and manager after construction. Close layouts with
+`skia-close!` or `with-skia`; metadata remains inspectable afterward.
+
+Glyph collections and text geometry results use immutable vectors, with
+immutable coordinate vectors inside collections. All empty blob constructors
+return `#f` after validation; empty builder appends add no run. Whole-text
+outline conversions accept `#:missing-outline 'error` (the default) or
+`'skip`: visible glyphs without monochrome outlines raise under `'error`,
+while whitespace without visible bounds does not.
+
+Layout source ranges and maps use character indices in the original input;
+shaping clusters remain UTF-8 byte offsets into the run's logical text.

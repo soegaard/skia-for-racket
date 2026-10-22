@@ -50,7 +50,7 @@
 ;; DC text reuses existing fallback identity and font metrics. Private only;
 ;; no new native entry points or public core exports.
 (module* dc-text-internals #f
-  (provide shaper-font call-with-choice-shaper fallback-choice-from-run))
+  (provide shaper-font shaped-run-shaper))
 (module* color-internals #f
   (provide color-space-h wrap-owned-color-space))
 (provide image-convert-color-space)
@@ -312,24 +312,28 @@
          shaper? make-shaper
          shaped-run? shaped-run-glyphs shaped-run-clusters shaped-run-positions
          shaped-run-advance-x shaped-run-advance-y shaped-run-glyph-count
+         shaped-run-text shaped-run-direction
          shape-text shaped-run->text-blob draw-shaped-run draw-shaped-text
          layout-break-opportunity? make-layout-break-opportunity
          layout-break-opportunity-index layout-break-opportunity-insert
-         text-layout? text-layout-lines text-layout-width text-layout-height
+         text-layout? text-layout-text text-layout-lines text-layout-width text-layout-height
          text-layout-line-height text-layout-line-count
          text-layout-line? text-layout-line-text text-layout-line-run
          text-layout-line-origin-x text-layout-line-baseline
          text-layout-line-width text-layout-line-direction
+         text-layout-line-source-range text-layout-line-source-map
          layout-text draw-text-layout
-         mixed-text-layout? mixed-text-layout-lines mixed-text-layout-width
+         mixed-text-layout? mixed-text-layout-text mixed-text-layout-lines mixed-text-layout-width
          mixed-text-layout-height mixed-text-layout-line-height
          mixed-text-layout-line-count
          mixed-text-line? mixed-text-line-text mixed-text-line-runs
          mixed-text-line-origin-x mixed-text-line-baseline
          mixed-text-line-width mixed-text-line-direction
+         mixed-text-line-source-range mixed-text-line-source-map
          mixed-text-run? mixed-text-run-text mixed-text-run-shaped-run
          mixed-text-run-origin-x mixed-text-run-width mixed-text-run-direction
          mixed-text-run-level mixed-text-run-script mixed-text-run-family
+         mixed-text-run-source-range mixed-text-run-source-map
          layout-mixed-text draw-mixed-text-layout)
 
 ;;;
@@ -557,20 +561,45 @@
            text-blob-builder-resource-runs text-blob-builder-resource-cost
            make-text-blob-builder-record
            text-blob-h text-blob-font text-blob-glyphs text-blob-positions
-           font-h shaper-h shaper-font paint-h path-h call-on-canvas
+           font-h shaper-h shaper-font shaped-run-shaper checked-run-shaper
+           check-missing-outline checked-glyph-outline glyph-has-visible-bounds? paint-h path-h call-on-canvas
            copy-font-for-shaper call-with-native-temporary path-native-verb-count))
 (struct shaper (handle font) #:constructor-name make-shaper-record)
 ;; Fields:
 ;;   handle: owned HarfBuzz font lifetime cell. font: retained Skia font snapshot used for glyph
 ;;   metrics and drawing. Explicitly closing either required resource invalidates later native work.
 
-(struct shaped-run (glyphs clusters positions advance-x advance-y) #:transparent)
+(struct shaped-run (glyphs clusters positions advance-x advance-y shaper text direction)
+  #:transparent
+  #:guard
+  (lambda (glyphs clusters positions advance-x advance-y shaper text direction _name)
+    (values (immutable-text-vector glyphs) (immutable-text-vector clusters)
+            (immutable-text-points positions) advance-x advance-y shaper
+            (string->immutable-string text) direction)))
 ;; Fields:
-;;   glyphs: glyph-id list. clusters: matching UTF-8 source byte-offset list. positions: matching
-;;   glyph coordinate pairs in shaped visual order. advance-x and advance-y: total run
-;;   advances in drawing units.
-;;   Glyph, cluster, and position counts agree; cluster order need not increase for right-to-left
-;;   runs.
+;;   glyphs and clusters: parallel immutable vectors of glyph IDs and UTF-8 byte offsets into text.
+;;   positions: matching immutable #(x y) vectors in visual order. advance-x and advance-y: total
+;;   drawing-unit advances. shaper: originating shaper, required open for drawing or conversion.
+;;   text: immutable logical shaping input. direction: resolved 'ltr, 'rtl, 'ttb, or 'btt.
+;;   Glyph count can differ from character count; clusters can repeat or descend.
+
+; immutable-text-vector : (or/c list? vector?) -> (and/c vector? immutable?)
+;   Copies a sequence to an immutable vector.
+(define (immutable-text-vector xs)
+  (vector->immutable-vector (if (vector? xs) (vector-copy xs) (list->vector xs))))
+
+; immutable-text-points : (or/c list? vector?) -> (and/c vector? immutable?)
+;   Copies coordinate sequences into immutable nested vectors.
+(define (immutable-text-points xs)
+  (vector->immutable-vector (for/vector ([xy xs]) (immutable-text-vector xy))))
+
+; checked-run-shaper : symbol? shaped-run? -> shaper?
+;   Checks the run and its originating shaper, including empty runs.
+(define (checked-run-shaper who run)
+  (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
+  (define sh (shaped-run-shaper run))
+  (call-with-owned who (list (shaper-h who sh)) (lambda (_) (void)))
+  sh)
 
 (struct layout-break-opportunity (index insert)
   #:transparent
@@ -580,55 +609,51 @@
 ;;   chosen, empty for an ordinary break; it contains no hard breaks or bidi formatting controls.
 ;;   Indices refer to the original logical string, not UTF-8 bytes or shaped glyph indices.
 
-;; A text layout is a pure Racket value, but it intentionally keeps the shaper
-;; wrapper reachable. It therefore remains drawable while the shaper is live;
-;; explicitly closing that shaper invalidates later drawing from the layout.
-(struct text-layout (shaper lines width height line-height) #:transparent)
+(struct text-layout (shaper text lines width height line-height) #:transparent)
 ;; Fields:
-;;   shaper: caller's retained shaper wrapper. lines: text-layout-line values in top-to-bottom
-;;   order. width and height: layout extents. line-height: baseline-to-baseline distance, all in
-;;   drawing units.
-;;   The record itself is detached Racket data, but drawing still requires the retained shaper to be
-;;   open.
+;;   shaper: private owned snapshot and layout lifetime cell. text: immutable original input.
+;;   lines: top-to-bottom line values. width, height, line-height: drawing-unit dimensions.
+;;   Closing the layout closes its snapshot, never the caller's shaper.
 
-(struct text-layout-line (text run origin-x baseline width direction) #:transparent)
+(struct text-layout-line
+  (text run origin-x baseline width direction source-range source-map) #:transparent)
 ;; Fields:
-;;   text: displayed line string. run: shaped-run for that text. origin-x and baseline: line origin
-;;   in layout coordinates. width: horizontal line advance. direction: resolved line direction
-;;   symbol.
+;;   text: immutable logical line text. run: positioned glyphs. origin-x, baseline: box-relative
+;;   placement. width: advance. direction: alignment direction. source-range: immutable #(start end)
+;;   half-open character range in the original input, including consumed whitespace but excluding
+;;   hard separators. source-map: immutable vector parallel to text, with #(start end) per original
+;;   character and #f for each display-only inserted character.
 
-;; Mixed layouts keep caller-owned base shaper/font-manager wrappers reachable.
-;; Fallback fonts/shapers are created transiently during layout/drawing, so the
-;; layout itself owns no hidden native resources.
-(struct mixed-text-layout (shaper font-manager lines width height line-height) #:transparent)
+(struct mixed-text-layout
+  (shaper fallback-shapers text lines width height line-height) #:transparent)
 ;; Fields:
-;;   shaper and font-manager: retained caller-owned wrappers used to reconstruct fallback fonts.
-;;   lines: mixed-text-line values in top-to-bottom order. width, height, and line-height: layout
-;;   dimensions in drawing units.
-;;   The layout owns no hidden fallback resources; later drawing still requires its caller-owned
-;;   resources to remain live.
+;;   shaper: private owned base snapshot and lifetime cell. fallback-shapers: owned snapshots of
+;;   the exact selected fallback faces. text: immutable original input. lines: top-to-bottom lines.
+;;   width, height, line-height: drawing-unit dimensions. Closing releases all snapshots.
 
-(struct mixed-text-line (text runs origin-x baseline width direction) #:transparent)
+(struct mixed-text-line
+  (text runs origin-x baseline width direction source-range source-map) #:transparent)
 ;; Fields:
-;;   text: displayed line string. runs: mixed-text-run values in visual drawing order. origin-x and
-;;   baseline: layout-space origin. width: line advance. direction: resolved paragraph/line
-;;   direction.
+;;   text: immutable logical line text; runs: visual-order mixed runs. origin-x, baseline, width,
+;;   direction: placement, advance, and paragraph alignment direction. source-range and source-map
+;;   use the same absolute character convention as text-layout-line.
 
 (struct mixed-text-run
   (text shaped-run origin-x width direction level script
-        family weight font-width slant)
+        family weight font-width slant source-range source-map)
   #:transparent)
 ;; Fields:
-;;   text and shaped-run: displayed source slice and matching glyph data. origin-x: visual
-;;   horizontal placement. width: run advance. direction, level, and script: resolved bidi
-;;   direction, embedding level, and script.
-;;   family, weight, font-width, and slant: detached fallback-font choice. These identify the font
-;;   request without retaining temporary fallback fonts.
+;;   text, shaped-run: immutable logical run text and positioned glyphs. origin-x, width: horizontal
+;;   placement and advance. direction, level, script: resolved bidi and shaping properties.
+;;   family, weight, font-width, slant: fallback face metadata, or #f for the base font.
+;;   source-map: immutable per-character mappings after bidi controls are removed; #f marks inserted
+;;   characters. source-range: smallest original-input range covering the mappings, or #f when all
+;;   characters are inserted. The shaped run refers to the layout's exact owned font snapshot.
 
-(struct fallback-choice (family weight width slant) #:transparent)
+(struct fallback-choice (family weight width slant shaper) #:transparent)
 ;; Fields:
-;;   family: chosen family name. weight, width, and slant: checked font-style values. The detached
-;;   choice can recreate a fallback font without retaining its native pointer.
+;;   family, weight, width, slant: selected face metadata. shaper: owned snapshot made directly
+;;   from that face, shared during layout and later drawing.
 
 (struct font-metrics
   (top ascent descent bottom leading
@@ -663,7 +688,8 @@
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
       (picture? v) (picture-recorder? v) (document? v) (svg-document? v)
       (skia-path? v) (path-measure? v) (image? v) (codec? v)
-      (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)))
+      (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)
+      (text-layout? v) (mixed-text-layout? v)))
 
 ; resource-handle : symbol? skia-resource? -> (or/c owned? domain-resource?)
 ;   Selects the lifetime cell for a supported resource wrapper and rejects unrelated values.
@@ -702,6 +728,8 @@
         [(font? v) (font-handle v)]
         [(text-blob? v) (text-blob-handle v)]
         [(shaper? v) (shaper-handle v)]
+        [(text-layout? v) (shaper-handle (text-layout-shaper v))]
+        [(mixed-text-layout? v) (shaper-handle (mixed-text-layout-shaper v))]
         [else (raise-argument-error who "skia-resource? (not a borrowed canvas)" v)]))
 
 ; skia-closed? : (or/c skia-resource? canvas?) -> boolean?
@@ -738,6 +766,10 @@
   ;; A shaper snapshots the SkFont used for later TextBlob construction.
   (when (shaper? v)
     (skia-close! (shaper-font v)))
+  (when (text-layout? v) (skia-close! (text-layout-shaper v)))
+  (when (mixed-text-layout? v)
+    (skia-close! (mixed-text-layout-shaper v))
+    (for ([sh (in-list (mixed-text-layout-fallback-shapers v))]) (skia-close! sh)))
   ;; A blob's snapshot is independent of the native blob's retained typeface.
   ;; Each has its own GC fallback; explicit close releases both immediately.
   (when (text-blob-builder-resource? v)
@@ -1222,25 +1254,36 @@
 ;; These two helpers work with every backend, not only SVG. They make the
 ;; trade-off between editable text, glyph outlines, and raster content explicit.
 
-; shaped-run->path : shaper? shaped-run? -> skia-path?
-;   Returns an owned path assembled from the run's available monochrome glyph outlines at their
-;   stored positions.
-(define (shaped-run->path sh run)
+; check-missing-outline : symbol? any/c -> symbol?
+;   Checks the policy for visible glyphs without monochrome outlines.
+(define (check-missing-outline who policy)
+  (unless (memq policy '(error skip))
+    (raise-argument-error who "(or/c 'error 'skip)" policy))
+  policy)
+
+; checked-glyph-outline : symbol? font? exact-nonnegative-integer? symbol? -> (or/c skia-path? #f)
+;   Gets an owned glyph outline, rejecting visible missing outlines unless omission is requested.
+(define (checked-glyph-outline who f glyph policy)
+  (define path (font-glyph-path f glyph))
+  (when (and (not path) (eq? policy 'error) (glyph-has-visible-bounds? who f glyph))
+    (error who "glyph ~a has visible bounds but no monochrome outline; use raster drawing or #:missing-outline 'skip" glyph))
+  path)
+
+; shaped-run->path : shaped-run? [#:missing-outline (or/c 'error 'skip)] -> skia-path?
+;   Converts positioned glyph outlines using the run's originating font.
+(define (shaped-run->path run #:missing-outline [missing-outline 'error])
   (define who 'shaped-run->path)
-  (define hh (shaper-h who sh))
-  (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
-  (call-with-owned who (list hh) (lambda (_) (void)))
+  (check-missing-outline who missing-outline)
+  (define sh (checked-run-shaper who run))
   (define out (make-path))
   (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! out) (raise e))])
-    (for ([gid (in-list (shaped-run-glyphs run))]
-          [pos (in-list (shaped-run-positions run))])
-      (define gp (font-glyph-path (shaper-font sh) gid))
-      ;; Empty/bitmap-only glyphs need not expose an outline. This intentionally
-      ;; has the same outline-only limitation as simple-text-path, not a claim
-      ;; to preserve color emoji. draw-rasterized preserves rendered glyphs.
+    (for ([gid (in-vector (shaped-run-glyphs run))]
+          [pos (in-vector (shaped-run-positions run))])
+      (define gp (checked-glyph-outline who (shaper-font sh) gid missing-outline))
       (when gp
         (call-with-skia-resource gp
-          (lambda (p) (path-add-path! out p #:dx (car pos) #:dy (cadr pos))))))
+          (lambda (p)
+            (path-add-path! out p #:dx (vector-ref pos 0) #:dy (vector-ref pos 1))))))
     out))
 
 ;;;
@@ -4234,9 +4277,8 @@
    (lambda (fp pp)
      (sk_font_measure_text fp bs (bytes-length bs) text-encoding-utf8 bounds pp))))
 
-; simple-text-bounds : font? string? [#:paint (or/c paint? #f)] -> (values real? real? real? real?)
-;   Returns the unshaped text's bounds as four values: x, y, width, and height, relative to a
-;   baseline origin at zero.
+; simple-text-bounds : font? string? [#:paint (or/c paint? #f)] -> (and/c vector? immutable?)
+;   Returns #(x y width height) bounds relative to a baseline origin at zero.
 (define (simple-text-bounds f text #:paint [p #f])
   (define who 'simple-text-bounds)
   (define bs (utf8-text who text))
@@ -4246,7 +4288,7 @@
    (lambda (fp pp)
      (sk_font_measure_text fp bs (bytes-length bs) text-encoding-utf8 bounds pp)
      (void)))
-  (values (sk-rect-left bounds)
+  (vector-immutable (sk-rect-left bounds)
           (sk-rect-top bounds)
           (- (sk-rect-right bounds) (sk-rect-left bounds))
           (- (sk-rect-bottom bounds) (sk-rect-top bounds))))
@@ -4276,8 +4318,9 @@
         (unless (= written count)
           (error who "native glyph conversion changed count from ~a to ~a"
                  count written))
-        (for/vector ([i (in-range count)])
-          (ptr-ref buffer _uint16 i))]))))
+        (vector->immutable-vector
+         (for/vector ([i (in-range count)])
+           (ptr-ref buffer _uint16 i)))]))))
 
 ; font-char->glyph : font? (or/c char? (integer-in 0 55295) (integer-in 57344 1114111)) ->
 ;   (integer-in 0 65535)
@@ -4303,13 +4346,18 @@
         p
         (begin (skia-close! p) #f))))
 
-; simple-text-path : font? string? [real?] [real?] -> skia-path?
+; simple-text-path : font? string? [real?] [real?] [#:missing-outline (or/c 'error 'skip)] -> skia-path?
 ;   Returns an owned path for the unshaped string placed at the given baseline origin.
-(define (simple-text-path f text [x 0] [y 0])
+(define (simple-text-path f text [x 0] [y 0] #:missing-outline [missing-outline 'error])
   (define who 'simple-text-path)
+  (check-missing-outline who missing-outline)
   (define bs (utf8-text who text))
   (define fx (scalar who x))
   (define fy (scalar who y))
+  (when (eq? missing-outline 'error)
+    (for ([glyph (in-vector (font-text->glyphs f text))])
+      (define outline (checked-glyph-outline who f glyph missing-outline))
+      (when outline (skia-close! outline))))
   (define p (make-path))
   (with-handlers ([exn? (lambda (e) (skia-close! p) (raise e))])
     (call-with-owned who (list (font-h who f) (path-h who p))
@@ -4346,33 +4394,40 @@
 
 ; make-positioned-text-blob : font? (or/c (listof (integer-in 0 65535)) (vectorof (integer-in 0
 ;   65535))) (or/c (listof (or/c (list/c real? real?) (vector/c real? real?))) (vectorof (or/c
-;   (list/c real? real?) (vector/c real? real?)))) -> text-blob?
-;   Creates an owned text blob from nonempty glyph and position sequences of equal length.
+;   (list/c real? real?) (vector/c real? real?)))) -> (or/c text-blob? #f)
+;   Creates an owned text blob from matching glyphs and positions, or #f for empty input.
 (define (make-positioned-text-blob f glyphs positions)
-  (define who 'make-positioned-text-blob)
+  (make-positioned-blob 'make-positioned-text-blob f glyphs positions #f #f))
+
+; make-positioned-blob : symbol? font? sequence? sequence? (or/c string? #f) any/c -> (or/c text-blob? #f)
+;   Builds one positioned run, optionally preserving its shaping text and cluster metadata.
+(define (make-positioned-blob who f glyphs positions text clusters)
   (define fh (font-h who f))
   (define gs (glyph-sequence who glyphs))
   (define ps (position-sequence who positions))
+  (define-values (bs cs) (text-run-metadata who text clusters (length gs)))
   (unless (= (length gs) (length ps))
     (raise-arguments-error who "glyph and position counts differ"
                            "glyph count" (length gs)
                            "position count" (length ps)))
-  (unless (pair? gs)
-    (raise-arguments-error who "at least one glyph is required" "glyphs" glyphs))
-  (define bytes-required (* (length gs) (+ (ctype-sizeof _uint16) (ctype-sizeof _sk-point))))
+  (define bytes-required (text-run-cost (length gs) 'positioned bs))
   (unless (<= bytes-required (current-skia-byte-limit))
     (raise-arguments-error who "text-blob input exceeds current-skia-byte-limit"
                            "required bytes" bytes-required
                            "limit" (current-skia-byte-limit)))
   (skia-check!)
-  (call-with-native-temporary
+  (if (null? gs)
+      (call-with-owned who (list fh) (lambda (_) #f))
+      (call-with-native-temporary
    who 'text-blob-builder sk_textblob_builder_new sk_textblob_builder_delete
    (lambda (builder)
      (call-with-owned
       who (list fh)
       (lambda (fp)
         (define runbuffer (make-sk-textblob-runbuffer #f #f #f #f))
-        (sk_textblob_builder_alloc_run_pos builder fp (length gs) #f runbuffer)
+        (if bs
+            (sk_textblob_builder_alloc_run_text_pos builder fp (length gs) (bytes-length bs) #f runbuffer)
+            (sk_textblob_builder_alloc_run_pos builder fp (length gs) #f runbuffer))
         (define glyph-ptr (sk-textblob-runbuffer-glyphs runbuffer))
         (define pos-ptr (sk-textblob-runbuffer-pos runbuffer))
         (unless (and glyph-ptr pos-ptr)
@@ -4383,6 +4438,13 @@
           ;; sk_point_t is exactly two consecutive C floats.
           (ptr-set! pos-ptr _float (* 2 i) (car xy))
           (ptr-set! pos-ptr _float (add1 (* 2 i)) (cadr xy)))
+        (when bs
+          (define tp (sk-textblob-runbuffer-utf8text runbuffer))
+          (define cp (sk-textblob-runbuffer-clusters runbuffer))
+          (unless (and tp cp) (error who "native text-blob builder returned null text buffers"))
+          (memcpy tp bs (bytes-length bs))
+          (for ([cluster (in-list cs)] [i (in-naturals)])
+            (ptr-set! cp _uint32 i cluster)))
         (define blob-ptr (sk_textblob_builder_make builder))
         (unless blob-ptr
           (error who "native text-blob builder produced no blob"))
@@ -4394,18 +4456,26 @@
            (lambda () (sk_font_get_typeface fp)) sk_typeface_unref
            (lambda (tp)
              (define snapshot (copy-font-for-shaper who fp tp))
-             (make-text-blob-record hnd snapshot gs ps)))))))))
+             (if bs
+                 (make-multi-text-blob-record
+                  hnd #f '() '()
+                  (list (retained-text-run
+                         snapshot
+                         (text-run-info 'positioned (immutable-text-vector gs)
+                                        (immutable-text-points ps) #f bs
+                                        (immutable-text-vector cs)))))
+                 (make-text-blob-record hnd snapshot gs ps)))))))))))
 
-; text-blob-bounds : text-blob? -> (values real? real? real? real?)
+; text-blob-bounds : text-blob? -> (and/c vector? immutable?)
 ;   Returns the native blob bounds as x, y, width, and height, relative to its stored origin.
 (define (text-blob-bounds blob)
   (define who 'text-blob-bounds)
   (define r (make-sk-rect 0.0 0.0 0.0 0.0))
   (call-with-owned who (list (text-blob-h who blob))
     (lambda (bp) (sk_textblob_get_bounds bp r)))
-  (values (sk-rect-left r) (sk-rect-top r)
-          (- (sk-rect-right r) (sk-rect-left r))
-          (- (sk-rect-bottom r) (sk-rect-top r))))
+  (vector-immutable (sk-rect-left r) (sk-rect-top r)
+                    (- (sk-rect-right r) (sk-rect-left r))
+                    (- (sk-rect-bottom r) (sk-rect-top r))))
 
 ; text-blob-unique-id : text-blob? -> exact-integer?
 ;   Returns the native blob identifier.
@@ -4414,22 +4484,25 @@
                    (list (text-blob-h 'text-blob-unique-id blob))
                    sk_textblob_get_unique_id))
 
-; text-blob->path : text-blob? -> skia-path?
+; text-blob->path : text-blob? [#:missing-outline (or/c 'error 'skip)] -> skia-path?
 ;   Returns an owned path of positioned monochrome glyph outlines without baking in a paint or
 ;   canvas transform.
-(define (text-blob->path blob)
-  (if (multi-text-blob? blob) (multi-text-blob->path blob) (legacy-text-blob->path blob)))
+(define (text-blob->path blob #:missing-outline [missing-outline 'error])
+  (check-missing-outline 'text-blob->path missing-outline)
+  (if (multi-text-blob? blob)
+      (multi-text-blob->path blob missing-outline)
+      (positioned-text-blob->path blob missing-outline)))
 
-; legacy-text-blob->path : text-blob? -> any
+; positioned-text-blob->path : text-blob? (or/c 'error 'skip) -> skia-path?
 ;   Replays a positioned blob's glyph outlines using its retained font snapshot.
-(define (legacy-text-blob->path blob)
+(define (positioned-text-blob->path blob missing-outline)
   (define who 'text-blob->path)
   (call-with-owned who (list (text-blob-h who blob)) (lambda (_) (void)))
   (define out (make-path))
   (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! out) (raise e))])
     (for ([gid (in-list (text-blob-glyphs blob))]
           [pos (in-list (text-blob-positions blob))])
-      (define gp (font-glyph-path (text-blob-font blob) gid))
+      (define gp (checked-glyph-outline who (text-blob-font blob) gid missing-outline))
       ;; Spaces and bitmap-only/color glyphs need not have monochrome outlines.
       (when gp
         (call-with-skia-resource gp
@@ -4569,7 +4642,7 @@
 (define (shaped-run-glyph-count run)
   (unless (shaped-run? run)
     (raise-argument-error 'shaped-run-glyph-count "shaped-run?" run))
-  (length (shaped-run-glyphs run)))
+  (vector-length (shaped-run-glyphs run)))
 
 ; normalize-shape-direction : symbol? any/c -> any
 ;   Accepts only the supported horizontal, vertical, or automatically guessed shaping directions.
@@ -4621,7 +4694,7 @@
 ; shape-text : shaper? string? [#:direction (or/c 'auto 'ltr 'rtl 'ttb 'btt)] [#:script (or/c
 ;   symbol? string? #f)] [#:language (or/c string? #f)] [#:features (or/c (listof string?) (vectorof
 ;   string?))] -> shaped-run?
-;   Shapes text with the captured font and returns a detached run.
+;   Shapes an immutable text snapshot and records its resolved direction and originating shaper.
 (define (shape-text sh text
                     #:direction [direction 'auto]
                     #:script [script #f]
@@ -4634,6 +4707,7 @@
   (define scr (normalize-shape-script who script))
   (define lang (normalize-shape-language who language))
   (define feats (normalize-shape-features who features))
+  (set! text (string->immutable-string text))
   (define utf8 (string->bytes/utf-8 text))
   (define private-font (shaper-font sh))
   (define font-size-value (font-size private-font))
@@ -4644,7 +4718,7 @@
    who (list hh)
    (lambda (hb-font)
      (if (zero? (bytes-length utf8))
-         (shaped-run '() '() '() 0.0 0.0)
+         (shaped-run #() #() #() 0.0 0.0 sh text (if (eq? dir 'auto) 'ltr dir))
          (call-with-native-temporary
           who 'harfbuzz-buffer hb_buffer_create hb_buffer_destroy
           (lambda (buffer)
@@ -4670,6 +4744,10 @@
             (define-values (feature-ptr feature-count)
               (make-hb-feature-array who feats))
             (hb_shape hb-font buffer feature-ptr feature-count)
+            (define resolved-direction
+              (case (hb_buffer_get_direction buffer)
+                [(4) 'ltr] [(5) 'rtl] [(6) 'ttb] [(7) 'btt]
+                [else (error who "HarfBuzz returned an invalid direction")]))
             (define count (hb_buffer_get_length buffer))
             (define n1 (malloc _uint32 'atomic))
             (define n2 (malloc _uint32 'atomic))
@@ -4700,39 +4778,36 @@
                           points))
               (set! x (+ x (* (hb-glyph-position-x-advance pos) text-size-x)))
               (set! y (+ y (* (hb-glyph-position-y-advance pos) text-size-y))))
-            (shaped-run (reverse glyphs) (reverse clusters) (reverse points) x y)))))))
+            (shaped-run (reverse glyphs) (reverse clusters) (reverse points) x y
+                        sh text resolved-direction)))))))
 
-; shaped-run->text-blob : shaper? shaped-run? -> text-blob?
-;   Returns an owned text blob containing the run's glyphs and positions, using the shaper's
-;   captured font.
-(define (shaped-run->text-blob sh run)
-  (define who 'shaped-run->text-blob)
-  (shaper-h who sh)
-  (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
-  (when (null? (shaped-run-glyphs run))
-    (raise-arguments-error who "cannot create a text blob from an empty shaped run" "run" run))
-  (make-positioned-text-blob (shaper-font sh)
-                             (shaped-run-glyphs run)
-                             (shaped-run-positions run)))
+; shaped-run->text-blob : shaped-run? -> (or/c text-blob? #f)
+;   Copies glyph placement and the originating font into an independently owned blob.
+(define (shaped-run->text-blob run)
+  (define sh (checked-run-shaper 'shaped-run->text-blob run))
+  (define nonempty? (positive? (shaped-run-glyph-count run)))
+  (make-positioned-blob 'shaped-run->text-blob (shaper-font sh)
+                        (shaped-run-glyphs run) (shaped-run-positions run)
+                        (and nonempty? (shaped-run-text run))
+                        (and nonempty? (shaped-run-clusters run))))
 
-; draw-shaped-run : canvas? shaper? shaped-run? real? real? paint? -> void?
-;   Draws the run with its origin translated by x and y.
-(define (draw-shaped-run c sh run x y p)
+; draw-shaped-run : canvas? shaped-run? real? real? paint? -> void?
+;   Draws the run with its originating shaper, translating its origin by x and y.
+(define (draw-shaped-run c run x y p)
   (define who 'draw-shaped-run)
-  (shaper-h who sh)
-  (unless (shaped-run? run) (raise-argument-error who "shaped-run?" run))
+  (define sh (checked-run-shaper who run))
+  (define fx (scalar who x))
+  (define fy (scalar who y))
+  (call-on-canvas who c (list (paint-h who p)) (lambda ignored (void)))
   (cond
-    [(null? (shaped-run-glyphs run)) (void)]
+    [(zero? (shaped-run-glyph-count run)) (void)]
     [(eq? (current-text-output-mode) 'outline)
-     (define fx (scalar who x))
-     (define fy (scalar who y))
-     (call-on-canvas who c (list (shaper-h who sh) (paint-h who p)) (lambda ignored (void)))
-     (with-skia ([outline (shaped-run->path sh run)])
+     (with-skia ([outline (shaped-run->path run)])
        (with-canvas-state c
          (canvas-translate! c fx fy)
          (draw-path c outline p)))]
     [else
-     (with-skia ([blob (shaped-run->text-blob sh run)])
+     (with-skia ([blob (shaped-run->text-blob run)])
        (draw-text-blob c blob x y p))]))
 
 ; draw-shaped-text : canvas? shaper? string? real? real? paint? [#:direction (or/c 'auto 'ltr 'rtl
@@ -4750,7 +4825,7 @@
                 #:script script
                 #:language language
                 #:features features))
-  (draw-shaped-run c sh run x y p)
+  (draw-shaped-run c run x y p)
   run)
 
 
@@ -5100,24 +5175,10 @@
   (wrap-at-line-breaks paragraph max-width measure
                        break-provider language 'layout-text))
 
-; effective-line-direction : any/c any/c -> symbol?
-;   Uses explicit direction or cluster progression to resolve a line's horizontal alignment
-;   direction.
+; effective-line-direction : symbol? shaped-run? -> symbol?
+;   Uses the resolved shaping direction when alignment direction is automatic.
 (define (effective-line-direction requested run)
-  (cond
-    [(eq? requested 'rtl) 'rtl]
-    [(eq? requested 'ltr) 'ltr]
-    [else
-     ;; shape-text currently exposes clusters but not the HarfBuzz buffer's
-     ;; direction. For ordinary horizontal runs, descending UTF-8 cluster
-     ;; offsets identify an RTL visual run; ambiguous one-glyph/empty runs
-     ;; default to LTR. Callers needing deterministic ambiguous-line alignment
-     ;; can pass #:direction explicitly.
-     (define clusters (shaped-run-clusters run))
-     (if (and (pair? clusters) (pair? (cdr clusters))
-              (> (car clusters) (last clusters)))
-         'rtl
-         'ltr)]))
+  (if (eq? requested 'auto) (shaped-run-direction run) requested))
 
 ; line-left-offset : any/c any/c any/c any/c -> any
 ;   Converts physical or direction-relative alignment to a horizontal offset inside the layout
@@ -5185,8 +5246,8 @@
      (define advance (shaped-run-advance-x run))
      (define axis-sign (if (negative? advance) -1.0 1.0))
      (define shifted-positions
-       (for/list ([point (in-list (shaped-run-positions run))]
-                  [cluster (in-list (shaped-run-clusters run))])
+       (for/list ([point (in-vector (shaped-run-positions run))]
+                  [cluster (in-vector (shaped-run-clusters run))])
          (define preceding-spaces
            (for/sum ([space-offset (in-list spaces)]
                      #:when (if rtl?
@@ -5194,15 +5255,16 @@
                                 (< space-offset cluster)))
              1))
          (match point
-           [(list px py)
-            (list (+ px (* axis-sign per-space preceding-spaces)) py)]
+           [(vector px py)
+            (vector-immutable (+ px (* axis-sign per-space preceding-spaces)) py)]
            [_ point])))
      (values
       (shaped-run (shaped-run-glyphs run)
                   (shaped-run-clusters run)
                   shifted-positions
                   (+ advance (* axis-sign extra-total))
-                  (shaped-run-advance-y run))
+                  (shaped-run-advance-y run) (shaped-run-shaper run)
+                  (shaped-run-text run) (shaped-run-direction run))
       target-width
       #t)]))
 
@@ -5219,7 +5281,11 @@
 ; inferred-line-script : any/c any/c -> any
 ;   Uses the requested script or the first informative Unicode script in the line.
 (define (inferred-line-script text requested-script)
-  (or requested-script
+  (if requested-script
+      (let* ([tag (if (symbol? requested-script)
+                      (symbol->string requested-script) requested-script)]
+             [bytes (string->bytes/utf-8 tag)])
+        (hb-tag->script-symbol (hb_script_from_string bytes (bytes-length bytes))))
       (for/or ([ch (in-string text)]) (unicode-script-symbol ch))))
 
 ; ordinary-space-boundary-byte-offsets : any/c -> any
@@ -5299,8 +5365,8 @@
              [else 1.0]))
      (define per (/ delta (length byte-boundaries)))
      (define shifted
-       (for/list ([point (in-list (shaped-run-positions run))]
-                  [cluster (in-list (shaped-run-clusters run))])
+       (for/list ([point (in-vector (shaped-run-positions run))]
+                  [cluster (in-vector (shaped-run-clusters run))])
          (define preceding
            (for/sum ([boundary (in-list byte-boundaries)]
                      #:when (if rtl?
@@ -5308,13 +5374,14 @@
                                 (<= boundary cluster)))
              1))
          (match point
-           [(list px py) (list (+ px (* axis-sign per preceding)) py)]
+           [(vector px py) (vector-immutable (+ px (* axis-sign per preceding)) py)]
            [_ point])))
      (shaped-run (shaped-run-glyphs run)
                  (shaped-run-clusters run)
                  shifted
                  (+ advance (* axis-sign delta))
-                 (shaped-run-advance-y run))]))
+                 (shaped-run-advance-y run) (shaped-run-shaper run)
+                 (shaped-run-text run) (shaped-run-direction run))]))
 
 ; tatweel-char : char?
 ;   Supplies the Arabic elongation character inserted only at reviewed joining opportunities during
@@ -5367,9 +5434,9 @@
                 (cons (string ch) pieces*)
                 offsets*)])])) )
 
-; remap-kashida-run-clusters : shaped-run? any/c -> any
+; remap-kashida-run-clusters : shaped-run? list? string? -> shaped-run?
 ;   Subtracts inserted tatweel bytes from shaped clusters to restore original source offsets.
-(define (remap-kashida-run-clusters run after-offsets)
+(define (remap-kashida-run-clusters run after-offsets text)
   ;; HarfBuzz cluster offsets belong to the temporary display string. Collapse
   ;; each inserted TATWEEL byte span back onto its logical source boundary so
   ;; public shaped-run clusters remain offsets into mixed/text-layout line text.
@@ -5377,7 +5444,7 @@
     [(null? after-offsets) run]
     [else
      (define clusters
-       (for/list ([cluster (in-list (shaped-run-clusters run))])
+       (for/list ([cluster (in-vector (shaped-run-clusters run))])
          (- cluster
             (* tatweel-byte-length
                (for/sum ([after (in-list after-offsets)]
@@ -5387,7 +5454,8 @@
                  clusters
                  (shaped-run-positions run)
                  (shaped-run-advance-x run)
-                 (shaped-run-advance-y run))]))
+                 (shaped-run-advance-y run) (shaped-run-shaper run)
+                 text (shaped-run-direction run))]))
 
 ; shape-kashida-to-width : any/c any/c any/c any/c any/c -> any
 ;   Tries bounded tatweel insertions and reshaping without exceeding the requested line width.
@@ -5417,7 +5485,7 @@
           (define adjusted
             (adjust-shaped-run-at-boundaries
              run direction after-offsets (- target-width width)))
-          (values (remap-kashida-run-clusters adjusted after-offsets)
+          (values (remap-kashida-run-clusters adjusted after-offsets text)
                   target-width display #t)]
          [(or (>= attempt max-attempts) (>= stalled count))
           (define fallback-boundaries
@@ -5428,7 +5496,7 @@
             (adjust-shaped-run-at-boundaries
              run direction fallback-boundaries (- target-width width)))
           (values (if (pair? after-offsets)
-                      (remap-kashida-run-clusters adjusted after-offsets)
+                      (remap-kashida-run-clusters adjusted after-offsets text)
                       adjusted)
                   target-width display #t)]
          [else
@@ -5492,6 +5560,43 @@
     [(justify) (< index (sub1 count))]
     [else #f]))
 
+; source-character-map : exact-nonnegative-integer? exact-nonnegative-integer? [string?] -> vector?
+;   Maps displayed characters to absolute, half-open input ranges; inserted characters map to #f.
+(define (source-character-map start end [insert ""])
+  (vector->immutable-vector
+   (vector-append
+    (for/vector ([i (in-range start end)]) (vector-immutable i (add1 i)))
+    (make-vector (string-length insert) #f))))
+
+; source-map-range : vector? -> (or/c vector? #f)
+;   Returns the smallest input range containing the map, or #f for insertion-only text.
+(define (source-map-range source-map)
+  (define ranges (filter values (vector->list source-map)))
+  (and (pair? ranges)
+       (vector-immutable (apply min (map (lambda (r) (vector-ref r 0)) ranges))
+                         (apply max (map (lambda (r) (vector-ref r 1)) ranges)))))
+
+; call-with-layout-snapshots : symbol? shaper? procedure? -> (or/c text-layout? mixed-text-layout?)
+;   Transfers private font snapshots to a completed layout and closes them on any earlier exit.
+(define (call-with-layout-snapshots who source-shaper proc)
+  (call-with-owned who (list (shaper-h who source-shaper)) (lambda (_) (void)))
+  (define sh (make-shaper (shaper-font source-shaper)))
+  (define cache (make-hash))
+  (define transferred? #f)
+  (call-with-continuation-barrier
+   (lambda ()
+     (dynamic-wind
+       void
+       (lambda ()
+         (define layout (proc sh cache))
+         (set! transferred? #t)
+         layout)
+       (lambda ()
+         (unless transferred?
+           (for ([choice (in-hash-values cache)] #:when choice)
+             (skia-close! (fallback-choice-shaper choice)))
+           (skia-close! sh)))))))
+
 ;;;
 ;;; Single-Font Layout and Drawing
 ;;;
@@ -5502,7 +5607,7 @@
 ;   (vectorof string?))] [#:break-provider (or/c #f (-> string? (or/c string? #f) (listof (or/c
 ;   exact-nonnegative-integer? layout-break-opportunity?))))] [#:line-height (or/c (and/c real? (>/c
 ;   0)) #f)] -> text-layout?
-;   Returns a layout using one shaper and the rules in .
+;   Arranges text using a private font snapshot and preserves original-input character maps.
 (define (layout-text sh text
                      #:width [width #f]
                      #:align [align 'start]
@@ -5527,74 +5632,92 @@
   (define requested-line-height
     (cond [(not line-height) #f]
           [else (positive-scalar who line-height)]))
-  (shaper-h who sh)
-  (define metrics (font-get-metrics (shaper-font sh)))
-  (define ascent (font-metrics-ascent metrics))
-  (define descent (font-metrics-descent metrics))
-  (define natural-height
-    (let ([spacing (font-metrics-spacing metrics)])
-      (cond [(and (real? spacing) (> spacing 0)) spacing]
-            [else
-             (max 1.0
-                  (+ (- descent ascent)
-                     (max 0.0 (font-metrics-leading metrics))))])))
-  (define line-step (or requested-line-height natural-height))
-  ;; Keep paragraph boundaries long enough to distinguish a wrapped line from
-  ;; the final line of each hard-break-delimited paragraph. `justify` leaves
-  ;; that final line at start alignment; `justify-all` stretches it too.
-  (define paragraph-line-specs
-    (apply append
-           (for/list ([paragraph (in-list (split-explicit-lines text))])
-             (define paragraph-lines
-               (wrapped-paragraph-lines sh paragraph max-width
-                                        dir scr lang feats bp))
-             (define paragraph-line-count (length paragraph-lines))
-             (for/list ([line-text (in-list paragraph-lines)]
-                        [line-index (in-naturals)])
-               (list line-text
-                     (and max-width
-                          (paragraph-line-justify?
-                           al line-index paragraph-line-count)))))))
-  (define raw-lines
-    (for/list ([spec (in-list paragraph-line-specs)])
-      (define line-text (car spec))
-      (define request-justify? (cadr spec))
-      (define run (shape-layout-run sh line-text dir scr lang feats))
-      (define natural-width (run-horizontal-width run))
-      (define actual-dir (effective-line-direction dir run))
-      (define-values (final-run final-width _justified?)
-        (if request-justify?
-            (justify-layout-run sh run line-text actual-dir scr lang feats
-                                max-width natural-width)
-            (values run natural-width #f)))
-      (list line-text final-run final-width actual-dir)))
-  (define content-width
-    (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
-      (max m (list-ref entry 2))))
-  ;; If an unbreakable span exceeds the requested wrap width, report the true
-  ;; occupied width instead of manufacturing negative alignment offsets.
-  (define box-width (max content-width (or max-width 0.0)))
-  (define baseline0 (max 0.0 (- ascent)))
-  (define lines
-    (for/list ([entry (in-list raw-lines)] [i (in-naturals)])
-      (define line-text (list-ref entry 0))
-      (define run (list-ref entry 1))
-      (define w (list-ref entry 2))
-      (define actual-dir (list-ref entry 3))
-      (define left (line-left-offset al actual-dir box-width w))
-      ;; HarfBuzz returns glyphs in visual order; the positioned-run x values
-      ;; are measured from the run's left drawing origin even for RTL text.
-      ;; Direction affects start/end alignment, not the TextBlob origin itself.
-      (text-layout-line line-text run left
-                        (+ baseline0 (* i line-step))
-                        w actual-dir)))
-  (define height
-    (if (null? lines)
-        0.0
-        (+ baseline0
-           (* (sub1 (length lines)) line-step)
-           (max 0.0 descent))))
-  (text-layout sh lines box-width height line-step))
+  (set! text (string->immutable-string text))
+  (call-with-layout-snapshots
+   who sh
+   (lambda (sh _choice-cache)
+     (define metrics (font-get-metrics (shaper-font sh)))
+     (define ascent (font-metrics-ascent metrics))
+     (define descent (font-metrics-descent metrics))
+     (define natural-height
+       (let ([spacing (font-metrics-spacing metrics)])
+         (cond [(and (real? spacing) (> spacing 0)) spacing]
+               [else
+                (max 1.0
+                     (+ (- descent ascent)
+                        (max 0.0 (font-metrics-leading metrics))))])))
+     (define line-step (or requested-line-height natural-height))
+     ;; Keep paragraph boundaries long enough to distinguish a wrapped line from
+     ;; the final line of each hard-break-delimited paragraph. `justify` leaves
+     ;; that final line at start alignment; `justify-all` stretches it too.
+     (define paragraph-line-specs
+       (append*
+        (for/list ([range (in-list (split-hard-line-ranges text))])
+          (define offset (vector-ref range 0))
+          (define paragraph (substring text offset (vector-ref range 1)))
+          (define n (string-length paragraph))
+          (define slices
+            (if max-width
+                (wrap-at-line-break-slices
+                 paragraph max-width
+                 (lambda (start end insert)
+                   (run-horizontal-width
+                    (shape-layout-run sh (string-append (substring paragraph start end) insert)
+                                      dir scr lang feats)))
+                 bp lang who)
+                (list (wrapped-slice 0 n n paragraph ""))))
+          (define consumed 0)
+          (for/list ([slice (in-list slices)] [index (in-naturals)])
+            (define end (if (= index (sub1 (length slices))) n (wrapped-slice-logical-end slice)))
+            (define source-range (vector-immutable (+ offset consumed) (+ offset end)))
+            (set! consumed end)
+            (list (string->immutable-string
+                   (string-append (wrapped-slice-text slice) (wrapped-slice-insert slice)))
+                  (and max-width (paragraph-line-justify? al index (length slices)))
+                  source-range
+                  (source-character-map (+ offset (wrapped-slice-start slice))
+                                        (+ offset (wrapped-slice-render-end slice))
+                                        (wrapped-slice-insert slice)))))))
+     (define raw-lines
+       (for/list ([spec (in-list paragraph-line-specs)])
+         (define line-text (car spec))
+         (define request-justify? (cadr spec))
+         (define run (shape-layout-run sh line-text dir scr lang feats))
+         (define natural-width (run-horizontal-width run))
+         (define actual-dir (effective-line-direction dir run))
+         (define-values (final-run final-width _justified?)
+           (if request-justify?
+               (justify-layout-run sh run line-text actual-dir scr lang feats
+                                   max-width natural-width)
+               (values run natural-width #f)))
+         (list line-text final-run final-width actual-dir (list-ref spec 2) (list-ref spec 3))))
+     (define content-width
+       (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
+         (max m (list-ref entry 2))))
+     ;; If an unbreakable span exceeds the requested wrap width, report the true
+     ;; occupied width instead of manufacturing negative alignment offsets.
+     (define box-width (max content-width (or max-width 0.0)))
+     (define baseline0 (max 0.0 (- ascent)))
+     (define lines
+       (for/list ([entry (in-list raw-lines)] [i (in-naturals)])
+         (define line-text (list-ref entry 0))
+         (define run (list-ref entry 1))
+         (define w (list-ref entry 2))
+         (define actual-dir (list-ref entry 3))
+         (define left (line-left-offset al actual-dir box-width w))
+         ;; HarfBuzz returns glyphs in visual order; the positioned-run x values
+         ;; are measured from the run's left drawing origin even for RTL text.
+         ;; Direction affects start/end alignment, not the TextBlob origin itself.
+         (text-layout-line line-text run left
+                           (+ baseline0 (* i line-step))
+                           w actual-dir (list-ref entry 4) (list-ref entry 5))))
+     (define height
+       (if (null? lines)
+           0.0
+           (+ baseline0
+              (* (sub1 (length lines)) line-step)
+              (max 0.0 descent))))
+     (text-layout sh text lines box-width height line-step))))
 
 ; draw-text-layout : canvas? text-layout? real? real? paint? -> void?
 ;   Draws the layout box with origin at the drawing scalars x and y, using each line's stored x
@@ -5612,7 +5735,7 @@
   ;; Validate the borrowed canvas even when every line is empty.
   (call-on-canvas who c '() (lambda (_) (void)))
   (for ([line (in-list (text-layout-lines layout))])
-    (draw-shaped-run c sh (text-layout-line-run line)
+    (draw-shaped-run c (text-layout-line-run line)
                      (+ fx (text-layout-line-origin-x line))
                      (+ fy (text-layout-line-baseline line))
                      p))
@@ -5676,7 +5799,7 @@
               value)))
 
 ; cluster-font-choice : any/c any/c any/c any/c hash? -> any
-;   Chooses and caches a fallback family for the first relevant missing character in a grapheme
+;   Chooses and caches an exact fallback face for the first relevant missing character in a grapheme
 ;   cluster.
 (define (cluster-font-choice base-font fm cluster language cache)
   (define missing
@@ -5702,7 +5825,10 @@
                   (fallback-choice (typeface-family-name face)
                                    (typeface-weight face)
                                    (typeface-width face)
-                                   (typeface-slant face))))))))))
+                                   (typeface-slant face)
+                                   (call-with-skia-resource
+                                    (make-font-like base-font face)
+                                    make-shaper))))))))))
 
 ; make-font-like : any/c any/c -> any
 ;   Copies the base font's rendering settings onto a newly selected fallback typeface.
@@ -5722,29 +5848,10 @@
              #:baseline-snap? (font-native-get 'fallback-font base-font sk_font_is_baseline_snap)
              #:embolden? (font-embolden? base-font)))
 
-; call-with-choice-shaper : symbol? any/c any/c fallback-choice? procedure? -> any
-;   Uses the base shaper or scopes a recreated fallback typeface, font, and shaper for one
-;   callback.
+; call-with-choice-shaper : symbol? shaper? font-manager? (or/c fallback-choice? #f) procedure? -> any
+;   Uses the exact fallback face selected during layout, without looking up its family again.
 (define (call-with-choice-shaper who base-shaper fm choice proc)
-  (cond
-    [(not choice) (proc base-shaper)]
-    [else
-     (define tf
-       (font-manager-match-family
-        fm (fallback-choice-family choice)
-        #:weight (fallback-choice-weight choice)
-        #:width (fallback-choice-width choice)
-        #:slant (fallback-choice-slant choice)))
-     (unless tf
-       (error who "fallback family ~s is no longer available"
-              (fallback-choice-family choice)))
-     (call-with-skia-resource
-      tf
-      (lambda (face)
-        (call-with-skia-resource
-         (make-font-like (shaper-font base-shaper) face)
-         (lambda (font)
-           (call-with-skia-resource (make-shaper font) proc)))))]))
+  (proc (if choice (fallback-choice-shaper choice) base-shaper)))
 
 ; strip-explicit-bidi-controls : any/c -> any
 ;   Removes layout-control characters after their bidi levels have influenced logical ordering.
@@ -5752,17 +5859,19 @@
   (list->string
    (for/list ([ch (in-string str)] #:unless (bidi-explicit-control? ch)) ch)))
 
-(struct logical-mixed-piece (text level script choice) #:transparent)
+(struct logical-mixed-piece (text level script choice source-map) #:transparent)
 ;; Fields:
 ;;   text: logical source slice. level: resolved bidi embedding level. script: script symbol.
-;;   choice: detached fallback-choice. Adjacent pieces merge only when their shaping properties
-;;   agree.
+;;   choice: exact fallback font and its public style fields, or #f for the base font.
+;;   source-map: immutable character ranges, with #f for inserted characters. Adjacent pieces
+;;   merge only when their shaping properties agree.
 
 
 ; grapheme-pieces : any/c any/c any/c any/c any/c any/c -> any
 ;   Partitions logical text into grapheme pieces annotated with bidi level, script, and fallback
 ;   choice.
-(define (grapheme-pieces sh fm text levels language choice-cache)
+(define (grapheme-pieces sh fm text levels language choice-cache
+                         [source-map (source-character-map 0 (string-length text))])
   (define base-font (shaper-font sh))
   (define n (string-length text))
   (let loop ([start 0] [acc '()])
@@ -5787,7 +5896,11 @@
           (define script
             (for/or ([ch (in-string clean)]) (unicode-script-symbol ch)))
           (define choice (cluster-font-choice base-font fm clean language choice-cache))
-          (loop end (cons (logical-mixed-piece clean level script choice) acc))])])) )
+          (loop end (cons (logical-mixed-piece
+                             (string->immutable-string clean) level script choice
+                             (vector->immutable-vector
+                              (for/vector ([i (in-list render-indices)])
+                                (vector-ref source-map i)))) acc))])])) )
 
 ; coalesce-logical-pieces : list? -> list?
 ;   Merges adjacent pieces only when level, script, and font choice permit one shaping run.
@@ -5809,7 +5922,10 @@
                                    (logical-mixed-piece-text piece))
                     (logical-mixed-piece-level prev)
                     (logical-mixed-piece-script prev)
-                    (logical-mixed-piece-choice prev))
+                    (logical-mixed-piece-choice prev)
+                    (vector->immutable-vector
+                     (vector-append (logical-mixed-piece-source-map prev)
+                                    (logical-mixed-piece-source-map piece))))
                    (cdr out)))]
       [else (set! out (cons piece out))]))
   (reverse out))
@@ -5832,11 +5948,13 @@
                    #:features features))))
   (define width (run-horizontal-width shaped))
   (mixed-text-run
-   (logical-mixed-piece-text piece) shaped 0.0 width direction level script
+   (shaped-run-text shaped) shaped 0.0 width direction level script
    (and choice (fallback-choice-family choice))
    (and choice (fallback-choice-weight choice))
    (and choice (fallback-choice-width choice))
-   (and choice (fallback-choice-slant choice))))
+   (and choice (fallback-choice-slant choice))
+   (source-map-range (logical-mixed-piece-source-map piece))
+   (logical-mixed-piece-source-map piece)))
 
 ; place-visual-mixed-runs : any/c -> any
 ;   Assigns horizontal origins to visual-order runs, accounting for negative right-to-left
@@ -5853,17 +5971,7 @@
        ;; still begins at the current left-to-right visual cursor.
        (define origin (+ cursor (if (negative? advance) (mixed-text-run-width r) 0.0)))
        (define placed
-         (mixed-text-run (mixed-text-run-text r)
-                         (mixed-text-run-shaped-run r)
-                         origin
-                         (mixed-text-run-width r)
-                         (mixed-text-run-direction r)
-                         (mixed-text-run-level r)
-                         (mixed-text-run-script r)
-                         (mixed-text-run-family r)
-                         (mixed-text-run-weight r)
-                         (mixed-text-run-font-width r)
-                         (mixed-text-run-slant r)))
+         (struct-copy mixed-text-run r [origin-x origin]))
        (loop (cdr xs) (+ cursor (mixed-text-run-width r)) (cons placed out))])))
 
 ; shape-mixed-line/resolved : any/c any/c any/c any/c any/c any/c any/c any/c [#:insert any/c]
@@ -5873,17 +5981,19 @@
 (define (shape-mixed-line/resolved sh fm text levels resolved-direction
                                    language features choice-cache
                                    #:insert [insert ""]
-                                   #:insert-level [insert-level #f])
+                                   #:insert-level [insert-level #f]
+                                   #:source-map [source-map (source-character-map 0 (string-length text))])
   (define display-level
     (or insert-level (if (eq? resolved-direction 'rtl) 1 0)))
   (define base-pieces
-    (grapheme-pieces sh fm text levels language choice-cache))
+    (grapheme-pieces sh fm text levels language choice-cache source-map))
   (define insert-pieces
     (if (zero? (string-length insert))
         '()
         (grapheme-pieces sh fm insert
                          (make-vector (string-length insert) display-level)
-                         language choice-cache)))
+                         language choice-cache
+                         (vector->immutable-vector (make-vector (string-length insert) #f)))))
   (define logical
     (coalesce-logical-pieces (append base-pieces insert-pieces)))
   (define shaped
@@ -5988,15 +6098,6 @@
 ;;; Mixed-Run Justification
 ;;;
 
-; mixed-run-choice : mixed-text-run? -> any
-;   Reconstructs a detached fallback-font request from a mixed run's saved style fields.
-(define (mixed-run-choice r)
-  (and (mixed-text-run-family r)
-       (fallback-choice (mixed-text-run-family r)
-                        (mixed-text-run-weight r)
-                        (mixed-text-run-font-width r)
-                        (mixed-text-run-slant r))))
-
 ; mixed-run-space-count : mixed-text-run? -> exact-nonnegative-integer?
 ;   Counts ordinary-space expansion boundaries in one mixed-script run.
 (define (mixed-run-space-count r)
@@ -6040,14 +6141,11 @@
 ; shape-mixed-run-display : any/c any/c mixed-text-run? any/c any/c any/c -> any
 ;   Reshapes replacement display text with the run's saved font, direction, and script.
 (define (shape-mixed-run-display sh fm r display language features)
-  (call-with-choice-shaper
-   'layout-mixed-text sh fm (mixed-run-choice r)
-   (lambda (run-shaper)
-     (shape-text run-shaper display
-                 #:direction (mixed-text-run-direction r)
-                 #:script (mixed-text-run-script r)
-                 #:language language
-                 #:features features))))
+  (shape-text (shaped-run-shaper (mixed-text-run-shaped-run r)) display
+              #:direction (mixed-text-run-direction r)
+              #:script (mixed-text-run-script r)
+              #:language language
+              #:features features))
 
 ; justify-one-mixed-run : any/c any/c mixed-text-run? any/c any/c any/c -> mixed-text-run?
 ;   Combines bounded kashida reshaping with boundary spacing for one run's expansion share.
@@ -6080,14 +6178,7 @@
     (adjust-shaped-run-at-boundaries
      base-shaped (mixed-text-run-direction r) post-boundaries
      (- final-width base-width)))
-  (mixed-text-run text final-shaped 0.0 final-width
-                  (mixed-text-run-direction r)
-                  (mixed-text-run-level r)
-                  (mixed-text-run-script r)
-                  (mixed-text-run-family r)
-                  (mixed-text-run-weight r)
-                  (mixed-text-run-font-width r)
-                  (mixed-text-run-slant r)))
+  (struct-copy mixed-text-run r [shaped-run final-shaped] [origin-x 0.0] [width final-width]))
 
 ; place-visual-mixed-runs/justified : any/c any/c -> any
 ;   Places expanded visual runs and adds the selected gaps between eligible CJK runs.
@@ -6100,17 +6191,7 @@
        (define advance (shaped-run-advance-x (mixed-text-run-shaped-run r)))
        (define origin (+ cursor (if (negative? advance) (mixed-text-run-width r) 0.0)))
        (define placed
-         (mixed-text-run (mixed-text-run-text r)
-                         (mixed-text-run-shaped-run r)
-                         origin
-                         (mixed-text-run-width r)
-                         (mixed-text-run-direction r)
-                         (mixed-text-run-level r)
-                         (mixed-text-run-script r)
-                         (mixed-text-run-family r)
-                         (mixed-text-run-weight r)
-                         (mixed-text-run-font-width r)
-                         (mixed-text-run-slant r)))
+         (struct-copy mixed-text-run r [origin-x origin]))
        (define next (and (pair? (cdr xs)) (cadr xs)))
        (define gap (if (cjk-run-boundary? r next) cjk-gap 0.0))
        (loop (cdr xs)
@@ -6173,96 +6254,102 @@
   (define bp (normalize-layout-break-provider who break-provider))
   (define requested-line-height
     (and line-height (positive-scalar who line-height)))
-  (shaper-h who sh)
-  (font-manager-h who fm)
-  (define base-font (shaper-font sh))
-  (define metrics (font-get-metrics base-font))
-  (define ascent (font-metrics-ascent metrics))
-  (define descent (font-metrics-descent metrics))
-  (define natural-height
-    (let ([spacing (font-metrics-spacing metrics)])
-      (cond [(and (real? spacing) (> spacing 0)) spacing]
-            [else (max 1.0 (+ (- descent ascent)
-                              (max 0.0 (font-metrics-leading metrics))))])))
-  (define line-step (or requested-line-height natural-height))
-  (define choice-cache (make-hash))
-  (define raw-lines '())
-  (for ([paragraph (in-list (split-explicit-lines text))])
-    ;; Resolve the whole hard-break-delimited paragraph before wrapping. UAX #9
-    ;; explicit scopes therefore survive visual line breaks instead of being
-    ;; restarted independently on each wrapped substring.
-    (define-values (paragraph-levels paragraph-dir)
-      (bidi-resolve-levels paragraph dir))
-    (define paragraph-slices
-      (wrapped-mixed-line-slices sh fm paragraph max-width paragraph-dir
-                                 paragraph-levels lang feats choice-cache bp))
-    (define logical-line-ends
-      (for/list ([slice (in-list paragraph-slices)])
-        (wrapped-slice-logical-end slice)))
-    (define-values (final-paragraph-levels _final-dir)
-      (bidi-resolve-levels paragraph dir #:line-breaks logical-line-ends))
-    (define paragraph-line-count (length paragraph-slices))
-    (for ([slice (in-list paragraph-slices)]
-          [line-index (in-naturals)])
-      (define start (wrapped-slice-start slice))
-      (define end (wrapped-slice-render-end slice))
-      (define base-line-text (wrapped-slice-text slice))
-      (define insert (wrapped-slice-insert slice))
-      (define line-text (string-append base-line-text insert))
-      (define line-levels (slice-levels final-paragraph-levels start end))
-      (define-values (runs natural-width _resolved)
-        (shape-mixed-line/resolved
-         sh fm base-line-text line-levels paragraph-dir lang feats choice-cache
-         #:insert insert
-         #:insert-level
-         (display-insert-level base-line-text line-levels paragraph-dir)))
-      (define request-justify?
-        (and max-width
-             (paragraph-line-justify? al line-index paragraph-line-count)))
-      (define-values (final-runs final-width _justified?)
-        (if request-justify?
-            (justify-mixed-runs sh fm runs natural-width max-width
-                                lang feats)
-            (values runs natural-width #f)))
-      (set! raw-lines
-            (cons (list line-text final-runs final-width paragraph-dir)
-                  raw-lines))))
-  (set! raw-lines (reverse raw-lines))
-  (define content-width
-    (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
-      (max m (list-ref entry 2))))
-  (define box-width (max content-width (or max-width 0.0)))
-  (define baseline0 (max 0.0 (- ascent)))
-  (define lines
-    (for/list ([entry (in-list raw-lines)] [i (in-naturals)])
-      (define line-text (list-ref entry 0))
-      (define runs (list-ref entry 1))
-      (define w (list-ref entry 2))
-      (define line-dir (list-ref entry 3))
-      (mixed-text-line line-text runs
-                       (line-left-offset al line-dir box-width w)
-                       (+ baseline0 (* i line-step))
-                       w line-dir)))
-  (define height
-    (if (null? lines)
-        0.0
-        (+ baseline0 (* (sub1 (length lines)) line-step)
-           (max 0.0 descent))))
-  (mixed-text-layout sh fm lines box-width height line-step))
+  (call-with-owned who (list (font-manager-h who fm)) (lambda (_) (void)))
+  (set! text (string->immutable-string text))
+  (call-with-layout-snapshots
+   who sh
+   (lambda (sh choice-cache)
+     (define base-font (shaper-font sh))
+     (define metrics (font-get-metrics base-font))
+     (define ascent (font-metrics-ascent metrics))
+     (define descent (font-metrics-descent metrics))
+     (define natural-height
+       (let ([spacing (font-metrics-spacing metrics)])
+         (cond [(and (real? spacing) (> spacing 0)) spacing]
+               [else (max 1.0 (+ (- descent ascent)
+                                 (max 0.0 (font-metrics-leading metrics))))])))
+     (define line-step (or requested-line-height natural-height))
+     (define raw-lines '())
+     (for ([range (in-list (split-hard-line-ranges text))])
+       (define offset (vector-ref range 0))
+       (define paragraph (substring text offset (vector-ref range 1)))
+       (define consumed 0)
+       ;; Resolve the whole hard-break-delimited paragraph before wrapping. UAX #9
+       ;; explicit scopes therefore survive visual line breaks instead of being
+       ;; restarted independently on each wrapped substring.
+       (define-values (paragraph-levels paragraph-dir)
+         (bidi-resolve-levels paragraph dir))
+       (define paragraph-slices
+         (wrapped-mixed-line-slices sh fm paragraph max-width paragraph-dir
+                                    paragraph-levels lang feats choice-cache bp))
+       (define logical-line-ends
+         (for/list ([slice (in-list paragraph-slices)])
+           (wrapped-slice-logical-end slice)))
+       (define-values (final-paragraph-levels _final-dir)
+         (bidi-resolve-levels paragraph dir #:line-breaks logical-line-ends))
+       (define paragraph-line-count (length paragraph-slices))
+       (for ([slice (in-list paragraph-slices)]
+             [line-index (in-naturals)])
+         (define start (wrapped-slice-start slice))
+         (define end (wrapped-slice-render-end slice))
+         (define base-line-text (wrapped-slice-text slice))
+         (define insert (wrapped-slice-insert slice))
+         (define line-text (string->immutable-string (string-append base-line-text insert)))
+         (define consumed-end
+           (if (= line-index (sub1 paragraph-line-count))
+               (string-length paragraph)
+               (wrapped-slice-logical-end slice)))
+         (define source-range (vector-immutable (+ offset consumed) (+ offset consumed-end)))
+         (set! consumed consumed-end)
+         (define source-map (source-character-map (+ offset start) (+ offset end) insert))
+         (define line-levels (slice-levels final-paragraph-levels start end))
+         (define-values (runs natural-width _resolved)
+           (shape-mixed-line/resolved
+            sh fm base-line-text line-levels paragraph-dir lang feats choice-cache
+            #:source-map (source-character-map (+ offset start) (+ offset end))
+            #:insert insert
+            #:insert-level
+            (display-insert-level base-line-text line-levels paragraph-dir)))
+         (define request-justify?
+           (and max-width
+                (paragraph-line-justify? al line-index paragraph-line-count)))
+         (define-values (final-runs final-width _justified?)
+           (if request-justify?
+               (justify-mixed-runs sh fm runs natural-width max-width
+                                   lang feats)
+               (values runs natural-width #f)))
+         (set! raw-lines
+               (cons (list line-text final-runs final-width paragraph-dir source-range source-map)
+                     raw-lines))))
+     (set! raw-lines (reverse raw-lines))
+     (define content-width
+       (for/fold ([m 0.0]) ([entry (in-list raw-lines)])
+         (max m (list-ref entry 2))))
+     (define box-width (max content-width (or max-width 0.0)))
+     (define baseline0 (max 0.0 (- ascent)))
+     (define lines
+       (for/list ([entry (in-list raw-lines)] [i (in-naturals)])
+         (define line-text (list-ref entry 0))
+         (define runs (list-ref entry 1))
+         (define w (list-ref entry 2))
+         (define line-dir (list-ref entry 3))
+         (mixed-text-line line-text runs
+                          (line-left-offset al line-dir box-width w)
+                          (+ baseline0 (* i line-step))
+                          w line-dir (list-ref entry 4) (list-ref entry 5))))
+     (define height
+       (if (null? lines)
+           0.0
+           (+ baseline0 (* (sub1 (length lines)) line-step)
+              (max 0.0 descent))))
+     (mixed-text-layout sh
+                        (for/list ([choice (in-hash-values choice-cache)] #:when choice)
+                          (fallback-choice-shaper choice))
+                        text lines box-width height line-step))))
 
 ;;;
 ;;; Mixed-Text Drawing
 ;;;
-
-; fallback-choice-from-run : mixed-text-run? -> any
-;   Reconstructs the detached font request needed to redraw a mixed run with its original fallback
-;   choice.
-(define (fallback-choice-from-run r)
-  (and (mixed-text-run-family r)
-       (fallback-choice (mixed-text-run-family r)
-                        (mixed-text-run-weight r)
-                        (mixed-text-run-font-width r)
-                        (mixed-text-run-slant r))))
 
 ; draw-mixed-text-layout : canvas? mixed-text-layout? real? real? paint? -> void?
 ;   Draws the stored layout at its upper-left box origin.
@@ -6273,48 +6360,16 @@
   (define fx (scalar who x))
   (define fy (scalar who y))
   (define base-shaper (mixed-text-layout-shaper layout))
-  (define fm (mixed-text-layout-font-manager layout))
-  ;; Caller-owned dependencies must still be live when the pure layout is used.
-  (call-with-owned who (list (shaper-h who base-shaper)
-                             (font-manager-h who fm))
-                   (lambda (_a _b) (void)))
+  ;; The layout owns every font used by its runs; no font manager is needed here.
+  (call-with-owned who (list (shaper-h who base-shaper)) (lambda (_) (void)))
   (paint-h who p)
   (call-on-canvas who c '() (lambda (_) (void)))
-  (define cache (make-hash))
-  (define (cached-shaper run)
-    (define choice (fallback-choice-from-run run))
-    (cond
-      [(not choice) base-shaper]
-      [else
-       (hash-ref/cache!
-        cache choice
-        (lambda ()
-          (define tf
-            (font-manager-match-family
-             fm (fallback-choice-family choice)
-             #:weight (fallback-choice-weight choice)
-             #:width (fallback-choice-width choice)
-             #:slant (fallback-choice-slant choice)))
-          (unless tf
-            (error who "fallback family ~s is no longer available"
-                   (fallback-choice-family choice)))
-          (call-with-skia-resource
-           tf
-           (lambda (face)
-             (call-with-skia-resource
-              (make-font-like (shaper-font base-shaper) face)
-              (lambda (font) (make-shaper font)))))))]))
-  (dynamic-wind
-    void
-    (lambda ()
-      (for ([line (in-list (mixed-text-layout-lines layout))])
-        (for ([run (in-list (mixed-text-line-runs line))])
-          (draw-shaped-run
-           c (cached-shaper run) (mixed-text-run-shaped-run run)
-           (+ fx (mixed-text-line-origin-x line) (mixed-text-run-origin-x run))
-           (+ fy (mixed-text-line-baseline line)) p))))
-    (lambda ()
-      (for ([sh (in-hash-values cache)]) (skia-close! sh))))
+  (for ([line (in-list (mixed-text-layout-lines layout))])
+    (for ([run (in-list (mixed-text-line-runs line))])
+      (draw-shaped-run
+       c (mixed-text-run-shaped-run run)
+       (+ fx (mixed-text-line-origin-x line) (mixed-text-run-origin-x run))
+       (+ fy (mixed-text-line-baseline line)) p)))
   (void))
 
 ;;;
@@ -7195,9 +7250,9 @@
              (< (sk-rect-top bounds) (sk-rect-bottom bounds)))
         (void/reference-sink gid bounds)))))
 
-; multi-text-blob->path : any/c -> any
+; multi-text-blob->path : text-blob? (or/c 'error 'skip) -> skia-path?
 ;   Replays every retained run's glyph outlines while enforcing the path-allocation budget.
-(define (multi-text-blob->path blob)
+(define (multi-text-blob->path blob missing-outline)
   (define who 'text-blob->path)
   (call-with-owned who (list (text-blob-h who blob))
     (lambda (_)
@@ -7209,7 +7264,7 @@
           (define info (retained-text-run-info run))
           (define transforms (text-run-info-transforms info))
           (for ([glyph (in-vector (text-run-info-glyphs info))] [i (in-naturals)])
-            (define outline (font-glyph-path f glyph))
+            (define outline (checked-glyph-outline who f glyph missing-outline))
             (cond
               [outline
                (call-with-skia-resource outline
@@ -7219,18 +7274,15 @@
                    (cond
                      [transforms
                       (define cs (vector-ref transforms i))
-                      (define scos (car cs)) (define ssin (cadr cs))
-                      (define m (make-sk-matrix scos (- ssin) (caddr cs)
-                                                ssin scos (cadddr cs) 0.0 0.0 1.0))
+                      (define scos (vector-ref cs 0)) (define ssin (vector-ref cs 1))
+                      (define m (make-sk-matrix scos (- ssin) (vector-ref cs 2)
+                                                ssin scos (vector-ref cs 3) 0.0 0.0 1.0))
                       (call-with-owned who (list (path-h who p))
                         (lambda (pp) (sk_path_transform pp m)))
                       (path-add-path! result p)]
                      [else
                       (define pos (vector-ref (text-run-info-positions info) i))
-                      (path-add-path! result p #:dx (car pos) #:dy (cadr pos))])))]
-              [(glyph-has-visible-bounds? who f glyph)
-               (error who
-                 "glyph ~a has visible bounds but no monochrome outline; explicit raster output is required" glyph)]
+                      (path-add-path! result p #:dx (vector-ref pos 0) #:dy (vector-ref pos 1))])))]
               [else (void)])))
         result))))
 

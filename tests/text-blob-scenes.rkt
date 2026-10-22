@@ -59,8 +59,7 @@
       [(curve)
        (with-skia ([sh (make-shaper font)]
                    [p (make-path '((move 55 105) (cubic 75 35 140 35 165 105)))])
-         (shaped-run->text-blob/on-path sh (shape-text sh "AAA") p #:start-offset 10 #:text
-           "AAA"))])))
+         (shaped-run->text-blob/on-path (shape-text sh "AAA") p #:start-offset 10 ))])))
 
 ; draw-text-blob-scene : canvas? text-blob? -> any
 ;   Draws the retained blob at the common scene origin for capture comparisons.

@@ -12,7 +12,7 @@
 (provide line-break-class
          line-break-opportunity? line-break-opportunity-index line-break-opportunity-kind
          line-break-opportunities
-         split-hard-lines)
+         split-hard-lines split-hard-line-ranges)
 
 ;;;
 ;;; Pinned Line-Break Properties
@@ -901,22 +901,25 @@ LINEBREAK-DATA
         kind))]))
 
 ; split-hard-lines : string? -> (listof string?)
-;   Splits at mandatory separators and removes them, treating CRLF as one separator and preserving
-;   empty terminal lines.
+;   Splits hard separators, treating CRLF as one and preserving empty terminal lines.
 (define (split-hard-lines text)
-  ;; Split and remove UAX #14 mandatory line separators. CRLF is one extended
-  ;; grapheme cluster in Racket and therefore becomes one separator here.
+  (for/list ([range (in-list (split-hard-line-ranges text))])
+    (substring text (vector-ref range 0) (vector-ref range 1))))
+
+; split-hard-line-ranges : string? -> (listof (and/c vector? immutable?))
+;   Reports half-open character ranges for paragraphs, excluding hard separators.
+(define (split-hard-line-ranges text)
   (unless (string? text)
-    (raise-argument-error 'split-hard-lines "string?" text))
+    (raise-argument-error 'split-hard-line-ranges "string?" text))
   (define clusters (make-clusters text))
   (define count (vector-length clusters))
   (let loop ([i 0] [start 0] [out '()])
     (cond
       [(= i count)
-       (reverse (cons (substring text start (string-length text)) out))]
+       (reverse (cons (vector-immutable start (string-length text)) out))]
       [else
        (define c (vector-ref clusters i))
        (if (hard-class? (lb-cluster-raw c))
            (loop (add1 i) (lb-cluster-end c)
-                 (cons (substring text start (lb-cluster-start c)) out))
+                 (cons (vector-immutable start (lb-cluster-start c)) out))
            (loop (add1 i) start out))])))

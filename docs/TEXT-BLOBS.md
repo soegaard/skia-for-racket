@@ -107,15 +107,13 @@ For already shaped text:
 
 ```racket
 (text-blob-builder-add-shaped-run!
- builder shaper shaped-run
- #:origin [origin '(0 0)] #:text [original-text #f])
+ builder shaped-run
+ #:origin [origin '(0 0)])
 ```
 
-This keeps the run's glyph order, glyph positions and, when text is supplied,
-its HarfBuzz clusters. The origin is added to each shaped position. No additional
-kerning or reordering is applied. Supply the same shaper/font snapshot and exact
-original text used to create the shaped run; the existing `shaped-run?` value
-does not carry a verifiable shaper identity.
+This uses the run's originating shaper, which must be open, and stores its
+source text and cluster offsets automatically. The origin is added to each
+shaped position. No additional kerning or reordering is applied.
 
 ## Example: retain text independently of its authoring owners
 
@@ -128,8 +126,8 @@ does not carry a verifiable shaper identity.
             [shaper (make-shaper font)]
             [builder (make-text-blob-builder)])
   (text-blob-builder-add-shaped-run!
-   builder shaper (shape-text shaper "First run")
-   #:origin '(20 40) #:text "First run")
+   builder (shape-text shaper "First run")
+   #:origin '(20 40))
   (text-blob-builder-add-run!
    builder large (font-text->glyphs large "AV")
    #:origin '(20 90) #:text "AV" #:clusters '(0 1))
@@ -148,7 +146,7 @@ The first run is shaped; the second deliberately uses simple unshaped glyph
 advances. A text blob is not a paragraph layout, fallback selection engine, or
 Unicode line-breaking operation.
 
-## Detached inspection and owned font copies
+## Run inspection and owned font copies
 
 ```racket
 (text-blob-run-count blob)
@@ -157,8 +155,8 @@ Unicode line-breaking operation.
 
 (text-run-info-positioning info)    ; 'default / 'horizontal / 'positioned / 'transformed
 (text-run-info-glyphs info)         ; immutable vector
-(text-run-info-positions info)      ; immutable vector of immutable (x y) lists
-(text-run-info-transforms info)     ; immutable vector of (scos ssin tx ty), or #f
+(text-run-info-positions info)      ; immutable vector of immutable #(x y) vectors
+(text-run-info-transforms info)     ; immutable vector of immutable #(scos ssin tx ty), or #f
 (text-run-info-utf8 info)           ; immutable bytes or #f
 (text-run-info-clusters info)       ; immutable vector or #f
 ```
@@ -168,7 +166,7 @@ outline replay. Transformed runs have an empty positions vector and a non-false
 transform vector. Inspection values contain no font handle and remain usable
 after blob closure. The font getter returns a new owned resource; changing or
 closing it never changes the blob. Run indices are zero-based and checked.
-Legacy positioned blobs are exposed as one positioned run with absent text and
+Directly positioned blobs are exposed as one positioned run with absent text and
 cluster metadata; no metadata is invented for them.
 
 ## Outline conversion and document output
@@ -178,11 +176,11 @@ multi-run blobs. Every glyph outline uses its captured font and its exact run
 placement, including rotation/scale. The result is baseline-local and
 independently owned. It remains usable after blob closure.
 
-For new multi-run blobs, a glyph that has visible native bounds but no available
-monochrome outline causes an explicit error, rather than silently deleting
-visible text. Whitespace with no ink is permitted. Native bitmap/color glyph
-coverage is not converted into invented vector outlines. Existing legacy
-single-run outline behavior is not changed in this stage.
+For every blob, a glyph with visible bounds but no monochrome outline raises
+an exception by default. `#:missing-outline 'skip` deliberately omits it.
+Whitespace without visible bounds does not raise. The same rule applies to
+`simple-text-path`, `shaped-run->path`, and `positioned-glyphs->path`; bitmap or
+color appearances are not converted into outlines.
 
 Use native PDF text for supported ordinary runs when selectable/searchable text
 is required; the acceptance gate checks extraction and embedding for a controlled
@@ -199,7 +197,7 @@ only public APIs and retains its blobs after source-owner closure.
 
 ```racket
 (text-blob-intercepts blob top bottom #:paint [paint #f])
-; -> immutable vector of (left right) pairs
+; -> immutable vector of immutable #(left right) intervals
 ```
 
 The band requires finite `top < bottom`. Coordinates are local to the blob,
@@ -217,7 +215,7 @@ answer as the intercepts of the whole blob.
 ## Explicitly positioned outline utility
 
 ```racket
-(positioned-glyphs->path font glyphs positions) ; -> owned skia-path?
+(positioned-glyphs->path font glyphs positions #:missing-outline [missing-outline 'error]) ; -> owned skia-path?
 ```
 
 This binds the pinned `sk_text_utils_get_pos_path` using the **glyph-ID encoding**
@@ -233,16 +231,15 @@ reconstructed. It is not a substitute for native text rendering of those fonts.
 
 ```racket
 (shaped-run->text-blob/on-path
- shaper run path
+ run path
  #:start-offset [start 0]
  #:normal-offset [normal 0]
  #:contour [contour 0]
- #:force-closed? [closed? #f]
- #:text [original-text #f])
+ #:force-closed? [closed? #f])
 ; -> owned text-blob? or #f for empty shaped text
 
 (draw-shaped-run/on-path
- canvas shaper run path paint
+ canvas run path paint
  #:start-offset [start 0] #:normal-offset [normal 0]
  #:contour [contour 0] #:force-closed? [closed? #f])
 ```

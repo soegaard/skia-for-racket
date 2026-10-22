@@ -79,14 +79,14 @@ simple unshaped mapping or use an existing shaped run's glyph IDs.
 ```
 
 The first two return immutable vectors. Widths are advances in the font's
-configured coordinates. Each bounds entry is an immutable list
-`(x y width height)`, **not** `(left top right bottom)`, matching
+configured coordinates. Each bounds entry is an immutable vector
+`#(x y width height)`, **not** `(left top right bottom)`, matching
 `simple-text-bounds`. Bounds are relative to that glyph's baseline origin;
 they have not been translated to a run position. The combined query returns
 the width vector and the bounds vector from a single native operation. A
 supplied paint participates in native bounds/measurement semantics.
 
-Positions are an immutable vector of immutable `(x y)` lists. X positions are
+Positions are an immutable vector of immutable `#(x y)` vectors. X positions are
 an immutable vector of numbers. These are successive **unshaped, unkerned**
 advances. They do not apply ligatures, bidi, fallback, script positioning or
 pair kerning. Do not overwrite HarfBuzz positions with these convenience

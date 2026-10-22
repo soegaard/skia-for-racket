@@ -39,6 +39,8 @@
 ; near : (listof real?) (listof real?) -> void?
 ;   Compares text coordinates with native float tolerance.
 (define (near xs ys)
+  (when (vector? xs) (set! xs (vector->list xs)))
+  (when (vector? ys) (set! ys (vector->list ys)))
   (check-equal? (length xs) (length ys))
   (for ([x (in-list xs)] [y (in-list ys)]) (check-= x y 0.005)))
 
@@ -316,7 +318,7 @@
        (define run (shape-text sh "fi" #:features '("liga=1")))
        (check-equal? (shaped-run-glyph-count run) 1)
        (with-skia ([b (make-text-blob-builder)])
-         (text-blob-builder-add-shaped-run! b sh run #:origin '(10 40) #:text "fi")
+         (text-blob-builder-add-shaped-run! b run #:origin '(10 40) )
          (with-skia ([blob (text-blob-builder-finish! b)])
            (check-equal? (text-run-info-glyphs (one-info blob)) '#(2))
            (check-equal? (text-run-info-utf8 (one-info blob)) #"fi")
@@ -326,23 +328,23 @@
        (define run (shape-text sh "A\u0301"))
        (check-equal? (shaped-run-glyph-count run) 2)
        (with-skia ([b (make-text-blob-builder)])
-         (text-blob-builder-add-shaped-run! b sh run #:text "A\u0301")
+         (text-blob-builder-add-shaped-run! b run )
          (with-skia ([blob (text-blob-builder-finish! b)])
            (check-equal? (text-run-info-clusters (one-info blob))
-             (list->vector (shaped-run-clusters run)))
+             (shaped-run-clusters run))
            (for
              ([p (in-vector (text-run-info-positions (one-info blob)))]
-               [q (in-list (shaped-run-positions run))])
+               [q (in-vector (shaped-run-positions run))])
              (near p q))))))
    (test-case "RTL glyph order and descending clusters are preserved without reversal"
      (with-layout-fixture (f sh)
        (define run (shape-text sh "אב" #:direction 'rtl #:features '("liga=0")))
        (check-equal? (shaped-run-glyph-count run) 2)
        (with-skia ([b (make-text-blob-builder)])
-         (text-blob-builder-add-shaped-run! b sh run #:text "אב")
+         (text-blob-builder-add-shaped-run! b run )
          (with-skia ([blob (text-blob-builder-finish! b)])
            (check-equal? (text-run-info-glyphs (one-info blob))
-             (list->vector (shaped-run-glyphs run)))
+             (shaped-run-glyphs run))
            (check-equal? (text-run-info-clusters (one-info blob)) '#(2 0))))))
 
    ;;;
@@ -353,38 +355,184 @@
      (with-layout-fixture (f sh)
        (define run (shape-text sh "AV" #:features '("liga=0")))
        (with-skia ([path (make-path '((move 10 50) (line 180 50)))]
-                    [blob (shaped-run->text-blob/on-path sh run path #:start-offset 5
+                    [blob (shaped-run->text-blob/on-path run path #:start-offset 5
                             #:normal-offset 3)])
          (for ([cs (in-vector (text-run-info-transforms (one-info blob)))]
-                [p (in-list (shaped-run-positions run))])
-           (near cs (list 1 0 (+ 15 (car p)) (+ 53 (cadr p)))))
+                [p (in-vector (shaped-run-positions run))])
+           (near cs (list 1 0 (+ 15 (vector-ref p 0)) (+ 53 (vector-ref p 1)))))
          (skia-close! path) (skia-close! sh) (skia-close! f)
          (check-true (bytes? (render blob 'outline))))))
    (test-case "vertical path placement rotates the baseline and positive normal"
      (with-layout-fixture (f sh)
        (define run (shape-text sh "A"))
        (with-skia ([path (make-path '((move 50 20) (line 50 100)))]
-                    [blob (shaped-run->text-blob/on-path sh run path #:start-offset 5
+                    [blob (shaped-run->text-blob/on-path run path #:start-offset 5
                             #:normal-offset 3)])
          (near (vector-ref (text-run-info-transforms (one-info blob)) 0) '(0 1 47 25)))))
    (test-case "text-on-path selects a contour explicitly and never clamps an overrun"
      (with-layout-fixture (f sh)
        (define run (shape-text sh "AV" #:features '("liga=0")))
        (with-skia ([path (make-path '((move 0 20) (line 2 20) (move 10 50) (line 180 50)))])
-         (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path sh run path)))
-         (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path sh run path #:contour 2)))
-         (with-skia ([blob (shaped-run->text-blob/on-path sh run path #:contour 1)])
-           (near (take (vector-ref (text-run-info-transforms (one-info blob)) 0) 2) '(1 0))))))
+         (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path run path)))
+         (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path run path #:contour 2)))
+         (with-skia ([blob (shaped-run->text-blob/on-path run path #:contour 1)])
+           (near (vector-take (vector-ref (text-run-info-transforms (one-info blob)) 0) 2) '(1 0))))))
    (test-case "degenerate paths reject nonempty text but empty shaped runs yield false"
      (with-layout-fixture (f sh)
        (with-skia ([path (make-path)])
-         (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path sh (shape-text sh "A") path)))
-         (check-false (shaped-run->text-blob/on-path sh (shape-text sh "") path)))))
+         (check-exn exn:fail? (lambda () (shaped-run->text-blob/on-path (shape-text sh "A") path)))
+         (check-false (shaped-run->text-blob/on-path (shape-text sh "") path)))))
    (test-case "path text with a ligature follows shaped glyph count rather than character count"
      (with-layout-fixture (f sh)
        (define run (shape-text sh "fi"))
        (with-skia ([path (make-path '((move 10 50) (line 180 50)))]
-                   [blob (shaped-run->text-blob/on-path sh run path #:text "fi")])
+                   [blob (shaped-run->text-blob/on-path run path )])
          (check-equal? (vector-length (text-run-info-transforms (one-info blob))) 1)
          (check-equal? (text-run-info-clusters (one-info blob)) '#(0)))))
+
+   ;;;
+   ;;; Run Identity, Layout Ownership, and Source Maps
+   ;;;
+
+   (test-case "runs remember immutable source text, direction, and their live shaper"
+     (with-layout-fixture (f sh)
+       (define input (string-copy "AV"))
+       (define run (shape-text sh input #:direction 'ltr))
+       (string-set! input 0 #\X)
+       (check-equal? (shaped-run-text run) "AV")
+       (check-true (immutable? (shaped-run-text run)))
+       (check-eq? (shaped-run-direction run) 'ltr)
+       (for ([v (in-list (list (shaped-run-glyphs run) (shaped-run-clusters run)
+                               (shaped-run-positions run)))])
+         (check-true (immutable? v)))
+       (for ([p (in-vector (shaped-run-positions run))])
+         (check-true (immutable? p)) (check-equal? (vector-length p) 2))
+       (with-skia ([blob (shaped-run->text-blob run)])
+         (check-equal? (text-run-info-utf8 (one-info blob)) #"AV")
+         (skia-close! sh)
+         (check-exn #rx"closed" (lambda () (shaped-run->text-blob run)))
+         (check-exn #rx"closed" (lambda () (shaped-run->path run)))
+         (check-equal? (shaped-run-text run) "AV")
+         (check-equal? (vector-length (text-blob-bounds blob)) 4))))
+
+   (test-case "all empty blob constructors return false but validate closed resources"
+     (with-layout-fixture (f sh)
+       (define empty (shape-text sh ""))
+       (check-false (make-positioned-text-blob f #() #()))
+       (check-false (shaped-run->text-blob empty))
+       (with-skia ([builder (make-text-blob-builder)] [path (make-path)])
+         (text-blob-builder-add-shaped-run! builder empty)
+         (check-equal? (text-blob-builder-run-count builder) 0)
+         (check-false (text-blob-builder-finish! builder))
+         (check-false (shaped-run->text-blob/on-path empty path)))
+       (skia-close! sh)
+       (check-exn #rx"closed" (lambda () (shaped-run->text-blob empty)))
+       (skia-close! f)
+       (check-exn #rx"closed" (lambda () (make-positioned-text-blob f #() #())))))
+
+   (test-case "single-cluster RTL alignment uses resolved direction"
+     (with-layout-fixture (f sh)
+       (with-skia ([layout (layout-text sh "א" #:width 100 #:align 'start)])
+         (define line (car (text-layout-lines layout)))
+         (check-equal? (shaped-run-glyph-count (text-layout-line-run line)) 1)
+         (check-eq? (shaped-run-direction (text-layout-line-run line)) 'rtl)
+         (check-eq? (text-layout-line-direction line) 'rtl)
+         (check-true (positive? (text-layout-line-origin-x line))))))
+
+   (test-case "explicit script symbols and strings keep script-specific justification"
+     (with-layout-fixture (f sh)
+       (for ([text '("漢字" "سلام")] [scripts '((hani "Hani") (arab "Arab"))])
+         (with-skia ([inferred (layout-text sh text #:width 200 #:align 'justify-all)])
+           (for ([script (in-list scripts)])
+             (with-skia ([explicit (layout-text sh text #:width 200 #:align 'justify-all
+                                                #:script script)])
+               (check-= (text-layout-line-width (car (text-layout-lines explicit))) 200 0.01)
+               (check-= (text-layout-width explicit) (text-layout-width inferred) 0.01)))))))
+
+   (test-case "layout source maps distinguish repeated text and inserted characters"
+     (with-layout-fixture (f sh)
+       (define input (string-copy "AVAV\r\nAV"))
+       (define width (+ 0.1 (abs (shaped-run-advance-x (shape-text sh "AV-")))))
+       (with-skia ([layout
+                    (layout-text sh input #:width width
+                                 #:break-provider
+                                 (lambda (paragraph language)
+                                   (if (= (string-length paragraph) 4)
+                                       (list (make-layout-break-opportunity 2 "-")) '())))])
+         (string-set! input 0 #\X)
+         (check-equal? (text-layout-text layout) "AVAV\r\nAV")
+         (check-equal? (map text-layout-line-text (text-layout-lines layout)) '("AV-" "AV" "AV"))
+         (check-equal? (map text-layout-line-source-range (text-layout-lines layout))
+                       '(#(0 2) #(2 4) #(6 8)))
+         (check-equal? (text-layout-line-source-map (car (text-layout-lines layout)))
+                       '#(#(0 1) #(1 2) #f))
+         (check-equal? (text-layout-line-source-map (cadr (text-layout-lines layout)))
+                       '#(#(2 3) #(3 4))))))
+
+   (test-case "mixed run source maps account for removed bidi controls and hard separators"
+     (with-layout-fixture (f sh)
+       (with-skia ([manager (make-font-manager)]
+                   [layout (layout-mixed-text sh manager "A\u202Bאב\u202CV\r\nA")])
+         (check-equal? (mixed-text-layout-text layout) "A\u202Bאב\u202CV\r\nA")
+         (check-equal? (map mixed-text-line-source-range (mixed-text-layout-lines layout))
+                       '(#(0 6) #(8 9)))
+         (for* ([line (in-list (mixed-text-layout-lines layout))]
+                [run (in-list (mixed-text-line-runs line))])
+           (define map (mixed-text-run-source-map run))
+           (check-true (immutable? map))
+           (check-equal? (vector-length map) (string-length (mixed-text-run-text run)))
+           (for ([range (in-vector map)] [ch (in-string (mixed-text-run-text run))])
+             (check-true (immutable? range))
+             (check-equal? ch (string-ref (mixed-text-layout-text layout) (vector-ref range 0)))
+             (check-false (memv (vector-ref range 0) '(1 4 6 7))))))))
+
+   (test-case "wrapped source ranges cover consumed whitespace without including separators"
+     (with-layout-fixture (f sh)
+       (define text "  AV  AV  \n")
+       (with-skia ([layout (layout-text sh text #:width 30)])
+         (define ranges (map text-layout-line-source-range (text-layout-lines layout)))
+         (check-equal? (vector-ref (car ranges) 0) 0)
+         (check-equal? (last ranges) '#(11 11))
+         (for ([a (in-list (drop-right ranges 2))] [b (in-list (cdr ranges))])
+           (check-equal? (vector-ref a 1) (vector-ref b 0)))
+         (for ([line (in-list (text-layout-lines layout))])
+           (for ([range (in-vector (text-layout-line-source-map line))]
+                 [ch (in-string (text-layout-line-text line))])
+             (check-equal? ch (string-ref text (vector-ref range 0))))))))
+
+   (test-case "layouts own independent snapshots and reject native use after closure"
+     (with-layout-fixture (f sh)
+       (with-skia ([manager (make-font-manager)]
+                   [single (layout-text sh "AV")]
+                   [mixed (layout-mixed-text sh manager "AV אב")]
+                   [surface (make-surface 120 80)] [paint (make-paint)])
+         (check-true (skia-resource? single)) (check-true (skia-resource? mixed))
+         (define run (text-layout-line-run (car (text-layout-lines single))))
+         (skia-close! manager) (skia-close! sh) (skia-close! f)
+         (draw-text-layout (surface-canvas surface) single 0 0 paint)
+         (draw-mixed-text-layout (surface-canvas surface) mixed 0 30 paint)
+         (with-skia ([blob (shaped-run->text-blob run)])
+           (skia-close! single) (skia-close! mixed)
+           (check-true (skia-closed? single)) (check-true (skia-closed? mixed))
+           (check-exn #rx"closed" (lambda () (shaped-run->path run)))
+           (check-exn #rx"closed"
+                      (lambda () (draw-mixed-text-layout (surface-canvas surface) mixed 0 0 paint)))
+           (check-equal? (text-layout-text single) "AV")
+           (check-true (vector? (text-blob-bounds blob)))))))
+
+   (test-case "whole-text outline policies accept spaces and validate their keyword"
+     (with-layout-fixture (f sh)
+       (define run (shape-text sh "A V"))
+       (define glyphs (font-text->glyphs f "A V"))
+       (define points (font-glyph-positions f glyphs))
+       (with-skia ([blob (shaped-run->text-blob run)])
+         (for ([convert (in-list
+                         (list (lambda (policy) (simple-text-path f "A V" #:missing-outline policy))
+                               (lambda (policy) (shaped-run->path run #:missing-outline policy))
+                               (lambda (policy) (text-blob->path blob #:missing-outline policy))
+                               (lambda (policy) (positioned-glyphs->path f glyphs points
+                                                                         #:missing-outline policy))))])
+           (with-skia ([strict (convert 'error)] [skip (convert 'skip)])
+             (check-equal? (path->commands strict) (path->commands skip)))
+           (check-exn exn:fail:contract? (lambda () (convert 'omit)))))))
 ))

@@ -100,9 +100,9 @@ class Sources(unittest.TestCase):
             self.assertNotIn(forbidden,body)
     def test_outline_dispatch_and_missing_outline_policy_are_explicit(self):
         source=self.text('private/core.rkt')
-        self.assertIn('(if (multi-text-blob? blob) (multi-text-blob->path blob) (legacy-text-blob->path blob))',source)
+        self.assertIn('(if (multi-text-blob? blob) (multi-text-blob->path blob missing-outline) (positioned-text-blob->path blob missing-outline))', ' '.join(source.split()))
         self.assertIn('(sk_path_transform pp m)',source)
-        self.assertIn('no monochrome outline; explicit raster output is required',source)
+        self.assertIn("no monochrome outline; use raster drawing or #:missing-outline 'skip",source)
     def test_snapshots_and_builder_remain_CPU_independent(self):
         source=self.text('private/lifetime.rkt')
         self.assertIn('text-blob text-blob-builder shaper shaper-font',' '.join(source.split()))

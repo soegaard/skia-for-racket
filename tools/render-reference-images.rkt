@@ -1884,7 +1884,7 @@
                [baseline-paint (make-paint #:color "#888888" #:style 'stroke #:stroke-width 1)])
      (define x 25)
      (define y 62)
-     (define-values (bx by bw bh) (simple-text-bounds font "Skia"))
+     (define-values (bx by bw bh) (vector->values (simple-text-bounds font "Skia")))
      (draw-line canvas 10 y 235 y baseline-paint)
      (draw-simple-text canvas "Skia" x y font text-paint)
      (draw-rect canvas (+ x bx) (+ y by) bw bh bounds-paint)))
@@ -2019,7 +2019,7 @@
      (draw-path canvas path guide)
      (define run (shape-text shaper "Text follows the curve"
                              #:direction 'ltr #:script 'latn #:language "en"))
-     (draw-shaped-run/on-path canvas shaper run path text-paint #:start-offset 10)))
+     (draw-shaped-run/on-path canvas run path text-paint #:start-offset 10)))
  #:background 'white)
 
 (render-reference-image
@@ -2036,9 +2036,9 @@
                [label (make-paint #:color "#20344E")])
      (define text "AB")
      (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
-     (with-skia ([blob (shaped-run->text-blob/on-path shaper run path
+     (with-skia ([blob (shaped-run->text-blob/on-path run path
                                                     #:start-offset 20 #:normal-offset 5
-                                                    #:text text)])
+                                                    )])
        (skia-close! path)
        (skia-close! shaper)
        (draw-path canvas guide-path guide)
@@ -3028,8 +3028,8 @@
      (define default-run (shape-text shaper "office" #:language "en"))
      (define no-liga-run
        (shape-text shaper "office" #:language "en" #:features '("liga=0")))
-     (draw-shaped-run canvas shaper default-run 20 42 blue)
-     (draw-shaped-run canvas shaper no-liga-run 20 92 orange)))
+     (draw-shaped-run canvas default-run 20 42 blue)
+     (draw-shaped-run canvas no-liga-run 20 92 orange)))
  #:background 'white)
 
 (render-reference-image
@@ -3041,9 +3041,9 @@
       (with-skia ([shaper (make-shaper font)]
                   [paint (make-paint #:color "#20344E")])
         (define run (shape-text shaper "שלום" #:direction 'rtl #:script 'hebr))
-        (with-skia ([blob (shaped-run->text-blob shaper run)])
-          (define-values (left _top width _height) (text-blob-bounds blob))
-          (draw-shaped-run canvas shaper run (- 230 (+ left width)) 58 paint))))))
+        (with-skia ([blob (shaped-run->text-blob run)])
+          (define-values (left _top width _height) (vector->values (text-blob-bounds blob)))
+          (draw-shaped-run canvas run (- 230 (+ left width)) 58 paint))))))
  #:background 'white)
 
 (render-reference-image
@@ -3053,7 +3053,7 @@
                [shaper (make-shaper font)]
                [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
      (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
-     (with-skia ([path (shaped-run->path shaper run)])
+     (with-skia ([path (shaped-run->path run)])
        (with-canvas-state canvas
          (canvas-translate! canvas 20 78)
          (draw-path canvas path paint)))))
@@ -3105,8 +3105,8 @@
      (draw-text-blob canvas blob 20 10 text-paint)
      (draw-rect canvas 20 45 190 10 band-paint)
      (for ([interval (in-vector (text-blob-intercepts blob 35 45))])
-       (draw-rect canvas (+ 20 (car interval)) 48
-                  (- (cadr interval) (car interval)) 4 mark-paint))))
+       (draw-rect canvas (+ 20 (vector-ref interval 0)) 48
+                  (- (vector-ref interval 1) (vector-ref interval 0)) 4 mark-paint))))
  #:background 'white)
 
 (render-reference-image
@@ -3526,8 +3526,8 @@
                [paint (make-paint #:color "#20344E")])
      (define text "office")
      (define run (shape-text shaper text #:direction 'ltr #:script 'latn))
-     (text-blob-builder-add-shaped-run! builder shaper run
-                                       #:origin '(25 62) #:text text)
+     (text-blob-builder-add-shaped-run! builder run
+                                       #:origin '(25 62) )
      (with-skia ([blob (text-blob-builder-finish! builder)])
        (draw-text-blob canvas blob 0 0 paint))))
  #:background 'white)
@@ -3555,7 +3555,7 @@
      (draw-path canvas path guide)
      (define run (shape-text shaper "offset from the path"
                              #:direction 'ltr #:script 'latn))
-     (draw-shaped-run/on-path canvas shaper run path paint
+     (draw-shaped-run/on-path canvas run path paint
                               #:start-offset 25 #:normal-offset -14)))
  #:background 'white)
 
@@ -4117,8 +4117,8 @@
      (define kerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn))
      (define unkerned (shape-text shaper "AVATAR" #:direction 'ltr #:script 'latn
                                   #:features '("kern=0")))
-     (draw-shaped-run canvas shaper kerned 20 42 blue)
-     (draw-shaped-run canvas shaper unkerned 20 94 orange)))
+     (draw-shaped-run canvas kerned 20 42 blue)
+     (draw-shaped-run canvas unkerned 20 94 orange)))
  #:background 'white)
 
 (render-reference-image
@@ -4129,9 +4129,9 @@
                [text-paint (make-paint #:color "#20344E")]
                [mark (make-paint #:color "#E94F37")])
      (define run (shape-text shaper "office" #:direction 'ltr #:script 'latn))
-     (draw-shaped-run canvas shaper run 20 62 text-paint)
-     (for ([position (in-list (shaped-run-positions run))])
-       (draw-circle canvas (+ 20 (car position)) (+ 62 (cadr position)) 2.5 mark))))
+     (draw-shaped-run canvas run 20 62 text-paint)
+     (for ([position (in-vector (shaped-run-positions run))])
+       (draw-circle canvas (+ 20 (vector-ref position 0)) (+ 62 (vector-ref position 1)) 2.5 mark))))
  #:background 'white)
 
 (render-reference-image
@@ -4143,7 +4143,7 @@
                [rule (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 2)])
      (define run (shape-text shaper "Skia" #:direction 'ltr #:script 'latn))
      (define advance (abs (shaped-run-advance-x run)))
-     (draw-shaped-run canvas shaper run 20 58 text-paint)
+     (draw-shaped-run canvas run 20 58 text-paint)
      (draw-line canvas 20 75 (+ 20 advance) 75 rule)))
  #:background 'white)
 
@@ -4316,7 +4316,7 @@
                [label (make-paint #:color "#20344E")])
      (define baseline 99)
      (define (panel x text trailing?)
-       (define-values (bx by bw bh) (simple-text-bounds font text))
+       (define-values (bx by bw bh) (vector->values (simple-text-bounds font text)))
        (define advance (measure-simple-text font text))
        (draw-simple-text canvas (if trailing? "A followed by a space" "A") x 24 label-font label)
        (draw-line canvas (- x 10) baseline (+ x 178) baseline baseline-ink)

@@ -1112,17 +1112,18 @@ automatic raster fallback. See the [SVG coverage table](SVG-OUTPUT.md#backend-co
 ### Explicit outline and raster helpers
 
 ```racket
-(shaped-run->path shaper run) ; independent owned path, baseline-local positions
+(shaped-run->path run #:missing-outline [missing-outline 'error]) ; independent owned path, baseline-local positions
 (draw-rasterized canvas x y width height draw
                  #:scale [scale (current-raster-output-scale)]
                  #:padding [padding 0] #:color-space [color-space #f])
 ```
 
-`shaped-run->path` uses the supplied live shaper's snapshotted font and the
-run's glyph IDs/positions. Supply the same shaper used for the run. The path
-outlives the shaper; an empty run gives an empty path. Missing outlines,
-including bitmap-only glyphs, are omitted, as with `simple-text-path`; color
-emoji are not preserved by outlining. The result is geometry, not selectable
+`shaped-run->path` uses the run's originating shaper and stored glyph positions.
+That shaper must be open. The path
+outlives the shaper; an empty run gives an empty path. A glyph with visible bounds but no monochrome outline raises by default;
+`#:missing-outline 'skip` deliberately omits it. Spaces without visible bounds
+do not raise. The same policy applies to `simple-text-path`, `text-blob->path`,
+and `positioned-glyphs->path`; color emoji are not preserved by outlining. The result is geometry, not selectable
 text. Use `simple-text-path` for unshaped labels and draw either with `draw-path`.
 These helpers work on raster and PDF backends too.
 
@@ -2195,7 +2196,7 @@ available; the remaining fields are numbers.
 (font-text->glyphs font text) ; -> vector of exact glyph IDs
 (font-char->glyph font char-or-unicode-scalar)
 (font-glyph-path font glyph-id) ; -> skia-path? or #f
-(simple-text-path font text [x 0] [y 0]) ; -> skia-path?
+(simple-text-path font text [x 0] [y 0] #:missing-outline [missing-outline 'error]) ; -> skia-path?
 ```
 
 These functions intentionally say **simple text**. `text` must be a Racket
@@ -2210,11 +2211,11 @@ and applies the current canvas transform and clip. The paint controls color,
 style, stroke, antialiasing, and compositing exactly as for geometry.
 
 `measure-simple-text` returns the native advance width. `simple-text-bounds`
-returns four values `(x y width height)` for the measured run relative to its
+returns one immutable vector `#(x y width height)` for the measured run relative to its
 origin. Supplying a paint allows native measurement to account for relevant
 paint geometry such as stroking. A false paint requests native defaults.
 
-`font-text->glyphs` returns a newly allocated Racket vector; no native buffer is
+`font-text->glyphs` returns an immutable Racket vector; no native buffer is
 retained. `font-char->glyph` accepts either a Racket character or an exact
 Unicode scalar value. Glyph ID 0 can represent a missing glyph. A typeface can
 lack an outline for a glyph; in that case `font-glyph-path` returns `#f`.
@@ -2227,7 +2228,7 @@ produces for the simple text run at the supplied baseline origin.
 ```racket
 (text-blob? value)
 (make-positioned-text-blob font glyphs positions)
-(text-blob-bounds blob) ; -> x y width height
+(text-blob-bounds blob) ; -> immutable #(x y width height)
 (text-blob-unique-id blob)
 (draw-text-blob canvas blob x y paint)
 ```
@@ -2235,7 +2236,7 @@ produces for the simple text run at the supplied baseline origin.
 `make-positioned-text-blob` builds one immutable native `SkTextBlob` run.
 `glyphs` is a list or vector of exact glyph IDs from 0 through 65535.
 `positions` is a same-length list/vector whose elements are `(list x y)` or
-`#(x y)` finite coordinates. At least one glyph is required. The positions are
+`#(x y)` finite coordinates. Empty glyphs and positions return `#f` after validating the font. The positions are
 absolute positions inside the blob run; `(draw-text-blob ... x y ...)` adds the
 requested drawing origin when replaying the blob.
 
@@ -2379,6 +2380,8 @@ harfbuzz-package-version
 (shaped-run-advance-x run)
 (shaped-run-advance-y run)
 (shaped-run-glyph-count run)
+(shaped-run-text run)
+(shaped-run-direction run)
 
 (shape-text shaper text
             #:direction [direction 'auto]
@@ -2386,8 +2389,8 @@ harfbuzz-package-version
             #:language [language #f]
             #:features [features '()])
 
-(shaped-run->text-blob shaper run)
-(draw-shaped-run canvas shaper run x y paint)
+(shaped-run->text-blob run)
+(draw-shaped-run canvas run x y paint)
 (draw-shaped-text canvas shaper text x y paint
                   #:direction [direction 'auto]
                   #:script [script #f]
@@ -2407,13 +2410,16 @@ is a BCP-47-ish HarfBuzz language string such as `"en"` or `"ar"`. Features
 are HarfBuzz feature strings such as `"liga=0"`, `"kern=1"`, or
 `"ss01=1"`.
 
-Clusters are byte offsets into the UTF-8 input, matching HarfBuzz's semantics.
+Glyph IDs, cluster offsets, and positions are immutable vectors; each position
+is an immutable `#(x y)` vector. The run remembers its originating shaper, an
+immutable copy of its logical text, and its resolved direction. Clusters are
+byte offsets into that text's UTF-8 encoding.
 Positions are relative glyph origins in Skia user-space units. HarfBuzz x/y
 offsets and advances are converted using the snapshotted font's size and
 horizontal scale, following SkiaSharp.HarfBuzz's m119 shaping convention.
 
-`shaped-run->text-blob` creates a normal owned `text-blob?`; empty shaped runs
-have no native blob and therefore raise in this conversion. `draw-shaped-run`
+`shaped-run->text-blob` creates an independently owned blob with the run's
+source text and clusters; empty shaped runs return `#f`. `draw-shaped-run`
 and `draw-shaped-text` treat an empty run as a no-op.
 
 This API shapes a single font run. It does not perform paragraph-level bidi,
@@ -2456,7 +2462,7 @@ script/fallback segmentation, line breaking, wrapping, or justification.
 (draw-text-layout canvas layout x y paint)
 ```
 
-`layout-text` creates a pure Racket layout containing one `shaped-run?` per
+`layout-text` creates an owned layout containing one `shaped-run?` per
 line. `x` and `y` in `draw-text-layout` are the top-left of the layout box; the
 line baselines stored in the layout are relative to that top edge. The default
 line height comes from the shaper font's native metrics; an explicit positive
@@ -2504,16 +2510,16 @@ stretch points. Paragraph layout currently accepts only `'auto`, `'ltr`, and
 `'rtl`; vertical HarfBuzz directions remain available to `shape-text` but not
 to this horizontal layout layer.
 
-The layout keeps its originating shaper wrapper reachable because its glyph IDs
-are meaningful only for that font. If the shaper is explicitly closed, later
-`draw-text-layout` calls fail with the normal closed-resource error.
+The layout owns a private font snapshot. The caller's shaper may close after
+construction; the layout must remain open for drawing or run conversion.
+Use `with-skia` or `skia-close!` to release it.
 
 This API is deliberately narrower than `layout-mixed-text`: it does not perform
 UAX #9 mixed-direction bidi resolution or script/font run segmentation. A line
 is shaped as one HarfBuzz run. With `#:direction 'auto`, HarfBuzz guesses the
-shaping direction; start/end alignment infers RTL from descending cluster
-offsets and otherwise defaults to LTR. Use an explicit direction when an
-ambiguous one-glyph line must align directionally.
+shaping direction; start/end alignment uses that resolved direction, including
+for single-glyph runs. Explicit script symbols and strings enable the same
+script-specific justification as inferred scripts.
 
 
 ## Mixed-script and bidirectional text layout
@@ -2571,11 +2577,19 @@ marks. `mixed-text-run-family` reports the selected fallback family string;
 `#f` means the run uses the base shaper. Script is a lower-case ISO 15924-style
 symbol such as `'latn`, `'arab`, or `'hebr`, or `#f` for Common/Inherited data.
 
-The returned layout is a pure Racket value. It does **not** own hidden fallback
-font resources: fallback shapers are temporary during layout and are recreated
-for drawing from the recorded family/style description. The caller-owned base
-shaper and font manager are retained by reference and must remain open while
-`draw-mixed-text-layout` is used.
+The returned layout owns snapshots of the base font and the exact fallback faces
+used during shaping. Drawing does not repeat family lookups. The caller's shaper
+and manager may close after construction; the layout must remain open.
+
+Both layout types store immutable original input text, exposed by
+`text-layout-text` and `mixed-text-layout-text`. Lines expose `*-source-range`
+and `*-source-map`; mixed runs do too. Ranges are immutable half-open
+`#(start end)` character ranges in the original input, not UTF-8 byte offsets.
+Line ranges include consumed whitespace but exclude hard separators. Maps are
+immutable vectors parallel to each line/run's logical text: one-character
+ranges for original characters and `#f` for break insertions. Removed bidi
+controls have no entry in a mixed run's map. Run ranges span mapped characters,
+or are `#f` for insertion-only text. These maps are not a caret-position API.
 
 The bidi resolver implements paragraph direction, explicit directional status
 stack processing, isolating run sequences, weak/neutral/bracket resolution,

@@ -129,7 +129,7 @@
   (with-skia ([f (make-font #:size 29)] [sh (make-shaper f)]
               [p (make-paint #:color ink)])
     (define run (shape-text sh "office affinity AV" #:language "en"))
-    (with-skia ([path (shaped-run->path sh run)])
+    (with-skia ([path (shaped-run->path run)])
       (with-canvas-state c
         (canvas-translate! c 30 245)
         (draw-path c path p))))

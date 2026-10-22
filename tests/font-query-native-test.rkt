@@ -30,6 +30,7 @@
 ; near-list : (listof real?) (listof real?) -> void?
 ;   Compares equally sized metric lists with a small native-float tolerance.
 (define (near-list actual expected)
+  (when (vector? actual) (set! actual (vector->list actual)))
   (check-equal? (length actual) (length expected))
   (for ([a (in-list actual)] [e (in-list expected)]) (check-= a e 0.002)))
 
@@ -160,9 +161,9 @@
                 ;; antialias padding. Verify extent semantics, not padding.
                 (for ([i (in-list '(0 1))])
                   (define b (vector-ref bs i))
-                  (check-true (< (list-ref b 1) 0))
-                  (check-true (> (list-ref b 2) 0))
-                  (check-true (> (list-ref b 3) 0)))
+                  (check-true (< (vector-ref b 1) 0))
+                  (check-true (> (vector-ref b 2) 0))
+                  (check-true (> (vector-ref b 3) 0)))
                 (near-list (vector-ref bs 2) '(0 0 0 0)))))
    (test-case "combined query agrees with individual queries"
      (fixture (lambda (f _)
@@ -173,8 +174,8 @@
      (fixture (lambda (f _)
                 (with-skia ([p (make-paint #:style 'stroke #:stroke-width 4)])
                   (define b (vector-ref (font-glyph-bounds f '#(2) #:paint p) 0))
-                  (check-true (> (list-ref b 2) 8))
-                  (check-true (> (list-ref b 3) 14))
+                  (check-true (> (vector-ref b 2) 8))
+                  (check-true (> (vector-ref b 3) 14))
                   (near-list (vector->list (font-glyph-widths f '#(2) #:paint p)) '(12))))))
    (test-case "positions have an explicit non-null origin and no pair kerning"
      (fixture (lambda (f _)
