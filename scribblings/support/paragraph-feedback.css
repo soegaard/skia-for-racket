@@ -5,13 +5,18 @@
 .fb-flag {
   position: absolute;
   top: 0;
-  left: -1.8em;
+  left: -2rem;
+  display: grid;
+  inline-size: 2rem;
+  block-size: 2rem;
+  place-items: center;
   padding: 0;
   border: 0;
   background: none;
   color: #666;
   cursor: pointer;
-  font-size: 1em;
+  font-size: 1.5rem;
+  line-height: 1;
   opacity: 0;
   transition: opacity 0.15s;
 }
