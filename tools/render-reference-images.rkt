@@ -651,7 +651,7 @@
      (define bound-transform
        (matrix-compose (matrix-translate 210 195) (matrix-rotate-degrees 28)))
      (define-values (left top width height)
-       (matrix-map-rect bound-transform -45 -22 90 44))
+       (vector->values (matrix-map-rect bound-transform -45 -22 90 44)))
      (draw-simple-text canvas "matrix-map-rect returns an axis-aligned box" 90 145 font label)
      (with-canvas-state canvas
        (canvas-concat! canvas bound-transform)
@@ -2756,28 +2756,6 @@
        (draw-path canvas segment paint))))
  #:background 'white)
 
-(render-reference-image
- "path-segment-initial-move.png" 240 115
- (lambda (canvas)
-   (with-skia ([path (make-path '((move 10 20) (line 90 20)))]
-               [measure (make-path-measure path)]
-               [moved (path-measure-segment measure 20 40)]
-               [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)]
-               [guide (make-paint #:color "#C8CDD3" #:style 'stroke #:stroke-width 2)]
-               [result (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)]
-               [font (make-font #:size 12)]
-               [label (make-paint #:color "#20344E")])
-     (draw-simple-text canvas "with initial move" 10 18 font label)
-     (with-canvas-state canvas
-       (canvas-translate! canvas 10 25)
-       (draw-path canvas path guide)
-       (draw-path canvas moved result))
-     (draw-simple-text canvas "without initial move" 125 18 font label)
-     (with-canvas-state canvas
-       (canvas-translate! canvas 125 25)
-       (draw-path canvas path guide)
-       (draw-path canvas unmoved result))))
- #:background 'white)
 
 (render-reference-image
  "path-bounds-and-measure-matrix.png" 420 235
@@ -2800,8 +2778,8 @@
                [second-arrow (make-paint #:color "#7D5BA6")]
                [font (make-font #:size 10)]
                [label (make-paint #:color "#20344E")])
-     (define-values (left top width height) (path-bounds quadratic))
-     (define-values (tight-left tight-top tight-width tight-height) (path-tight-bounds quadratic))
+     (define-values (left top width height) (vector->values (path-bounds quadratic)))
+     (define-values (tight-left tight-top tight-width tight-height) (vector->values (path-tight-bounds quadratic)))
      (draw-simple-text canvas "quadratic: control points vs. curve" 18 17 font label)
      (draw-path canvas control-polygon control)
      (draw-path canvas quadratic curve)
@@ -4415,8 +4393,8 @@
                [label (make-paint #:color "#20344E")])
      (define translation (matrix-translate 10 20))
      (define scaling (matrix-scale 2))
-     (define-values (tsx tsy) (matrix-map-point (matrix-compose translation scaling) 3 4))
-     (define-values (stx sty) (matrix-map-point (matrix-compose scaling translation) 3 4))
+     (define-values (tsx tsy) (vector->values (matrix-map-point (matrix-compose translation scaling) 3 4)))
+     (define-values (stx sty) (vector->values (matrix-map-point (matrix-compose scaling translation) 3 4)))
      (unless (and (= tsx 16) (= tsy 28)
                   (= stx 26) (= sty 48))
        (error 'concept-transform-order "matrix fixture endpoints changed"))
@@ -4761,8 +4739,8 @@
                [font (make-font #:size 11)]
                [title (make-font #:size 13)]
                [label (make-paint #:color "#20344E")])
-     (define-values (bx by bw bh) (path-bounds path))
-     (define-values (tx ty tw th) (path-tight-bounds path))
+     (define-values (bx by bw bh) (vector->values (path-bounds path)))
+     (define-values (tx ty tw th) (vector->values (path-tight-bounds path)))
      (draw-simple-text canvas
        "cubic controls are stored points, but the curve does not pass through them" 28 19 title label)
      (draw-line canvas 40 170 100 45 control)

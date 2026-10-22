@@ -25,7 +25,7 @@
                   path-h paint-h region-resource-handle call-with-native-temporary))
 (provide path-arc-to! path-rarc-to! path-arc-to-oval! path-tangent-arc-to! path-add-arc!
          path-add-rect-start! path-add-rounded-rect! path-add-polygon! path-add-transformed!
-         path-rewind! path-verbs path-segment-kinds path-fill-bounds
+         path-rewind! path-verbs path-segment-kinds
          path-as-line path-as-oval path-as-rectangle path-as-rounded-rect
          path-rectangle? path-rectangle-bounds path-rectangle-closed? path-rectangle-direction
          conic->quadratics path-combine current-path-operation-limit
@@ -220,15 +220,6 @@
   (for/list ([name (in-list '(line quad conic cubic))] [bit (in-list '(1 2 4 8))]
              #:when (not (zero? (bitwise-and bits bit)))) name))
 
-; path-fill-bounds : path? -> (and/c (vector/c real? real? real? real?) immutable?)
-;   Returns the tight rectangle reported by native path operations.
-(define (path-fill-bounds p)
-  (define who 'path-fill-bounds)
-  (define b (make-sk-rect 0.0 0.0 0.0 0.0))
-  (call-with-owned who (list (path-h who p))
-    (lambda (pp)
-      (unless (sk_pathop_tight_bounds pp b) (error who "native path-ops bounds failed"))
-      (float-rect who b))))
 (struct path-rectangle (bounds closed? direction) #:transparent
   #:constructor-name make-path-rectangle-record)
 ;; A path-rectangle is a detached result of native rectangular-path recognition.

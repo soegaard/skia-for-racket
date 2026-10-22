@@ -19,7 +19,7 @@
 (provide region? make-region region-copy region-empty? region-rect? region-complex?
          region-bounds region-rectangles in-region-rectangles
          region-contains-point? region-contains-rect? region-contains-region? region-intersects?
-         region-op region-union region-intersect region-difference region-xor
+         region-op region-union region-intersect region-difference region-reverse-difference region-xor
          region-translate path->region region->path draw-region canvas-clip-region!
          vertices? make-vertices vertices-mode vertices-positions vertices-texture-coordinates
          vertices-colors vertices-indices vertices-count draw-vertices
@@ -48,6 +48,11 @@
 ; vector-buffer : (or/c #f vector?) ctype? -> (or/c #f cpointer?)
 ;   Copies an optional vector into native storage without changing element order.
 (define (vector-buffer v type) (and v (flat-buffer (vector->list v) type)))
+
+; color-buffer : (or/c #f (vectorof rgba?)) -> (or/c #f cpointer?)
+;   Encodes optional byte colors as packed ARGB for native drawing.
+(define (color-buffer colors)
+  (and colors (flat-buffer (for/list ([color (in-vector colors)]) (color->argb color)) _uint32)))
 
 ; point-buffer : (or/c #f vector?) -> (or/c #f cpointer?)
 ;   Flattens ordered x/y points into an interleaved native float buffer.
@@ -203,6 +208,10 @@
 ;   Returns (region-op a b 'difference).
 (define (region-difference a b) (region-op a b 'difference))
 
+; region-reverse-difference : region? region? -> region?
+;   Returns the part of b outside a.
+(define (region-reverse-difference a b) (region-op a b 'reverse-difference))
+
 ; region-xor : region? region? -> region?
 ;   Returns (region-op a b 'xor).
 (define (region-xor a b) (region-op a b 'xor))
@@ -334,8 +343,8 @@
 (define (vertices-texture-coordinates v)
   (checked-vertices v 'vertices-texture-coordinates vertices-resource-texture))
 
-; vertices-colors : vertices? -> (or/c #f (and/c vector? immutable?))
-;   Returns the immutable packed-ARGB color vector, or #f if omitted.
+; vertices-colors : vertices? -> (or/c #f (and/c (vectorof rgba?) immutable?))
+;   Returns the immutable vector of rgba values, or #f if omitted.
 (define (vertices-colors v) (checked-vertices v 'vertices-colors vertices-resource-colors))
 
 ; vertices-indices : vertices? -> (or/c #f (and/c vector? immutable?))
@@ -360,7 +369,7 @@
   (define m (case mode [(triangles) 0] [(triangle-strip) 1] [else 2]))
   (skia-check!)
   (define pb (point-buffer ps)) (define tb (point-buffer ts))
-  (define cb (vector-buffer cs _uint32)) (define ib (vector-buffer is _uint16))
+  (define cb (color-buffer cs)) (define ib (vector-buffer is _uint16))
   (define h
     (new-owned who 'vertices
       (lambda () (sk_vertices_make_copy m (vector-length ps) pb tb cb
@@ -394,7 +403,7 @@
 ;;                                       #f uses the actual image bounds at draw time.
 ;;  - cell-types   #f or immutable vector  'default, 'transparent, or 'fixed-color
 ;;                                       for every grid cell, in row-major order.
-;;  - colors       #f or immutable vector  Packed ARGB colors in the same cell order.
+;;  - colors       #f or immutable vector  rgba values in the same cell order.
 ;; At least one axis has a division. Explicit cell arrays cover the complete grid;
 ;; fixed-color cells require colors, and colors require explicit cell types.
 ;; Drawing checks the bounds and division coordinates against the actual image.
@@ -496,7 +505,7 @@
      ;; SkLatticeIter advances a color pointer alongside every cell type, even
      ;; for default/transparent cells. Supply a full zero buffer when the caller
      ;; has no fixed colors instead of relying on null-pointer arithmetic.
-     (define cb (or (vector-buffer (image-lattice-colors lattice) _uint32)
+     (define cb (or (color-buffer (image-lattice-colors lattice))
                     (and types (flat-buffer (make-list n 0) _uint32))))
      (define nb (native-irect b))
      (define lat (make-sk-lattice xb yb tb (vector-length xs) (vector-length ys) nb cb))
@@ -570,7 +579,7 @@
                                          (list (vector-ref b 0) (vector-ref b 1)
                                                (+ (vector-ref b 0) (vector-ref b 2))
                                                (+ (vector-ref b 1) (vector-ref b 3))))) _float))
-       (define cb (vector-buffer cs _uint32))
+       (define cb (color-buffer cs))
        (define nb (and cbounds (native-rect cbounds)))
        (sk_canvas_draw_atlas cp ip xb sb cb n mode samp nb (if ph (car pps) #f))
        (void/reference-sink xb sb cb nb samp ts bs))))
@@ -586,7 +595,7 @@
 ;;  - points               immutable vector  Twelve immutable (x,y) vectors in
 ;;                                           boundary traversal order; corners
 ;;                                           occupy indices 0, 3, 6, and 9.
-;;  - colors               #f or immutable vector  Four packed ARGB corner colors.
+;;  - colors               #f or immutable vector  Four rgba corner colors.
 ;;  - texture-coordinates  #f or immutable vector  Four immutable shader (x,y)
 ;;                                                coordinates in the same corner order.
 ;; Optional arrays have four entries, not twelve. Construction copies and checks
@@ -618,7 +627,7 @@
    who c (list (paint-h who paint))
    (lambda (cp pp)
      (define pb (point-buffer (cubic-patch-points patch)))
-     (define cb (vector-buffer (cubic-patch-colors patch) _uint32))
+     (define cb (color-buffer (cubic-patch-colors patch)))
      (define tb (point-buffer (cubic-patch-texture-coordinates patch)))
      (sk_canvas_draw_patch cp pb cb tb mode pp)
      (void/reference-sink pb cb tb patch))))

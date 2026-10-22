@@ -73,14 +73,13 @@ read back from the actual native path instead of guessed.
 (path-rectangle-direction description)
 (path-verbs path)            ; raw move/line/quad/conic/cubic/close symbols
 (path-segment-kinds path)    ; distinct line/quad/conic/cubic kinds present
-(path-fill-bounds path)      ; checked path-ops tight-bounds rectangle
 ```
 
 Recognition follows Skia's **native representation tests**, not general symbolic
 shape equivalence. Unrecognized shapes return `#f`; output buffers are never read
 on failure. The results are immutable values with no native pointers, and survive
-source mutation or closure. Native path-ops tight bounds is separate from existing
-control-point bounds and is not a paint/stroke/filter ink-bounds query.
+source mutation or closure. Use `path-bounds` for stored-point bounds and
+`path-tight-bounds` for curve bounds. Neither is a paint/stroke/filter ink-bounds query.
 
 Existing `path-segments`, `in-path-segments`, `path-contours`, `path->commands` and
 measurement APIs are unchanged. Their snapshots already provide safe replay,

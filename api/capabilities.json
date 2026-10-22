@@ -1152,7 +1152,7 @@
         "private/geometry-completion-util.rkt",
         "private/native.rkt"
       ],
-      "limitations": "Additive authoring names preserve existing APIs. Existing raw path snapshots provide replayable/peekable sequences and existing path-contours reports closure; no live raw iterator is exposed. Path-ops tight bounds is distinct from control-point bounds.",
+      "limitations": "Raw path snapshots provide replayable/peekable sequences and path-contours reports closure; no live raw iterator is exposed. The PathOps tight-bounds binding is internal only. Public path-tight-bounds computes curve bounds using a different algorithm; neither query measures painted pixels.",
       "managed_sources": [
         "binding/SkiaSharp/SKPath.cs"
       ],
@@ -1197,10 +1197,6 @@
         {
           "module": "geometry.rkt",
           "name": "path-segment-kinds"
-        },
-        {
-          "module": "geometry.rkt",
-          "name": "path-fill-bounds"
         },
         {
           "module": "main.rkt",

@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "042613b4b95a3ed45d7631464c292f7c914c64a9"
+      "git_blob": "2d6e2c100bada538743b757b444f649e709b4927"
     },
     {
       "file": "api/public-api-gui.json",
@@ -1891,7 +1891,7 @@
       "space": null
     },
     {
-      "name": "matrix-rotate",
+      "name": "matrix-rotate-radians",
       "chapter": "scribblings/reference/matrices.scrbl",
       "canonical_module": "skia/matrix",
       "exports": [
@@ -8296,17 +8296,6 @@
       "space": null
     },
     {
-      "name": "path-fill-bounds",
-      "chapter": "scribblings/reference/paths.scrbl",
-      "canonical_module": "skia",
-      "exports": [
-        "skia",
-        "skia/geometry"
-      ],
-      "phase": "0",
-      "space": null
-    },
-    {
       "name": "path-as-line",
       "chapter": "scribblings/reference/paths.scrbl",
       "canonical_module": "skia",
@@ -8759,6 +8748,17 @@
     },
     {
       "name": "region-difference",
+      "chapter": "scribblings/reference/regions.scrbl",
+      "canonical_module": "skia",
+      "exports": [
+        "skia",
+        "skia/geometry-primitives"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "region-reverse-difference",
       "chapter": "scribblings/reference/regions.scrbl",
       "canonical_module": "skia",
       "exports": [

@@ -20,7 +20,7 @@
 
 ; mapped : any/c real? real? -> list?
 ;   Collects the transformed x and y values from an affine point mapping.
-(define (mapped m x y) (call-with-values (lambda () (matrix-map-point m x y)) list))
+(define (mapped m x y) (vector->list (matrix-map-point m x y)))
 
 ; close-point : (listof real?) (listof real?) -> void?
 ;   Checks transformed coordinates within the fixture's numerical tolerance.
@@ -84,7 +84,7 @@
      (check-equal? (mapped (matrix-scale -2 0) 2 4) '(-4.0 0.0)))
    (test-case "positive rotations agree with x-right y-down canvases"
      (check-equal? (mapped (matrix-rotate-degrees 90) 2 3) '(-3.0 2.0))
-     (close-point (mapped (matrix-rotate (/ pi 2)) 2 3) '(-3 2))
+     (close-point (mapped (matrix-rotate-radians (/ pi 2)) 2 3) '(-3 2))
      (check-equal? (matrix-rotate-degrees 360) matrix-identity))
    (test-case "negative degrees and exact quarter turns"
      (check-equal? (mapped (matrix-rotate-degrees -90) 2 3) '(3.0 -2.0))
@@ -111,17 +111,21 @@
      (check-false (matrix-invert (make-matrix 1 2 2 4))))
    (test-case "unrepresentable inverse is false"
      (check-false (matrix-invert (make-matrix 1e-40 0 0 1))))
+   (test-case "geometry mappings return immutable vectors"
+     (check-equal? (matrix-map-point matrix-identity 3 4) #(3.0 4.0))
+     (for ([result (in-list (list (matrix-map-point matrix-identity 3 4)
+                                  (matrix-map-vector matrix-identity 3 4)
+                                  (matrix-map-rect matrix-identity 1 2 3 4)))])
+       (check-true (vector? result))
+       (check-true (immutable? result))))
    (test-case "vectors ignore the translation"
-     (check-equal? (call-with-values
-                    (lambda () (matrix-map-vector (make-matrix 2 0 0 3 99 88) 4 5)) list)
+     (check-equal? (vector->list (matrix-map-vector (make-matrix 2 0 0 3 99 88) 4 5))
                    '(8.0 15.0)))
    (test-case "rectangle mapping returns axis-aligned bounds"
-     (check-equal? (call-with-values
-                    (lambda () (matrix-map-rect (matrix-rotate-degrees 90) 2 3 4 5)) list)
+     (check-equal? (vector->list (matrix-map-rect (matrix-rotate-degrees 90) 2 3 4 5))
                    '(-8.0 2.0 5.0 4.0)))
    (test-case "zero rectangles accepted, negative extents rejected"
-     (check-equal? (call-with-values
-                    (lambda () (matrix-map-rect matrix-identity 2 3 0 0)) list)
+     (check-equal? (vector->list (matrix-map-rect matrix-identity 2 3 0 0))
                    '(2.0 3.0 0.0 0.0))
      (check-exn exn:fail? (lambda () (matrix-map-rect matrix-identity 0 0 -1 3))))
    (test-case "arithmetic overflow does not produce native infinities"

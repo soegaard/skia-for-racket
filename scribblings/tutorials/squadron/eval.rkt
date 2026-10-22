@@ -95,9 +95,9 @@
            (for ([side '(-1 1)] [start-x '(175 465)])
              (define (sample age) (dive age start-x 80 320 side))
              (define points
-               (for/list ([age (in-range 0 289 6)])
+               (for/vector ([age (in-range 0 289 6)])
                  (define-values (x y) (dive-point (sample age)))
-                 (list x y)))
+                 (vector x y)))
              (draw-polygon canvas points line #:closed? #f)
              (for ([age '(0 84 168 252)])
                (define attack (sample age))

@@ -1740,6 +1740,20 @@ Visual review, screen-reader acceptance, the user's macOS/Racket combination,
 and GPU/GUI behavior remain separate checks. A Linux CPU build is not Metal or
 screen-reader evidence.
 
+## Chapter 4 geometry API update
+
+Geometry results now use immutable point and rectangle vectors, with immutable
+vectors of point vectors for collections and `rgba` values for byte-color
+metadata. The Reference, its displayed examples, source fixtures, and public
+inventory were updated together. The obsolete segment-extraction option and
+its comparison figure were removed; the replacement example connects an
+extracted segment explicitly.
+
+The headless inventory was observed through export reflection without calling
+exported procedures. No rendering or test suites were run for this update;
+those checks remain outstanding. The generated HTML and historical release
+receipts were not refreshed.
+
 ## Source inventory
 
 partial fixture. Commit the updated manifest together with the source changes.

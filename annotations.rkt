@@ -116,7 +116,7 @@
        [(svg)
         ;; Native SkSVGDevice does not implement Define_Named_Dest. Capture the
         ;; affine point now, then insert a predefined view during finalization.
-        (define-values (px py) (matrix-map-point (canvas-transform c) fx fy))
+        (define-values (px py) (vector->values (matrix-map-point (canvas-transform c) fx fy)))
         (annotation-define! who scope checked px py)]
        [else (void)])))
   (void))

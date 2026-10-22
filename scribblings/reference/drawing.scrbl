@@ -5,15 +5,21 @@
 
 @title[#:tag "skia-drawing"]{Drawing Primitives}
 
-Drawing functions use the native Skia canvas API. The receiving canvas can
-belong to a @tech{surface}, a recording, a document, or a @tech{GPU frame}, subject to its
-lifetime and backend restrictions.
+Use these functions to draw common shapes, lines, points, and paths on a
+@tech{canvas}. The canvas can belong to a @tech{surface}, a recording, a document,
+or a @tech{GPU frame}, subject to its lifetime and backend restrictions.
 
 Unless an entry says otherwise, drawing functions use the canvas's current
 @tech[#:key "canvas transform"]{transform} and @tech{clip}.
 Functions that accept a @tech{paint} do not mutate it, and no
 function retains a @tech{borrowed canvas} for later use. Drawing to a recording
 stores an operation rather than immediately producing pixels.
+
+The canvas and any supplied paint must be open and usable on the calling thread.
+GPU-dependent paint content requires the matching active @tech{GPU context};
+it is not automatically copied to the CPU for CPU or document drawing.
+Recording an operation does not guarantee that a document writer can preserve
+it as vector graphics.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -33,11 +39,6 @@ or paint.
 Width and height may be zero but must not be negative. Stroke and filter output
 may extend outside the rectangle's geometric bounds; the receiving clip still
 applies.
-
-The canvas and paint must be valid for native use. GPU-dependent paint content
-requires the matching active @tech{GPU context}; it is not implicitly read back for
-CPU or document drawing. A recorded or document operation does not by itself
-promise immediate pixels or a vector-only representation.
 
 @racketblock[
 (with-skia ([surface (make-surface 160 100 #:background 'white)]
@@ -65,8 +66,8 @@ does not make the segment a filled polygon. Zero stroke width requests a
 hairline. The endpoints may coincide.
 }
 
-For a rectangle with the same corner radii at every corner, use the
-coordinate-based form of @racket[draw-rounded-rect]:
+@para{@bold{Rounded rectangles.} For the same corner radii at every corner, use
+the coordinate-based form of @racket[draw-rounded-rect]:}
 
 @racketblock0[
 (draw-rounded-rect canvas x y width height radius-x radius-y paint)
@@ -142,12 +143,16 @@ operation; later mutation of the source path does not edit earlier drawing.
 }
 
 @defproc[(draw-polygon [canvas canvas?]
-                       [points (and/c pair? (listof (list/c real? real?)))]
+                       [points (or/c list? vector?)]
                        [paint paint?] [#:closed? closed? boolean? #t]) void?]{
-Draws connected straight segments through @racket[points]. Each point must be a
-two-element list; vectors are not accepted by this function. The default adds
-a closing segment from the last point to the first. A single point is accepted,
-although it need not produce visible output.
+Draws connected straight segments through @racket[points], a list or vector
+of two-element point lists or vectors. The default adds a closing segment from
+the last point to the first. A single point is accepted, although it need not
+produce visible output. An empty collection draws nothing; the canvas, paint,
+and @racket[#:closed?] option are still checked.
+
+All points are checked before drawing begins, so an invalid later point does
+not leave a partially drawn polygon.
 
 The @racket[#f] option leaves the contour open for stroking. Filling still uses
 an implicit closing edge, as for any open path contour. Use a stroke paint to
@@ -188,9 +193,9 @@ Draws a point using the paint's stroke width and cap. A round cap gives a
 round mark; the other caps give a square mark. A zero stroke width uses native
 hairline coverage. Paint style does not turn the point into a filled path.
 
-The Skia version used by this package (m119, supplied by SkiaSharp 3.119.1)
-does not implement isolated-point drawing in its SVG writer. For SVG output,
-use @racket[draw-markers] to draw circles or squares instead.
+The @seclink["skia-native-libraries"]{supported Skia version} does not implement
+isolated-point drawing in its SVG writer. For SVG output, use
+@racket[draw-markers] to draw circles or squares instead.
 
 @racketblock[
 (with-skia ([surface (make-surface 220 100 #:background 'white)]

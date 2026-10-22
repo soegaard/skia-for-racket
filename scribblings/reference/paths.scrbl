@@ -6,6 +6,8 @@
 
 @title[#:tag "skia-paths"]{Paths}
 
+@(declare-exporting skia skia/geometry #:use-sources (skia skia/geometry))
+
 Use a path for a custom outline, curved boundary, or shape with holes that the
 basic drawing primitives cannot express directly. Build it with
 @racket[make-path] and the path-mutating operations, then fill or stroke it with
@@ -20,9 +22,10 @@ be open or explicitly closed. A path stores geometry and a @tech{fill rule}, not
 from Racket's filesystem-path predicate.
 
 For explicit conversion to and from Racket @racket[dc-path%] values, see
-@racketmodname[skia/racket-draw]. That bridge retains fill interpretation as a
-separate Draw value and rejects topology that one @racket[dc-path%] cannot
-represent without changing open contours.
+@racketmodname[skia/racket-draw]. When converting to a @racket[dc-path%], the
+bridge returns the corresponding Draw fill style separately. It rejects paths
+that cannot be represented by one @racket[dc-path%] without changing which
+contours are open.
 
 Path coordinates are @tech{local coordinates}.
 Construction and mutation do not use a canvas's current transform. Each native
@@ -68,12 +71,9 @@ closure still matters for @tech{stroke caps} and @tech[#:key "stroke join"]{join
 Reversing an inner contour
 can create a winding-rule hole; an even-odd hole does not depend on direction.
 
-@bold{Conceptual diagram.} Winding considers a signed total, while even-odd
-considers only crossing parity. The annotated nested-contour cases make the
-direction dependency explicit: reversing the inner contour can turn a winding
-center into a hole, but it does not change an even-odd hole. Open contours are
-still treated as closed for filling; that does not replace @racket[path-close!]
-when stroke joins matter.
+The following diagram compares two nested contours with the same or opposite
+directions. Reversing the inner contour changes the winding-rule result but
+leaves the even-odd result unchanged.
 
 @reference-figure["concept-fill-rules.png"
                   "A two-by-two comparison of same and reversed inner contour direction under winding and even-odd fill. Direction arrows, signed winding totals, crossing parity labels, and the resulting filled or hollow centers are shown in every panel."]
@@ -149,6 +149,14 @@ Removes the geometry and resets the fill rule to @racket['winding]. The path
 resource remains open and can be reused.
 }
 
+@defproc[(path-rewind! [path skia-path?])
+          void?]{
+Removes the geometry and resets the fill rule to @racket['winding], like
+@racket[path-reset!]. It keeps allocated point and command storage for reuse
+where possible, which can avoid reallocating storage when the path is rebuilt
+repeatedly.
+}
+
 @section[#:tag "skia-path-segments-add"]{Adding Segments}
 
 The segment operations in this section return @racket[(void)]. A move selects the start
@@ -187,6 +195,17 @@ The control point sets the endpoint tangent directions; the curve generally
 does not pass through it.
 }
 
+@racketblock[
+(with-skia ([path (make-path)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (path-move-to! path 15 80)
+  (path-quad-to! path 90 5 165 80)
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["quadratic-path.png"
+                  "A thick blue quadratic Bezier arc rising from two low endpoints toward one high control point."]
+
 @defproc[(path-rquad-to! [path skia-path?] [dcx real?] [dcy real?]
                         [dx real?] [dy real?]) void?]{
 Like @racket[path-quad-to!], with both the control point and endpoint given as
@@ -204,10 +223,38 @@ a conic verb. The wrapper rejects non-finite weights but does not reject zero
 or negative weights. The resulting verb therefore need not be conic.
 }
 
+@racketblock[
+(with-skia ([path (make-path)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (path-move-to! path 15 80)
+  (path-conic-to! path 90 5 165 80 0.45)
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["conic-path.png"
+                  "A thick blue rational quadratic curve whose weight pulls it differently from an ordinary quadratic."]
+
 @defproc[(path-rconic-to! [path skia-path?] [dcx real?] [dcy real?]
                          [dx real?] [dy real?] [weight real?]) void?]{
 Like @racket[path-conic-to!], with control and endpoint offsets relative to the
 current point at the start of the call. The weight is not a coordinate offset.
+}
+
+@defproc[(conic->quadratics [p0 (or/c (list/c real? real?) (vector/c real? real?))]
+          [p1 (or/c (list/c real? real?) (vector/c real? real?))]
+          [p2 (or/c (list/c real? real?) (vector/c real? real?))]
+          [weight (and/c real? (>/c 0))]
+          [#:subdivisions power (integer-in 0 5) 2])
+          (listof (and/c vector? immutable?))]{
+Approximates a rational quadratic with ordinary quadratic segments. The three
+points are its start, control point, and end. The weight must remain strictly
+positive after @tech{binary32} rounding. The subdivision exponent limits the result
+to at most @racket[(expt 2 power)] segments, rather than specifying an error tolerance.
+
+Each segment is an immutable vector of three immutable two-coordinate point
+vectors. Adjacent triples have equal endpoint values. The native routine's
+actual count is used and checked; it need not equal the maximum. Temporary
+point storage is bounded by @racket[current-skia-byte-limit].
 }
 
 @defproc[(path-cubic-to! [path skia-path?] [cx1 real?] [cy1 real?]
@@ -217,6 +264,21 @@ control point sets the departure tangent from the current point; the second
 sets the arrival tangent at the endpoint. Neither control point is generally
 on the curve.
 }
+
+@racketblock[
+(with-skia ([path
+             (make-path
+              '((move 15 75)
+                (cubic 45 10 135 10 165 75)))]
+            [paint (make-paint #:color "#326DE6"
+                               #:style 'stroke
+                               #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (draw-path (surface-canvas surface) path paint))
+]
+
+@reference-figure["bezier-path.png"
+                  "A thick blue cubic Bezier curve arching upward between two low endpoints."]
 
 @defproc[(path-rcubic-to! [path skia-path?] [dcx1 real?] [dcy1 real?]
                          [dcx2 real?] [dcy2 real?] [dx real?] [dy real?]) void?]{
@@ -230,6 +292,120 @@ needed. The close command gives stroked geometry a join instead of two end
 caps. Closing an already closed contour or an empty path adds no new edge.
 The native path resource remains open.
 }
+
+@section[#:tag "skia-path-completion"]{Adding Arcs}
+
+Use these operations to add part of an ellipse or a circular corner to a path.
+Endpoint arcs select an ellipse by its radii and endpoints; oval arcs select
+a portion of a bounding oval; tangent arcs round the turn between two lines.
+
+Angles are in degrees. Positive oval sweeps run clockwise in the initial
+downward-y coordinate system. Radii must be nonnegative after @tech{binary32}
+rounding; a negative input that rounds to negative zero is accepted as zero.
+Otherwise, a negative radius raises an exception. Positive oval extents must
+remain positive when the right and bottom edges are rounded.
+
+@defproc[(path-arc-to! [path skia-path?]
+          [rx real?]
+          [ry real?]
+          [rotation real?]
+          [x real?]
+          [y real?]
+          [#:large? large? boolean? #f]
+          [#:direction direction (or/c 'cw 'ccw) 'cw])
+          void?]{
+Appends an elliptical arc from the current point to coordinates @racket[x]
+and @racket[y]. The radii and @racket[rotation] describe the ellipse's axes.
+The @racket[large?] flag selects the large rather than small arc, and
+@racket[direction] selects its traversal direction. Skia enlarges radii that
+are too small to reach the endpoint.
+
+If either radius is zero, the operation adds a straight line to the endpoint.
+If the endpoint equals the current point, it adds a zero-length line rather
+than an ellipse. Skia also replaces sufficiently small arc sweeps with a line.
+}
+
+@defproc[(path-rarc-to! [path skia-path?]
+          [rx real?]
+          [ry real?]
+          [rotation real?]
+          [dx real?]
+          [dy real?]
+          [#:large? large? boolean? #f]
+          [#:direction direction (or/c 'cw 'ccw) 'cw])
+          void?]{
+Appends an elliptical arc from the current point to the point displaced by
+@racket[dx] and @racket[dy]. Raises an exception if adding the offsets to the
+current point produces an endpoint outside the numeric limits in
+@secref["skia-scalars"]. The radii, axis rotation, and arc choices have the same
+meanings as in @racket[path-arc-to!].
+}
+
+@defproc[(path-arc-to-oval! [path skia-path?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [start real?]
+          [sweep real?]
+          [#:force-move? force-move? boolean? #f])
+          void?]{
+Appends an arc of the specified oval, starting at @racket[start] and sweeping
+through @racket[sweep] degrees. A zero start angle is at the oval's rightmost
+point. The operation can connect the existing contour to the arc's start.
+A true @racket[force-move?] starts a new contour instead of adding that connection.
+An empty path also starts a new contour.
+
+A zero sweep adds no curved segment, but can still move or connect to the
+start point. If both oval dimensions are zero, the operation instead moves or
+connects to @math{(x, y)}. For a complete ellipse, use @racket[path-add-oval!].
+}
+
+@defproc[(path-tangent-arc-to! [path skia-path?]
+          [x1 real?]
+          [y1 real?]
+          [x2 real?]
+          [y2 real?]
+          [radius real?])
+          void?]{
+Appends a circular arc tangent to the line from the current point toward the
+first point and the line from the first point toward the second. A connecting
+line can precede the arc. The operation does not append a final line to the
+second point.
+
+If the radius is zero, the current point equals the first point, or the two
+supplied points coincide, the operation adds a line to the first point instead
+of an arc. It does the same when the two line directions are parallel or close
+enough to parallel for Skia's angle tolerance.
+}
+
+@defproc[(path-add-arc! [path skia-path?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [start real?]
+          [sweep real?])
+          void?]{
+Adds an oval arc as a new contour, rather than connecting it to the preceding
+contour. The oval and angle conventions are those of @racket[path-arc-to-oval!].
+A zero sweep or a zero width or height leaves the path unchanged.
+If the sweep is at least 360 degrees in magnitude and the start angle is at,
+or sufficiently close to, a multiple of 90 degrees, Skia adds a complete closed
+oval. Otherwise, this follows @racket[path-arc-to-oval!] with
+@racket[#:force-move? #t]. Use @racket[path-add-oval!] when a complete ellipse
+is intended, independently of a start angle.
+}
+
+@racketblock[
+(with-skia ([path (make-path)]
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
+            [surface (make-surface 180 100 #:background 'white)])
+  (path-add-arc! path 25 15 130 70 200 250)
+  (draw-path (surface-canvas surface) path paint))
+]
+@reference-figure["path-arc.png"
+                  "A blue elliptical arc drawn as its own path contour."]
 
 @section{Adding Complete Shapes}
 
@@ -245,8 +421,9 @@ heights, and radii must be nonnegative.
 Appends a closed rectangle with the given position, size, and winding direction.
 }
 
-Use @racket[path-add-rounded-rect!] to append a closed @tech{rounded rectangle} with
-the same horizontal and vertical radii at every corner:
+@para{@bold{Rounded rectangles.} Use @racket[path-add-rounded-rect!] to append
+a closed @tech{rounded rectangle} with the same horizontal and vertical radii
+at every corner:}
 
 @racketblock0[
 (path-add-rounded-rect! path x y width height radius-x radius-y
@@ -257,6 +434,21 @@ It also accepts a rounded-rectangle value for per-corner radii or an explicit
 starting point. See its @racket[path-add-rounded-rect!] entry in
 @seclink["skia-rounded-rectangles"]{Rounded Rectangles} for both calling forms
 and their options.
+
+@defproc[(path-add-rect-start! [path skia-path?]
+          [x real?]
+          [y real?]
+          [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
+          [start (integer-in 0 3)]
+          [#:direction direction (or/c 'cw 'ccw) 'cw])
+          void?]{
+Adds a rectangle contour with an explicit starting corner. Indices 0, 1, 2,
+and 3 select top-left, top-right, bottom-right, and bottom-left, respectively.
+An out-of-range index raises an exception; it is not reduced modulo four.
+Positive widths and heights must remain positive after the right and bottom
+edges are rounded; otherwise, the function raises an exception.
+}
 
 @defproc[(path-add-oval! [path skia-path?] [x real?] [y real?]
                         [width (and/c real? (>=/c 0))]
@@ -271,6 +463,29 @@ height are the ellipse's diameters.
                           [#:direction direction (or/c 'cw 'ccw) 'cw]) void?]{
 Appends a closed circle centered at coordinates @racket[x] and @racket[y]. A
 zero radius is accepted but need not add visible geometry.
+}
+
+@defproc[(path-add-polygon! [path skia-path?]
+          [points (or/c list? vector?)]
+          [#:closed? closed? boolean? #t])
+          void?]{
+Adds a contour from a list or vector of two-element point lists or vectors.
+All coordinates are validated and copied before mutation. A true @racket[closed?]
+closes the contour. Empty input draws nothing but still validates the path.
+The submitted point count and bytes are bounded by @racket[current-skia-byte-limit].
+
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)])
+  (define canvas (surface-canvas surface))
+  (with-skia ([path (make-path)]
+              [paint (make-paint #:color "#326DE6")])
+    (path-add-polygon! path '((90 12) (160 42) (136 88) (44 88) (20 42)))
+    (draw-path canvas path paint))
+)
+]
+@reference-figure["path-polygon-stage9.png"
+                  "A filled blue pentagon is drawn from a polygon contour appended to a path."]
 }
 
 @defproc[(path-add-path! [destination skia-path?] [source skia-path?]
@@ -305,26 +520,22 @@ the appended geometry.
                   "Append mode leaves two blue path segments disconnected on the left, while extend mode adds the orange connecting edge on the right."]
 }
 
+@defproc[(path-add-transformed! [path skia-path?]
+          [other skia-path?]
+          [transform matrix?]
+          [#:mode mode (or/c 'append 'extend) 'append])
+          void?]{
+Adds the source geometry after applying the affine transform. Append preserves
+its contour starts; extend can join its first contour to the current contour
+as in @racket[path-add-path!]. A distinct source path is unchanged. Singular
+affine matrices are allowed. This is not a projective path transformation.
+}
+
 @defproc[(path-add-reversed-path! [destination skia-path?] [source skia-path?]) void?]{
 Appends the source's contours with their traversal direction reversed. It
 reverses segment order and curve controls, not just a list of endpoints. The
 destination retains its fill rule and the source remains unchanged.
 }
-
-@racketblock[
-(with-skia ([path
-             (make-path
-              '((move 15 75)
-                (cubic 45 10 135 10 165 75)))]
-            [paint (make-paint #:color "#326DE6"
-                               #:style 'stroke
-                               #:stroke-width 5)]
-            [surface (make-surface 180 100 #:background 'white)])
-  (draw-path (surface-canvas surface) path paint))
-]
-
-@reference-figure["bezier-path.png"
-                  "A thick blue cubic Bezier curve arching upward between two low endpoints."]
 
 @section[#:tag "skia-path-geometry"]{Geometry and Bounds}
 
@@ -334,36 +545,38 @@ number of contours or drawing segments.
 }
 
 @defproc[(path-point-ref [path skia-path?] [index exact-nonnegative-integer?])
-         (values real? real?)]{
-Returns the stored point at @racket[index] as x and y values. Indices start at
+         (and/c (vector/c real? real?) immutable?)]{
+Returns the stored point at @racket[index] as an immutable @racket[#(x y)] vector. Indices start at
 zero and must be less than @racket[(path-point-count path)].
 }
 
-@defproc[(path-points [path skia-path?]) (listof (list/c real? real?))]{
-Returns coordinate pairs for all stored points in order. Use
+@defproc[(path-points [path skia-path?]) (and/c (vectorof (and/c (vector/c real? real?) immutable?)) immutable?)]{
+Returns an immutable vector of immutable @racket[#(x y)] vectors for all
+stored points in order. Use
 @racket[path-segments] when the distinction between endpoints and control
 points is needed.
 }
 
-@defproc[(path-last-point [path skia-path?]) (values real? real?)]{
-Returns the last stored point as x and y values. An empty path raises an
+@defproc[(path-last-point [path skia-path?]) (and/c (vector/c real? real?) immutable?)]{
+Returns the last stored point as an immutable @racket[#(x y)] vector. An empty path raises an
 exception; this operation does not manufacture an origin for an empty path.
 }
 
-@defproc[(path-bounds [path skia-path?]) (values real? real? real? real?)]{
-Returns the bounds of the stored points, including control points, as left,
-top, width, and height. The result can be larger than the curves themselves.
+@defproc[(path-bounds [path skia-path?]) (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the bounds of the stored points, including control points, as an immutable
+@racket[#(x y width height)] vector. The result can be larger than the curves themselves.
 An empty path has zero bounds. This is a geometry query, not a stroke, filter,
 clip, or final-pixel bounds calculation.
 }
 
-@defproc[(path-tight-bounds [path skia-path?]) (values real? real? real? real?)]{
+@defproc[(path-tight-bounds [path skia-path?]) (and/c (vector/c real? real? real? real?) immutable?)]{
 Returns tighter geometric bounds computed from the curves rather than simply
-the control-point bounds. It can require more work than @racket[path-bounds].
+the control-point bounds. The result is an immutable
+@racket[#(x y width height)] vector. It can require more work than @racket[path-bounds].
 It still does not include stroke widths, paint effects, or the canvas transform.
 }
 
-@bold{Conceptual diagram.} A cubic's off-curve controls are stored points, but
+A cubic's off-curve controls are stored points, but
 the curve normally does not pass through them. @racket[path-bounds] encloses all
 stored endpoints and controls; @racket[path-tight-bounds] encloses the curve
 geometry itself. Both are path-space geometry measurements, not painted-pixel
@@ -383,6 +596,61 @@ Returns Skia's convexity classification for the path. Skia may compute and cache
 the classification. The query does not change the visible geometry.
 }
 
+@section[#:tag "skia-path-recognition"]{Recognizing Shapes}
+
+Use these queries to inspect paths that may contain a line, oval, rectangle,
+or rounded rectangle. Recognition depends on how the path stores its geometry:
+an equivalent outline built from different commands need not be recognized.
+
+@defproc[(path-as-line [path skia-path?])
+          (or/c #f (and/c (vector/c (and/c (vector/c real? real?) immutable?)
+                                               (and/c (vector/c real? real?) immutable?))
+                                               immutable?))]{
+Returns the two endpoints when native recognition identifies a line, or
+@racket[#f] otherwise. The outer vector and both point vectors are immutable.
+}
+
+@defproc[(path-as-oval [path skia-path?])
+          (or/c #f (and/c (vector/c real? real? real? real?) immutable?))]{
+Returns the oval's bounds when native recognition succeeds, or @racket[#f]
+otherwise. An arbitrary curve with a similar outline need not be recognized.
+}
+
+@defproc[(path-as-rectangle [path skia-path?])
+          (or/c path-rectangle? #f)]{
+Returns a rectangle description when native recognition succeeds,
+or @racket[#f] otherwise. The description records bounds, explicit closure,
+and traversal direction; recognition alone does not imply a closed contour.
+}
+
+@defproc[(path-as-rounded-rect [path skia-path?])
+          (or/c rounded-rect? #f)]{
+Returns a rounded rectangle when the path is recognized as one, or @racket[#f]
+otherwise. The returned bounds and radii follow
+@seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}.
+}
+
+@defproc[(path-rectangle? [v any/c])
+          boolean?]{
+Returns @racket[#t] for a rectangle description returned by
+@racket[path-as-rectangle], and @racket[#f] otherwise.
+}
+
+@defproc[(path-rectangle-bounds [description path-rectangle?])
+          (and/c (vector/c real? real? real? real?) immutable?)]{
+Returns the immutable coordinates, width, and height of the recognized rectangle.
+}
+
+@defproc[(path-rectangle-closed? [description path-rectangle?])
+          boolean?]{
+Reports whether the recognized rectangle contour was explicitly closed.
+}
+
+@defproc[(path-rectangle-direction [description path-rectangle?])
+          (or/c 'cw 'ccw)]{
+Returns the recognized traversal direction.
+}
+
 @section{Transforming and Serializing Geometry}
 
 @defproc[(path-transform [path skia-path?] [matrix matrix?]) skia-path?]{
@@ -390,6 +658,18 @@ Returns a new owned path containing the affine transformation of @racket[path].
 The source is not changed, and the result does not borrow the source. This
 operation changes geometry rather than a canvas's drawing state.
 }
+
+@racketblock[
+(with-skia ([source (make-path '((move 20 85) (line 70 20) (line 110 85) (close)))]
+            [surface (make-surface 190 120 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (with-skia ([moved (path-transform source
+                     (matrix-compose (matrix-translate 55 5)
+                                     (matrix-rotate-degrees 12)))])
+    (draw-path (surface-canvas surface) moved paint)))
+]
+@reference-figure["path-transform.png"
+                  "A filled blue triangle after an affine translation and rotation have been applied to its path geometry."]
 
 @defproc[(path-transform! [path skia-path?] [matrix matrix?]) void?]{
 Applies the affine transform to @racket[path] in place. Its current geometry is
@@ -445,6 +725,20 @@ Their results are Racket structures and coordinate lists, not live iterators.
 The size counted for a snapshot must fit @racket[current-skia-byte-limit];
 this is not an exact Racket heap-size estimate.
 
+@defproc[(path-verbs [path skia-path?])
+          (listof (or/c 'move 'line 'quad 'conic 'cubic 'close))]{
+Returns the verbs from raw path iteration, in stored order. It is equivalent
+to mapping @racket[path-segment-verb] over @racket[path-segments] with
+@racket[#:mode 'raw]; no synthetic closing line is inserted.
+}
+
+@defproc[(path-segment-kinds [path skia-path?])
+          (listof (or/c 'line 'quad 'conic 'cubic))]{
+Returns the distinct drawing-segment kinds present, in the order line, quad,
+conic, cubic. Moves and closes are not segment kinds, and repeated segments do
+not produce repeated names. This is a summary, not contour order.
+}
+
 @defproc[(path-segments [path skia-path?]
                        [#:mode mode (or/c 'normal 'raw) 'normal]
                        [#:force-closed? force-closed? boolean? #f]) (listof path-segment?)]{
@@ -487,8 +781,9 @@ Returns @racket[#t] for a segment description produced by path inspection and
 Returns the segment's verb. It identifies how to interpret the stored points.
 }
 
-@defproc[(path-segment-points [segment path-segment?]) (listof (list/c real? real?))]{
-Returns the segment's coordinate pairs. A move has one point; a line has start
+@defproc[(path-segment-points [segment path-segment?]) (and/c (vectorof (and/c (vector/c real? real?) immutable?)) immutable?)]{
+Returns an immutable vector of immutable @racket[#(x y)] point vectors.
+A move has one point; a line has start
 and end points; quadratic and conic segments have start, control, and end points;
 a cubic has start, two controls, and end; a close has no points. Segment data
 therefore includes starts that the command format of @racket[make-path] omits.
@@ -546,15 +841,54 @@ the first.
 @defproc[(path-union [first skia-path?] [second skia-path?]) skia-path?]{
 Returns @racket[(path-op first second 'union)].
 }
+
+@racketblock[
+(with-skia ([a (make-path)] [b (make-path)]
+            [surface (make-surface 170 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! a 65 50 34)
+  (path-add-circle! b 105 50 34)
+  (with-skia ([result (path-union a b)])
+    (draw-path (surface-canvas surface) result paint)))
+]
+@reference-figure["path-union.png"
+                  "The union of two overlapping circles, filled as one blue shape."]
+
 @defproc[(path-intersect [first skia-path?] [second skia-path?]) skia-path?]{
 Returns @racket[(path-op first second 'intersect)].
 }
+
+@racketblock[
+(with-skia ([a (make-path)] [b (make-path)]
+            [surface (make-surface 170 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! a 65 50 34)
+  (path-add-circle! b 105 50 34)
+  (with-skia ([result (path-intersect a b)])
+    (draw-path (surface-canvas surface) result paint)))
+]
+@reference-figure["path-intersection.png"
+                  "Only the lens-shaped overlap of two circles remains after path intersection."]
+
 @defproc[(path-difference [first skia-path?] [second skia-path?]) skia-path?]{
 Returns @racket[(path-op first second 'difference)]. Argument order matters.
 }
 @defproc[(path-xor [first skia-path?] [second skia-path?]) skia-path?]{
 Returns @racket[(path-op first second 'xor)].
 }
+
+@racketblock[
+(with-skia ([a (make-path)] [b (make-path)]
+            [surface (make-surface 170 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (path-add-circle! a 65 50 34)
+  (path-add-circle! b 105 50 34)
+  (with-skia ([result (path-xor a b)])
+    (draw-path (surface-canvas surface) result paint)))
+]
+@reference-figure["path-xor.png"
+                  "Two blue crescent regions remain after exclusive-or removes the circles' overlap."]
+
 @defproc[(path-reverse-difference [first skia-path?] [second skia-path?]) skia-path?]{
 Returns @racket[(path-op first second 'reverse-difference)].
 
@@ -570,6 +904,45 @@ Returns @racket[(path-op first second 'reverse-difference)].
 ]
 @reference-figure["reverse-difference-stage8.png"
                   "Reverse difference keeps the portion of the second circle that lies outside the first, producing a blue crescent."]
+}
+
+@defproc[(path-combine [operations (or/c list? vector?)])
+          skia-path?]{
+Combines a list or vector of two-element operation/path pairs, starting with
+an empty accumulator. Operations are @racket['union], @racket['difference],
+@racket['intersect], @racket['xor], and @racket['reverse-difference], applied
+in input order. The input paths remain unchanged and the result is independently owned.
+An empty batch returns an owned empty path.
+
+Start with @racket['union] to use the first path as the initial region. A first
+@racket['intersect] or @racket['difference] combines that path with the empty
+accumulator and therefore leaves it empty before subsequent operations.
+
+The number of operations is bounded by @racket[current-path-operation-limit].
+The size counted for submitted point and verb data must fit
+@racket[current-skia-byte-limit]. Exceeding either limit raises an exception
+before the path operations are submitted to Skia. These are not native heap or
+running-time bounds. If Skia cannot complete the combination, the function
+raises an exception without returning a partial path.
+
+@racketblock[
+(with-skia ([outer (make-path)] [hole (make-path)])
+  (path-add-rect! outer 20 15 120 70)
+  (path-add-circle! hole 80 50 22)
+  (with-skia ([result (path-combine
+                      (list (list 'union outer) (list 'difference hole)))])
+    (list (path-contains? result 25 20) (path-contains? result 80 50))))
+]
+
+The result contains the corner point but not the center of the removed circle.
+
+@reference-figure["path-hole.png"
+                  "A blue rectangular path with a circular hole removed from its center."]
+}
+
+@defparam[current-path-operation-limit limit (integer-in 1 #x7fffffff) #:value 4096]{
+Bounds the number of entries accepted by @racket[path-combine]. The default is
+4096. Lowering this parameter does not change an already constructed path.
 }
 
 @defproc[(path-simplify [path skia-path?]) skia-path?]{
@@ -669,7 +1042,7 @@ Returns the position x and y and the unit tangent x and y at @racket[distance].
 The distance must be nonnegative and no greater than the current
 contour's measured length. An out-of-range value raises an exception.
 An unavailable position, such as on a zero-length contour, returns four
-@racket[#f] values instead of uninitialized coordinates.
+@racket[#f] values.
 
 @racketblock[
 (with-skia ([path (make-path '((move 0 0) (line 30 40)))]
@@ -700,8 +1073,7 @@ An unavailable position, such as on a zero-length contour, returns four
 
 @defproc[(path-measure-segment [measure path-measure?]
                               [start (and/c real? (>=/c 0))]
-                              [stop (and/c real? (>=/c 0))]
-                              [#:start-with-move-to? start-with-move-to? boolean? #t])
+                              [stop (and/c real? (>=/c 0))])
          (or/c skia-path? #f)]{
 Returns a new owned path for the portion between @racket[start] and
 @racket[stop]. Both distances must lie between zero and the current contour's
@@ -710,45 +1082,32 @@ condition is violated, the function raises an exception before extracting a
 segment. If the range is valid but Skia produces no segment, the function
 returns @racket[#f].
 
-The default starts the result with a move to the segment's starting point.
-Passing @racket[#f] omits that move. This binding always creates a new result
-path, so Skia inserts an implicit move to the origin before its first segment.
-The result does not connect to the source path's current point.
+The result starts with a move to the segment's measured starting point.
+To connect it to an existing path, use @racket[path-add-path!] with
+@racket[#:mode 'extend].
 
 @racketblock[
-(with-skia ([surface (make-surface 240 115 #:background 'white)]
-            [path (make-path '((move 10 20) (line 90 20)))]
+(with-skia ([path (make-path '((move 20 40) (line 170 40)))]
             [measure (make-path-measure path)]
-            [moved (path-measure-segment measure 20 40)]
-            [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)]
-            [guide (make-paint #:color "#C8CDD3" #:style 'stroke #:stroke-width 2)]
-            [result (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 4)]
-            [font (make-font #:size 12)]
-            [label (make-paint #:color "#20344E")])
-  (define canvas (surface-canvas surface))
-  (draw-simple-text canvas "with initial move" 10 18 font label)
-  (with-canvas-state canvas
-    (canvas-translate! canvas 10 25)
-    (draw-path canvas path guide)
-    (draw-path canvas moved result))
-  (draw-simple-text canvas "without initial move" 125 18 font label)
-  (with-canvas-state canvas
-    (canvas-translate! canvas 125 25)
-    (draw-path canvas path guide)
-    (draw-path canvas unmoved result))
-  (list (path->commands moved) (path->commands unmoved)))
+            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 6)]
+            [surface (make-surface 190 80 #:background 'white)])
+  (with-skia ([segment (path-measure-segment measure 35 120)])
+    (draw-path (surface-canvas surface) segment paint)))
 ]
+@reference-figure["path-measure-segment.png"
+                  "A blue middle segment extracted by measured distances from a longer horizontal path."]
 
-@reference-figure["path-segment-initial-move.png"
-                  "Two coordinate panels for the same extracted path-measure segment. In the left panel the blue segment follows the faint source guide from x=30 to x=50; in the right, omitting the initial move creates a blue line from the coordinate origin to x=50."]
-
-Each faint line is the original source path. The two blue paths are separate returned values;
-their difference is caused only by the @racket[#:start-with-move-to?] choice.
-
-The first result starts at coordinates 30 and 20 and draws a line to coordinates
-50 and 20. The second starts at coordinates 0 and 0 and draws a line to coordinates
-50 and 20. Omitting the move therefore changes the geometry; it does not simply
-remove a redundant command from the independently returned path.
+@racketblock[
+(with-skia ([source (make-path '((move 10 20) (line 90 20)))]
+            [measure (make-path-measure source)]
+            [segment (path-measure-segment measure 20 40)]
+            [combined (make-path '((move 5 5) (line 10 5)))])
+  (path-add-path! combined segment #:mode 'extend)
+  (path->commands combined))
+]
+The extracted segment starts at coordinates 30 and 20. Extending
+@racket[combined] adds a connecting line from its current point, 10 and 5,
+before following the extracted segment to coordinates 50 and 20.
 }
 
 @defproc[(path-measure-matrix [measure path-measure?]
@@ -760,10 +1119,10 @@ translation to the measured point; tangent mode supplies a rotation aligning
 the x axis with the tangent; the default combines both. An unavailable
 measurement returns @racket[#f].
 
-Unlike @racket[path-measure-position+tangent], this function accepts a distance
-past the contour's end: the native measurement clamps it to the contour length.
-Negative distances are still rejected by the wrapper. The distinction matters
-when sharing a distance between the two APIs.
+The distance must be nonnegative and no greater than the current contour's
+measured length, as for @racket[path-measure-position+tangent]. An out-of-range
+distance raises an exception. To use the endpoint when a nonnegative distance
+is too large, pass @racket[(min distance (path-measure-length measure))].
 }
 
 @racketblock[
@@ -787,8 +1146,8 @@ when sharing a distance between the two APIs.
             [font (make-font #:size 10)]
             [label (make-paint #:color "#20344E")])
   (define canvas (surface-canvas surface))
-  (define-values (left top width height) (path-bounds quadratic))
-  (define-values (tight-left tight-top tight-width tight-height) (path-tight-bounds quadratic))
+  (define-values (left top width height) (vector->values (path-bounds quadratic)))
+  (define-values (tight-left tight-top tight-width tight-height) (vector->values (path-tight-bounds quadratic)))
   (draw-simple-text canvas "quadratic: control points vs. curve" 18 17 font label)
   (draw-path canvas control-polygon control)
   (draw-path canvas quadratic curve)
@@ -818,365 +1177,3 @@ Neither bounds rectangle includes a stroke width or canvas transform.  The
 placement matrices are evaluated from the current contour: advancing with
 @racket[path-measure-next-contour!] is what makes the purple arrow use the
 second contour rather than another distance on the curve.
-
-@section[#:tag "skia-path-completion"]{Arcs, Recognition, and Ordered Operations}
-
-@(declare-exporting skia skia/geometry #:use-sources (skia/geometry))
-
-These operations extend the path construction and inspection interfaces.
-Angles are in degrees. A positive oval sweep is clockwise in the usual
-unreflected coordinate system with the y-axis pointing downward.
-Rectangle arguments use coordinates, width, and height; positive extents must
-remain positive when the right and bottom edges are rounded. Arc radii are
-checked for nonnegativity after @tech{binary32} rounding; a negative input that rounds
-to negative zero is therefore accepted as zero.
-
-The operations require live paths on their owning thread. Construction changes
-the destination path, not its paint or a canvas. Native recognition tests
-stored representations, not arbitrary geometric equivalence.
-
-@defproc[(path-arc-to! [path path?]
-          [rx real?]
-          [ry real?]
-          [rotation real?]
-          [x real?]
-          [y real?]
-          [#:large? large? boolean? #f]
-          [#:direction direction (or/c 'cw 'ccw) 'cw])
-          void?]{
-Appends an elliptical arc from the current point to coordinates @racket[x]
-and @racket[y]. The radii and @racket[rotation] describe the ellipse's axes.
-The @racket[large?] flag selects the large rather than small arc, and
-@racket[direction] selects its traversal direction. Skia can adjust insufficient
-radii to reach the endpoint. Zero radii and coincident endpoints retain native
-degenerate behavior; this operation does not create an alternative arc algorithm.
-}
-
-@defproc[(path-rarc-to! [path path?]
-          [rx real?]
-          [ry real?]
-          [rotation real?]
-          [dx real?]
-          [dy real?]
-          [#:large? large? boolean? #f]
-          [#:direction direction (or/c 'cw 'ccw) 'cw])
-          void?]{
-Appends an elliptical arc from the current point to the point displaced by
-@racket[dx] and @racket[dy]. Raises an exception if adding the offsets to the
-current point produces an endpoint outside the numeric limits in
-@secref["skia-scalars"]. The radii, axis rotation, and arc choices have the same
-meanings as in @racket[path-arc-to!].
-}
-
-@defproc[(path-arc-to-oval! [path path?]
-          [x real?]
-          [y real?]
-          [width (and/c real? (>=/c 0))]
-          [height (and/c real? (>=/c 0))]
-          [start real?]
-          [sweep real?]
-          [#:force-move? force-move? boolean? #f])
-          void?]{
-Appends an arc of the specified oval, starting at @racket[start] and sweeping
-through @racket[sweep] degrees. A zero start angle is at the oval's rightmost
-point. The operation can connect the existing contour to the arc's start.
-A true @racket[force-move?] starts a new contour instead of adding that connection.
-}
-
-@defproc[(path-tangent-arc-to! [path path?]
-          [x1 real?]
-          [y1 real?]
-          [x2 real?]
-          [y2 real?]
-          [radius real?])
-          void?]{
-Appends a circular arc tangent to the line from the current point toward the
-first point and the line from the first point toward the second. A connecting
-line can precede the arc. The operation does not append a final line to the
-second point. Degenerate inputs use Skia's tangent-arc behavior.
-}
-
-@defproc[(path-add-arc! [path path?]
-          [x real?]
-          [y real?]
-          [width (and/c real? (>=/c 0))]
-          [height (and/c real? (>=/c 0))]
-          [start real?]
-          [sweep real?])
-          void?]{
-Adds an oval arc as a new contour, rather than connecting it to the preceding
-contour. The oval and angle conventions are those of @racket[path-arc-to-oval!].
-The native full-oval and degenerate cases are preserved.
-}
-
-@defproc[(path-add-rect-start! [path path?]
-          [x real?]
-          [y real?]
-          [width (and/c real? (>=/c 0))]
-          [height (and/c real? (>=/c 0))]
-          [start (integer-in 0 3)]
-          [#:direction direction (or/c 'cw 'ccw) 'cw])
-          void?]{
-Adds a rectangle contour with an explicit starting corner. Indices 0, 1, 2,
-and 3 select top-left, top-right, bottom-right, and bottom-left, respectively.
-An out-of-range index raises an exception; it is not reduced modulo four.
-}
-
-@defproc[(path-add-polygon! [path path?]
-          [points (or/c list? vector?)]
-          [#:closed? closed? boolean? #t])
-          void?]{
-Adds a contour from a list or vector of two-element point lists or vectors.
-All coordinates are validated and copied before mutation. A true @racket[closed?]
-closes the contour. Empty input draws nothing but still validates the path.
-The submitted point count and bytes are bounded by @racket[current-skia-byte-limit].
-
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)])
-  (define canvas (surface-canvas surface))
-  (with-skia ([path (make-path)]
-              [paint (make-paint #:color "#326DE6")])
-    (path-add-polygon! path '((90 12) (160 42) (136 88) (44 88) (20 42)))
-    (draw-path canvas path paint))
-)
-]
-@reference-figure["path-polygon-stage9.png"
-                  "A filled blue pentagon is drawn from a polygon contour appended to a path."]
-}
-
-@defproc[(path-add-transformed! [path path?]
-          [other path?]
-          [transform matrix?]
-          [#:mode mode (or/c 'append 'extend) 'append])
-          void?]{
-Adds the source geometry after applying the affine transform. Append preserves
-its contour starts; extend can join its first contour to the current contour
-as in @racket[path-add-path!]. A distinct source path is unchanged. Singular
-affine matrices are allowed. This is not a projective path transformation.
-}
-
-@defproc[(path-rewind! [path path?])
-          void?]{
-Clears the path's contours for reuse while retaining native storage where
-possible. Native rewind resets the fill type to winding, like
-@racket[path-reset!], but preserves internal storage for reuse.
-}
-
-@defproc[(path-verbs [path path?])
-          (listof (or/c 'move 'line 'quad 'conic 'cubic 'close))]{
-Returns the verbs from raw path iteration, in stored order. It is equivalent
-to mapping @racket[path-segment-verb] over @racket[path-segments] with
-@racket[#:mode 'raw]; no synthetic closing line is inserted.
-}
-
-@defproc[(path-segment-kinds [path path?])
-          (listof (or/c 'line 'quad 'conic 'cubic))]{
-Returns the distinct drawing-segment kinds present, in the order line, quad,
-conic, cubic. Moves and closes are not segment kinds, and repeated segments do
-not produce repeated names. This is a summary, not contour order.
-}
-
-@defproc[(path-fill-bounds [path path?])
-          (and/c (vector/c real? real? real? real?) immutable?)]{
-Returns the tight rectangle reported by native path operations. If Skia cannot
-compute the bounds, the function raises an exception. The result is not a
-control-point bound, a painted stroke or filter bound, or a finite description
-of the area outside an inverse path.
-}
-
-@defproc[(path-as-line [path path?])
-          (or/c #f (and/c (vector/c (and/c (vector/c real? real?) immutable?)
-                                               (and/c (vector/c real? real?) immutable?))
-                                               immutable?))]{
-Returns the two endpoints when native recognition identifies a line, or
-@racket[#f] otherwise. The outer vector and both point vectors are immutable.
-}
-
-@defproc[(path-as-oval [path path?])
-          (or/c #f (and/c (vector/c real? real? real? real?) immutable?))]{
-Returns the oval's bounds when native recognition succeeds, or @racket[#f]
-otherwise. An arbitrary curve with a similar outline need not be recognized.
-}
-
-@defproc[(path-as-rectangle [path path?])
-          (or/c path-rectangle? #f)]{
-Returns a rectangle description when native recognition succeeds,
-or @racket[#f] otherwise. The description records bounds, explicit closure,
-and traversal direction; recognition alone does not imply a closed contour.
-}
-
-@defproc[(path-as-rounded-rect [path path?])
-          (or/c rounded-rect? #f)]{
-Returns a rounded rectangle when the path is recognized as one, or @racket[#f]
-otherwise. The returned bounds and radii follow
-@seclink["skia-rounded-rectangle-normalization"]{Skia's normalization rules}.
-}
-
-@defproc[(path-rectangle? [v any/c])
-          boolean?]{
-Returns @racket[#t] for a rectangle description returned by
-@racket[path-as-rectangle], and @racket[#f] otherwise.
-}
-
-@defproc[(path-rectangle-bounds [description path-rectangle?])
-          (and/c (vector/c real? real? real? real?) immutable?)]{
-Returns the immutable coordinates, width, and height of the recognized rectangle.
-}
-
-@defproc[(path-rectangle-closed? [description path-rectangle?])
-          boolean?]{
-Reports whether the recognized rectangle contour was explicitly closed.
-}
-
-@defproc[(path-rectangle-direction [description path-rectangle?])
-          (or/c 'cw 'ccw)]{
-Returns the recognized traversal direction.
-}
-
-@defproc[(conic->quadratics [p0 (or/c (list/c real? real?) (vector/c real? real?))]
-          [p1 (or/c (list/c real? real?) (vector/c real? real?))]
-          [p2 (or/c (list/c real? real?) (vector/c real? real?))]
-          [weight (and/c real? (>/c 0))]
-          [#:subdivisions power (integer-in 0 5) 2])
-          (listof (and/c vector? immutable?))]{
-Approximates a rational quadratic with ordinary quadratic segments. The three
-points are its start, control point, and end. The weight must remain strictly
-positive after @tech{binary32} rounding. The subdivision exponent limits the result
-to at most @racket[(expt 2 power)] segments, rather than specifying an error tolerance.
-
-Each segment is an immutable vector of three immutable two-coordinate point
-vectors. Adjacent triples have equal endpoint values. The native routine's
-actual count is used and checked; it need not equal the maximum. Temporary
-point storage is bounded by @racket[current-skia-byte-limit].
-}
-
-@defproc[(path-combine [operations (or/c list? vector?)])
-          path?]{
-Combines a list or vector of two-element operation/path pairs, starting with
-an empty accumulator. Operations are @racket['union], @racket['difference],
-@racket['intersect], @racket['xor], and @racket['reverse-difference], applied
-in input order. The input paths remain unchanged and the result is independently owned.
-An empty batch returns an owned empty path.
-
-The number of operations is bounded by @racket[current-path-operation-limit].
-The size counted for submitted point and verb data must fit
-@racket[current-skia-byte-limit]. Exceeding either limit raises an exception
-before the path operations are submitted to Skia. These are not native heap or
-running-time bounds. If Skia cannot complete the combination, the function
-raises an exception without returning a partial path.
-
-@racketblock[
-(with-skia ([outer (make-path)] [hole (make-path)])
-  (path-add-rect! outer 20 15 120 70)
-  (path-add-circle! hole 80 50 22)
-  (with-skia ([result (path-combine
-                      (list (list 'union outer) (list 'difference hole)))])
-    (list (path-contains? result 25 20) (path-contains? result 80 50))))
-]
-
-The result contains the corner point but not the center of the removed circle.
-
-@reference-figure["path-hole.png"
-                  "A blue rectangular path with a circular hole removed from its center."]
-}
-
-@defparam[current-path-operation-limit limit (integer-in 1 #x7fffffff) #:value 4096]{
-Bounds the number of entries accepted by @racket[path-combine]. The default is
-4096. Lowering this parameter does not change an already constructed path.
-}
-
-@section{Additional Visual Examples}
-
-These examples compare curve kinds, path transforms, measurement, and Boolean operations.
-
-@racketblock[
-(with-skia ([path (make-path)]
-            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
-            [surface (make-surface 180 100 #:background 'white)])
-  (path-move-to! path 15 80)
-  (path-quad-to! path 90 5 165 80)
-  (draw-path (surface-canvas surface) path paint))
-]
-@reference-figure["quadratic-path.png"
-                  "A thick blue quadratic Bezier arc rising from two low endpoints toward one high control point."]
-
-@racketblock[
-(with-skia ([path (make-path)]
-            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
-            [surface (make-surface 180 100 #:background 'white)])
-  (path-move-to! path 15 80)
-  (path-conic-to! path 90 5 165 80 0.45)
-  (draw-path (surface-canvas surface) path paint))
-]
-@reference-figure["conic-path.png"
-                  "A thick blue rational quadratic curve whose weight pulls it differently from an ordinary quadratic."]
-
-@racketblock[
-(with-skia ([path (make-path)]
-            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 5)]
-            [surface (make-surface 180 100 #:background 'white)])
-  (path-add-arc! path 25 15 130 70 200 250)
-  (draw-path (surface-canvas surface) path paint))
-]
-@reference-figure["path-arc.png"
-                  "A blue elliptical arc drawn as its own path contour."]
-
-@racketblock[
-(with-skia ([source (make-path '((move 20 85) (line 70 20) (line 110 85) (close)))]
-            [surface (make-surface 190 120 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (with-skia ([moved (path-transform source
-                     (matrix-compose (matrix-translate 55 5)
-                                     (matrix-rotate-degrees 12)))])
-    (draw-path (surface-canvas surface) moved paint)))
-]
-@reference-figure["path-transform.png"
-                  "A filled blue triangle after an affine translation and rotation have been applied to its path geometry."]
-
-@racketblock[
-(with-skia ([path (make-path '((move 20 40) (line 170 40)))]
-            [measure (make-path-measure path)]
-            [paint (make-paint #:color "#326DE6" #:style 'stroke #:stroke-width 6)]
-            [surface (make-surface 190 80 #:background 'white)])
-  (with-skia ([segment (path-measure-segment measure 35 120)])
-    (draw-path (surface-canvas surface) segment paint)))
-]
-@reference-figure["path-measure-segment.png"
-                  "A blue middle segment extracted by measured distances from a longer horizontal path."]
-
-@racketblock[
-(with-skia ([a (make-path)] [b (make-path)]
-            [surface (make-surface 170 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (path-add-circle! a 65 50 34)
-  (path-add-circle! b 105 50 34)
-  (with-skia ([result (path-union a b)])
-    (draw-path (surface-canvas surface) result paint)))
-]
-@reference-figure["path-union.png"
-                  "The union of two overlapping circles, filled as one blue shape."]
-
-@racketblock[
-(with-skia ([a (make-path)] [b (make-path)]
-            [surface (make-surface 170 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (path-add-circle! a 65 50 34)
-  (path-add-circle! b 105 50 34)
-  (with-skia ([result (path-intersect a b)])
-    (draw-path (surface-canvas surface) result paint)))
-]
-@reference-figure["path-intersection.png"
-                  "Only the lens-shaped overlap of two circles remains after path intersection."]
-
-@racketblock[
-(with-skia ([a (make-path)] [b (make-path)]
-            [surface (make-surface 170 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (path-add-circle! a 65 50 34)
-  (path-add-circle! b 105 50 34)
-  (with-skia ([result (path-xor a b)])
-    (draw-path (surface-canvas surface) result paint)))
-]
-@reference-figure["path-xor.png"
-                  "Two blue crescent regions remain after exclusive-or removes the circles' overlap."]

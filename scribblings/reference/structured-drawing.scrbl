@@ -19,7 +19,7 @@ image grids, and transformed image batches. Drawing uses the canvas's current
 context restrictions. A successful native call does not promise vector
 preservation in PDF or SVG.
 
-Portable image-grid drawing and grid planning are described after the native
+@tech{Portable drawing} of image grids and grid planning are described after the native
 nine-patch and lattice operations. Those functions are also available from
 @racketmodname[skia/portable-drawing]. Portable markers and atlas drawing are
 described in @secref["skia-portable-drawing"].
@@ -112,9 +112,8 @@ system; they are not required to lie between zero and one.
 }
 
 @defproc[(vertices-colors [mesh vertices?])
-          (or/c #f (and/c vector? immutable?))]{
-Returns the immutable packed-ARGB color vector, or @racket[#f] if omitted.
-The entries are integers from 0 through 4294967295, not the original color syntax.
+          (or/c #f (and/c (vectorof rgba?) immutable?))]{
+Returns the immutable vector of @racket[rgba] colors, or @racket[#f] if omitted.
 }
 
 @defproc[(vertices-indices [mesh vertices?])
@@ -179,8 +178,8 @@ The result is an immutable vector, and each point entry is also immutable.
 }
 
 @defproc[(cubic-patch-colors [patch cubic-patch?])
-          (or/c #f (and/c vector? immutable?))]{
-Returns the immutable four-color packed-ARGB vector, or @racket[#f] when omitted.
+          (or/c #f (and/c (vectorof rgba?) immutable?))]{
+Returns the immutable vector of four @racket[rgba] corner colors, or @racket[#f] when omitted.
 }
 
 @defproc[(cubic-patch-texture-coordinates [patch cubic-patch?])
@@ -236,7 +235,7 @@ The lattice constructor can operate without an image. Drawing validates its
 bounds and divisions against the actual source image. Divisions must lie strictly
 inside the selected bounds; the native outer-edge special cases are not accepted.
 
-@bold{Conceptual diagram.} Nine-patch drawing preserves correspondence between
+Nine-patch drawing preserves correspondence between
 source and destination cells. Corners remain fixed, edge spans stretch in one
 axis, and the center span stretches in both. The center rectangle is
 @tt{x, y, width, height}, not opposite corners. If the destination is smaller
@@ -314,8 +313,8 @@ cells use source-image samples.
 }
 
 @defproc[(image-lattice-colors [lattice image-lattice?])
-          (or/c #f (and/c vector? immutable?))]{
-Returns the immutable packed-ARGB color vector, or @racket[#f] when omitted.
+          (or/c #f (and/c (vectorof rgba?) immutable?))]{
+Returns the immutable vector of @racket[rgba] colors, or @racket[#f] when omitted.
 Its entries correspond to every grid cell, not only fixed-color cells.
 }
 
@@ -391,10 +390,10 @@ To draw the grid as separate image rectangles, use @racket[draw-image-lattice/po
 Use @racket[draw-image-nine/portable] or @racket[draw-image-lattice/portable] to
 draw the grids described above as separate image rectangles. These functions
 calculate the cell layout for you; you do not need to construct a @tech{grid plan}.
-They use ordinary drawing commands before recording, without changing
-@racket[draw-image-nine] or @racket[draw-image-lattice] or silently selecting a
-backend. The images still contain raster pixels; drawing them this way does not
-turn them into vector geometry or guarantee identical results in every viewer.
+Use these @tech{portable drawing} helpers when the document writer does not
+support the native grid operation. When drawing to a recording, each cell is
+recorded as a separate rectangle operation. Images remain raster images;
+the output restrictions described under @secref["skia-portable-drawing"] still apply.
 
 The image-grid functions below and @racket[draw-atlas/portable] accept
 @tech[#:key "nearest sampling"]{nearest} or @tech{linear sampling} and a byte alpha
@@ -573,7 +572,7 @@ edges. A zero extent means the drawing function omits this cell.
 @defproc[(image-grid-cell-color [cell image-grid-cell?])
           (or/c rgba? #f)]{
 Returns an @racket[rgba] value for a fixed-color cell, or @racket[#f] for
-other kinds. This is not the packed integer used by @racket[image-lattice-colors].
+other kinds. The color representation matches @racket[image-lattice-colors].
 }
 
 @defproc[(image-grid-plan->jsexpr [plan (listof image-grid-cell?)])

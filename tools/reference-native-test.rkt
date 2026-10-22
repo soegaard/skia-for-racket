@@ -189,21 +189,15 @@
       ;; composition acts right-to-left on points, and final-row padding is
       ;; excluded only from the minimum addressable storage length.
       (for ([actual (in-list
-                     (call-with-values
-                      (lambda ()
-                        (matrix-map-point
+                     (vector->list (matrix-map-point
                          (matrix-compose (matrix-translate 10 20) (matrix-scale 2))
-                         3 4))
-                      list))]
+                         3 4)))]
             [expected '(16 28)])
         (check-= actual expected 1e-6))
       (for ([actual (in-list
-                     (call-with-values
-                      (lambda ()
-                        (matrix-map-point
+                     (vector->list (matrix-map-point
                          (matrix-compose (matrix-scale 2) (matrix-translate 10 20))
-                         3 4))
-                      list))]
+                         3 4)))]
             [expected '(26 48)])
         (check-= actual expected 1e-6))
       (check-equal?

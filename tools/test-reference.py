@@ -43,7 +43,7 @@ PROCEDURES = {
 MATRIX_EXPORTS = (
     'matrix? make-matrix matrix-identity matrix-xx matrix-yx matrix-xy matrix-yy '
     'matrix-x0 matrix-y0 matrix->vector vector->matrix matrix-translate matrix-scale '
-    'matrix-rotate matrix-rotate-degrees matrix-skew matrix-compose matrix-invert '
+    'matrix-rotate-radians matrix-rotate-degrees matrix-skew matrix-compose matrix-invert '
     'matrix-map-point matrix-map-vector matrix-map-rect').split()
 GEOMETRY_EXPORTS = (
     'paint-style paint-stroke-width paint-cap paint-join paint-miter-limit '
@@ -81,7 +81,7 @@ for names, arity in (
     ('path-quad-to! path-rquad-to!', 32), ('path-conic-to! path-rconic-to!', 64),
     ('path-cubic-to! path-rcubic-to!', 128),
     ('matrix? matrix-xx matrix-yx matrix-xy matrix-yy matrix-x0 matrix-y0 matrix->vector '
-     'vector->matrix matrix-rotate matrix-rotate-degrees matrix-invert', 2),
+     'vector->matrix matrix-rotate-radians matrix-rotate-degrees matrix-invert', 2),
     ('matrix-translate matrix-skew', 4), ('matrix-map-point matrix-map-vector', 8),
     ('matrix-map-rect', 32), ('make-matrix', 127), ('matrix-scale', 6), ('matrix-compose', -1),
     ('image? image-from-bytes image-from-file image-width image-height image-color-type '
@@ -117,7 +117,7 @@ PROCEDURES.update({
     'path-contours': (2, ['force-closed?', 'mode']),
     'make-path-measure': (2, ['force-closed?', 'res-scale']),
     'path-measure-set-path!': (4, ['force-closed?']),
-    'path-measure-segment': (8, ['start-with-move-to?']),
+    'path-measure-segment': (8, []),
     'path-measure-matrix': (4, ['mode']),
     'rgba-bytes->image': (8, ['color-space', 'premultiplied?']),
     'image->rgba-bytes': (2, ['color-space', 'premultiplied?']),
@@ -1588,7 +1588,7 @@ class R2ProseTests(unittest.TestCase):
     def test_caller_visible_conversion_results_and_restrictions_are_preserved(self):
         cases = {
             'structured-drawing.scrbl': (
-                'Returns the immutable packed-ARGB color vector',
+                'Returns the immutable vector of @racket[rgba] colors',
                 'exactly four entries, in corner order',
                 'even when its cell type does not use the color',
                 "independent of later changes to the caller's collections"),
@@ -1626,10 +1626,12 @@ class R2ProseTests(unittest.TestCase):
         self.assertIn("'linear]", text)
         self.assertIn('coordinates and sizes can be fractional', text)
 
-    def test_path_measure_distance_difference_is_explicit(self):
+    def test_path_measure_distance_limits_are_consistent(self):
         text = self.text('paths.scrbl')
         self.assertIn('no greater than the current', text)
-        self.assertIn('clamps it to the contour length', text)
+        self.assertIn('as for @racket[path-measure-position+tangent]', text)
+        self.assertIn('distance raises an exception', text)
+        self.assertIn('(min distance (path-measure-length measure))', text)
 
     def test_relative_move_after_close_is_not_last_stored_point(self):
         text = self.text('paths.scrbl')
@@ -1762,7 +1764,7 @@ class R21SourceTests(unittest.TestCase):
         for chapter, identifier, expression in (
             ('paints.scrbl', 'paint-reset!', '(paint-reset! paint)'),
             ('paths.scrbl', 'path-segments', "[mode '(normal raw)]"),
-            ('paths.scrbl', 'path-measure-segment', '#:start-with-move-to? #f'),
+            ('paths.scrbl', 'path-measure-segment', "#:mode 'extend"),
         ):
             text = (self.fixture.root / checks.REFERENCE / chapter).read_text()
             start = text.index('@defproc[(' + identifier + ' ')
@@ -2629,7 +2631,7 @@ class R3BlobSemanticsTests(unittest.TestCase):
         self.assertEqual(fields['#:rotation'][2:], ['real?', '0'])
         self.assertEqual(fields['#:anchor'][-1], ['quote', ['0', '0']])
         self.assertEqual(self.header('atlas-transform-coefficients', 'matrices')[1],
-                         ['vector/c'] + ['real?'] * 4)
+                         ['and/c', ['vector/c'] + ['real?'] * 4, 'immutable?'])
         self.assertIn('Zero scale is accepted', self.text('matrices'))
         self.assertIn('anchor is copied', self.text('matrices'))
 
@@ -2949,7 +2951,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
         self.assertEqual({row['file']: row['git_blob'] for row in manifest['snapshots']}, {
-            'api/public-api-headless.json': '042613b4b95a3ed45d7631464c292f7c914c64a9',
+            'api/public-api-headless.json': '2d6e2c100bada538743b757b444f649e709b4927',
             'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
 
     def test_standard_space_definitions_preserve_the_legacy_section_target(self):
@@ -3989,6 +3991,31 @@ class R3gaGeometryTests(unittest.TestCase):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('region-spans')[1][-1][-1], 'immutable?')
 
+    def test_geometry_results_use_consistent_immutable_vectors(self):
+        point = ['and/c', ['vector/c', 'real?', 'real?'], 'immutable?']
+        rectangle = ['and/c', ['vector/c'] + ['real?'] * 4, 'immutable?']
+        points = ['and/c', ['vectorof', point], 'immutable?']
+        for name in ('matrix-map-point', 'matrix-map-vector', 'path-point-ref', 'path-last-point'):
+            with self.subTest(name=name):
+                self.assertEqual(self.header(name)[1], point)
+        for name in ('matrix-map-rect', 'path-bounds', 'path-tight-bounds'):
+            with self.subTest(name=name):
+                self.assertEqual(self.header(name)[1], rectangle)
+        for name in ('path-points', 'path-segment-points'):
+            with self.subTest(name=name):
+                self.assertEqual(self.header(name)[1], points)
+        for name in ('vertices-colors', 'cubic-patch-colors', 'image-lattice-colors'):
+            with self.subTest(name=name):
+                self.assertEqual(self.header(name)[1],
+                                 ['or/c', '#f', ['and/c', ['vectorof', 'rgba?'], 'immutable?']])
+
+    def test_polygon_inputs_and_segment_extraction_have_simpler_call_boundaries(self):
+        fields = {field[0]: field[1] for field in self.header('draw-polygon')[0][1:]}
+        self.assertEqual(fields['points'], ['or/c', 'list?', 'vector?'])
+        self.assertEqual(self.by_name['path-measure-segment']['allowed_keywords'], [])
+        self.assertEqual(self.by_name['region-reverse-difference']['arity_mask'], '4')
+        self.assertEqual(self.by_name['matrix-rotate-radians']['arity_mask'], '2')
+
     def test_vertex_metadata_has_an_explicit_post_closure_exception(self):
         text = self.text('structured-drawing.scrbl')
         for phrase in ('after explicit closure', 'without requiring its creating thread',
@@ -4112,7 +4139,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_new_scope_keeps_actual_pinned_inventory_hashes(self):
         expected = {row['file']: row['git_blob'] for row in self.manifest['snapshots']}
         self.assertEqual(expected, {
-            'api/public-api-headless.json': '042613b4b95a3ed45d7631464c292f7c914c64a9',
+            'api/public-api-headless.json': '2d6e2c100bada538743b757b444f649e709b4927',
             'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
 
 

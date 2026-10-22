@@ -136,8 +136,9 @@
 (struct path-segment (verb points conic-weight closing-line?)
   #:transparent #:constructor-name make-path-segment-record)
 ;; Fields:
-;;   verb: 'move, 'line, 'quad, 'conic, 'cubic, or 'close. points: list of (list x y) coordinates
-;;   in native iterator order: segment start, control points, then endpoint; move has one point and
+;;   verb: 'move, 'line, 'quad, 'conic, 'cubic, or 'close. points: immutable vector of immutable
+;;   #(x y) vectors in native iterator order: segment start, control points, then endpoint.
+;;   A move has one point and
 ;;   close has none. conic-weight: real weight only for 'conic, otherwise #f. closing-line?: whether
 ;;   normal iteration supplied a closing line; always #f for raw iteration and other verbs.
 
@@ -196,9 +197,11 @@
              (unless (<= bytes (current-skia-byte-limit))
                (error who "path snapshot exceeds current-skia-byte-limit"))
              (define points
-               (for/list ([i (in-range count)])
-                 (define point (ptr-ref buffer _sk-point i))
-                 (list (scalar who (sk-point-x point)) (scalar who (sk-point-y point)))))
+               (vector->immutable-vector
+                (for/vector ([i (in-range count)])
+                  (define point (ptr-ref buffer _sk-point i))
+                  (vector-immutable (scalar who (sk-point-x point))
+                                    (scalar who (sk-point-y point))))))
              ;; Never read conicWeight or isCloseLine for the wrong verb.
              (define weight (and (= verb 3) (scalar who (conic-weight it))))
              (define closing? (and (not raw?) (= verb 1)
@@ -227,7 +230,9 @@
     (define verb (path-segment-verb segment))
     (define points (path-segment-points segment))
     (define arguments
-      (if (memq verb '(move close)) (append* points) (append* (cdr points))))
+      (append*
+       (for/list ([point (in-vector points (if (memq verb '(move close)) 0 1))])
+         (vector->list point))))
     (append (list verb) arguments
             (if (eq? verb 'conic) (list (path-segment-conic-weight segment)) '()))))
 
@@ -256,7 +261,7 @@
 (define (path-measure-matrix measure distance #:mode [mode 'position+tangent])
   (define who 'path-measure-matrix)
   (define h (path-measure-h who measure))
-  (define d (nonnegative-scalar who distance))
+  (define d (checked-measure-distance who measure distance))
   (define flags
     (case mode [(position) 1] [(tangent) 2] [(position+tangent) 3]
       [else (raise-argument-error who "'position, 'tangent, or 'position+tangent" mode)]))

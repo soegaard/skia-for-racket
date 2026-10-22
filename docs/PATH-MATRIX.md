@@ -10,7 +10,7 @@ values are also available separately from `(require skia/matrix)`.
   (matrix-compose (matrix-translate 100 60)
                   (matrix-rotate-degrees 30)
                   (matrix-scale 2 1)))
-(define-values (x y) (matrix-map-point m 10 0))
+(define-values (x y) (vector->values (matrix-map-point m 10 0)))
 ```
 
 `matrix-compose` multiplies left to right: `A * B` applies **B first, then A**.
@@ -42,7 +42,7 @@ coefficient is checked and rounded to its single-precision native value.
 `vector->matrix` copies and validates its input. Values may be freely shared
 between Racket threads. They have no native lifetime and are not `skia-resource?`.
 
-`matrix-translate`, `matrix-scale`, `matrix-skew`, `matrix-rotate` (radians), and
+`matrix-translate`, `matrix-scale`, `matrix-skew`, `matrix-rotate-radians` (radians), and
 `matrix-rotate-degrees` are convenience constructors. Positive rotation maps
 positive x toward positive y, appearing clockwise in the default y-down canvas.
 Skew arguments are shear factors, not angles. Negative and zero scales are allowed.
@@ -53,8 +53,9 @@ epsilon. Near-singular transforms remain numerically sensitive. Pure calculation
 round results to single precision; this does not promise bit-for-bit equality
 with every native SIMD arithmetic path.
 
-`matrix-map-point` and `matrix-map-vector` return two values. The latter ignores
-translation. `matrix-map-rect` returns `(values x y width height)` for the
+`matrix-map-point` and `matrix-map-vector` return immutable `#(x y)` vectors.
+The latter ignores translation. `matrix-map-rect` returns an immutable
+`#(x y width height)` vector for the
 axis-aligned bounds of all four transformed corners. It does not preserve an
 oriented rectangle as an oriented shape. Non-finite/unrepresentable results raise.
 
@@ -73,8 +74,7 @@ oriented rectangle as an oriented shape. Non-finite/unrepresentable results rais
 ```
 
 Each immutable `path-segment?` describes a stored or iterator-generated operation.
-The points are immutable lists of `(list x y)` pairs, already copied from native
-storage. Verb-specific point counts are:
+The points are immutable vectors of immutable `#(x y)` vectors. Verb-specific point counts are:
 
 | Verb | Points |
 |---|---|
@@ -83,7 +83,7 @@ storage. Verb-specific point counts are:
 | `quad` | Start, control, end |
 | `conic` | Start, control, end; separate conic weight |
 | `cubic` | Start, first control, second control, end |
-| `close` | Empty list |
+| `close` | Empty vector |
 
 The weight is `#f` except for `conic`. `path-segment-closing-line?` identifies a
 line synthesized by normal iteration to close a contour; it is always false for
@@ -144,8 +144,9 @@ probe compares filled shapes, for which the two geometries agree.
 
 `#:mode` is `'position+tangent` by default, or `'position` / `'tangent`.
 The combined matrix translates the origin to the sampled point and aligns its
-local x-axis with the unit tangent. Distance must be finite and nonnegative;
-Skia clamps a distance beyond the current contour's length to its endpoint.
+local x-axis with the unit tangent. Distance must be finite, nonnegative, and
+no greater than the current contour's measured length; an out-of-range value
+raises an exception, as for `path-measure-position+tangent`.
 Empty/zero-length contours return `#f`. The current contour is controlled by the
 existing `path-measure-next-contour!`; this function does not advance it.
 

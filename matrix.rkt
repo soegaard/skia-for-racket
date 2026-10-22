@@ -16,7 +16,7 @@
 (provide matrix? make-matrix matrix-identity
          matrix-xx matrix-yx matrix-xy matrix-yy matrix-x0 matrix-y0
          matrix->vector vector->matrix
-         matrix-translate matrix-scale matrix-rotate matrix-rotate-degrees matrix-skew
+         matrix-translate matrix-scale matrix-rotate-radians matrix-rotate-degrees matrix-skew
          matrix-compose matrix-invert matrix-map-point matrix-map-vector matrix-map-rect)
 
 ;;;
@@ -99,16 +99,16 @@
 ;   Returns a shear matrix with horizontal factor x and vertical factor y.
 (define (matrix-skew x y) (make-matrix 1 y x 1 0 0))
 
-; matrix-rotate : real? -> matrix?
+; matrix-rotate-radians : real? -> matrix?
 ;   Returns a rotation about the origin.
-(define (matrix-rotate radians)
-  (define angle (component 'matrix-rotate radians))
+(define (matrix-rotate-radians radians)
+  (define angle (component 'matrix-rotate-radians radians))
   (define c (cos angle))
   (define s (sin angle))
   (make-matrix c s (- s) c))
 
 ; matrix-rotate-degrees : real? -> matrix?
-;   Like matrix-rotate, with the angle measured in degrees.
+;   Like matrix-rotate-radians, with the angle measured in degrees.
 (define (matrix-rotate-degrees degrees)
   (define angle (component 'matrix-rotate-degrees degrees))
   ;; Reduce first, and keep quarter turns exact. Avoid needless pi-rounding.
@@ -117,7 +117,7 @@
         [(= reduced 90) (make-matrix 0 1 -1 0)]
         [(= reduced 180) (make-matrix -1 0 0 -1)]
         [(= reduced 270) (make-matrix 0 -1 1 0)]
-        [else (matrix-rotate (* reduced (/ pi 180.0)))]))
+        [else (matrix-rotate-radians (* reduced (/ pi 180.0)))]))
 
 ;;;
 ;;; Composition and Inversion
@@ -173,29 +173,30 @@
 ;;; Point, Vector, and Rectangle Mapping
 ;;;
 
-; map-xy : symbol? matrix? real? real? boolean? -> (values real? real?)
+; map-xy : symbol? matrix? real? real? boolean? -> (and/c (vector/c real? real?) immutable?)
 ;   Maps two coordinates, optionally adding translation, and checks the results.
 (define (map-xy who m x y translate?)
   (checked who m)
   (define fx (component who x))
   (define fy (component who y))
-  (values (component who (+ (* (matrix-xx m) fx) (* (matrix-xy m) fy)
-                            (if translate? (matrix-x0 m) 0)))
-          (component who (+ (* (matrix-yx m) fx) (* (matrix-yy m) fy)
-                            (if translate? (matrix-y0 m) 0)))))
+  (vector-immutable
+   (component who (+ (* (matrix-xx m) fx) (* (matrix-xy m) fy)
+                     (if translate? (matrix-x0 m) 0)))
+   (component who (+ (* (matrix-yx m) fx) (* (matrix-yy m) fy)
+                     (if translate? (matrix-y0 m) 0)))))
 
-; matrix-map-point : matrix? real? real? -> (values real? real?)
-;   Returns the transformed point as two values, including the translation terms.
+; matrix-map-point : matrix? real? real? -> (and/c (vector/c real? real?) immutable?)
+;   Returns the transformed point as an immutable #(x y) vector, including the translation terms.
 (define (matrix-map-point m x y) (map-xy 'matrix-map-point m x y #t))
 
-; matrix-map-vector : matrix? real? real? -> (values real? real?)
-;   Returns the transformed displacement as two values, omitting translation.
+; matrix-map-vector : matrix? real? real? -> (and/c (vector/c real? real?) immutable?)
+;   Returns the transformed displacement as an immutable #(x y) vector, omitting translation.
 (define (matrix-map-vector m x y) (map-xy 'matrix-map-vector m x y #f))
 
-; matrix-map-rect : matrix? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) -> (values
-;   real? real? real? real?)
-;   Returns the axis-aligned bounding rectangle of the four transformed corners, as left, top,
-;   width, and height.
+; matrix-map-rect : matrix? real? real? (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) ->
+;   (and/c (vector/c real? real? real? real?) immutable?)
+;   Returns the axis-aligned bounding rectangle of the four transformed corners, as an immutable
+;   #(x y width height) vector.
 (define (matrix-map-rect m x y width height)
   (checked 'matrix-map-rect m)
   (define w (component 'matrix-map-rect width))
@@ -208,10 +209,10 @@
   (define corners
     (for/list ([p (in-list (list (list fx fy) (list (+ fx w) fy)
                                 (list fx (+ fy h)) (list (+ fx w) (+ fy h))))])
-      (call-with-values (lambda () (matrix-map-point m (car p) (cadr p))) list)))
-  (define xs (map car corners))
-  (define ys (map cadr corners))
+      (matrix-map-point m (car p) (cadr p))))
+  (define xs (map (lambda (p) (vector-ref p 0)) corners))
+  (define ys (map (lambda (p) (vector-ref p 1)) corners))
   (define left (apply min xs))
   (define top (apply min ys))
-  (values left top (component 'matrix-map-rect (- (apply max xs) left))
-          (component 'matrix-map-rect (- (apply max ys) top))))
+  (vector-immutable left top (component 'matrix-map-rect (- (apply max xs) left))
+                    (component 'matrix-map-rect (- (apply max ys) top))))

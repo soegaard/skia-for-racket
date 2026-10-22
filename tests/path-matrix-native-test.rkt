@@ -176,7 +176,7 @@
        (check-equal? (path->commands p) all-commands)
        (define s (path-segments p #:mode 'raw))
        (check-equal? (verbs s) '(move line quad conic cubic close))
-       (check-equal? (map (lambda (x) (length (path-segment-points x))) s) '(1 2 3 3 4 0))
+       (check-equal? (map (lambda (x) (vector-length (path-segment-points x))) s) '(1 2 3 3 4 0))
        (check-equal? (path-segment-conic-weight (list-ref s 3)) 0.5)))
    (test-case "normal iterator marks the generated closing line"
      (with-skia ([p (make-path '((move 0 0) (line 20 0) (line 20 10) (close)))])
@@ -185,7 +185,7 @@
        (check-equal? (verbs raw) '(move line line close))
        (check-equal? (verbs normal) '(move line line line close))
        (check-true (path-segment-closing-line? (list-ref normal 3)))
-       (check-equal? (path-segment-points (list-ref normal 3)) '((20.0 10.0) (0.0 0.0)))
+       (check-equal? (path-segment-points (list-ref normal 3)) #(#(20.0 10.0) #(0.0 0.0)))
        (check-false (ormap path-segment-closing-line? raw))))
    (test-case "forced closure is a view, not a path mutation"
      (with-skia ([p (make-path '((move 0 0) (line 20 10)))])
@@ -224,9 +224,13 @@
    (test-case "snapshot control points stay detached after mutation"
      (with-skia ([p (make-path all-commands)])
        (define old (path-segments p #:mode 'raw))
+       (for ([segment (in-list old)])
+         (check-true (immutable? (path-segment-points segment)))
+         (for ([point (in-vector (path-segment-points segment))])
+           (check-true (immutable? point))))
        (path-transform! p (matrix-translate 100 200))
-       (check-equal? (path-segment-points (car old)) '((0.0 0.0)))
-       (check-equal? (path-segment-points (car (path-segments p #:mode 'raw))) '((100.0 200.0)))))
+       (check-equal? (path-segment-points (car old)) #(#(0.0 0.0)))
+       (check-equal? (path-segment-points (car (path-segments p #:mode 'raw))) #(#(100.0 200.0)))))
    (test-case "command round trip preserves native structure and fill rule"
      (with-skia ([p (make-path all-commands #:fill-rule 'even-odd)]
                  [copy (make-path (path->commands p) #:fill-rule (path-fill-rule p))])
@@ -255,9 +259,10 @@
        (matrix-near combined (make-matrix tx ty (- ty) tx x y))
        (matrix-near (path-measure-matrix m 25 #:mode 'position) (matrix-translate x y))
        (matrix-near (path-measure-matrix m 25 #:mode 'tangent) (make-matrix tx ty (- ty) tx))))
-   (test-case "measurement distance is clamped at the contour end"
+   (test-case "measurement distance must lie on the current contour"
      (with-skia ([p (make-path '((move 0 0) (line 10 0)))] [m (make-path-measure p)])
-       (matrix-near (path-measure-matrix m 100) (matrix-translate 10 0))
+       (matrix-near (path-measure-matrix m 10) (matrix-translate 10 0))
+       (check-exn exn:fail:contract? (lambda () (path-measure-matrix m 100)))
        (check-exn exn:fail? (lambda () (path-measure-matrix m -1)))
        (check-exn exn:fail? (lambda () (path-measure-matrix m 0 #:mode 'wrong)))))
    (test-case "empty and zero-length measured paths return false"

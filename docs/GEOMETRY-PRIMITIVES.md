@@ -28,7 +28,7 @@ Negative sizes, inexact integers, and out-of-range edges are rejected.
 
 `region-op` accepts `difference`, `intersect`, `union`, `xor`,
 `reverse-difference`, or `replace`. The convenience functions `region-union`,
-`region-intersect`, `region-difference`, and `region-xor` call that operation.
+`region-intersect`, `region-difference`, `region-reverse-difference`, and `region-xor` call that operation.
 An empty Boolean result is a valid resource, not an allocation failure.
 `region-copy` and `region-translate` return independent resources.
 
@@ -101,7 +101,7 @@ normalized 0–1 UVs. Without texture coordinates, Skia uses vertex positions.
 
 All lists/vectors are copied. Introspection functions expose detached immutable
 values: `vertices-mode`, `vertices-positions`, `vertices-texture-coordinates`,
-`vertices-colors` (packed ARGB integers), `vertices-indices`, and `vertices-count`.
+`vertices-colors` (an immutable vector of `rgba` values), `vertices-indices`, and `vertices-count`.
 These stored values remain readable after the native resource is closed;
 drawing does not. Colors, texture coordinates, and indices return `#f` if absent.
 

@@ -86,11 +86,16 @@
    )
    (test-case "xor reverse difference and replace use the correct op codes"
      (with-skia ([a (make-region '((0 0 20 20)))] [b (make-region '((10 0 20 20)))]
-                 [x (region-xor a b)] [d (region-op a b 'reverse-difference)]
+                 [x (region-xor a b)] [d (region-reverse-difference a b)]
+                  [expected (region-op a b 'reverse-difference)]
                   [r (region-op a b 'replace)])
        (check-false (region-contains-point? x 15 10))
        (check-equal? (region-bounds d) #(20 0 10 20))
-       (check-equal? (region-bounds r) (region-bounds b)))
+       (check-equal? (region-rectangles d) (region-rectangles expected))
+       (skia-close! a)
+       (skia-close! b)
+       (check-equal? (region-bounds d) #(20 0 10 20))
+       (check-equal? (region-bounds r) #(10 0 20 20)))
    )
    (test-case "empty operation results are not allocation failures"
      (with-skia ([a (make-region '((0 0 10 10)))] [b (region-difference a a)])

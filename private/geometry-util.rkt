@@ -49,15 +49,16 @@
      (unless (= (length xy) 2) (raise-argument-error who "two-element point" p))
      (vector-immutable (scalar who (car xy)) (scalar who (cadr xy))))))
 
-; geometry-colors : symbol? any/c exact-nonnegative-integer? -> (or/c #f vector?)
-;   Copies optional packed ARGB colors with one entry per required vertex or cell.
+; geometry-colors : symbol? any/c exact-nonnegative-integer? ->
+;   (or/c #f (and/c (vectorof rgba?) immutable?))
+;   Returns rgba values with one entry per required vertex or cell, or #f when colors are omitted.
 (define (geometry-colors who v n)
   (and v
        (let ([xs (geometry-list who v)])
          (geometry-budget who (length xs) (* (length xs) 4))
          (unless (= (length xs) n)
            (raise-arguments-error who "wrong number of colors" "expected" n "given" (length xs)))
-         (snapshot (map color->argb xs)))))
+         (snapshot (map color->rgba xs)))))
 
 ; geometry-rectangle : symbol? any/c -> vector?
 ;   Checks and snapshots x/y/width/height bounds while validating native edge coordinates.

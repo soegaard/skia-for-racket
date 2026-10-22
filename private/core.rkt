@@ -95,7 +95,7 @@
 ;; Fields:
 ;;   handle: owned native vertices lifetime cell. mode: 'triangles, 'triangle-strip, or 'triangle-fan.
 ;;   positions: immutable coordinate-pair vector; texture: matching texture-coordinate vector or #f.
-;;   colors: matching packed native color vector or #f. indices: optional immutable uint16 index
+;;   colors: matching immutable vector of rgba values or #f. indices: optional immutable uint16 index
 ;;   vector.
 ;;   All per-vertex arrays agree in length; indices refer to positions. Native construction copies
 ;;   arrays, while detached snapshots support later inspection.
@@ -984,7 +984,7 @@
 ;; by main.rkt; only safe value/resource operations form the public API.
 (module* path-matrix-internals #f
   (provide call-on-canvas path-h path-measure-h shader-h make-shader-record
-           call-with-native-temporary))
+           checked-measure-distance call-with-native-temporary))
 
 (provide svg-document? make-svg-document svg-document-width svg-document-height
          svg-document-state svg-document-canvas
@@ -3208,33 +3208,35 @@
   (call-on-canvas 'draw-path c (list (path-h 'draw-path path form) (paint-h 'draw-path p form))
                  sk_canvas_draw_path form))
 
-; draw-polygon : canvas? (and/c pair? (listof (list/c real? real?))) paint? [#:closed? boolean?] ->
-;   void?
+; draw-polygon : canvas? (or/c list? vector?) paint? [#:closed? boolean?] -> void?
 ;   Draws connected straight segments through points.
 (define (draw-polygon c points p #:closed? [closed? #t])
   (define form '(draw-polygon canvas points paint #:closed? closed?))
   (boolean 'draw-polygon closed? form '#:closed?)
-  (unless (and (list? points) (pair? points))
-    (raise-call-argument-error 'draw-polygon "nonempty list of (list x y) points"
+  (unless (or (list? points) (vector? points))
+    (raise-call-argument-error 'draw-polygon "list or vector of two-coordinate points"
                                points form 'points))
+  (define point-list (if (vector? points) (vector->list points) points))
   (define commands
-    (for/list ([pt (in-list points)] [i (in-naturals)])
+    (for/list ([pt (in-list point-list)] [i (in-naturals)])
       (match pt
-        [(list x y)
+        [(or (list x y) (vector x y))
          (list (if (= i 0) 'move 'line)
                (scalar 'draw-polygon x form 'points
                        (list "point index (0-based)" i "coordinate" 'x))
                (scalar 'draw-polygon y form 'points
                        (list "point index (0-based)" i "coordinate" 'y)))]
-        [_ (raise-call-argument-error 'draw-polygon "(list x y) point" pt form 'points
+        [_ (raise-call-argument-error 'draw-polygon "two-element list or vector point" pt form 'points
                                       (list "point index (0-based)" i))])))
-  (with-skia ([path (make-path (if closed? (append commands '((close))) commands))])
-    ;; Keep draw-path's native dispatch and output auditing, but identify the public
-    ;; polygon arguments if their types are wrong. Lifetime checks still run there.
-    (paint-h 'draw-polygon p form)
-    (unless (canvas? c)
-      (raise-call-argument-error 'draw-polygon "canvas?" c form 'canvas))
-    (draw-path c path p)))
+  (define ph (paint-h 'draw-polygon p form))
+  (cond
+    [(null? commands)
+     (call-on-canvas 'draw-polygon c (list ph) (lambda (_cp _pp) (void)) form)]
+    [else
+     (unless (canvas? c)
+       (raise-call-argument-error 'draw-polygon "canvas?" c form 'canvas))
+     (with-skia ([path (make-path (if closed? (append commands '((close))) commands))])
+       (draw-path c path p))]))
 
 ;;;
 ;;; Mutable Paths and Geometry
@@ -3410,8 +3412,8 @@
 (define (path-point-count p)
   (call-with-owned 'path-point-count (list (path-h 'path-point-count p)) sk_path_count_points))
 
-; path-point-ref : skia-path? exact-nonnegative-integer? -> (values real? real?)
-;   Returns the stored point at index as x and y values.
+; path-point-ref : skia-path? exact-nonnegative-integer? -> (and/c (vector/c real? real?) immutable?)
+;   Returns the stored point at index as an immutable #(x y) vector.
 (define (path-point-ref p index)
   (define who 'path-point-ref)
   (unless (and (exact-integer? index) (>= index 0))
@@ -3423,16 +3425,17 @@
       (unless (< index n)
         (raise-arguments-error who "point index out of range" "index" index "count" n))
       (sk_path_get_point pp index pt)))
-  (values (sk-point-x pt) (sk-point-y pt)))
+  (vector-immutable (sk-point-x pt) (sk-point-y pt)))
 
-; path-points : skia-path? -> (listof (list/c real? real?))
-;   Returns detached coordinate pairs for all stored points in order.
+; path-points : skia-path? -> (and/c (vectorof (and/c (vector/c real? real?) immutable?)) immutable?)
+;   Returns an immutable vector of immutable #(x y) vectors for all stored points in order.
 (define (path-points p)
-  (for/list ([i (in-range (path-point-count p))])
-    (call-with-values (lambda () (path-point-ref p i)) list)))
+  (vector->immutable-vector
+   (for/vector ([i (in-range (path-point-count p))])
+     (path-point-ref p i))))
 
-; path-last-point : skia-path? -> (values real? real?)
-;   Returns the last stored point as x and y values.
+; path-last-point : skia-path? -> (and/c (vector/c real? real?) immutable?)
+;   Returns the last stored point as an immutable #(x y) vector.
 (define (path-last-point p)
   (define who 'path-last-point)
   (define pt (make-sk-point 0.0 0.0))
@@ -3440,7 +3443,7 @@
     (lambda (pp)
       (unless (sk_path_get_last_point pp pt)
         (error who "path has no last point"))))
-  (values (sk-point-x pt) (sk-point-y pt)))
+  (vector-immutable (sk-point-x pt) (sk-point-y pt)))
 
 ; path-convex? : skia-path? -> boolean?
 ;   Returns Skia's convexity classification for the path.
@@ -3475,22 +3478,22 @@
         (sk_path_to_svg_string pp sp)
         (copy-sk-string who sp))))))
 
-; get-path-bounds : symbol? any/c any/c -> (values any/c any/c any/c any/c)
-;   Copies native rectangle edges into detached x, y, width, and height results.
+; get-path-bounds : symbol? skia-path? procedure? -> (and/c vector? immutable?)
+;   Copies native rectangle edges into an immutable #(x y width height) vector.
 (define (get-path-bounds who p native-get)
   (define r (make-sk-rect 0.0 0.0 0.0 0.0))
   (call-with-owned who (list (path-h who p))
     (lambda (pp) (native-get pp r)))
-  (values (sk-rect-left r) (sk-rect-top r)
-          (- (sk-rect-right r) (sk-rect-left r))
-          (- (sk-rect-bottom r) (sk-rect-top r))))
+  (vector-immutable (sk-rect-left r) (sk-rect-top r)
+                    (- (sk-rect-right r) (sk-rect-left r))
+                    (- (sk-rect-bottom r) (sk-rect-top r))))
 
-; path-bounds : skia-path? -> (values real? real? real? real?)
-;   Returns the bounds of the stored points, including control points, as left, top, width, and
-;   height.
+; path-bounds : skia-path? -> (and/c (vector/c real? real? real? real?) immutable?)
+;   Returns the bounds of stored points, including controls, as an immutable #(x y width height)
+;   vector.
 (define (path-bounds p) (get-path-bounds 'path-bounds p sk_path_get_bounds))
 
-; path-tight-bounds : skia-path? -> (values real? real? real? real?)
+; path-tight-bounds : skia-path? -> (and/c (vector/c real? real? real? real?) immutable?)
 ;   Returns tighter geometric bounds computed from the curves rather than simply the control-point
 ;   bounds.
 (define (path-tight-bounds p)
@@ -3703,12 +3706,10 @@
       (values #f #f #f #f)))
 
 ; path-measure-segment : path-measure? (and/c real? (>=/c 0)) (and/c real? (>=/c 0))
-;   [#:start-with-move-to? boolean?] -> (or/c skia-path? #f)
-;   Returns a new owned path for the portion between start and stop.
-(define (path-measure-segment m start stop
-                              #:start-with-move-to? [start-with-move-to? #t])
+;   -> (or/c skia-path? #f)
+;   Returns a new owned path for the portion between start and stop, with an initial move.
+(define (path-measure-segment m start stop)
   (define who 'path-measure-segment)
-  (boolean who start-with-move-to?)
   (define a (checked-measure-distance who m start))
   (define b (checked-measure-distance who m stop))
   (unless (< a b)
@@ -3719,7 +3720,7 @@
     (define ok?
       (call-with-owned who (list (path-measure-h who m) (path-h who result))
         (lambda (mp rp)
-          (sk_pathmeasure_get_segment mp a b rp start-with-move-to?))))
+          (sk_pathmeasure_get_segment mp a b rp #t))))
     (if ok?
         result
         (begin (skia-close! result) #f))))

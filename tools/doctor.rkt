@@ -166,7 +166,7 @@
   (with-skia ([p (svg-path->path "M 4 4 L 28 4 L 16 28 Z")])
     (unless (= (path-point-count p) 3)
       (error 'doctor "path point counting failed"))
-    (define-values (lx ly) (path-last-point p))
+    (define-values (lx ly) (vector->values (path-last-point p)))
     (unless (and (= lx 16.0) (= ly 28.0))
       (error 'doctor "path last point lookup failed"))
     (with-skia ([q (make-path '((move 0 0) (rline 10 0) (rline 0 10) (close)))]

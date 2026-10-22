@@ -8,11 +8,16 @@
 @defmodule[skia/portable-drawing #:no-declare]
 @(declare-exporting skia skia/portable-drawing #:use-sources (skia/portable-drawing))
 
-These functions draw markers and atlas sprites using ordinary shape and
-image-rectangle commands before recording. They do not change the native batch
-functions or silently select a backend. Drawing images this way still embeds
-raster image samples; it is not conversion to vector geometry or a guarantee
-about every viewer, font, color profile, or paint effect.
+@deftech{Portable drawing} expresses markers, image grids, and atlas sprites
+using simpler shape and image-drawing operations. Use these helpers when the
+corresponding native batch operation is unsupported by a document writer, such
+as isolated-point drawing in SVG. You choose the helper explicitly; it does not
+switch the canvas to a different output target.
+
+When drawing to a recording, the helper records the simpler operations.
+Images still contain raster pixels, not vector geometry. Paint effects and
+other output restrictions still apply, and results need not be identical
+across document viewers or drawing backends.
 
 The drawing operations require live canvases, images, and paints, with their
 ordinary lifetime and context restrictions. For portable nine-patch and lattice

@@ -2396,6 +2396,15 @@
         },
         {
           "allowed_keywords": [],
+          "arity_mask": "4",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "region-reverse-difference",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -2775,15 +2784,6 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "path-combine",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "path-fill-bounds",
           "phase": "0",
           "required_keywords": []
         },
@@ -10616,7 +10616,7 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
-          "name": "matrix-rotate",
+          "name": "matrix-rotate-degrees",
           "phase": "0",
           "required_keywords": []
         },
@@ -10625,7 +10625,7 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
-          "name": "matrix-rotate-degrees",
+          "name": "matrix-rotate-radians",
           "phase": "0",
           "required_keywords": []
         },
@@ -12616,15 +12616,6 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
-          "name": "path-fill-bounds",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
           "name": "path-fill-rule",
           "phase": "0",
           "required_keywords": []
@@ -12704,11 +12695,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [
-            "start-with-move-to?"
-          ],
+          "allowed_keywords": [],
           "arity_mask": "8",
-          "export_kind": "syntax",
+          "export_kind": "value",
           "kind": "procedure",
           "name": "path-measure-segment",
           "phase": "0",
@@ -13852,6 +13841,15 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "region-rectangles",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "4",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "region-reverse-difference",
           "phase": "0",
           "required_keywords": []
         },
@@ -15970,7 +15968,7 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
-          "name": "matrix-rotate",
+          "name": "matrix-rotate-degrees",
           "phase": "0",
           "required_keywords": []
         },
@@ -15979,7 +15977,7 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
-          "name": "matrix-rotate-degrees",
+          "name": "matrix-rotate-radians",
           "phase": "0",
           "required_keywords": []
         },

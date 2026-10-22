@@ -35,6 +35,11 @@ afterward does not switch the selected library.
 
 @(declare-exporting skia)
 
+The native installer supplies SkiaSharp 3.119.1 libraries based on Skia m119.
+Use @racket[skia-native-version] to inspect the loaded library's milestone and
+increment. That value does not report the SkiaSharp package version or establish
+which drawing operations a document writer supports.
+
 @defproc[(skia-check!)
           void?]{
 Loads the selected library, checks its supported ABI and Racket foreign-structure layouts, and

@@ -332,6 +332,7 @@ Rectangles use `(x y width height)`; geometry input lists/vectors are copied.
 (region-union region other)
 (region-intersect region other)
 (region-difference region other)
+(region-reverse-difference region other)
 (region-xor region other)
 (region-translate region dx dy) ; independent result
 (path->region path clip-region) ; explicit finite integer clip
@@ -860,13 +861,13 @@ matrix-identity
 (matrix-translate x y)
 (matrix-scale x [y x])
 (matrix-skew x y)                    ; shear factors
-(matrix-rotate radians)
+(matrix-rotate-radians radians)
 (matrix-rotate-degrees degrees)
 (matrix-compose matrix ...)          ; A*B applies B first, then A
 (matrix-invert matrix)               ; matrix or #f
-(matrix-map-point matrix x y)        ; two values, includes translation
-(matrix-map-vector matrix x y)       ; two values, ignores translation
-(matrix-map-rect matrix x y width height) ; x y width height of axis-aligned bounds
+(matrix-map-point matrix x y)        ; immutable #(x y), includes translation
+(matrix-map-vector matrix x y)       ; immutable #(x y), ignores translation
+(matrix-map-rect matrix x y width height) ; immutable #(x y width height) bounds
 
 (canvas-transform canvas)
 (canvas-set-transform! canvas matrix)
@@ -877,7 +878,7 @@ matrix-identity
 
 (path-segment? value)
 (path-segment-verb segment)          ; move line quad conic cubic close
-(path-segment-points segment)        ; immutable list of (list x y)
+(path-segment-points segment)        ; immutable vector of immutable #(x y) vectors
 (path-segment-conic-weight segment)  ; #f except for conic
 (path-segment-closing-line? segment) ; normal iterator's synthetic line
 (path-segments path #:mode [mode 'normal] #:force-closed? [force-closed? #f])
@@ -919,8 +920,8 @@ path does not scale its later stroke width or transform its paint. A canvas
 transform applies to the entire drawing operation.
 
 Measurement modes are `position`, `tangent`, and `position+tangent`. Distance
-is finite and nonnegative; values past the current contour's length clamp to
-its endpoint. Empty/zero-length contours return `#f`. The combined frame maps
+is finite, nonnegative, and at most the current contour's measured length;
+values outside that range raise an exception. Empty/zero-length contours return `#f`. The combined frame maps
 local origin to the point and local x-axis to the tangent. It does not advance
 the measure's current contour.
 
@@ -1740,8 +1741,10 @@ path's fill rule, not a paint's stroke settings.
 ```
 
 `draw-paint` covers the current clip. Other operations apply the canvas
-transform and clipping. `points` is a nonempty list of two-element lists,
-for example `'((10 10) (90 20) (40 80))`. The polygon helper constructs and
+transform and clipping. `points` is a list or vector of two-element lists or
+vectors, for example `'((10 10) (90 20) (40 80))` or `#(#(10 10) #(90 20) #(40 80))`.
+An empty collection draws nothing but still checks the canvas, paint, and options.
+All coordinates are checked before drawing. The polygon helper constructs and
 closes a temporary path automatically. Pass `#:closed? #f` for an open polyline;
 use a stroke paint to avoid implicit filled-contour closure by the rasterizer.
 `draw-rounded-rect` accepts either a `rounded-rect?` value or coordinates with
@@ -1764,8 +1767,8 @@ forms use Skia's radius fitting when the corner radii are too large.
 (path-add-rect! path x y width height #:direction [direction 'cw])
 (path-add-oval! path x y width height #:direction [direction 'cw])
 (path-add-circle! path x y radius #:direction [direction 'cw])
-(path-bounds path)        ; FOUR VALUES: x, y, width, height
-(path-tight-bounds path)  ; FOUR VALUES: x, y, width, height
+(path-bounds path)        ; immutable #(x y width height)
+(path-tight-bounds path)  ; immutable #(x y width height)
 (path-contains? path x y)
 (path-fill-rule path)
 (path-set-fill-rule! path rule)
@@ -1800,7 +1803,7 @@ Bounds are in path coordinates, independent of canvas transforms and paint
 stroke widths. Ordinary bounds include Bézier control points; tight bounds
 consider curve extrema. Neither reports the extent of a rendered stroke.
 Containment tests the filled path interior, not stroke-distance hit testing.
-For a list of bounds, use `(call-with-values (lambda () (path-bounds p)) list)`.
+For a list of bounds, use `(vector->list (path-bounds p))`.
 
 Boolean operations return newly owned paths and raise if Skia reports an
 operation failure. `path-op` accepts `'difference`, `'intersect`, `'union`,
@@ -1823,8 +1826,7 @@ fill where the native conversion succeeds.
 (path-measure-position+tangent measure distance)
   ; FOUR VALUES: x, y, tangent-x, tangent-y
   ; all four are #f when the current contour has no measurable point
-(path-measure-segment measure start stop
-                      #:start-with-move-to? [flag #t])
+(path-measure-segment measure start stop)
   ; -> newly owned skia-path? or #f if native extraction fails
 (path-measure-next-contour! measure) ; -> boolean
 ```
@@ -1834,7 +1836,9 @@ position/tangent queries, and segment extraction operate on the current contour;
 `path-measure-next-contour!` advances and returns `#t` while another contour
 exists. Distances are checked against the current contour: they must be
 nonnegative and at most its measured length. Segment extraction additionally
-requires `start < stop`.
+requires `start < stop`. The result starts with a move to the measured starting
+point. Connect it to another path explicitly with `path-add-path!` and
+`#:mode 'extend`.
 
 The public wrapper has **snapshot semantics**. Raw `SkPathMeasure` stores a
 pointer to path data rather than owning a ref-counted path. To prevent use after
@@ -2331,9 +2335,9 @@ integers and may differ from the picture's recorded size.
 (path-add-reversed-path! destination source)
 
 (path-point-count path)
-(path-point-ref path index) ; -> x y
-(path-points path)          ; -> list of (list x y)
-(path-last-point path)      ; -> x y
+(path-point-ref path index) ; -> immutable #(x y)
+(path-points path)          ; -> immutable vector of immutable #(x y) vectors
+(path-last-point path)      ; -> immutable #(x y)
 (path-convex? path)
 
 (svg-path->path string #:fill-rule [fill-rule 'winding])

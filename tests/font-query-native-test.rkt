@@ -35,7 +35,7 @@
 
 ; path-rect : path? -> (listof real?)
 ;   Collects path bounds in the API's x, y, width, height order.
-(define (path-rect p) (call-with-values (lambda () (path-bounds p)) list))
+(define (path-rect p) (vector->list (path-bounds p)))
 
 ; release-paths : (vectorof (or/c path? #f)) -> void?
 ;   Closes each present outline returned by a batch glyph-path query.

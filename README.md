@@ -944,10 +944,15 @@ registry for the PDF, SVGs, independent references, and browser review page.
   (draw-path canvas path paint))
 ```
 
-Path inspection returns detached immutable values, with raw/normal closure
-semantics, conic weights, contour grouping and reconstruction commands. Affine
-matrix values support composition, inversion, canvas get/set/concat, transformed
-paths, path-measure frames and shader-local transforms. Matrices are values,
+Path inspection returns immutable segment structures, with raw/normal closure
+semantics, conic weights, contour grouping and reconstruction commands. Point
+collections are immutable vectors of immutable `#(x y)` vectors. Point and bounds
+queries return `#(x y)` and `#(x y width height)` vectors, as do affine and projective
+matrix mappings.
+
+Affine matrices support composition, inversion, canvas get/set/concat, transformed
+paths, path-measure frames and shader-local transforms. Use `matrix-rotate-radians`
+or `matrix-rotate-degrees` to make the angle unit explicit. Matrices are values,
 not native resources. See [the guide](docs/PATH-MATRIX.md).
 
 The validation script compiles **all** `tests/*.rkt` with the chosen Racket,

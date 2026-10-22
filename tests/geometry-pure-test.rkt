@@ -149,7 +149,9 @@
      (vector-set! xs 0 7) (vector-set! types 1 'default) (vector-set! colors 2 'red)
      (check-equal? (image-lattice-x-divisions l) #(8 16))
      (check-equal? (image-lattice-cell-types l) #(default transparent fixed-color))
-     (check-equal? (vector-ref (image-lattice-colors l) 2) (color->argb 'blue))
+     (check-true (immutable? (image-lattice-colors l)))
+     (check-true (for/and ([color (in-vector (image-lattice-colors l))]) (rgba? color)))
+     (check-equal? (vector-ref (image-lattice-colors l) 2) (color->rgba 'blue))
    )
    (test-case "lattice storage is bounded before allocation"
      (parameterize ([current-skia-byte-limit 16])
@@ -180,6 +182,8 @@
      (define p (make-cubic-patch square-patch #:colors '(red green blue white)))
      (check-true (immutable? (cubic-patch-points p)))
      (check-true (immutable? (cubic-patch-colors p)))
+     (check-equal? (vector->list (cubic-patch-colors p))
+                   (map color->rgba '(red green blue white)))
      (check-false (cubic-patch-texture-coordinates p))
    )
    (test-case "new layouts match pinned 64-bit record sizes"

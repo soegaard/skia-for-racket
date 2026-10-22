@@ -35,23 +35,23 @@
 (define (contour-has-area? contour)
   (define points
     (for*/list ([segment (in-list (sk:path-contour-segments contour))]
-                [point (in-list (sk:path-segment-points segment))])
+                [point (in-vector (sk:path-segment-points segment))])
       point))
   (and (pair? points)
        (let* ([p0 (car points)]
               [p1
                (for/first ([p (in-list (cdr points))]
-                           #:when (or (not (= (car p) (car p0)))
-                                      (not (= (cadr p) (cadr p0)))))
+                           #:when (or (not (= (vector-ref p 0) (vector-ref p0 0)))
+                                      (not (= (vector-ref p 1) (vector-ref p0 1)))))
                  p)])
          (and p1
               (for/or ([p (in-list points)])
                 (not
                  (zero?
-                  (- (* (- (car p1) (car p0))
-                        (- (cadr p) (cadr p0)))
-                     (* (- (cadr p1) (cadr p0))
-                        (- (car p) (car p0)))))))))))
+                  (- (* (- (vector-ref p1 0) (vector-ref p0 0))
+                        (- (vector-ref p 1) (vector-ref p0 1)))
+                     (* (- (vector-ref p1 1) (vector-ref p0 1))
+                        (- (vector-ref p 0) (vector-ref p0 0)))))))))))
 
 ; filled-path-has-area? : path? -> boolean?
 ;   Detects any noncollinear contour after native fill simplification has resolved
@@ -67,13 +67,13 @@
   (call-with-path commands 'odd-even
     (lambda (path)
       (case kind
-        [(path) (sk:path-tight-bounds path)]
+        [(path) (vector->values (sk:path-tight-bounds path))]
         [(fill)
          ;; Resolve self-intersections and zero-area contours before querying
          ;; filled bounds; path bounds alone include unpainted control points.
          (sk:with-skia ([filled (sk:path-simplify path)])
            (if (filled-path-has-area? filled)
-               (sk:path-tight-bounds filled)
+               (vector->values (sk:path-tight-bounds filled))
                (values 0.0 0.0 0.0 0.0)))]
         [(stroke)
          (call-with-dc-paint ink #f
@@ -89,5 +89,5 @@
                      (sk_paint_get_fill_path pp src dst #f
                        (make-sk-matrix 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0)))))
                (unless filled? (error 'skia-dc-path-bounds "native stroke outline failed"))
-               (sk:path-tight-bounds outline))))]
+               (vector->values (sk:path-tight-bounds outline)))))]
         [else (raise-argument-error 'skia-dc-path-bounds "path/fill/stroke" kind)]))))

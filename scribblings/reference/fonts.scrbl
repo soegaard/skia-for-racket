@@ -573,7 +573,7 @@ Partial results are released if construction fails.
     void
     (lambda ()
       (for/list ([path (in-vector outlines)])
-        (and path (call-with-values (lambda () (path-bounds path)) list))))
+        (and path (vector->list (path-bounds path)))))
     (lambda ()
       (for ([path (in-vector outlines)] #:when path) (skia-close! path)))))
 ]

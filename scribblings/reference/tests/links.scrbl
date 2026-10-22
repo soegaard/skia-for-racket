@@ -452,7 +452,7 @@ The following links exercise the public bindings documented by the Reference.
 
 @racket[matrix-scale]
 
-@racket[matrix-rotate]
+@racket[matrix-rotate-radians]
 
 @racket[matrix-rotate-degrees]
 
@@ -588,7 +588,7 @@ The following links exercise the public bindings documented by the Reference.
 
 @racket[matrix:matrix-scale]
 
-@racket[matrix:matrix-rotate]
+@racket[matrix:matrix-rotate-radians]
 
 @racket[matrix:matrix-rotate-degrees]
 
@@ -2070,10 +2070,6 @@ The following links cover the font and text interfaces.
 
 @racket[geometry:path-segment-kinds]
 
-@racket[path-fill-bounds]
-
-@racket[geometry:path-fill-bounds]
-
 @racket[path-as-line]
 
 @racket[geometry:path-as-line]
@@ -2237,6 +2233,10 @@ The following links cover the font and text interfaces.
 @racket[region-intersect]
 
 @racket[geometry-primitives:region-intersect]
+
+@racket[region-reverse-difference]
+
+@racket[geometry-primitives:region-reverse-difference]
 
 @racket[region-difference]
 

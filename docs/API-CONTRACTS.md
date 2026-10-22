@@ -218,6 +218,23 @@ a complete run verifies both snapshot groups. No signature check sets
 `rendering_executed` or `release_ready` to true. Existing CPU/GPU/document and
 consumer acceptance, and the final **0.78d release gate**, remain necessary.
 
+### Chapter 4 geometry API revision
+
+The unreleased geometry API now names radians explicitly in
+`matrix-rotate-radians`, accepts list/vector polygon inputs and empty polygons,
+and returns immutable point and rectangle vectors from affine mapping and path
+queries. Point collections are immutable vectors of immutable point vectors;
+mesh, patch, and lattice color queries return `rgba` values. Segment extraction
+always starts with a move, both measurement queries reject distances past the
+current contour, and regions have a reverse-difference helper. The redundant
+PathOps-specific bounds query was removed; no compatibility APIs remain.
+
+The headless inventory was refreshed from Racket 9.3.0.2 export reflection with
+nonexistent native-library overrides. This did not call exported procedures,
+render, or run tests. The GUI snapshot and historical release evidence were not
+refreshed. Return representations and numeric behavior still need the updated
+regression suites to be run separately.
+
 ### Maintainer commands
 
 The Chapter 3 API revision standardizes gradient coordinates and `#:positions`,

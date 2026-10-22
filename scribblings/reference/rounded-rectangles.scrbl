@@ -52,6 +52,18 @@ normalization rules}: overlapping radii are scaled to fit, and a corner
 with a zero radius component becomes square.
 }
 
+@racketblock[
+(with-skia ([surface (make-surface 160 90 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define shape
+    (make-rounded-rect 20 15 120 60
+                       #:radii '((24 24) (8 8) (24 8) (8 24))))
+  (draw-rounded-rect (surface-canvas surface) shape paint))
+]
+
+@reference-figure["rounded-rect.png"
+                  "A blue rounded rectangle with four visibly different corner-radius pairs."]
+
 @section{Path Construction}
 
 @defproc*[([(path-add-rounded-rect! [path skia-path?]
@@ -167,27 +179,34 @@ to Skia's rounded-rectangle rules. An invalid result from Skia raises an excepti
 
 The first value records the requested radius 30 at every corner. The second
 records the radii that Skia can represent within the bounds.
+}
 
 @racketblock[
-(with-skia ([surface (make-surface 160 90 #:background 'white)]
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
             [paint (make-paint #:color "#326DE6")])
-  (define shape
-    (make-rounded-rect 20 15 120 60
-                       #:radii '((24 24) (8 8) (24 8) (8 24))))
-  (draw-rounded-rect (surface-canvas surface) shape paint))
+  (define normalized
+    (rounded-rect-normalize (make-rounded-rect 25 20 130 60 #:radii 80)))
+  (draw-rounded-rect (surface-canvas surface) normalized paint))
 ]
-
-@reference-figure["rounded-rect.png"
-                  "A blue rounded rectangle with four visibly different corner-radius pairs."]
-}
+@reference-figure["rounded-rect-normalized.png"
+                  "A blue rounded rectangle after oversized corner radii have been normalized to fit its bounds."]
 
 @defproc[(rounded-rect-type [shape rounded-rect?])
           (or/c 'empty 'rect 'oval 'simple 'nine-patch 'complex)]{
-Classifies the shape after normalization. Empty has no area; rect has square
-corners; oval is an ellipse; simple uses equal corner radii; nine-patch has
-matching radius components along each side; complex is a remaining valid
-rounded rectangle. The query classifies the normalized shape, not just the
-supplied radii.
+Classifies the shape after normalization:
+
+@itemlist[
+ @item{@racket['empty]: no area.}
+ @item{@racket['rect]: a rectangle with square corners.}
+ @item{@racket['oval]: an ellipse.}
+ @item{@racket['simple]: the same horizontal/vertical radius pair at all four
+       corners. The horizontal and vertical radii may differ.}
+ @item{@racket['nine-patch]: matching horizontal radius components on each
+       vertical side and matching vertical radius components on each horizontal side.}
+ @item{@racket['complex]: a valid rounded rectangle that does not fit the
+       preceding categories.}]
+
+The result describes the normalized shape, not just the supplied radii.
 }
 
 @defproc[(make-nine-patch-rounded-rect [x real?]
@@ -201,9 +220,21 @@ supplied radii.
           rounded-rect?]{
 Constructs a rounded rectangle with corner pairs left/top, right/top,
 right/bottom, and left/bottom, and returns its normalized form. The four side
-arguments are radius components, not margins and not an image nine-patch grid. Positive bounds must
-remain representable after edge rounding.
+arguments are radius components, not margins and not an image nine-patch grid.
+Positive widths and heights must remain positive after edge rounding.
+
+Each radius component must be nonnegative after the rounding described above;
+otherwise, the function raises an exception.
 }
+
+@racketblock[
+(with-skia ([surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (define shape (make-nine-patch-rounded-rect 20 15 140 70 30 10 16 28))
+  (draw-rounded-rect (surface-canvas surface) shape paint))
+]
+@reference-figure["rounded-rect-nine-patch.png"
+                  "A blue rounded rectangle whose four corner radii come from independent left, top, right, and bottom components."]
 
 @defproc[(rounded-rect-offset [shape rounded-rect?]
           [dx real?]
@@ -217,30 +248,22 @@ specification. The original shape is unchanged.
           [dx real?]
           [dy real?])
           rounded-rect?]{
-Insets the bounds by nonnegative horizontal and vertical distances and adjusts
-the radii using native rounded-rectangle rules. Collapsed results are normalized;
-the operation does not return negative dimensions.
+Moves the left and right bounds inward by @racket[dx] and the top and bottom
+bounds inward by @racket[dy], adjusting the corner radii with them. Both
+distances must be nonnegative after the rounding described above; otherwise,
+the function raises an exception. Collapsed results are normalized; the
+operation does not return negative dimensions.
 }
 
 @defproc[(rounded-rect-outset [shape rounded-rect?]
           [dx real?]
           [dy real?])
           rounded-rect?]{
-Expands the bounds by nonnegative horizontal and vertical distances and adjusts
-the radii using native rounded-rectangle rules. This is not a stroked-outline
-operation; use path and paint geometry for that purpose.
-}
-
-@defproc[(rounded-rect-transform [shape rounded-rect?]
-          [transform matrix?])
-          (or/c rounded-rect? #f)]{
-Applies the affine transform and returns a rounded rectangle, or @racket[#f]
-if the transformed shape cannot be represented as one.
-
-The result uses normalized bounds and radii. Not every affine transformation
-preserves this representation. The operation does not silently approximate,
-flatten, or rasterize an unrepresentable shape. For general affine geometry,
-add the rounded rectangle to a path and use @racket[path-transform].
+Moves the left and right bounds outward by @racket[dx] and the top and bottom
+bounds outward by @racket[dy], adjusting the corner radii with them. Both
+distances must be nonnegative after the rounding described above; otherwise,
+the function raises an exception. This changes the shape's geometry; it does
+not create a stroked outline.
 }
 
 @racketblock[
@@ -265,34 +288,24 @@ add the rounded rectangle to a path and use @racket[path-transform].
 @reference-figure["rounded-rect-inset-outset.png"
                   "Three concentric rounded-rectangle outlines: a large orange outset expanded by 12 horizontal and 8 vertical units, the dark original, and a smaller blue inset using the same distances. Their corner radii change with the native rounded-rectangle rules."]
 
-Insets and outsets produce new rounded-rectangle specifications; they are
-not strokes.  A translation or axis-aligned scale can produce another
-representable rounded rectangle, but that is not a distinct visual concept from
-the canvas transforms shown elsewhere.  The deliberately numerical shear case
-remains useful because it establishes the refusal to approximate:
+Insets and outsets change the bounds and radii; they do not add strokes.
+
+@defproc[(rounded-rect-transform [shape rounded-rect?]
+          [transform matrix?])
+          (or/c rounded-rect? #f)]{
+Applies the affine transform and returns a rounded rectangle, or @racket[#f]
+if the transformed shape cannot be represented as one.
+
+The result uses normalized bounds and radii. Not every affine transformation
+preserves this representation. The operation does not silently approximate,
+flatten, or rasterize an unrepresentable shape. For general affine geometry,
+add the rounded rectangle to a path and use @racket[path-transform].
+}
+
+The following shear cannot be represented as a rounded rectangle, so
+@racket[rounded-rect-transform] returns @racket[#f]:
 
 @racketblock[
 (rounded-rect-transform (make-rounded-rect 0 0 40 20 #:radii 4)
                         (make-matrix 1 0 0.5 1 0 0)) ; => #f
 ]
-
-@section{Additional Visual Examples}
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (define normalized
-    (rounded-rect-normalize (make-rounded-rect 25 20 130 60 #:radii 80)))
-  (draw-rounded-rect (surface-canvas surface) normalized paint))
-]
-@reference-figure["rounded-rect-normalized.png"
-                  "A blue rounded rectangle after oversized corner radii have been normalized to fit its bounds."]
-
-@racketblock[
-(with-skia ([surface (make-surface 180 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (define shape (make-nine-patch-rounded-rect 20 15 140 70 30 10 16 28))
-  (draw-rounded-rect (surface-canvas surface) shape paint))
-]
-@reference-figure["rounded-rect-nine-patch.png"
-                  "A blue rounded rectangle whose four corner radii come from independent left, top, right, and bottom components."]

@@ -28,8 +28,11 @@
 ; last-xy : path? -> any/c
 ;   Returns the final point of the last raw path segment containing coordinates.
 (define (last-xy p)
-  (last (path-segment-points
-         (last (filter (lambda (s) (pair? (path-segment-points s))) (path-segments p #:mode 'raw))))))
+  (define points
+    (path-segment-points
+     (last (filter (lambda (s) (positive? (vector-length (path-segment-points s))))
+                   (path-segments p #:mode 'raw)))))
+  (vector->list (vector-ref points (sub1 (vector-length points)))))
 
 ;;;
 ;;; Regression Suite
@@ -80,7 +83,7 @@
        (check-equal? (path-rectangle-bounds r) '#(8.0 8.0 32.0 24.0))
        (check-true (path-rectangle-closed? r))
        (check-eq? (path-rectangle-direction r) 'ccw)
-       (check-equal? (car (path-segment-points (car (path-segments p #:mode 'raw)))) '(40.0 8.0))))
+       (check-equal? (vector-ref (path-segment-points (car (path-segments p #:mode 'raw))) 0) #(40.0 8.0))))
    (test-case "line and oval recognition return detached values"
      (with-skia ([p (make-path '((move 1 2) (line 3 4)))] [o (make-path)])
        (define line (path-as-line p))
@@ -112,10 +115,10 @@
        (define old (path-verbs p)) (path-rewind! p)
        (check-equal? (path-point-count p) 0) (check-equal? (path-verbs p) '())
        (check-equal? old '(move line))))
-   (test-case "path-ops bounds returns checked rectangle"
+   (test-case "path bounds returns an immutable rectangle"
      (with-skia ([p (make-path)])
        (path-add-rect! p 2 3 10 20)
-       (check-equal? (path-fill-bounds p) '#(2.0 3.0 10.0 20.0))))
+       (check-equal? (path-tight-bounds p) '#(2.0 3.0 10.0 20.0))))
    (test-case "unit-weight conic at power zero is one exact quadratic"
      (check-equal? (conic->quadratics '(0 0) '(10 20) '(20 0) 1 #:subdivisions 0)
                    '(#(#(0.0 0.0) #(10.0 20.0) #(20.0 0.0)))))
@@ -247,7 +250,7 @@
      (for* ([direction (in-list '(cw ccw))] [start (in-range 8)])
        (with-skia ([p (make-path)])
          (path-add-rounded-rect! p shape #:direction direction #:start-index start)
-         (check-equal? (car (path-points p)) (list-ref starts start))
+         (check-equal? (vector-ref (path-points p) 0) (list->vector (list-ref starts start)))
          (check-equal? (rounded-rect-radii (path-as-rounded-rect p))
                        (rounded-rect-radii shape))))
      (with-skia ([default-path (make-path)] [explicit-path (make-path)])

@@ -81,12 +81,14 @@ Reports whether the region contains no pixels.
 
 @defproc[(region-rect? [region region?])
           boolean?]{
-Reports whether the nonempty region is one rectangle.
+Returns @racket[#t] if the region is one nonempty rectangle, and @racket[#f]
+otherwise, including for an empty region.
 }
 
 @defproc[(region-complex? [region region?])
           boolean?]{
-Reports whether the nonempty region requires more than one rectangle.
+Returns @racket[#t] if the region requires more than one rectangle, and
+@racket[#f] for an empty region or a single rectangle.
 }
 
 @defproc[(region-bounds [region region?])
@@ -187,10 +189,26 @@ Returns @racket[(region-op a b 'union)].
 Returns @racket[(region-op a b 'intersect)].
 }
 
+@racketblock[
+(with-skia ([a (make-region '((20 15 90 55)))]
+            [b (make-region '((70 30 80 50)))]
+            [surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (with-skia ([result (region-intersect a b)])
+    (draw-region (surface-canvas surface) result paint)))
+]
+@reference-figure["region-intersection.png"
+                  "The blue rectangular overlap retained by intersecting two integer regions."]
+
 @defproc[(region-difference [a region?]
           [b region?])
           region?]{
 Returns @racket[(region-op a b 'difference)].
+}
+
+@defproc[(region-reverse-difference [a region?] [b region?]) region?]{
+Returns the part of @racket[b] outside @racket[a], equivalent to
+@racket[(region-op a b 'reverse-difference)].
 }
 
 @defproc[(region-xor [a region?]
@@ -198,6 +216,17 @@ Returns @racket[(region-op a b 'difference)].
           region?]{
 Returns @racket[(region-op a b 'xor)].
 }
+
+@racketblock[
+(with-skia ([a (make-region '((20 15 90 55)))]
+            [b (make-region '((70 30 80 50)))]
+            [surface (make-surface 180 100 #:background 'white)]
+            [paint (make-paint #:color "#326DE6")])
+  (with-skia ([result (region-xor a b)])
+    (draw-region (surface-canvas surface) result paint)))
+]
+@reference-figure["region-xor.png"
+                  "Two blue rectangular lobes remain after integer-region exclusive-or removes their overlap."]
 
 @defproc[(region-op-rect [region region?]
           [rectangle (or/c (list/c exact-integer? exact-integer? exact-integer? exact-integer?)
@@ -229,7 +258,7 @@ Returns a translated, independently owned region. The translated nonempty
 bounds must remain within the region-coordinate range. Coordinates are not wrapped.
 }
 
-@defproc[(path->region [path path?]
+@defproc[(path->region [path skia-path?]
           [clip region?])
           region?]{
 Rasterizes the path's fill into a new integer region, constrained by the clip
@@ -238,7 +267,7 @@ The clip is required, including for inverse-filled paths. Neither input changes.
 }
 
 @defproc[(region->path [region region?])
-          path?]{
+          skia-path?]{
 Returns a new owned boundary path. An empty region yields an empty path.
 The path has no dependency on the region's later mutation or lifetime.
 }
@@ -348,10 +377,10 @@ The snapshot contains @racket[#(0 4)] and @racket[#(6 8)].
 @reference-figure["region-quantization-and-difference.png"
                   "A curved blue path has been rasterized to a 20 by 14 integer region and enlarged with a visible pixel grid. Orange traces the boundary path returned from that region and a red band highlights the actual horizontal spans at row seven. A second enlarged panel removes a central rectangular band with region-difference, splitting the same quantized region."]
 
-The left result is deliberately not a smooth antialiased rendering of the source
-curve.  It displays the binary scan conversion used by @racket[path->region].
+The left result shows how @racket[path->region] selects whole pixels from the
+source curve, without partially covered edge pixels.
 The span endpoints are inclusive on the left and exclusive on the right, so the
-red row is an actual visualization of the values returned by @racket[region-spans].
+red row shows the intervals returned by @racket[region-spans].
 
 @defproc[(in-region-spans [region region?]
           [y (integer-in -1073741823 1073741823)]
@@ -398,27 +427,3 @@ with @racket[region->path] and use @racket[canvas-clip-path!] instead.
 @reference-figure["region-clip.png"
                   "A blue-to-orange gradient visible only inside two disjoint rectangular region components."]
 }
-
-@section{Additional Visual Examples}
-
-@racketblock[
-(with-skia ([a (make-region '((20 15 90 55)))]
-            [b (make-region '((70 30 80 50)))]
-            [surface (make-surface 180 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (with-skia ([result (region-intersect a b)])
-    (draw-region (surface-canvas surface) result paint)))
-]
-@reference-figure["region-intersection.png"
-                  "The blue rectangular overlap retained by intersecting two integer regions."]
-
-@racketblock[
-(with-skia ([a (make-region '((20 15 90 55)))]
-            [b (make-region '((70 30 80 50)))]
-            [surface (make-surface 180 100 #:background 'white)]
-            [paint (make-paint #:color "#326DE6")])
-  (with-skia ([result (region-xor a b)])
-    (draw-region (surface-canvas surface) result paint)))
-]
-@reference-figure["region-xor.png"
-                  "Two blue rectangular lobes remain after integer-region exclusive-or removes their overlap."]

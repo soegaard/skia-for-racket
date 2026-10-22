@@ -53,7 +53,7 @@
 
 ; rectangle : path? -> list?
 ;   Collects an outline path's rectangular bounds.
-(define (rectangle p) (call-with-values (lambda () (path-bounds p)) list))
+(define (rectangle p) (vector->list (path-bounds p)))
 
 ; one-blob : font? [list?] -> text-blob?
 ;   Builds one positioned glyph run using the supplied font and point sequence.

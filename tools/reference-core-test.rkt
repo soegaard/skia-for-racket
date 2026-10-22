@@ -112,8 +112,8 @@
     (with-skia ([path (make-path '((move 0 0) (quad 50 100 100 0)) #:fill-rule 'even-odd)]
                 [copy (path-copy path)])
       (define sequence (in-path-segments path #:mode 'raw))
-      (check-equal? (results (lambda () (path-bounds path))) '(0.0 0.0 100.0 100.0))
-      (check-equal? (results (lambda () (path-tight-bounds path))) '(0.0 0.0 100.0 50.0))
+      (check-equal? (vector->list (path-bounds path)) '(0.0 0.0 100.0 100.0))
+      (check-equal? (vector->list (path-tight-bounds path)) '(0.0 0.0 100.0 50.0))
       (path-reset! path)
       (check-equal? (path-fill-rule path) 'winding)
       (check-equal? (path-point-count path) 0)
@@ -130,8 +130,8 @@
                       (list 'move verb))))
     (with-skia ([path (make-path '((move 10 20) (line 40 50) (close)))])
       (path-rmove-to! path 2 3)
-      (check-equal? (results (lambda () (path-last-point path))) '(12.0 23.0))))
-  (test-case "path measurement snapshots and distinct distance contracts"
+      (check-equal? (vector->list (path-last-point path)) '(12.0 23.0))))
+  (test-case "path measurement snapshots and consistent distance contracts"
     (with-skia ([path (make-path '((move 0 0) (line 10 0)))]
                 [measure (make-path-measure path)])
       (path-line-to! path 100 0)
@@ -140,8 +140,9 @@
       (check-equal? (results (lambda () (path-measure-position+tangent measure 5)))
                     '(5.0 0.0 1.0 0.0))
       (check-exn exn:fail? (lambda () (path-measure-position+tangent measure 11)))
-      (define endpoint (path-measure-matrix measure 11 #:mode 'position))
-      (check-equal? (results (lambda () (matrix-map-point endpoint 0 0))) '(10.0 0.0))
+      (check-exn exn:fail:contract? (lambda () (path-measure-matrix measure 11)))
+      (define endpoint (path-measure-matrix measure 10 #:mode 'position))
+      (check-equal? (vector->list (matrix-map-point endpoint 0 0)) '(10.0 0.0))
       (path-measure-set-path! measure #f)
       (check-equal? (path-measure-length measure) 0.0)
       (check-false (path-measure-matrix measure 0))))
@@ -185,13 +186,15 @@
                     '((move #f) (line #f) (line #f) (line #t) (close #f)))
       (check-equal? (describe 'raw) '((move #f) (line #f) (line #f) (close #f)))
       (check-equal? (path->commands path) before)))
-  (test-case "omitting the initial move on an extracted path changes its geometry"
+  (test-case "an extracted path starts at the measured point and can be connected explicitly"
     (with-skia ([path (make-path '((move 10 20) (line 90 20)))]
                 [measure (make-path-measure path)]
-                [moved (path-measure-segment measure 20 40)]
-                [unmoved (path-measure-segment measure 20 40 #:start-with-move-to? #f)])
-      (check-equal? (path->commands moved) '((move 30.0 20.0) (line 50.0 20.0)))
-      (check-equal? (path->commands unmoved) '((move 0.0 0.0) (line 50.0 20.0)))))
+                [segment (path-measure-segment measure 20 40)]
+                [connected (make-path '((move 5 5) (line 10 5)))])
+      (check-equal? (path->commands segment) '((move 30.0 20.0) (line 50.0 20.0)))
+      (path-add-path! connected segment #:mode 'extend)
+      (check-equal? (path->commands connected)
+                    '((move 5.0 5.0) (line 10.0 5.0) (line 30.0 20.0) (line 50.0 20.0)))))
   (test-case "native reset does not restore make-paint defaults"
     (with-skia ([paint (make-paint)])
       (define constructed (list (paint-stroke-width paint) (paint-antialias? paint)))

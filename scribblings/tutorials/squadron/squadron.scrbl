@@ -69,7 +69,13 @@ armored guards. Cells 6–7 contain the player and enemy projectiles. Cells 8–
 contain six explosion frames. The final two cells provide a shield ring and
 a decorative star for experiments.
 
-The artwork is made with familiar Skia paths, polygons, circles, and paints:
+The artwork is made with familiar Skia paths, polygons, circles, and paints.
+For a straight-sided shape, @racket[draw-polygon] accepts a list or vector of
+point pairs; each pair can also be a list or vector. The atlas artwork uses
+lists, while the attack-path diagram uses a vector of sampled points.
+An empty point collection draws nothing.
+
+The atlas is constructed with:
 
 @codeblock[(source-definition atlas-source 'make-game-atlas)]
 

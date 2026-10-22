@@ -118,9 +118,7 @@
 ; point-coordinate : symbol? (or/c list? vector?) (or/c 0 1) -> real?
 ;   Reads and validates one coordinate from a two-element detached point list or vector.
 (define (point-coordinate who point index)
-  ;; Raw path snapshots use two-element lists; conic->quadratics returns
-  ;; immutable two-element vectors. Keep the conversion boundary detached while
-  ;; accepting the two checked representations supplied by those helpers.
+  ;; Path snapshots and conic->quadratics both use immutable point vectors.
   (define value
     (cond [(and (list? point) (= (length point) 2)) (list-ref point index)]
           [(and (vector? point) (= (vector-length point) 2)) (vector-ref point index)]
@@ -186,25 +184,25 @@
   (define points (path-segment-points segment))
   (case verb
     [(move)
-     (match points [(list p) (list (list 'move (point-x who p) (point-y who p)))]
+     (match points [(vector p) (list (list 'move (point-x who p) (point-y who p)))]
        [_ (error who "invalid move segment snapshot")])]
     [(line)
-     (match points [(list _ p) (list (list 'line (point-x who p) (point-y who p)))]
+     (match points [(vector _ p) (list (list 'line (point-x who p) (point-y who p)))]
        [_ (error who "invalid line segment snapshot")])]
     [(cubic)
      (match points
-       [(list _ c1 c2 p)
+       [(vector _ c1 c2 p)
         (list (list 'cubic (point-x who c1) (point-y who c1)
                     (point-x who c2) (point-y who c2)
                     (point-x who p) (point-y who p)))]
        [_ (error who "invalid cubic segment snapshot")])]
     [(quad)
      (match points
-       [(list p0 q p2) (list (cons 'cubic (cubic-for-quadratic who p0 q p2)))]
+       [(vector p0 q p2) (list (cons 'cubic (cubic-for-quadratic who p0 q p2)))]
        [_ (error who "invalid quadratic segment snapshot")])]
     [(conic)
      (match points
-       [(list p0 q p2)
+       [(vector p0 q p2)
         (define weight (scalar who (path-segment-conic-weight segment)))
         (unless (> weight 0)
           (raise-arguments-error who "conic weight must be positive and finite"

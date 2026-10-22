@@ -147,16 +147,20 @@
 
   (test-case "vertices retain copied metadata even after native closure"
     (define positions (vector (vector 2 2) (vector 14 2) (vector 2 14)))
-    (with-skia ([mesh (make-vertices 'triangles positions #:colors '(red red red))]
+    (define colors (vector 'red 'red 'red))
+    (with-skia ([mesh (make-vertices 'triangles positions #:colors colors)]
                 [surface (make-surface 16 16)]
                 [paint (make-paint #:color 'white #:antialias? #f)])
       (vector-set! (vector-ref positions 0) 0 99)
+      (vector-set! colors 0 'blue)
       (draw-vertices (surface-canvas surface) mesh paint)
       (check-equal? (argb surface 4 4) #xffff0000)
       (skia-close! mesh)
       (check-equal? (vertices-count mesh) 3)
       (check-equal? (vector-ref (vertices-positions mesh) 0) #(2.0 2.0))
       (check-true (immutable? (vertices-colors mesh)))
+      (check-equal? (vector->list (vertices-colors mesh))
+                    (list (rgb 255 0 0) (rgb 255 0 0) (rgb 255 0 0)))
       (check-exn exn:fail? (lambda () (draw-vertices (surface-canvas surface) mesh paint)))))
 
   (test-case "canvas matrix scope restores the full matrix on escape"

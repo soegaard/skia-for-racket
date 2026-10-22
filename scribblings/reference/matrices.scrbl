@@ -77,7 +77,8 @@ Returns the horizontal translation coefficient.
 Returns the vertical translation coefficient.
 }
 
-@defproc[(matrix->vector [matrix matrix?]) (vectorof real?)]{
+@defproc[(matrix->vector [matrix matrix?])
+         (and/c (vector/c real? real? real? real? real? real?) immutable?)]{
 Returns an immutable six-element vector in the order
 @tt{xx, yx, xy, yy, x0, y0}.
 }
@@ -88,6 +89,10 @@ may be mutable; later mutation of the vector does not change the matrix.
 }
 
 @section{Common Transforms}
+
+Rotation units depend on the function: @racket[matrix-rotate-radians] takes radians,
+whereas @racket[matrix-rotate-degrees] and @racket[canvas-rotate!] take degrees.
+Use the degree form when transferring an angle from a canvas rotation.
 
 @defproc[(matrix-translate [x real?] [y real?]) matrix?]{
 Returns a translation matrix. It adds @racket[x] and @racket[y] to point
@@ -100,14 +105,15 @@ corresponding axis; zero is accepted. Omitting @racket[y] uses @racket[x] for
 both axes.
 }
 
-@defproc[(matrix-rotate [radians real?]) matrix?]{
-Returns a rotation about the origin. Positive angles rotate clockwise when
+@defproc[(matrix-rotate-radians [radians real?]) matrix?]{
+Returns a rotation about the origin by @racket[radians] radians.
+Positive angles rotate clockwise when
 y increases downward. The angle and resulting sine and cosine coefficients
 are rounded to single precision; arbitrary rotations are not exact.
 }
 
 @defproc[(matrix-rotate-degrees [degrees real?]) matrix?]{
-Like @racket[matrix-rotate], with the angle measured in degrees. After rounding
+Like @racket[matrix-rotate-radians], with the angle measured in degrees. After rounding
 the input angle, complete turns are removed. Quarter turns use exact zero and
 unit coefficients instead of approximations to the sine and cosine.
 
@@ -172,12 +178,12 @@ rounding errors when the original matrix is poorly conditioned.
 
 @section{Mapping Geometry}
 
-@defproc[(matrix-map-point [matrix matrix?] [x real?] [y real?]) (values real? real?)]{
-Returns the transformed point as two values, including the translation terms.
+@defproc[(matrix-map-point [matrix matrix?] [x real?] [y real?]) (and/c (vector/c real? real?) immutable?)]{
+Returns the transformed point as an immutable @racket[#(x y)] vector, including the translation terms.
 }
 
-@defproc[(matrix-map-vector [matrix matrix?] [x real?] [y real?]) (values real? real?)]{
-Returns the transformed displacement as two values, omitting translation.
+@defproc[(matrix-map-vector [matrix matrix?] [x real?] [y real?]) (and/c (vector/c real? real?) immutable?)]{
+Returns the transformed displacement as an immutable @racket[#(x y)] vector, omitting translation.
 This is appropriate for a direction or an offset, rather than a point.
 
 @examples[#:eval matrix-eval
@@ -189,9 +195,9 @@ This is appropriate for a direction or an offset, rather than a point.
 @defproc[(matrix-map-rect [matrix matrix?] [x real?] [y real?]
                           [width (and/c real? (>=/c 0))]
                           [height (and/c real? (>=/c 0))])
-         (values real? real? real? real?)]{
+         (and/c (vector/c real? real? real? real?) immutable?)]{
 Returns the axis-aligned bounding rectangle of the four transformed corners,
-as left, top, width, and height. The result bounds the transformed rectangle;
+as an immutable @racket[#(x y width height)] vector. The result bounds the transformed rectangle;
 it does not preserve a rotated rectangle as an oriented shape. Width and height
 must be nonnegative, and all input corners and computed results must remain
 within the accepted range.
@@ -230,7 +236,7 @@ within the accepted range.
   (define bound-transform
     (matrix-compose (matrix-translate 210 195) (matrix-rotate-degrees 28)))
   (define-values (left top width height)
-    (matrix-map-rect bound-transform -45 -22 90 44))
+    (vector->values (matrix-map-rect bound-transform -45 -22 90 44)))
   (draw-simple-text canvas "matrix-map-rect returns an axis-aligned box" 90 145 font label)
   (with-canvas-state canvas
     (canvas-concat! canvas bound-transform)
@@ -243,9 +249,8 @@ within the accepted range.
                   "Top row: the same gray L-shaped path is transformed in two orders. Translation composed before scale leaves the blue result closer to the grid origin than scale composed before translation. Bottom: a rotated blue rectangle is enclosed by the red axis-aligned rectangle returned by matrix-map-rect."]
 
 Matrix products act from right to left on points, which is why the two blue
-shapes differ even though they use the same translation and scale.  The red
-result is a bounding box for four mapped corners, not a second rotation or a
-replacement for the existing canvas transform-order comparison.
+shapes differ even though they use the same translation and scale. The red
+rectangle encloses the four transformed corners; it is not the rotated shape itself.
 
 @close-eval[matrix-eval]
 
@@ -302,7 +307,7 @@ coordinates 3 and 4 maps to coordinates 10 and 20.
 }
 
 @defproc[(atlas-transform-coefficients [transform atlas-transform?])
-          (vector/c real? real? real? real?)]{
+          (and/c (vector/c real? real? real? real?) immutable?)]{
 Returns the immutable vector of coefficients in order @math{scos},
 @math{ssin}, @math{tx}, and @math{ty}. They map a local point to
 @math{(scos x - ssin y + tx, ssin x + scos y + ty)}.

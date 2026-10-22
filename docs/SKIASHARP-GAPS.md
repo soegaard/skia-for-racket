@@ -49,7 +49,7 @@ See [API decisions](API-DESIGN-DECISIONS.md) for the additive image-info/color/l
 | [paths.recognition](#paths-recognition) — Line/rect/oval/rounded-rect recognition | supported-with-limits | — | `geometry:path-as-line`; `geometry:path-as-oval`; `geometry:path-as-rectangle`; `geometry:path-as-rounded-rect` |
 | [paths.operation-builder](#paths-operation-builder) — Bounded multi-operation path builder | supported-with-limits | — | `geometry:path-combine`; `geometry:current-path-operation-limit` |
 | [paths.conics](#paths-conics) — Conic-to-quadratics conversion helper | supported-with-limits | — | `geometry:conic->quadratics` |
-| [paths.remaining-convenience](#paths-remaining-convenience) — Additional shape starts, matrix-add and storage/query helpers | supported-with-limits | — | `geometry:path-add-rect-start!`; `geometry:path-add-rounded-rect!`; `geometry:path-add-polygon!`; `geometry:path-add-transformed!`; `geometry:path-rewind!`; `geometry:path-verbs`; `geometry:path-segment-kinds`; `geometry:path-fill-bounds`; `main:path-contours` |
+| [paths.remaining-convenience](#paths-remaining-convenience) — Additional shape starts, matrix-add and storage/query helpers | supported-with-limits | — | `geometry:path-add-rect-start!`; `geometry:path-add-rounded-rect!`; `geometry:path-add-polygon!`; `geometry:path-add-transformed!`; `geometry:path-rewind!`; `geometry:path-verbs`; `geometry:path-segment-kinds`; `main:path-contours` |
 | [paths.point-snapshots](#paths-point-snapshots) — Point and verb snapshots without raw iterator lifetime | racket-equivalent | — | `main:path-points`; `main:path-segments` |
 | [paths.iteration](#paths-iteration) — Raw/normal segments, contours and rebuildable snapshots | supported-with-limits | — | `main:path-segments`; `main:in-path-segments`; `main:path-contours` |
 | [paths.measure-constructor](#paths-measure-constructor) — Empty path-measure constructor convenience | racket-equivalent | — | `main:make-path-measure` |
@@ -686,13 +686,13 @@ Positive finite weight and subdivision exponent 0..5. Returns detached quadratic
 
 **supported-with-limits**; next stage: **none scheduled**; origin: `m119`.
 
-Additive authoring names preserve existing APIs. Existing raw path snapshots provide replayable/peekable sequences and existing path-contours reports closure; no live raw iterator is exposed. Path-ops tight bounds is distinct from control-point bounds.
+Raw path snapshots provide replayable/peekable sequences and path-contours reports closure; no live raw iterator is exposed. The PathOps tight-bounds binding is internal only. Public path-tight-bounds computes curve bounds using a different algorithm; neither query measures painted pixels.
 
 **Document behavior:** Queries do not render. Generated ordinary paths remain vector under strict PDF/SVG audit; paint dithering requires explicit rasterization. Paint-to-path preserves geometry only, not effects that act on pixels.
 
 **Backend declaration:** Geometry operations are CPU-side, backend-neutral authoring. Generated paths and paint are usable on existing raster/OpenGL/Metal/Direct3D canvases subject to unchanged context affinity; selected acceptance is separate from catalogue classification.
 
-**Public source anchors:** `geometry.rkt:path-add-rect-start!`, `geometry.rkt:path-add-rounded-rect!`, `geometry.rkt:path-add-polygon!`, `geometry.rkt:path-add-transformed!`, `geometry.rkt:path-rewind!`, `geometry.rkt:path-verbs`, `geometry.rkt:path-segment-kinds`, `geometry.rkt:path-fill-bounds`, `main.rkt:path-contours`.
+**Public source anchors:** `geometry.rkt:path-add-rect-start!`, `geometry.rkt:path-add-rounded-rect!`, `geometry.rkt:path-add-polygon!`, `geometry.rkt:path-add-transformed!`, `geometry.rkt:path-rewind!`, `geometry.rkt:path-verbs`, `geometry.rkt:path-segment-kinds`, `main.rkt:path-contours`.
 **Implementation:** [geometry.rkt](../geometry.rkt), [private/geometry-completion-util.rkt](../private/geometry-completion-util.rkt), [private/native.rkt](../private/native.rkt).
 **Test sources, not execution receipts:** [tests/geometry-completion-pure-test.rkt](../tests/geometry-completion-pure-test.rkt), [tests/geometry-completion-native-test.rkt](../tests/geometry-completion-native-test.rkt), [tests/geometry-completion-gpu-test.rkt](../tests/geometry-completion-gpu-test.rkt), [tools/geometry-completion-doctor.rkt](../tools/geometry-completion-doctor.rkt), [tools/test-geometry-completion.py](../tools/test-geometry-completion.py).
 

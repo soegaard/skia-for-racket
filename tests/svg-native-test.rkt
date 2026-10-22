@@ -298,7 +298,7 @@
      (skia-close! f)
      (with-skia ([p path])
        (check-true (> (path-point-count p) 0))
-       (define-values (x y w h) (path-bounds p))
+       (define-values (x y w h) (vector->values (path-bounds p)))
        (check-true (> w 0))
        (check-true (> h 0))
        (define bs

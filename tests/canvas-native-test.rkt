@@ -84,6 +84,53 @@
    ;;; Points, Arcs, and Rounded Geometry
    ;;;
 
+   (test-case "polygon point containers are interchangeable"
+     (with-skia ([surface (make-surface 20 20)]
+                 [paint (make-paint #:color 'red #:antialias? #f)])
+       (define canvas (surface-canvas surface))
+       (define points '((2 2) (16 2) (16 16) (2 16)))
+       (draw-polygon canvas points paint)
+       (define expected (surface->rgba-bytes surface))
+       (for ([input (in-list (list (list->vector points)
+                                   (map list->vector points)
+                                   (list->vector (map list->vector points))
+                                   (list '(2 2) #(16 2) '(16 16) #(2 16))))])
+         (canvas-clear! canvas 'transparent)
+         (draw-polygon canvas input paint)
+         (check-equal? (surface->rgba-bytes surface) expected))))
+   (test-case "empty polygons validate resources and options without drawing"
+     (with-skia ([surface (make-surface 8 8)] [paint (make-paint)])
+       (define canvas (surface-canvas surface))
+       (define before (surface->rgba-bytes surface))
+       (for ([points (in-list (list '() #()))])
+         (draw-polygon canvas points paint)
+         (check-exn exn:fail:contract? (lambda () (draw-polygon #f points paint)))
+         (check-exn exn:fail:contract? (lambda () (draw-polygon canvas points #f)))
+         (check-exn exn:fail:contract?
+                    (lambda () (draw-polygon canvas points paint #:closed? 1))))
+       (check-equal? (surface->rgba-bytes surface) before)
+       (define result (make-channel))
+       (define worker
+         (thread (lambda ()
+                   (channel-put result
+                     (with-handlers ([exn:fail? (lambda (_) 'rejected)])
+                       (draw-polygon canvas #() paint)
+                       'accepted)))))
+       (check-eq? (channel-get result) 'rejected)
+       (thread-wait worker)
+       (skia-close! paint)
+       (check-exn exn:fail? (lambda () (draw-polygon canvas #() paint)))
+       (with-skia ([live-paint (make-paint)])
+         (skia-close! surface)
+         (check-exn exn:fail? (lambda () (draw-polygon canvas '() live-paint))))))
+   (test-case "an invalid later polygon point leaves the canvas unchanged"
+     (with-skia ([surface (make-surface 20 20)] [paint (make-paint)])
+       (define before (surface->rgba-bytes surface))
+       (check-exn exn:fail:contract?
+                  (lambda ()
+                    (draw-polygon (surface-canvas surface)
+                                  #(#(2 2) #(16 2) #(16 16) #(bad 16)) paint)))
+       (check-equal? (surface->rgba-bytes surface) before)))
    (test-case "round point paints its center"
      (with-skia ([s (make-surface 30 30)] [p (make-paint #:color 'red #:cap 'round #:stroke-width 8)])
        (draw-point (surface-canvas s) 10 10 p)
@@ -201,7 +248,7 @@
        (canvas-clip-rect! c 0 0 10 20)
        (canvas-translate! c 100 70)
        (draw-color c 'red #:blend-mode 'src)
-       (define-values (tx ty) (matrix-map-point (canvas-transform c) 0 0))
+       (define-values (tx ty) (vector->values (matrix-map-point (canvas-transform c) 0 0)))
        (check-equal? (list tx ty) '(100.0 70.0))
        (check-equal? (surface-pixel s 5 5) (rgb 255 0 0))
        (check-equal? (surface-pixel s 15 5) (rgb 255 255 255))))

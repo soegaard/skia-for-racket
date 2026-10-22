@@ -435,6 +435,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | region-op | stable | 0 | procedure | 3 | none | none |
 | region-rect? | stable | 0 | procedure | 1 | none | none |
 | region-rectangles | stable | 0 | procedure | 1 | none | none |
+| region-reverse-difference | stable | 0 | procedure | 2 | none | none |
 | region-translate | stable | 0 | procedure | 3 | none | none |
 | region-union | stable | 0 | procedure | 2 | none | none |
 | region-xor | stable | 0 | procedure | 2 | none | none |
@@ -481,7 +482,6 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | path-as-rectangle | stable | 0 | procedure | 1 | none | none |
 | path-as-rounded-rect | stable | 0 | procedure | 1 | none | none |
 | path-combine | stable | 0 | procedure | 1 | none | none |
-| path-fill-bounds | stable | 0 | procedure | 1 | none | none |
 | path-rarc-to! | stable | 0 | procedure | 6 | none | #:direction, #:large? |
 | path-rectangle-bounds | stable | 0 | procedure | 1 | none | none |
 | path-rectangle-closed? | stable | 0 | procedure | 1 | none | none |
@@ -1334,8 +1334,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | matrix-map-point | stable | 0 | procedure | 3 | none | none |
 | matrix-map-rect | stable | 0 | procedure | 5 | none | none |
 | matrix-map-vector | stable | 0 | procedure | 3 | none | none |
-| matrix-rotate | stable | 0 | procedure | 1 | none | none |
 | matrix-rotate-degrees | stable | 0 | procedure | 1 | none | none |
+| matrix-rotate-radians | stable | 0 | procedure | 1 | none | none |
 | matrix-scale | stable | 0 | procedure | 1, 2 | none | none |
 | matrix-skew | stable | 0 | procedure | 2 | none | none |
 | matrix-translate | stable | 0 | procedure | 2 | none | none |
@@ -1550,7 +1550,6 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | path-cubic-to! | stable | 0 | procedure | 7 | none | none |
 | path-difference | stable | 0 | procedure | 2 | none | none |
 | path-effect? | stable | 0 | procedure | 1 | none | none |
-| path-fill-bounds | stable | 0 | procedure | 1 | none | none |
 | path-fill-rule | stable | 0 | procedure | 1 | none | none |
 | path-intersect | stable | 0 | procedure | 2 | none | none |
 | path-last-point | stable | 0 | procedure | 1 | none | none |
@@ -1560,7 +1559,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | path-measure-matrix | stable | 0 | procedure | 2 | none | #:mode |
 | path-measure-next-contour! | stable | 0 | procedure | 1 | none | none |
 | path-measure-position+tangent | stable | 0 | procedure | 2 | none | none |
-| path-measure-segment | stable | 0 | procedure | 3 | none | #:start-with-move-to? |
+| path-measure-segment | stable | 0 | procedure | 3 | none | none |
 | path-measure-set-path! | stable | 0 | procedure | 2 | none | #:force-closed? |
 | path-measure? | stable | 0 | procedure | 1 | none | none |
 | path-move-to! | stable | 0 | procedure | 3 | none | none |
@@ -1681,6 +1680,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | region-quick-reject? | stable | 0 | procedure | 2 | none | none |
 | region-rect? | stable | 0 | procedure | 1 | none | none |
 | region-rectangles | stable | 0 | procedure | 1 | none | none |
+| region-reverse-difference | stable | 0 | procedure | 2 | none | none |
 | region-set-rect! | stable | 0 | procedure | 2 | none | none |
 | region-spans | stable | 0 | procedure | 4 | none | none |
 | region-translate | stable | 0 | procedure | 3 | none | none |
@@ -1910,8 +1910,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | matrix-map-point | stable | 0 | procedure | 3 | none | none |
 | matrix-map-rect | stable | 0 | procedure | 5 | none | none |
 | matrix-map-vector | stable | 0 | procedure | 3 | none | none |
-| matrix-rotate | stable | 0 | procedure | 1 | none | none |
 | matrix-rotate-degrees | stable | 0 | procedure | 1 | none | none |
+| matrix-rotate-radians | stable | 0 | procedure | 1 | none | none |
 | matrix-scale | stable | 0 | procedure | 1, 2 | none | none |
 | matrix-skew | stable | 0 | procedure | 2 | none | none |
 | matrix-translate | stable | 0 | procedure | 2 | none | none |

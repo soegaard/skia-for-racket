@@ -120,8 +120,8 @@
 
    (test-case "path bounds versus tight cubic bounds"
      (with-skia ([p (make-path '((move 0 0) (cubic 0 100 100 100 100 0)))])
-       (check-equal? (call-with-values (lambda () (path-bounds p)) list) '(0.0 0.0 100.0 100.0))
-       (define bounds (call-with-values (lambda () (path-tight-bounds p)) list))
+       (check-equal? (vector->list (path-bounds p)) '(0.0 0.0 100.0 100.0))
+       (define bounds (vector->list (path-tight-bounds p)))
        (check-= (list-ref bounds 3) 75 0.001)))
    (test-case "imperative quadratic and cubic paths"
      (with-skia ([s (make-surface 32 32)] [p (make-paint #:color 'red)] [path (make-path)])
@@ -636,7 +636,7 @@
      (check-= tx 1.0 0.001)
      (check-= ty 0.0 0.001)
      (with-skia ([segment (path-measure-segment measure 20 60)])
-       (define-values (sx sy sw sh) (path-tight-bounds segment))
+       (define-values (sx sy sw sh) (vector->values (path-tight-bounds segment)))
        (check-= sx 20.0 0.001)
        (check-= sy 0.0 0.001)
        (check-= sw 40.0 0.001)
@@ -922,12 +922,12 @@
        (define gid (font-char->glyph f #\A))
        (define gp (font-glyph-path f gid))
        (when gp
-         (define-values (_x _y w h) (path-tight-bounds gp))
+         (define-values (_x _y w h) (vector->values (path-tight-bounds gp)))
          (check-true (> w 0))
          (check-true (> h 0))
          (skia-close! gp))
        (with-skia ([tp (simple-text-path f "ABC" 10 60)])
-         (define-values (_x _y w h) (path-tight-bounds tp))
+         (define-values (_x _y w h) (vector->values (path-tight-bounds tp)))
          (check-true (>= w 0))
          (check-true (>= h 0)))))
    (test-case "simple text drawing changes raster pixels"
@@ -1022,9 +1022,13 @@
    (test-case "relative path commands and point queries"
      (with-skia ([p (make-path '((move 10 10) (rline 20 0) (rline 0 15) (close)))])
        (check-equal? (path-point-count p) 3)
-       (check-equal? (call-with-values (lambda () (path-point-ref p 1)) list)
+       (for ([result (in-list (list (path-point-ref p 1) (path-last-point p)
+                                    (path-bounds p) (path-tight-bounds p) (path-points p)))])
+         (check-true (immutable? result)))
+       (for ([point (in-vector (path-points p))]) (check-true (immutable? point)))
+       (check-equal? (vector->list (path-point-ref p 1))
                      '(30.0 10.0))
-       (check-equal? (call-with-values (lambda () (path-last-point p)) list)
+       (check-equal? (vector->list (path-last-point p))
                      '(30.0 25.0))
        (check-true (path-convex? p))
        (check-true (path-contains? p 20 15))))
@@ -1034,7 +1038,7 @@
        (path-conic-to! p 20 0 35 25 0.5)
        ;; SkPath stores the contour start, conic control, and endpoint.
        (check-equal? (path-point-count p) 3)
-       (check-equal? (path-points p) '((5.0 25.0) (20.0 0.0) (35.0 25.0)))
+       (check-equal? (path-points p) #(#(5.0 25.0) #(20.0 0.0) #(35.0 25.0)))
        (path-add-rounded-rect! rr 0 0 30 20 5 5)
        (check-true (path-contains? rr 15 10))
        (check-false (path-contains? rr -1 -1))))

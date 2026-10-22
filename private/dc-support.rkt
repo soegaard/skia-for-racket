@@ -198,7 +198,7 @@
 ;; Fields:
 ;;   path-bounds: (commands kind ink -> left top width height), where kind is 'path, 'fill, or
 ;;   'stroke. It queries detached geometry and stroke settings without borrowing or changing a
-;;   drawing target; the returned four values use the native path-tight-bounds convention.
+;;   drawing target; the four returned values are left, top, width, and height.
 
 (struct dc-clip (paths) #:transparent)
 ;; Fields:

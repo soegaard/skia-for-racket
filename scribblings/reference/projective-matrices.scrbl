@@ -34,6 +34,8 @@ The inversion functions instead return @racket[#f] if the matrix is singular
 or an inverse coefficient would lie outside the range.
 Mapping queries return immutable vectors whose coordinates are
 double-precision flonums, or @racket[#f] when a finite result is unavailable.
+Point and rectangle results use the same vector layout as
+@racket[matrix-map-point] and @racket[matrix-map-rect].
 
 These values and their arithmetic do not load Skia. Arithmetic uses the exact
 values of the stored coefficients to avoid introducing a singularity tolerance.
@@ -468,13 +470,16 @@ is raised. A successful finite product need not equal the pure matrix product bi
           [thunk (-> any)]
           [#:replace? replace? boolean? #f])
           any]{
-Calls the zero-argument function under a protected canvas-state scope.
-By default the matrix is concatenated; a true @racket[replace?] replaces it.
+Saves the canvas state, applies @racket[matrix], and calls @racket[thunk] with
+no arguments. By default the matrix is concatenated with the current transform;
+a true @racket[replace?] replaces it.
 The callback cannot require keyword arguments, and its return values are preserved.
 
-Transform, clip, and save-stack state are restored on normal return or escape.
-The protected save floor and continuation barrier are those of
-@racket[call-with-canvas-state]. Drawing already performed is not rolled back.
+The transform, clip, and saved states are restored when the callback returns,
+exits early, or raises an exception, following @racket[call-with-canvas-state].
+Restoring past the state saved by this call raises an exception. A continuation
+cannot reenter the callback after the call ends. If the callback releases the canvas's
+target, its state is not restored. Drawing already performed is not undone.
 
 @racketblock[
 (with-skia ([surface (make-surface 20 20)]
