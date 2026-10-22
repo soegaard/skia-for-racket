@@ -192,9 +192,10 @@ on normal return or any scoped exit. No profile pointers escape.
 
 The byte limit covers input/profile buffers, requested pixel conversion buffers,
 and copied output; it is not a total bound on codec/encoder internal allocations.
-File helpers retain the existing encode-before-opening guarantee: an encoding
-failure does not truncate the destination. They are not transactional against
-filesystem write failures.
+Image file helpers encode completely, write a same-directory temporary file,
+then rename it to the destination. Encoding or write failure leaves an existing
+destination unchanged and removes the temporary file. Successful publication
+does not promise durability after a system crash.
 
 ## PDF, SVG, and portable document colors
 

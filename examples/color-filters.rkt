@@ -116,11 +116,11 @@
 
 ; panel : canvas? any/c any/c real? real? boolean? -> any/c
 ;   Draws filtered swatches directly or records the explicit document-output group.
-(define (panel c page name x y document?)
+(define (panel c page name x y pdf-document?)
   (define (draw cf)
     (define (content local) (swatches local cf))
     (cond
-      [document?
+      [pdf-document?
        (define result (draw-output-group c x y 300 96 content #:scale 2 #:label (symbol->string
          name)))
        (when (current-decisions)
@@ -136,7 +136,7 @@
 
 ; draw-page : canvas? exact-nonnegative-integer? boolean? -> void?
 ;   Draws the page component in the current canvas coordinate system.
-(define (draw-page c index document?)
+(define (draw-page c index pdf-document?)
   (define page (list-ref page-names index))
   (with-skia ([p (make-paint #:color teal)]) (draw-rect c 0 0 34 2 p))
   (label c (list-ref titles index) 0 32 21)
@@ -147,7 +147,7 @@
     (define x (car xy)) (define y (cadr xy))
     (label c text x (- y 15) 10)
     (checker c x y)
-    (panel c page name x y document?)
+    (panel c page name x y pdf-document?)
     (label c "Opaque palette / gray ramp / half-alpha swatches" x (+ y 14 96) 8.5))
   (label c (car (list-ref notes-by-page index)) 0 406 9)
   (label c (cadr (list-ref notes-by-page index)) 0 424 9)

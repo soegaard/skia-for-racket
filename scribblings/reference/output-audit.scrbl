@@ -155,18 +155,17 @@ resources, callback exceptions, and document-finalization errors propagate.
 }
 
 @defproc[(output->bytes/audit [source (or/c output-page? (listof output-page?))] [format (or/c
-          'pdf 'svg)] [#:policy policy (or/c 'report 'error 'vector-only) 'report] [#:title
+          'pdf 'svg)] [#:policy policy (or/c 'report 'error 'vector-only) 'error] [#:title
           title string? ""] [#:description description string? ""] [#:text-mode text-mode (or/c
           'auto 'native 'outline) 'auto] [#:raster-dpi raster-dpi (real-in 1 9600) 144]
           [#:id-prefix id-prefix (or/c string? #f) #f] [#:encoding-quality quality (or/c
           (integer-in 0 101) #f) #f] [#:pdfa? pdfa? boolean? #f])
           (values (and/c bytes? (not/c immutable?)) output-audit-report?)]{
 Exports each page once and returns completed mutable document bytes and an immutable report. The
-default @racket['report] policy collects observations without repairing unsupported native
-behavior. The resulting file can still omit an effect when the caller chooses that policy.
-The file-writing counterpart, @racket[save-output/audit], defaults to
-@racket['error] instead. Supply @racket[#:policy] explicitly when the two operations
-should use the same checks.
+default policy is @racket['error], as with @racket[save-output/audit]. To collect
+observations without rejecting unsupported features, explicitly choose
+@racket[#:policy 'report]. That policy does not repair unsupported native
+behavior, so the resulting file can still omit an effect.
 
 The @racket['error] policy raises an exception satisfying @racket[exn:fail:output-audit?]
 before an operation classified as @racket['needs-raster],
@@ -187,7 +186,7 @@ of document features such as searchable text and links.
           #f) #f] [#:pdfa? pdfa? boolean? #f])
           output-audit-report?]{
 Saves a completed audited document to a file and returns its report. The default policy is
-@racket['error], unlike @racket[output->bytes/audit]. The destination is resolved before
+@racket['error], as with @racket[output->bytes/audit]. The destination is resolved before
 callbacks run. Drawing, auditing, and finalization complete before the document is
 written to a temporary file and renamed to the destination. An audit rejection
 does not truncate or replace the destination. Callback side effects are not undone.

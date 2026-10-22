@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "fa6efa92bccf64391478c362cfa0cc4714024a0e"
+      "git_blob": "d4abc2573ddb00c333670ba8161aba710afb7ba3"
     },
     {
       "file": "api/public-api-gui.json",
@@ -5819,7 +5819,7 @@
       "space": null
     },
     {
-      "name": "document?",
+      "name": "pdf-document?",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5839,7 +5839,7 @@
       "space": null
     },
     {
-      "name": "document-state",
+      "name": "pdf-document-state",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5849,7 +5849,7 @@
       "space": null
     },
     {
-      "name": "document-page-count",
+      "name": "pdf-document-page-count",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5859,7 +5859,7 @@
       "space": null
     },
     {
-      "name": "document-begin-page!",
+      "name": "pdf-document-begin-page!",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5869,7 +5869,7 @@
       "space": null
     },
     {
-      "name": "document-end-page!",
+      "name": "pdf-document-end-page!",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5879,7 +5879,7 @@
       "space": null
     },
     {
-      "name": "call-with-document-page",
+      "name": "call-with-pdf-page",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5889,7 +5889,7 @@
       "space": null
     },
     {
-      "name": "with-document-page",
+      "name": "with-pdf-page",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5899,7 +5899,7 @@
       "space": null
     },
     {
-      "name": "document-finish!",
+      "name": "pdf-document-finish!",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5909,7 +5909,7 @@
       "space": null
     },
     {
-      "name": "document-abort!",
+      "name": "pdf-document-abort!",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [
@@ -5919,7 +5919,7 @@
       "space": null
     },
     {
-      "name": "document->pdf-bytes",
+      "name": "pdf-document->bytes",
       "chapter": "scribblings/reference/pdf-documents.scrbl",
       "canonical_module": "skia",
       "exports": [

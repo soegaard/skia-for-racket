@@ -147,6 +147,16 @@
        (skia-close! p)
        (for ([i (in-range 3)]) (draw-drawable (surface-canvas s) d))
        (check-equal? calls 1) (check-equal? (surface-pixel s 2 3) (rgb 255 0 0))))
+   (test-case "drawable capture accepts logical extents without a raster budget"
+     (for ([size '(0 10.5 40000)])
+       (define calls 0)
+       (parameterize ([current-skia-byte-limit 1])
+         (with-skia ([drawable (call-with-drawable size 12.25
+                                (lambda (_) (set! calls (add1 calls))))]
+                     [picture (drawable->picture drawable)])
+           (check-= (picture-width picture) size 0)
+           (check-= (picture-height picture) 12.25 0)
+           (check-equal? calls 1)))))
    (test-case "retained and immediate drawable drawing agree"
      (with-skia
        ([d (call-with-drawable 16 12 scene)] [a (make-surface 16 12)] [b (make-surface 16 12)])

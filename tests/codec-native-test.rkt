@@ -138,7 +138,7 @@
    (test-case "still PNG/JPEG/WebP have one decodable frame without changing legacy metadata"
      (with-skia ([source (rgba-bytes->image 3 2 (vector-ref gif-expected-frames 1))])
        (for ([format (in-list '(png jpeg webp))])
-         (define bs (image->encoded-bytes source format #:webp-lossless? #t))
+         (define bs (image->encoded-bytes source format #:webp-lossless? (eq? format 'webp)))
          (with-skia ([c (codec-from-bytes bs)] [legacy (image-from-bytes bs)])
            (check-equal? (codec-frame-count c) 1)
            (check-equal? (codec-info c) (encoded-image-info-from-bytes bs))

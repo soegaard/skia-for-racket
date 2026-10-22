@@ -33,7 +33,7 @@
     (define profile (color-space->icc-bytes srgb))
     (for ([format '(png jpeg webp)])
       (define bs (image->encoded-bytes converted format #:icc-profile profile
-                                      #:icc-description "Doctor RGB" #:webp-lossless? #t))
+                                      #:icc-description "Doctor RGB" #:webp-lossless? (eq? format 'webp)))
       (unless (regexp-match?
                 (case format [(png) #rx#"iCCP"] [(jpeg) #rx#"ICC_PROFILE"] [(webp) #rx#"ICCP"]) bs)
         (error 'doctor "missing explicit ICC data in ~a" format))
@@ -42,6 +42,6 @@
     (unless (> (vector-ref (color-space-xyz-d50 p3) 0) 0.5)
       (error 'doctor "unexpected Display-P3 primary matrix")))
   (define pdf
-    (call-with-pdf-bytes (lambda (d) (with-document-page (c d 100 80) (void))) #:pdfa? #t))
+    (call-with-pdf-bytes (lambda (d) (with-pdf-page (c d 100 80) (void))) #:pdfa? #t))
   (unless (regexp-match? #rx#"/OutputIntents" pdf) (error 'doctor "missing PDF sRGB output intent"))
   (displayln "Color output passed: custom RGB, sample conversion, PNG/JPEG/WebP ICC, PDF output intent; transfer=28 XYZ=36 primaries=32"))

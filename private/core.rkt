@@ -21,7 +21,7 @@
            call-with-native-temporary shaper-font text-blob-font))
 (require "gpu-domain.rkt") ; pure lifecycle code; no GPU/GUI/native initialization
 (require "output-util.rkt" "filter-util.rkt" "icc-encoding.rkt" "color-output-util.rkt"
-         "annotation-util.rkt" "audit-trace.rkt")
+         "annotation-util.rkt" "audit-trace.rkt" "output-file.rkt")
 ;; Owned style sets integrate with the ordinary resource lifecycle. Metadata
 ;; entries returned by the public module are detached, not native views.
 (struct font-style-set-resource (handle) #:constructor-name make-font-style-set-record)
@@ -686,7 +686,7 @@
       (runtime-effect-resource? v) (blender-resource? v)
       (surface? v) (paint? v) (shader? v) (path-effect? v)
       (color-filter? v) (mask-filter? v) (image-filter? v) (color-space? v)
-      (picture? v) (picture-recorder? v) (document? v) (svg-document? v)
+      (picture? v) (picture-recorder? v) (pdf-document? v) (svg-document? v)
       (skia-path? v) (path-measure? v) (image? v) (codec? v)
       (font-manager? v) (typeface? v) (font? v) (text-blob? v) (shaper? v)
       (text-layout? v) (mixed-text-layout? v)))
@@ -707,9 +707,9 @@
         [(runtime-effect-resource? v) (runtime-effect-resource-handle v)]
         [(blender-resource? v) (blender-resource-handle v)]
         [(surface? v) (surface-handle v)]
-        [(document? v) (document-handle v)]
+        [(pdf-document? v) (pdf-document-handle v)]
         [(svg-document? v) (svg-document-handle v)]
-        [(pdf-page? v) (document-handle (pdf-page-document v))]
+        [(pdf-page? v) (pdf-document-handle (pdf-page-document v))]
         [(paint? v) (paint-handle v)]
         [(shader? v) (shader-handle v)]
         [(path-effect? v) (path-effect-handle v)]
@@ -1051,7 +1051,7 @@
 ;; Fields:
 ;;   handle: owned native output lifetime cell. storage: mutable SVG storage. width and height:
 ;;   drawing extents. title, description, and prefix: validated metadata and identifier prefix.
-;;   status: mutable document-state symbol. floors: protected canvas save-count stack. Drawing is
+;;   status: mutable lifecycle-state symbol. floors: protected canvas save-count stack. Drawing is
 ;;   legal only in the open document state; final XML is detached from native resources.
 
 
@@ -1198,7 +1198,7 @@
      (define xml (svg-storage-xml (svg-document-storage d)))
      (unless (<= (bytes-length xml) (current-skia-byte-limit))
        (error who "SVG output exceeds current-skia-byte-limit"))
-     ;; Independent mutable result, like document->pdf-bytes and image encoders.
+     ;; Independent mutable result, like pdf-document->bytes and image encoders.
      (bytes-copy xml))))
 
 ; svg-document->string : svg-document? -> string?
@@ -1334,10 +1334,10 @@
       (draw-image-rect c im dx dy bw bh #:sampling 'linear)))
   (void))
 
-(provide document? make-pdf-document document-state document-page-count
-         document-begin-page! document-end-page! document-finish! document-abort!
-         document->pdf-bytes save-pdf
-         call-with-document-page with-document-page
+(provide pdf-document? make-pdf-document pdf-document-state pdf-document-page-count
+         pdf-document-begin-page! pdf-document-end-page! pdf-document-finish! pdf-document-abort!
+         pdf-document->bytes save-pdf
+         call-with-pdf-page with-pdf-page
          call-with-pdf-bytes call-with-pdf-file)
 
 ;;;
@@ -1353,17 +1353,17 @@
 ;;   before completion. native-closed?: whether native document finalization has already occurred,
 ;;   preventing duplicate close.
 
-(struct document (handle storage [status #:mutable] [page #:mutable] [count #:mutable])
-  #:constructor-name make-document-record
+(struct pdf-document (handle storage [status #:mutable] [page #:mutable] [count #:mutable])
+  #:constructor-name make-pdf-document-record
   #:property prop:convertible
   (lambda (value request default)
     ;; Conversion never changes document state or publishes unfinished output.
     (case request
-      [(pdf-bytes) (document->pdf-bytes value)]
+      [(pdf-bytes) (pdf-document->bytes value)]
       [else default])))
 ;; Fields:
 ;;   handle: owned native PDF document. storage: stream/data bookkeeping. status: mutable lifecycle
-;;   symbol. page: current pdf-page or #f. count: number of pages begun. At most one page can be
+;;   symbol. page: current pdf-page or #f. count: number of completed pages. At most one page can be
 ;;   active.
 
 ;; Each begin-page gets a distinct token. In particular, an old canvas must
@@ -1375,31 +1375,31 @@
 ;;   when this page ends, even if the document remains live.
 
 
-; document-h : symbol? document? -> (or/c owned? domain-resource?)
-;   Checks document? before returning the wrapper's private lifetime cell.
-(define (document-h who d)
-  (typed-handle who d document? document-handle "document?"))
+; pdf-document-h : symbol? pdf-document? -> (or/c owned? domain-resource?)
+;   Checks pdf-document? before returning the wrapper's private lifetime cell.
+(define (pdf-document-h who d)
+  (typed-handle who d pdf-document? pdf-document-handle "pdf-document?"))
 
-; document-state : document? -> (or/c 'open 'page 'finished 'aborted 'closed)
+; pdf-document-state : pdf-document? -> (or/c 'open 'page 'finished 'aborted 'closed)
 ;   Returns the current lifecycle state.
-(define (document-state d)
-  (define h (document-h 'document-state d))
+(define (pdf-document-state d)
+  (define h (pdf-document-h 'pdf-document-state d))
   (if (owned-closed? h)
-      (if (eq? (document-status d) 'aborted) 'aborted 'closed)
-      (document-status d)))
+      (if (eq? (pdf-document-status d) 'aborted) 'aborted 'closed)
+      (pdf-document-status d)))
 
-; document-page-count : document? -> exact-nonnegative-integer?
+; pdf-document-page-count : pdf-document? -> exact-nonnegative-integer?
 ;   Returns the number of successfully ended pages.
-(define (document-page-count d)
-  (document-h 'document-page-count d)
-  (document-count d))
+(define (pdf-document-page-count d)
+  (pdf-document-h 'pdf-document-page-count d)
+  (pdf-document-count d))
 
 ; pdf-page-closed? : pdf-page? -> boolean?
 ;   Checks both document lifetime and page identity so a previous page cannot be drawn again.
 (define (pdf-page-closed? p)
   (define d (pdf-page-document p))
-  (or (owned-closed? (document-handle d))
-      (not (eq? p (document-page d)))))
+  (or (owned-closed? (pdf-document-handle d))
+      (not (eq? p (pdf-document-page d)))))
 
 ; pdf-page-pointer/checked : symbol? pdf-page? -> cpointer?
 ;   Returns the borrowed PDF canvas pointer only for the document's active page.
@@ -1448,14 +1448,14 @@
         (lambda (sp) (loop (cdr remaining) (cons sp pointers))))])))
 
 ; make-pdf-document : [#:title string?] [#:author string?] [#:subject string?] [#:keywords string?]
-;   [#:creator string?] [#:producer string?] [#:creation-date (or/c date? #f)] [#:modified-date
+;   [#:creator string?] [#:producer (or/c string? #f)] [#:creation-date (or/c date? #f)] [#:modified-date
 ;   (or/c date? #f)] [#:raster-dpi (real-in 1 9600)] [#:encoding-quality (integer-in 0 101)]
-;   [#:pdfa? boolean?] -> document?
+;   [#:pdfa? boolean?] -> pdf-document?
 ;   Returns an owned document in the 'open state with no completed pages.
 (define (make-pdf-document #:title [title ""] #:author [author ""]
                            #:subject [subject ""] #:keywords [keywords ""]
                            #:creator [creator "skia-for-racket"]
-                           #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                           #:producer [producer #f]
                            #:creation-date [creation-date #f]
                            #:modified-date [modified-date #f]
                            #:raster-dpi [raster-dpi 144]
@@ -1464,12 +1464,19 @@
   (define who 'make-pdf-document)
   (boolean who pdfa?)
   ;; Validate every public option before resolving or loading native code.
-  (define fields (pdf-metadata-bytes who (list title author subject keywords creator producer)))
+  (define explicit-fields
+    (pdf-metadata-bytes who (list title author subject keywords creator (or producer ""))))
   (define creation (pdf-date-time who creation-date))
   (define modified (pdf-date-time who modified-date))
   (define dpi (pdf-raster-dpi who raster-dpi))
   (define quality (pdf-encoding-quality who encoding-quality))
   (skia-check!)
+  ;; Resolve the default only when constructing a document, never on module import.
+  (define fields
+    (if producer explicit-fields
+        (pdf-metadata-bytes
+         who (list title author subject keywords creator
+                   (format "Skia/PDF ~a; skia-for-racket" (skia-native-version))))))
   (define storage (pdf-storage #f #f #f))
   (define hnd
     (call-with-pdf-metadata
@@ -1490,76 +1497,76 @@
             (unless dp (error who "native PDF document allocation failed"))
             dp))
         (lambda (dp) (release-pdf-native! storage dp))))))
-  (make-document-record hnd storage 'open #f 0))
+  (make-pdf-document-record hnd storage 'open #f 0))
 
-; document-begin-page! : document? (real-in 1/1000 14400) (real-in 1/1000 14400) -> canvas?
+; pdf-document-begin-page! : pdf-document? (real-in 1/1000 14400) (real-in 1/1000 14400) -> canvas?
 ;   Begins a page and returns its borrowed canvas.
-(define (document-begin-page! d width height)
-  (define who 'document-begin-page!)
-  (define hnd (document-h who d))
+(define (pdf-document-begin-page! d width height)
+  (define who 'pdf-document-begin-page!)
+  (define hnd (pdf-document-h who d))
   (define w (pdf-page-dimension who width))
   (define h (pdf-page-dimension who height))
   (call-with-owned
    who (list hnd)
    (lambda (dp)
-     (unless (eq? (document-status d) 'open)
-       (error who "document must be open and between pages; state: ~a" (document-status d)))
+     (unless (eq? (pdf-document-status d) 'open)
+       (error who "document must be open and between pages; state: ~a" (pdf-document-status d)))
      (define cp (sk_document_begin_page dp w h #f))
      (unless cp
        ;; Native beginPage can enter its in-page state even when its canvas
        ;; allocation fails. Do not leave a half-open document usable.
-       (set-document-status! d 'aborted)
+       (set-pdf-document-status! d 'aborted)
        (owned-close! who hnd)
        (error who "native PDF page creation failed"))
      (define page (pdf-page d cp '() #f))
-     (set-document-page! d page)
-     (set-document-status! d 'page)
+     (set-pdf-document-page! d page)
+     (set-pdf-document-status! d 'page)
      (make-canvas-record page))))
 
-; end-document-page! : symbol? any/c any/c any/c -> any
+; end-pdf-document-page! : symbol? any/c any/c any/c -> any
 ;   Ends the matching active PDF page without crossing an outstanding page or canvas-state scope.
-(define (end-document-page! who d expected scoped?)
+(define (end-pdf-document-page! who d expected scoped?)
   (call-with-owned
-   who (list (document-h who d))
+   who (list (pdf-document-h who d))
    (lambda (dp)
-     (define page (document-page d))
-     (unless (and page (eq? (document-status d) 'page)
+     (define page (pdf-document-page d))
+     (unless (and page (eq? (pdf-document-status d) 'page)
                   (or (not expected) (eq? expected page)))
        (error who "document has no matching active PDF page"))
      (when (or (pair? (pdf-page-floors page))
                (and (pdf-page-scoped? page) (not scoped?)))
        (error who "cannot end a protected PDF page or canvas-state scope"))
      (sk_document_end_page dp)
-     (set-document-page! d #f)
-     (set-document-status! d 'open)
-     (set-document-count! d (add1 (document-count d))))))
+     (set-pdf-document-page! d #f)
+     (set-pdf-document-status! d 'open)
+     (set-pdf-document-count! d (add1 (pdf-document-count d))))))
 
-; document-end-page! : document? -> void?
+; pdf-document-end-page! : pdf-document? -> void?
 ;   Ends the active page, increments the completed-page count, and returns the document to 'open.
-(define (document-end-page! d)
-  (end-document-page! 'document-end-page! d #f #f))
+(define (pdf-document-end-page! d)
+  (end-pdf-document-page! 'pdf-document-end-page! d #f #f))
 
-; document-finish! : document? -> void?
+; pdf-document-finish! : pdf-document? -> void?
 ;   Finalizes a document that is open between pages and has at least one completed page.
-(define (document-finish! d)
-  (define who 'document-finish!)
-  (define hnd (document-h who d))
+(define (pdf-document-finish! d)
+  (define who 'pdf-document-finish!)
+  (define hnd (pdf-document-h who d))
   (call-with-owned
    who (list hnd)
    (lambda (dp)
-     (unless (eq? (document-status d) 'finished)
-       (unless (eq? (document-status d) 'open)
+     (unless (eq? (pdf-document-status d) 'finished)
+       (unless (eq? (pdf-document-status d) 'open)
          (error who "end the active PDF page before finishing the document"))
-       (unless (positive? (document-count d))
+       (unless (positive? (pdf-document-count d))
          (error who "a PDF document must contain at least one completed page"))
        (annotation-check! who d)
        (with-handlers ([(lambda (_) #t)
                         (lambda (e)
-                          (set-document-status! d 'aborted)
+                          (set-pdf-document-status! d 'aborted)
                           (owned-close! who hnd)
                           (annotation-forget! d)
                           (raise e))])
-         (define storage (document-storage d))
+         (define storage (pdf-document-storage d))
          (sk_document_close dp)
          (set-pdf-storage-native-closed?! storage #t)
          (define data (sk_dynamicmemorywstream_detach_as_data (pdf-storage-stream storage)))
@@ -1569,46 +1576,46 @@
          (unless (<= 1 n (current-skia-byte-limit))
            (error who "PDF output size ~a is empty or exceeds current-skia-byte-limit (~a)"
                   n (current-skia-byte-limit)))
-         (set-document-status! d 'finished)
+         (set-pdf-document-status! d 'finished)
          (annotation-forget! d)))))
   (void))
 
-; document-abort! : document? -> void?
+; pdf-document-abort! : pdf-document? -> void?
 ;   Discards access to the document's bytes, ends any active page, releases its native resources,
 ;   and reports 'aborted.
-(define (document-abort! d)
-  (define hnd (document-h 'document-abort! d))
+(define (pdf-document-abort! d)
+  (define hnd (pdf-document-h 'pdf-document-abort! d))
   ;; owned-close! checks thread affinity even for an already-closed resource.
-  (owned-close! 'document-abort! hnd)
+  (owned-close! 'pdf-document-abort! hnd)
   (annotation-forget! d)
-  (set-document-page! d #f)
-  (set-document-status! d 'aborted)
+  (set-pdf-document-page! d #f)
+  (set-pdf-document-status! d 'aborted)
   (void))
 
-; document->pdf-bytes : document? -> (and/c bytes? (not/c immutable?))
+; pdf-document->bytes : pdf-document? -> (and/c bytes? (not/c immutable?))
 ;   Returns a fresh mutable copy of a finished document's bytes.
-(define (document->pdf-bytes d)
-  (define who 'document->pdf-bytes)
+(define (pdf-document->bytes d)
+  (define who 'pdf-document->bytes)
   (call-with-owned
-   who (list (document-h who d))
+   who (list (pdf-document-h who d))
    (lambda (_dp)
-     (unless (eq? (document-status d) 'finished)
-       (error who "document-finish! must succeed before reading PDF bytes"))
-     (copy-native-data who (pdf-storage-data (document-storage d))))))
+     (unless (eq? (pdf-document-status d) 'finished)
+       (error who "pdf-document-finish! must succeed before reading PDF bytes"))
+     (copy-native-data who (pdf-storage-data (pdf-document-storage d))))))
 
-; save-pdf : document? path-string? [#:exists (or/c 'error 'replace)] -> void?
+; save-pdf : pdf-document? path-string? [#:exists (or/c 'error 'replace)] -> void?
 ;   Writes an already-finished, still-open document.
 (define (save-pdf d filename #:exists [exists 'error])
   (define target (pdf-output-path 'save-pdf filename exists))
-  (write-pdf-file-bytes! 'save-pdf (document->pdf-bytes d) target exists))
+  (write-pdf-file-bytes! 'save-pdf (pdf-document->bytes d) target exists))
 
-; call-with-document-page : document? (real-in 1/1000 14400) (real-in 1/1000 14400) (-> canvas? any)
+; call-with-pdf-page : pdf-document? (real-in 1/1000 14400) (real-in 1/1000 14400) (-> canvas? any)
 ;   -> any
 ;   Begins a protected page, calls proc with its canvas, ends the page on normal return, and
 ;   returns all of the callback's results.
-(define (call-with-document-page d width height proc)
-  (define who 'call-with-document-page)
-  (document-h who d)
+(define (call-with-pdf-page d width height proc)
+  (define who 'call-with-pdf-page)
+  (pdf-document-h who d)
   (pdf-page-dimension who width)
   (pdf-page-dimension who height)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
@@ -1620,28 +1627,28 @@
      (dynamic-wind
        (lambda ()
          (parameterize-break #f
-           (set! c (document-begin-page! d width height))
+           (set! c (pdf-document-begin-page! d width height))
            (set-pdf-page-scoped?! (canvas-resource c) #t)))
        (lambda ()
          (call-with-values
           (lambda () (proc c))
           (lambda results
             (parameterize-break #f
-              (end-document-page! who d (canvas-resource c) #t)
+              (end-pdf-document-page! who d (canvas-resource c) #t)
               (set! completed? #t))
             (apply values results))))
        (lambda ()
          ;; Includes arbitrary raised values, breaks, and continuation escapes.
          ;; A partially authored page cannot silently become a successful PDF.
-         (unless completed? (document-abort! d)))))))
+         (unless completed? (pdf-document-abort! d)))))))
 
-; with-document-page : syntax transformer
-;   Binds a borrowed page canvas through call-with-document-page and aborts incomplete authoring.
-(define-syntax-rule (with-document-page (canvas document width height) body ...)
-  (call-with-document-page document width height (lambda (canvas) body ...)))
+; with-pdf-page : syntax transformer
+;   Binds a borrowed page canvas through call-with-pdf-page and aborts incomplete authoring.
+(define-syntax-rule (with-pdf-page (canvas document width height) body ...)
+  (call-with-pdf-page document width height (lambda (canvas) body ...)))
 
-; call-with-pdf-bytes : (-> document? any) [#:title string?] [#:author string?] [#:subject string?]
-;   [#:keywords string?] [#:creator string?] [#:producer string?] [#:creation-date (or/c date? #f)]
+; call-with-pdf-bytes : (-> pdf-document? any) [#:title string?] [#:author string?] [#:subject string?]
+;   [#:keywords string?] [#:creator string?] [#:producer (or/c string? #f)] [#:creation-date (or/c date? #f)]
 ;   [#:modified-date (or/c date? #f)] [#:raster-dpi (real-in 1 9600)] [#:encoding-quality
 ;   (integer-in 0 101)] [#:pdfa? boolean?] -> (and/c bytes? (not/c immutable?))
 ;   Creates a document with the settings described at make-pdf-document, calls proc with the
@@ -1650,7 +1657,7 @@
                              #:title [title ""] #:author [author ""]
                              #:subject [subject ""] #:keywords [keywords ""]
                              #:creator [creator "skia-for-racket"]
-                             #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                             #:producer [producer #f]
                              #:creation-date [creation-date #f]
                              #:modified-date [modified-date #f]
                              #:raster-dpi [raster-dpi 144]
@@ -1664,12 +1671,12 @@
                  #:creation-date creation-date #:modified-date modified-date
                  #:raster-dpi raster-dpi #:encoding-quality encoding-quality #:pdfa? pdfa?)])
     (call-with-values (lambda () (proc d)) (lambda ignored (void)))
-    (document-finish! d)
-    (document->pdf-bytes d)))
+    (pdf-document-finish! d)
+    (pdf-document->bytes d)))
 
-; call-with-pdf-file : path-string? (-> document? any) [#:exists (or/c 'error 'replace)] [#:title
+; call-with-pdf-file : path-string? (-> pdf-document? any) [#:exists (or/c 'error 'replace)] [#:title
 ;   string?] [#:author string?] [#:subject string?] [#:keywords string?] [#:creator string?]
-;   [#:producer string?] [#:creation-date (or/c date? #f)] [#:modified-date (or/c date? #f)]
+;   [#:producer (or/c string? #f)] [#:creation-date (or/c date? #f)] [#:modified-date (or/c date? #f)]
 ;   [#:raster-dpi (real-in 1 9600)] [#:encoding-quality (integer-in 0 101)] [#:pdfa? boolean?] ->
 ;   void?
 ;   Runs call-with-pdf-bytes and publishes the completed bytes using the file rules of save-pdf.
@@ -1677,7 +1684,7 @@
                             #:title [title ""] #:author [author ""]
                             #:subject [subject ""] #:keywords [keywords ""]
                             #:creator [creator "skia-for-racket"]
-                            #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                            #:producer [producer #f]
                             #:creation-date [creation-date #f]
                             #:modified-date [modified-date #f]
                             #:raster-dpi [raster-dpi 144]
@@ -2091,7 +2098,7 @@
        ;; its affinity before returning the now-empty recorder to CPU ownership.
        (owned-clear-recording-affinity! (picture-recorder-handle rr))))))
 
-; call-with-picture : (integer-in 1 32768) (integer-in 1 32768) (-> canvas? any) [#:spatial-index
+; call-with-picture : (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) (-> canvas? any) [#:spatial-index
 ;   (or/c 'none 'rtree)] -> picture?
 ;   Records proc on a fresh canvas with culling bounds at the origin and returns the finished
 ;   picture.
@@ -2099,7 +2106,7 @@
   (define who 'call-with-picture)
   (unless (memq spatial-index '(none rtree))
     (raise-argument-error who "'none or 'rtree" spatial-index))
-  (check-dimensions who w h)
+  (rect who 0 0 w h)
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error who "procedure accepting one argument" proc))
   (call-with-skia-resource
@@ -2186,16 +2193,10 @@
 (define (save-png s filename #:exists [exists 'error] #:compression [compression 6]
                   #:color-space [cs #f] #:icc-profile [icc #f]
                   #:icc-description [description #f])
-  (unless (path-string? filename)
-    (raise-argument-error 'save-png "path-string?" filename))
-  (unless (memq exists '(error replace))
-    (raise-argument-error 'save-png "'error or 'replace" exists))
-  ;; Encode before opening the destination, so native errors do not truncate it.
+  (define target (output-file-path 'save-png filename exists))
   (define data (surface->png-bytes s #:compression compression #:color-space cs
                                   #:icc-profile icc #:icc-description description))
-  (call-with-output-file filename
-    (lambda (out) (write-bytes data out) (void))
-    #:mode 'binary #:exists exists))
+  (write-output-file-bytes! 'save-png data target exists))
 
 ;;;
 ;;; Paint State and Retained Attachments
@@ -7075,48 +7076,61 @@
                        (lambda (pp text) (make-sk-webp-options compression q pp text))
                        sk_webpencoder_encode))
 
-; image->encoded-bytes : image? (or/c 'png 'jpeg 'webp) [#:quality any/c] [#:png-compression any/c]
-;   [#:jpeg-downsample any/c] [#:jpeg-alpha any/c] [#:webp-lossless? any/c] [#:color-space (or/c
+; image->encoded-bytes : image? (or/c 'png 'jpeg 'webp) [#:quality (or/c #f (real-in 0 100))]
+;   [#:png-compression (or/c #f (integer-in 0 9))]
+;   [#:jpeg-downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444)]
+;   [#:jpeg-alpha (or/c #f 'ignore 'blend-on-black)] [#:webp-lossless? boolean?] [#:color-space (or/c
 ;   color-space? #f)] [#:icc-profile (or/c bytes? #f)] [#:icc-description (or/c string? #f)] ->
 ;   bytes?
-;   Dispatches to image->png-bytes, image->jpeg-bytes, or image->webp-bytes according to format.
-(define (image->encoded-bytes im format #:quality [quality 90]
-                              #:png-compression [png-compression 6]
-                              #:jpeg-downsample [jpeg-downsample 'yuv-420]
-                              #:jpeg-alpha [jpeg-alpha 'ignore]
+;   Encodes in the selected format, rejecting non-#f options for other formats. JPEG quality
+;   must be an exact integer; #f options select the encoder's defaults.
+(define (image->encoded-bytes im format #:quality [quality #f]
+                              #:png-compression [png-compression #f]
+                              #:jpeg-downsample [jpeg-downsample #f]
+                              #:jpeg-alpha [jpeg-alpha #f]
                               #:webp-lossless? [webp-lossless? #f]
                               #:color-space [cs #f] #:icc-profile [icc #f]
                               #:icc-description [description #f])
+  (define who 'image->encoded-bytes)
+  (unless (memq format '(png jpeg webp))
+    (raise-argument-error who "'png, 'jpeg, or 'webp" format))
+  (for ([option (in-list (list (list '#:quality quality '(jpeg webp))
+                               (list '#:png-compression png-compression '(png))
+                               (list '#:jpeg-downsample jpeg-downsample '(jpeg))
+                               (list '#:jpeg-alpha jpeg-alpha '(jpeg))
+                               (list '#:webp-lossless? webp-lossless? '(webp))))])
+    (when (and (cadr option) (not (memq format (caddr option))))
+      (raise-arguments-error who "encoding option does not apply to the selected format"
+                             "format" format "keyword" (car option) "value" (cadr option))))
   (case format
-    [(png) (image->png-bytes im #:compression png-compression #:color-space cs
+    [(png) (image->png-bytes im #:compression (or png-compression 6) #:color-space cs
                              #:icc-profile icc #:icc-description description)]
-    [(jpeg) (image->jpeg-bytes im #:quality quality #:downsample jpeg-downsample #:alpha jpeg-alpha
+    [(jpeg) (image->jpeg-bytes im #:quality (or quality 90)
+                               #:downsample (or jpeg-downsample 'yuv-420)
+                               #:alpha (or jpeg-alpha 'ignore)
                                #:color-space cs #:icc-profile icc #:icc-description description)]
-    [(webp) (image->webp-bytes im #:quality quality #:lossless? webp-lossless?
-                               #:color-space cs #:icc-profile icc #:icc-description description)]
-    [else (raise-argument-error 'image->encoded-bytes "'png, 'jpeg, or 'webp" format)]))
+    [(webp) (image->webp-bytes im #:quality (or quality 90) #:lossless? webp-lossless?
+                               #:color-space cs #:icc-profile icc #:icc-description description)]))
 
 ; save-image : image? path-string? (or/c 'png 'jpeg 'webp) [#:exists (or/c 'error 'replace)]
-;   [#:quality any/c] [#:png-compression any/c] [#:jpeg-downsample any/c] [#:jpeg-alpha any/c]
-;   [#:webp-lossless? any/c] [#:color-space (or/c color-space? #f)] [#:icc-profile (or/c bytes? #f)]
+;   [#:quality (or/c #f (real-in 0 100))] [#:png-compression (or/c #f (integer-in 0 9))]
+;   [#:jpeg-downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444)]
+;   [#:jpeg-alpha (or/c #f 'ignore 'blend-on-black)] [#:webp-lossless? boolean?]
+;   [#:color-space (or/c color-space? #f)] [#:icc-profile (or/c bytes? #f)]
 ;   [#:icc-description (or/c string? #f)] -> void?
-;   Encodes with image->encoded-bytes and writes the completed bytes to filename.
-(define (save-image im filename format #:exists [exists 'error] #:quality [quality 90]
-                    #:png-compression [png-compression 6]
-                    #:jpeg-downsample [jpeg-downsample 'yuv-420] #:jpeg-alpha [jpeg-alpha 'ignore]
+;   Encodes with image->encoded-bytes, then publishes completed bytes by same-directory rename.
+(define (save-image im filename format #:exists [exists 'error] #:quality [quality #f]
+                    #:png-compression [png-compression #f]
+                    #:jpeg-downsample [jpeg-downsample #f] #:jpeg-alpha [jpeg-alpha #f]
                     #:webp-lossless? [webp-lossless? #f]
                     #:color-space [cs #f] #:icc-profile [icc #f] #:icc-description [description #f])
-  (unless (path-string? filename) (raise-argument-error 'save-image "path-string?" filename))
-  (unless (memq exists '(error replace)) (raise-argument-error 'save-image "'error or 'replace"
-    exists))
-  ;; Retain the existing encode-before-opening failure behavior.
+  (define target (output-file-path 'save-image filename exists))
   (define data
     (image->encoded-bytes im format #:quality quality #:png-compression png-compression
                           #:jpeg-downsample jpeg-downsample #:jpeg-alpha jpeg-alpha
                           #:webp-lossless? webp-lossless? #:color-space cs
                           #:icc-profile icc #:icc-description description))
-  (call-with-output-file filename (lambda (out) (write-bytes data out) (void))
-                         #:mode 'binary #:exists exists))
+  (write-output-file-bytes! 'save-image data target exists))
 
 ; image-subset : image? exact-nonnegative-integer? exact-nonnegative-integer?
 ;   exact-positive-integer? exact-positive-integer? -> image?

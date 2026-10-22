@@ -18,11 +18,9 @@
   policy)
 
 ; group-label : symbol? any/c -> (or/c #f string?)
-;   Copies an optional audit label into an immutable string.
+;   Copies an optional audit label containing 1 through 200 characters into an immutable string.
 (define (group-label who label)
-  (unless (or (not label) (string? label))
-    (raise-argument-error who "string? or #f" label))
-  (and label (string->immutable-string label)))
+  (and label (output-label who label)))
 
 ;; Check logical bounds without imposing an RGBA allocation limit on vector
 ;; groups. Raster dimensions and the byte budget are checked only after choice.

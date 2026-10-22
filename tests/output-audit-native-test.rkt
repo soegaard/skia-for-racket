@@ -94,6 +94,17 @@
    (test-case "strict exporter rejects direct runtime drawing"
      (check-exn exn:fail:output-audit?
                 (lambda () (output->bytes/audit (page runtime) 'svg #:policy 'error))))
+   (test-case "audited bytes default to rejection; explicit report and preflight still report"
+     (define calls 0)
+     (define source (page (lambda (canvas) (set! calls (add1 calls)) (runtime canvas))))
+     (check-exn exn:fail:output-audit? (lambda () (output->bytes/audit source 'svg)))
+     (check-equal? calls 1)
+     (define-values (bytes report) (output->bytes/audit source 'svg #:policy 'report))
+     (check-true (bytes? bytes))
+     (check-true (output-audit-report-blocking? report))
+     (check-equal? calls 2)
+     (check-true (output-audit-report-blocking? (analyze-output-page source 'svg)))
+     (check-equal? calls 3))
    (test-case "strict failure preserves existing file"
      (with-temp
       (lambda (d)

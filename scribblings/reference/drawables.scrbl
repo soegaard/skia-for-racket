@@ -41,8 +41,8 @@ successful construction without invalidating the drawable.
 No Racket drawing callback runs during later playback.
 }
 
-@defproc[(call-with-drawable [width (integer-in 1 32768)]
-          [height (integer-in 1 32768)]
+@defproc[(call-with-drawable [width (and/c real? (>=/c 0))]
+          [height (and/c real? (>=/c 0))]
           [draw (-> canvas? any)])
           drawable?]{
 Calls the drawing function once on a temporary picture-recording canvas,
@@ -50,10 +50,10 @@ then returns the captured recorded drawable. Callback results are discarded.
 The canvas is borrowed only for the callback; it must not escape for later use.
 Temporary recording resources are released on success or escape.
 
-Dimensions and the RGBA-size check follow @racket[call-with-picture]. This is a
-restriction of the convenience function, not an allocation of raster pixels or
-a measurement of recording memory. To use other recording bounds, record a
-picture with @racket[picture-recorder-begin-recording!] and convert it with
+Dimensions follow @racket[call-with-picture]: finite nonnegative real extents,
+without a pixel-dimension ceiling or an RGBA-size check. Ordinary coordinate
+restrictions still apply. To use a nonzero recording origin, record a picture
+with @racket[picture-recorder-begin-recording!] and convert it with
 @racket[picture->drawable].
 
 @racketblock[

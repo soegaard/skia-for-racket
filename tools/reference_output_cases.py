@@ -19,7 +19,7 @@ canvas-annotation-backend canvas-annotate-url! canvas-define-destination!
 canvas-link-destination! destination-id svg-destination-id
 '''.split()
 OUTPUT_PARAMETERS = ['current-text-output-mode', 'current-raster-output-scale']
-OUTPUT_SYNTAX = ['with-document-page']
+OUTPUT_SYNTAX = ['with-pdf-page']
 PDF_OPTIONS = sorted('''
 title author subject keywords creator producer creation-date modified-date
 raster-dpi encoding-quality pdfa?
@@ -32,15 +32,15 @@ OUTPUT_PROCEDURES = {}
 for names, arity in (
     ('picture? picture-width picture-height picture-recorder? picture-recorder-recording? '
      'picture-recorder-finish-recording! picture-cull-bounds picture-unique-id '
-     'picture-approximate-bytes-used picture->bytes document? document-state document-page-count '
-     'document-end-page! document-finish! document-abort! document->pdf-bytes '
+     'picture-approximate-bytes-used picture->bytes pdf-document? pdf-document-state pdf-document-page-count '
+     'pdf-document-end-page! pdf-document-finish! pdf-document-abort! pdf-document->bytes '
      'svg-document? svg-document-width svg-document-height svg-document-state '
      'svg-document-canvas svg-document-finish! svg-document-abort! svg-document->bytes '
      'svg-document->string output-page? output-page-width output-page-height output-page-unit '
      'output-page-margins output-page-background output-page-clip? output-page-size-in-points '
      'output-page-content-size canvas-annotation-backend destination-id', 2),
-    ('make-picture-recorder', 1), ('document-begin-page!', 8),
-    ('call-with-document-page canvas-define-destination!', 16),
+    ('make-picture-recorder', 1), ('pdf-document-begin-page!', 8),
+    ('call-with-pdf-page canvas-define-destination!', 16),
     ('canvas-annotate-url! canvas-link-destination!', 64), ('unit->points', 6),
 ):
     OUTPUT_PROCEDURES.update({name: (arity, []) for name in names.split()})

@@ -41,7 +41,22 @@
     (test-case "false label allowed"
       (check-false (group-label 'test #f)))
     (test-case "invalid label rejected"
-      (check-exn exn:fail? (lambda () (group-label 'test 7))))
+      (for ([label (in-list (list 7 "" (make-string 201 #\a)))])
+        (check-exn exn:fail:contract? (lambda () (group-label 'test label)))
+        (define called? #f)
+        (check-exn #rx"1 through 200"
+          (lambda () (draw-output-group #f 0 0 10 10
+                       (lambda (_) (set! called? #t)) #:label label)))
+        (check-exn exn:fail:contract?
+          (lambda () (call-with-output-label label (lambda () (set! called? #t)))))
+        (check-false called?)))
+    (test-case "audit and group labels share inclusive character limits"
+      (for ([length '(1 200)])
+        (define label (make-string length #\λ))
+        (check-equal? (group-label 'test label) label)
+        (check-true (immutable? (group-label 'test label)))
+        (check-equal? (call-with-output-label label (lambda () 'called)) 'called))
+      (check-exn exn:fail:contract? (lambda () (call-with-output-label #f void))))
     (test-case "logical bounds and asymmetric padding"
       (define v
         (call-with-values (lambda () (group-geometry 'test 20 30 100 50 '(2 3 4 5) 2)) list))

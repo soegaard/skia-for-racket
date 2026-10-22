@@ -366,7 +366,7 @@
        (check-true (channel-get ch)) (check-true (channel-get ch)) (thread-wait worker)))
    (test-case "expired document page is rejected"
      (with-skia ([d (make-pdf-document)])
-       (define c (document-begin-page! d 100 80)) (document-end-page! d)
+       (define c (pdf-document-begin-page! d 100 80)) (pdf-document-end-page! d)
        (check-exn exn:fail? (lambda () (canvas-save-layer! c)))
        (check-exn exn:fail? (lambda () (canvas-clip-empty? c)))))
 
@@ -428,9 +428,9 @@
        (with-skia ([pic (picture-recorder-finish-recording! rec)]) (check-true (picture? pic)))))
    (test-case "PDF page cannot end inside layer scope"
      (with-skia ([d (make-pdf-document)])
-       (define c (document-begin-page! d 30 30))
-       (with-canvas-layer c (check-exn exn:fail? (lambda () (document-end-page! d))))
-       (document-end-page! d) (check-equal? (document-page-count d) 1)))
+       (define c (pdf-document-begin-page! d 30 30))
+       (with-canvas-layer c (check-exn exn:fail? (lambda () (pdf-document-end-page! d))))
+       (pdf-document-end-page! d) (check-equal? (pdf-document-page-count d) 1)))
    (test-case "recorded point arrays do not borrow caller vectors"
      (define xy (vector (vector 10 10) (vector 20 20)))
      (with-skia ([p (make-paint #:color 'red #:stroke-width 6)]

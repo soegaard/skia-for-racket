@@ -60,6 +60,8 @@
      (for ([v '(-1 102 50.5 bad)])
        (check-exn exn:fail:contract? (lambda () (pdf-encoding-quality 'test v)))))
    (test-case "metadata uses UTF-8 and rejects NUL, wrong types, and aggregate overflow"
+     (check-exn exn:fail:contract? (lambda () (make-pdf-document #:producer 7)))
+     (check-exn exn:fail:contract? (lambda () (make-pdf-document #:producer "a\0b")))
      (check-equal? (pdf-metadata-bytes 'test '("" "Søgaard"))
                    (list #"" (string->bytes/utf-8 "Søgaard")))
      (check-exn exn:fail? (lambda () (pdf-metadata-bytes 'test (list "a\0b"))))
@@ -88,11 +90,11 @@
      (check-exn exn:fail:contract? (lambda () (make-pdf-document #:title #f)))
      (check-exn exn:fail:contract? (lambda () (make-pdf-document #:creation-date 'now))))
    (test-case "document APIs and callbacks reject invalid arguments"
-     (check-false (document? 'not-document))
-     (for ([f (in-list (list document-state document-page-count document-end-page!
-                             document-finish! document-abort! document->pdf-bytes))])
+     (check-false (pdf-document? 'not-document))
+     (for ([f (in-list (list pdf-document-state pdf-document-page-count pdf-document-end-page!
+                             pdf-document-finish! pdf-document-abort! pdf-document->bytes))])
        (check-exn exn:fail:contract? (lambda () (f 'not-document))))
-     (check-exn exn:fail:contract? (lambda () (document-begin-page! 'bad 100 100)))
+     (check-exn exn:fail:contract? (lambda () (pdf-document-begin-page! 'bad 100 100)))
      (check-exn exn:fail:contract? (lambda () (call-with-pdf-bytes (lambda () (void))))))
    (test-case "file preflight rejects directories, missing parents, and bad exists options"
      (with-temp-dir

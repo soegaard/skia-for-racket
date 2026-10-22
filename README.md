@@ -1017,7 +1017,7 @@ actual SVG structure using Python's standard library; it does not render it.
 (call-with-pdf-file
  "example.pdf"
  (lambda (doc)
-   (with-document-page (canvas doc 595.28 841.89)
+   (with-pdf-page (canvas doc 595.28 841.89)
      (with-skia ([paint (make-paint #:color 'blue)])
        (draw-circle canvas 100 120 40 paint))))
  #:title "Example PDF" #:exists 'replace)

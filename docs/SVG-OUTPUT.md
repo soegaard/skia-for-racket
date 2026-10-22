@@ -29,7 +29,7 @@ PDF output and its page lifecycle are unchanged.
 All three helpers pass a normal `canvas?` to the procedure, not a document.
 Unlike a PDF, an SVG has one viewport and no begin/end-page operations. A
 `svg-document?` is a `skia-resource?`, but is intentionally not a PDF
-`document?`. The resource wrappers share the normal cleanup/thread rules.
+`pdf-document?`. The resource wrappers share the normal cleanup/thread rules.
 
 The procedure runs exactly once. Its return values are ignored. The helper
 finishes the SVG only after the procedure returns normally, copies the result,

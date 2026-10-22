@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require rackunit rackunit/text-ui racket/file
-         "../main.rkt" "../private/output-util.rkt")
+         "../main.rkt" "../private/output-util.rkt" "../private/output-file.rkt")
 (provide output-pure-tests)
 
 
@@ -33,6 +33,54 @@
 (define output-pure-tests
   (test-suite
    "Shared vector output: pure contracts"
+   (test-case "completed-file writer preserves destinations and cleans up failed publication"
+     (define directory (make-temporary-file "skia-output-pure-~a" 'directory))
+     (dynamic-wind
+       void
+       (lambda ()
+         (define target (build-path directory "result.bin"))
+         (write-output-file-bytes! 'test #"old" target 'error)
+         (check-exn exn:fail? (lambda () (write-output-file-bytes! 'test #"new" target 'error)))
+         (check-equal? (file->bytes target) #"old")
+         (for ([failure '(open-output-file rename-file-or-directory)])
+           (define parent (current-security-guard))
+           (define guard
+             (make-security-guard parent
+               (lambda (who path modes)
+                 (when (and (eq? who failure) (memq 'write modes)
+                            ;; A temporary file already exists when reopened for writing.
+                            (or (eq? failure 'rename-file-or-directory)
+                                (and path (file-exists? path))))
+                   (error 'test "injected write or rename failure")))
+               (lambda ignored (void))))
+           (parameterize ([current-security-guard guard])
+             (check-exn #rx"injected"
+               (lambda () (write-output-file-bytes! 'test #"new" target 'replace))))
+           (check-equal? (file->bytes target) #"old")
+           (check-equal? (directory-list directory) (list (string->path "result.bin"))))
+         (write-output-file-bytes! 'test #"new" target 'replace)
+         (check-equal? (file->bytes target) #"new"))
+       (lambda () (delete-directory/files directory))))
+   (test-case "error policy refuses a destination created immediately before rename"
+     (define directory (make-temporary-file "skia-output-race-~a" 'directory))
+     (dynamic-wind
+       void
+       (lambda ()
+         (define target (build-path directory "raced.bin"))
+         (define parent (current-security-guard))
+         (define guard
+           (make-security-guard parent
+             (lambda (who path modes)
+               (when (and (eq? who 'rename-file-or-directory) (not (file-exists? target)))
+                 (parameterize ([current-security-guard parent])
+                   (call-with-output-file target (lambda (out) (write-bytes #"raced" out))))))
+             (lambda ignored (void))))
+         (parameterize ([current-security-guard guard])
+           (check-exn exn:fail?
+             (lambda () (write-output-file-bytes! 'test #"new" target 'error))))
+         (check-equal? (file->bytes target) #"raced")
+         (check-equal? (length (directory-list directory)) 1))
+       (lambda () (delete-directory/files directory))))
    (test-case "absolute units preserve exact arithmetic"
      (check-equal? (unit->points 1 'in) 72)
      (check-equal? (unit->points 127/5 'mm) 72)

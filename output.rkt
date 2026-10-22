@@ -219,7 +219,7 @@
         (for ([page (in-list pages)] [index (in-naturals 1)])
           (define-values (w h) (output-page-size-in-points page))
           (parameterize ([audit-page-index index])
-            (call-with-document-page
+            (call-with-pdf-page
              doc w h
              (lambda (c) (draw-output-page c page #:text-mode effective-mode #:raster-dpi dpi))))))
       #:title title #:subject description #:raster-dpi dpi #:encoding-quality q #:pdfa? pdfa?)]

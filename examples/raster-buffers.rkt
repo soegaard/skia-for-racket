@@ -202,7 +202,7 @@
 
 ; draw-page : canvas? exact-nonnegative-integer? list? boolean? -> void?
 ;   Draws the page component in the current canvas coordinate system.
-(define (draw-page c index images document?)
+(define (draw-page c index images pdf-document?)
   (with-skia ([p (make-paint #:color teal)]) (draw-rect c 0 0 34 2 p))
   (label c (list-ref titles index) 0 32 21)
   (label c (list-ref subtitles index) 0 55 9.5)
@@ -216,7 +216,7 @@
               "02  Modified storage scaled into a new buffer")) index))])
     (label c caption x 105 9.5) (checker c x 126)
     (define (content local) (draw-image-rect local im 0 0 300 180 #:sampling 'linear))
-    (if document?
+    (if pdf-document?
         (let ([decision (draw-output-group c x 126 300 180 content
                             #:label (format "~a-~a" (list-ref names index) j))])
           (when (current-decisions)

@@ -232,7 +232,7 @@
    )
    (test-case "expired PDF page canvases reject general matrices"
      (with-skia ([d (make-pdf-document)])
-       (define c (document-begin-page! d 80 80)) (document-end-page! d)
+       (define c (pdf-document-begin-page! d 80 80)) (pdf-document-end-page! d)
        (check-exn exn:fail? (lambda () (canvas-matrix4 c)))
        (check-exn exn:fail? (lambda () (canvas-concat-matrix3! c matrix3-identity))))
    )
@@ -322,10 +322,10 @@
    )
    (test-case "matrix scopes use the existing page lifetime guard"
      (with-skia ([d (make-pdf-document)])
-       (define c (document-begin-page! d 80 80))
+       (define c (pdf-document-begin-page! d 80 80))
        (with-canvas-matrix c (matrix4-translate 1 2)
-         (check-exn exn:fail? (lambda () (document-end-page! d))))
-       (document-end-page! d) (check-equal? (document-page-count d) 1))
+         (check-exn exn:fail? (lambda () (pdf-document-end-page! d))))
+       (pdf-document-end-page! d) (check-equal? (pdf-document-page-count d) 1))
    )
    (test-case "a raster group does not fix an outer general matrix"
      (for ([backend '(pdf svg)])

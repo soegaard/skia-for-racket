@@ -16,12 +16,12 @@ therefore a separate validation question from successful file generation.
 (call-with-pdf-file
  "example.pdf"
  (lambda (doc)
-   (with-document-page (canvas doc 595.28 841.89)
+   (with-pdf-page (canvas doc 595.28 841.89)
      (with-skia ([paint (make-paint #:color 'blue)]
                  [font (make-font #:size 24)])
        (draw-circle canvas 100 120 40 paint)
        (draw-simple-text canvas "Hello from Skia" 60 220 font paint)))
-   (with-document-page (canvas doc 841.89 595.28)
+   (with-pdf-page (canvas doc 841.89 595.28)
      (with-skia ([paint (make-paint #:color 'red #:style 'stroke #:stroke-width 3)])
        (draw-rect canvas 50 50 300 200 paint))))
  #:title "Example document"
@@ -57,32 +57,32 @@ error.
 
 ```racket
 (with-skia ([doc (make-pdf-document #:title "Explicit lifecycle")])
-  (define c (document-begin-page! doc 612 792))
+  (define c (pdf-document-begin-page! doc 612 792))
   ;; draw to c
-  (document-end-page! doc)
-  (document-finish! doc)
-  (define pdf (document->pdf-bytes doc))
+  (pdf-document-end-page! doc)
+  (pdf-document-finish! doc)
+  (define pdf (pdf-document->bytes doc))
   (save-pdf doc "explicit.pdf" #:exists 'replace))
 ```
 
-`document-state` returns `open`, `page`, `finished`, `aborted`, or `closed`.
-`document-page-count` counts completed pages. These two Racket-only queries may
+`pdf-document-state` returns `open`, `page`, `finished`, `aborted`, or `closed`.
+`pdf-document-page-count` counts completed pages. These two Racket-only queries may
 be used after release; operations that call native code are thread-confined.
 
-`document-begin-page!` requires an open document between pages. Nested pages are
-rejected rather than silently ending the previous page. `document-end-page!`
-requires an active page. `document-finish!` requires at least one completed page
+`pdf-document-begin-page!` requires an open document between pages. Nested pages are
+rejected rather than silently ending the previous page. `pdf-document-end-page!`
+requires an active page. `pdf-document-finish!` requires at least one completed page
 and no active page; it is idempotent for a live, finished document.
-`document->pdf-bytes` and `save-pdf` require successful explicit finalization.
+`pdf-document->bytes` and `save-pdf` require successful explicit finalization.
 Each byte read is an independent mutable copy that can outlive the document.
 
-`document-abort!` discards output and releases resources; it is idempotent.
+`pdf-document-abort!` discards output and releases resources; it is idempotent.
 `skia-close!` releases the document, aborting unfinished work rather than relying
 on the native destructor to finalize a partial file. Finished documents still
 need release, normally through `with-skia`. There is no automatic file output
 from a finalizer.
 
-`call-with-document-page` receives a procedure of one canvas argument. It ends
+`call-with-pdf-page` receives a procedure of one canvas argument. It ends
 the page on normal return and preserves the procedure's return values. An
 exception, arbitrary raised value, break, or continuation escape aborts the
 whole document. Manual page-ending is prohibited inside this protected scope.
@@ -96,10 +96,13 @@ Continuations cannot reenter expired resource/page scopes.
 |---|---|---|
 | `#:title`, `#:author`, `#:subject`, `#:keywords` | `""` | NUL-free UTF-8 strings copied into metadata. |
 | `#:creator` | `"skia-for-racket"` | Application that authored the document. |
-| `#:producer` | `"Skia/PDF m119; skia-for-racket"` | Application/backend that produced the PDF. |
+| `#:producer` | `#f` | Identifies the loaded Skia version and `skia-for-racket`; a string overrides it. |
 | `#:creation-date`, `#:modified-date` | `#f` | Racket `date?`, or omitted timestamp. |
 | `#:raster-dpi` | `144` | Resolution for fallback rasterization, from 1 through 9600. Not a scale factor for page dimensions or ordinary vector geometry. |
 | `#:encoding-quality` | `101` | 101 requests lossless image encoding; 0–100 allows native JPEG encoding for opaque images at that quality. |
+
+The default producer is resolved when the document is created, not on module
+import, and counts toward the combined metadata byte limit.
 
 Dates use their local calendar/clock fields and explicit UTC offset, not the
 host's current timezone. Years must be 1–9999, dates must exist, seconds must be

@@ -7,7 +7,7 @@
 ;; Checks dimensions and metadata and canonicalizes generated SVG identifiers.
 ;; Prepares deterministic, valid SVG output for the document API.
 
-(require racket/file racket/path "check.rkt")
+(require "output-file.rkt" "check.rkt")
 (provide svg-dimension svg-metadata svg-id-prefix finish-svg-xml
          svg-output-path write-svg-file-bytes! rasterized-dimensions)
 
@@ -177,19 +177,7 @@
 ;   Checks a complete NUL-free destination, existing parent, and error-or-replace policy before SVG
 ;   publication.
 (define (svg-output-path who filename exists)
-  (unless (path-string? filename) (raise-argument-error who "path-string?" filename))
-  (unless (memq exists '(error replace))
-    (raise-argument-error who "'error or 'replace" exists))
-  (define target (path->complete-path filename))
-  (when (regexp-match? #rx#"\0" (path->bytes target))
-    (raise-arguments-error who "SVG path contains NUL" "path" filename))
-  (when (directory-exists? target)
-    (raise-arguments-error who "SVG destination is a directory" "path" target))
-  (unless (directory-exists? (path-only target))
-    (raise-arguments-error who "SVG destination directory does not exist" "path" target))
-  (when (and (eq? exists 'error) (or (file-exists? target) (link-exists? target)))
-    (raise-arguments-error who "SVG destination already exists" "path" target))
-  target)
+  (output-file-path who filename exists "SVG"))
 
 ; write-svg-file-bytes! : symbol? bytes? path-string? symbol? -> void?
 ;   Publishes bounded SVG bytes by same-directory atomic rename and removes temporary output on
@@ -198,23 +186,7 @@
   (unless (bytes? bs) (raise-argument-error who "bytes?" bs))
   (check-svg-size who (bytes-length bs))
   (define target (svg-output-path who filename exists))
-  (define tmp #f)
-  (call-with-continuation-barrier
-   (lambda ()
-     (dynamic-wind
-       (lambda ()
-         (parameterize-break #f
-           (set! tmp (make-temporary-file ".skia-svg-~a.tmp" #f (path-only target)))))
-       (lambda ()
-         (call-with-output-file tmp
-           (lambda (out) (write-bytes bs out) (void))
-           #:exists 'truncate/replace #:mode 'binary)
-         ;; Check 'error again atomically at publication: a file created by the
-         ;; callback or a racing process is not overwritten.
-         (rename-file-or-directory tmp target (eq? exists 'replace)))
-       (lambda ()
-         (when (and tmp (file-exists? tmp)) (delete-file tmp))))))
-  (void))
+  (write-output-file-bytes! who bs target exists ".skia-svg-~a.tmp"))
 
 ;;;
 ;;; Raster Fallback Geometry

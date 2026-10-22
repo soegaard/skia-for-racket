@@ -71,7 +71,7 @@
      (with-skia ([d (make-svg-document 100.5 60.25)])
        (check-true (svg-document? d))
        (check-true (skia-resource? d))
-       (check-false (document? d))
+       (check-false (pdf-document? d))
        (check-equal? (svg-document-width d) 100.5)
        (check-equal? (svg-document-height d) 60.25)
        (check-equal? (svg-document-state d) 'open)

@@ -50,18 +50,18 @@
   argb)
 
 
-; blank-page : document? -> any
+; blank-page : pdf-document? -> any
 ;   Adds an empty 20-by-12-point page to a PDF fixture.
 (define (blank-page document)
-  (call-with-document-page document 20 12 (lambda (_) (void))))
+  (call-with-pdf-page document 20 12 (lambda (_) (void))))
 
 
-; finished-pdf : -> document?
+; finished-pdf : -> pdf-document?
 ;   Creates and finishes a one-page PDF, leaving its wrapper for the caller to close.
 (define (finished-pdf)
   (define document (make-pdf-document))
   (blank-page document)
-  (document-finish! document)
+  (pdf-document-finish! document)
   document)
 
 
@@ -160,17 +160,17 @@
        (check-equal? (png-pixel after 0 0) (bytes 255 0 0 255))))
    (test-case "finished document conversions match their byte readers"
      (with-skia ([pdf (finished-pdf)] [svg (finished-svg)])
-       (check-equal? (convert pdf 'pdf-bytes) (document->pdf-bytes pdf))
+       (check-equal? (convert pdf 'pdf-bytes) (pdf-document->bytes pdf))
        (check-equal? (convert svg 'svg-bytes) (svg-document->bytes svg))))
    (test-case "document conversion does not finish or rescue invalid states"
      (define fallback (box 'unused))
      (with-skia ([pdf (make-pdf-document)] [svg (make-svg-document 10 8)])
        (check-exn #rx"finish" (lambda () (convert pdf 'pdf-bytes fallback)))
-       (check-eq? (document-state pdf) 'open)
-       (void (document-begin-page! pdf 10 8))
+       (check-eq? (pdf-document-state pdf) 'open)
+       (void (pdf-document-begin-page! pdf 10 8))
        (check-exn #rx"finish" (lambda () (convert pdf 'pdf-bytes fallback)))
-       (check-eq? (document-state pdf) 'page)
-       (document-abort! pdf)
+       (check-eq? (pdf-document-state pdf) 'page)
+       (pdf-document-abort! pdf)
        (check-exn #rx"closed" (lambda () (convert pdf 'pdf-bytes fallback)))
        (check-exn #rx"finish" (lambda () (convert svg 'svg-bytes fallback)))
        (check-eq? (svg-document-state svg) 'open)

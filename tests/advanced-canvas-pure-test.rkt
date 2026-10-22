@@ -84,6 +84,11 @@
    (test-case "NoDraw rejects nonpositive dimensions before loading Skia"
      (check-exn exn:fail? (lambda () (call-with-nodraw-canvas 0 8 void)))
      (check-exn exn:fail? (lambda () (call-with-nodraw-canvas 8 -1 void))))
+   (test-case "NoDraw retains its integer, dimension, and RGBA-budget limits"
+     (check-exn exn:fail:contract? (lambda () (call-with-nodraw-canvas 1.5 8 void)))
+     (check-exn exn:fail:contract? (lambda () (call-with-nodraw-canvas 32769 8 void)))
+     (parameterize ([current-skia-byte-limit 1])
+       (check-exn exn:fail? (lambda () (call-with-nodraw-canvas 1 1 void)))))
    (test-case "NoDraw requires a canvas callback"
      (check-exn exn:fail? (lambda () (call-with-nodraw-canvas 8 8 (lambda () (void))))))
    (test-case "NWay requires an explicit nonempty target list"

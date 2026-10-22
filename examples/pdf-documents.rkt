@@ -187,7 +187,7 @@
    filename
    (lambda (d)
      (for ([spec (in-list page-specs)])
-       (call-with-document-page d (car spec) (cadr spec) (caddr spec))))
+       (call-with-pdf-page d (car spec) (cadr spec) (caddr spec))))
    #:exists 'replace #:title "Racket Skia PDF output probe"
    #:author "skia-for-racket" #:raster-dpi 144 #:encoding-quality 101)
   (printf "Wrote ~a (3 PDF pages)\n" filename)

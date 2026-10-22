@@ -15,7 +15,7 @@ The following conversions use the listed functions with their default options:
   (list @bold{Value} @bold{Request} @bold{Operation})
   (list @elem{@tech{Image}} @racket['png-bytes] @racket[image->png-bytes])
   (list @elem{@tech{Surface}} @racket['png-bytes] @racket[surface->png-bytes])
-  (list @elem{@tech{PDF document}} @racket['pdf-bytes] @racket[document->pdf-bytes])
+  (list @elem{@tech{PDF document}} @racket['pdf-bytes] @racket[pdf-document->bytes])
   (list @elem{@tech{SVG document}} @racket['svg-bytes] @racket[svg-document->bytes])
   (list @elem{@tech{Output page}} @racket['png-bytes]
         @elem{@racket[output-page->image], then @racket[image->png-bytes]})

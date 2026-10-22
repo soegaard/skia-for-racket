@@ -26,13 +26,13 @@
   (define pdf
     (call-with-pdf-bytes
      (lambda (doc)
-       (call-with-document-page doc 100 80
+       (call-with-pdf-page doc 100 80
          (lambda (c)
            (unless (eq? (canvas-annotation-backend c) 'pdf)
              (error 'doctor "incorrect PDF annotation backend"))
            (canvas-annotate-url! c 5 5 20 10 "https://example.invalid/")
            (canvas-link-destination! c 5 25 20 10 "later")))
-       (call-with-document-page doc 120 90
+       (call-with-pdf-page doc 120 90
          (lambda (c) (canvas-define-destination! c "later" 5 10))))))
   (unless (and (regexp-match? #rx#"/Annots" pdf)
                (regexp-match? #rx#"/URI" pdf)

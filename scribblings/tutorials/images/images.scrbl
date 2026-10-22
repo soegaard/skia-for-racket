@@ -322,6 +322,10 @@ instead of a surface. It can encode PNG, JPEG, or WebP:
 ]
 
 The @api-link[] lists JPEG quality, WebP encoding, and color-metadata options.
+Pass only options for the selected format; for example, PNG rejects a
+@racket[#:quality] value other than @racket[#f]. Both file-saving functions
+encode completely and write a temporary file before replacing the destination,
+so an encoding or write failure leaves an existing file unchanged.
 
 @section[#:tag "try-it"]{Try It}
 

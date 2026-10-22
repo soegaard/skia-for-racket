@@ -1697,17 +1697,20 @@ class R21SourceTests(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]['chapter'], 'scribblings/reference/shaders.scrbl')
 
-    def test_dispatcher_keywords_use_conditional_contracts_and_keep_defaults(self):
+    def test_dispatcher_keywords_use_unspecified_defaults_and_precise_contracts(self):
         expected = {
-            '#:quality': '90', '#:png-compression': '6',
-            '#:jpeg-downsample': ['quote', 'yuv-420'], '#:jpeg-alpha': ['quote', 'ignore'],
-            '#:webp-lossless?': '#f',
+            '#:quality': ['or/c', '#f', ['real-in', '0', '100']],
+            '#:png-compression': ['or/c', '#f', ['integer-in', '0', '9']],
+            '#:jpeg-downsample': ['or/c', '#f', ['quote', 'yuv-420'],
+                                 ['quote', 'yuv-422'], ['quote', 'yuv-444']],
+            '#:jpeg-alpha': ['or/c', '#f', ['quote', 'ignore'], ['quote', 'blend-on-black']],
+            '#:webp-lossless?': 'boolean?',
         }
         for name in ('image->encoded-bytes', 'save-image'):
             fields = {field[0]: field for field in self.header(name)[0][1:]}
-            for keyword, default in expected.items():
+            for keyword, contract in expected.items():
                 with self.subTest(name=name, keyword=keyword):
-                    self.assertEqual(fields[keyword][2:], ['any/c', default])
+                    self.assertEqual(fields[keyword][2:], [contract, '#f'])
 
     def test_straight_encoder_contracts_are_not_weakened(self):
         expected = {
@@ -3224,7 +3227,7 @@ class R3eOutputSourceTests(unittest.TestCase):
                 self.assertEqual(by_name[name]['required_keywords'], [])
         for name in OUTPUT_PARAMETERS:
             self.assertEqual(by_name[name]['kind'], 'parameter')
-        self.assertEqual(by_name['with-document-page']['kind'], 'syntax')
+        self.assertEqual(by_name['with-pdf-page']['kind'], 'syntax')
 
     def test_public_module_families_are_complete_and_not_private_paths(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
@@ -3269,7 +3272,7 @@ class R3eOutputSourceTests(unittest.TestCase):
         text = self.normalized('pictures')
         self.assertIn('not an exact visible-ink bound', text)
         self.assertIn('origin is not translated to zero', text)
-        self.assertIn('@racket[(* 4 width height)] byte-limit', text)
+        self.assertIn('no 32768-unit ceiling or RGBA-size check', text)
         self.assertIn('not a test that the native resource remains open', text)
 
     def test_skp_size_overrides_do_not_recenter_commands(self):
@@ -3288,21 +3291,21 @@ class R3eOutputSourceTests(unittest.TestCase):
     def test_pdf_page_macro_grammar_and_callback_values(self):
         text = self.text('pdf-documents')
         forms = [h for f, h, _ in checks.commands(text, recursive=True) if f == 'defform']
-        self.assertEqual(forms, [[['with-document-page',
+        self.assertEqual(forms, [[['with-pdf-page',
                                  ['canvas-id', 'document-expr', 'width-expr', 'height-expr'],
                                  'body', '...+']]])
-        self.assertEqual(self.header('call-with-document-page')[1], 'any')
+        self.assertEqual(self.header('call-with-pdf-page')[1], 'any')
         self.assertIn('returns all of the callback', text)
         self.assertIn('whole document is aborted', self.normalized('pdf-documents'))
 
-    def test_pdf_dimensions_quality_and_literal_metadata_defaults(self):
+    def test_pdf_dimensions_quality_and_automatic_producer_default(self):
         header = self.header('make-pdf-document')
         fields = {f[0]: f for f in header[0][1:]}
         self.assertEqual(fields['#:creator'][-1], 'skia-for-racket')
-        self.assertEqual(fields['#:producer'][-1], 'Skia/PDF m119; skia-for-racket')
+        self.assertEqual(fields['#:producer'][-2:], [['or/c', 'string?', '#f'], '#f'])
         self.assertEqual(fields['#:encoding-quality'][-2:], [['integer-in', '0', '101'], '101'])
         self.assertEqual(fields['#:creation-date'][-1], '#f')
-        self.assertEqual(self.header('document-begin-page!')[0][2][1],
+        self.assertEqual(self.header('pdf-document-begin-page!')[0][2][1],
                           ['real-in', '1/1000', '14400'])
 
     def test_pdfa_is_not_an_arbitrary_profile_or_conformance_certificate(self):
@@ -3322,7 +3325,7 @@ class R3eOutputSourceTests(unittest.TestCase):
         self.assertIn('does not finalize it implicitly', svg)
 
     def test_document_byte_results_are_independent_mutable_copies(self):
-        for name in ('picture->bytes', 'document->pdf-bytes', 'svg-document->bytes',
+        for name in ('picture->bytes', 'pdf-document->bytes', 'svg-document->bytes',
                      'call-with-pdf-bytes', 'call-with-svg-bytes', 'output->bytes'):
             self.assertEqual(self.header(name)[1], ['and/c', 'bytes?', ['not/c', 'immutable?']])
 
@@ -3406,7 +3409,7 @@ class R3e1EditorialTests(unittest.TestCase):
 
     def test_page_form_prose_uses_the_documented_binding_identifier(self):
         text = (ROOT / checks.REFERENCE / 'pdf-documents.scrbl').read_text()
-        start = text.index('@defform[(with-document-page')
+        start = text.index('@defform[(with-pdf-page')
         end = text.index('@defproc[', start)
         entry = ' '.join(text[start:end].split())
         self.assertIn("@racket[canvas-id] bound to the page's canvas in @racket[body]", entry)
@@ -3469,10 +3472,10 @@ class R3e1EditorialTests(unittest.TestCase):
         self.assertEqual(len(calls), 5)
         self.assertTrue(all(call[1][0] == 'quote' for call in calls))
         quoted_forms = [call[1][1] for call in calls]
-        self.assertIn(['with-document-page', ['canvas', '#f', '20', '10']], quoted_forms)
-        self.assertIn(['with-document-page', ['canvas', '#f', '20', '10'],
+        self.assertIn(['with-pdf-page', ['canvas', '#f', '20', '10']], quoted_forms)
+        self.assertIn(['with-pdf-page', ['canvas', '#f', '20', '10'],
                        ['define', 'saved', 'canvas']], quoted_forms)
-        self.assertIn(['with-document-page', ['42', '#f', '20', '10'], ['void']], quoted_forms)
+        self.assertIn(['with-pdf-page', ['42', '#f', '20', '10'], ['void']], quoted_forms)
         self.assertIn('body expression ran', text)
         self.assertIn('document expression ran', text)
         self.assertIn('width expression ran', text)
@@ -3623,8 +3626,8 @@ class R3fStreamCodecTests(unittest.TestCase):
             self.assertEqual(self.option(name, '#:png-compression')[2], ['integer-in', '0', '9'])
         text = self.prose('live-streams')
         self.assertIn('validate @emph{all} encoding options', text)
-        self.assertIn('whose inactive options are ignored', text)
-        self.assertIn('WebP quality accepts noninteger real values', text)
+        self.assertIn('rejects non-@racket[#f] options for other formats', text)
+        self.assertIn('accepts noninteger real values for WebP quality', text)
 
     def test_live_input_length_seekability_and_callback_constraints_are_explicit(self):
         text = self.prose('live-streams')
@@ -4344,9 +4347,9 @@ class R3gbRasterTests(unittest.TestCase):
         text = ' '.join(self.text('output-audit').split())
         for phrase in ('An @deftech{output preflight} executes the drawing callback', 'twice',
                        'Ordinary Racket side effects are not undone',
-                       'default @racket[\'report]', 'does not truncate or replace'):
+                       'default policy is @racket[\'error]', 'does not truncate or replace'):
             self.assertIn(phrase, text)
-        for name, value in [('output->bytes/audit', 'report'), ('save-output/audit', 'error')]:
+        for name, value in [('output->bytes/audit', 'error'), ('save-output/audit', 'error')]:
             field = next(x for x in self.header(name)[0][1:] if x[0] == '#:policy')
             self.assertEqual(field[-1], ['quote', value])
 

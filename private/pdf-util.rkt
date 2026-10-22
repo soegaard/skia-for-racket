@@ -7,7 +7,7 @@
 ;; Checks page sizes, metadata, dates, encoding settings, and output paths.
 ;; Prepares PDF document creation and file output for the core API.
 
-(require racket/file racket/path "types.rkt" "check.rkt")
+(require "output-file.rkt" "types.rkt" "check.rkt")
 (provide pdf-page-dimension pdf-raster-dpi pdf-encoding-quality
          pdf-metadata-bytes pdf-date-time pdf-output-path write-pdf-file-bytes!)
 
@@ -93,21 +93,7 @@
 ;   Resolves a NUL-free output path, requires an existing parent directory, and checks the
 ;   error-or-replace policy before rendering.
 (define (pdf-output-path who filename exists)
-  (unless (path-string? filename)
-    (raise-argument-error who "path-string?" filename))
-  (unless (memq exists '(error replace))
-    (raise-argument-error who "'error or 'replace" exists))
-  (define target (path->complete-path filename))
-  (when (regexp-match? #rx#"\0" (path->bytes target))
-    (raise-arguments-error who "PDF path contains NUL" "path" filename))
-  (when (directory-exists? target)
-    (raise-arguments-error who "PDF destination is a directory" "path" target))
-  (unless (directory-exists? (path-only target))
-    (raise-arguments-error who "PDF destination directory does not exist" "path" target))
-  (when (and (eq? exists 'error)
-             (or (file-exists? target) (link-exists? target)))
-    (raise-arguments-error who "PDF destination already exists" "path" target))
-  target)
+  (output-file-path who filename exists "PDF"))
 
 ; write-pdf-file-bytes! : symbol? bytes? path-string? symbol? -> void?
 ;   Publishes completed PDF bytes through a same-directory temporary file and atomic rename,
@@ -115,20 +101,4 @@
 (define (write-pdf-file-bytes! who bs filename exists)
   (unless (bytes? bs) (raise-argument-error who "bytes?" bs))
   (define target (pdf-output-path who filename exists))
-  (define tmp #f)
-  (call-with-continuation-barrier
-   (lambda ()
-     (dynamic-wind
-       (lambda ()
-         (parameterize-break #f
-           (set! tmp (make-temporary-file ".skia-pdf-~a.tmp" #f (path-only target)))))
-       (lambda ()
-         (call-with-output-file tmp
-           (lambda (out) (write-bytes bs out) (void))
-           #:exists 'truncate/replace #:mode 'binary)
-         ;; The completed file is renamed on the same filesystem. 'error is
-         ;; checked again by rename, so a race never overwrites a new file.
-         (rename-file-or-directory tmp target (eq? exists 'replace)))
-       (lambda ()
-         (when (and tmp (file-exists? tmp)) (delete-file tmp))))))
-  (void))
+  (write-output-file-bytes! who bs target exists ".skia-pdf-~a.tmp"))

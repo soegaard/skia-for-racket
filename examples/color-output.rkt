@@ -210,8 +210,10 @@
                                                image) 0 4))))))
       (for ([format '(png jpeg webp)])
         (define suffix (string-append "." stem "." (symbol->string format)))
-        (define bs (image->encoded-bytes image format #:quality 100 #:jpeg-downsample 'yuv-444
-                                        #:webp-lossless? #t #:icc-profile profile
+        (define bs (image->encoded-bytes image format
+                                        #:quality (and (memq format '(jpeg webp)) 100)
+                                        #:jpeg-downsample (and (eq? format 'jpeg) 'yuv-444)
+                                        #:webp-lossless? (eq? format 'webp) #:icc-profile profile
                                         #:icc-description (string-append "Color output " stem)))
         (bytes-file (name suffix) bs)
         (set! records (append records (list (cons (string-append stem " / " (symbol->string format))

@@ -167,8 +167,10 @@
       (check-equal? (image->rgba-bytes subset) (bytes 255 0 0 255))))
   (test-case "encoders validate selected-format options"
     (with-skia ([image (rgba-bytes->image 1 1 (bytes 255 0 0 255))])
-      (define png (image->encoded-bytes image 'png #:quality 'unused))
+      (define png (image->encoded-bytes image 'png))
       (check-equal? (subbytes png 0 8) #"\211PNG\r\n\32\n")
+      (check-exn exn:fail:contract?
+                 (lambda () (image->encoded-bytes image 'png #:quality 90)))
       (check-exn exn:fail? (lambda () (image->encoded-bytes image 'gif)))
       (check-exn exn:fail? (lambda () (image->png-bytes image #:compression 10)))))
 
@@ -279,21 +281,18 @@
           ;; Every format-specific keyword is tried in every format, for both dispatchers.
           (for* ([format '(png jpeg webp)] [file? '(#f #t)] [entry (in-list cases)])
             (define option (car entry))
-            (define active? (memq format (cdr entry)))
             (define (call) (dispatch image format file? (list (cons option 'unused))))
             (when file? (reset-file!))
             (with-check-info (['format format] ['file-output? file?] ['keyword option])
-              (if active?
-                  (begin
-                    (check-exn exn:fail? call)
-                    (when file? (check-equal? (file->bytes filename) sentinel)))
-                  (check-format format (call)))))
+              (check-exn exn:fail? call)
+              (when file? (check-equal? (file->bytes filename) sentinel))
+              (check-format format (dispatch image format file? (list (cons option #f))))))
           ;; JPEG requires an exact integer; WebP accepts fractional quality.
           (for* ([format '(png jpeg webp)] [file? '(#f #t)])
             (define (call) (dispatch image format file? (list (cons '#:quality 87.5))))
             (when file? (reset-file!))
             (with-check-info (['format format] ['file-output? file?])
-              (if (eq? format 'jpeg)
+              (if (memq format '(png jpeg))
                   (begin
                     (check-exn exn:fail? call)
                     (when file? (check-equal? (file->bytes filename) sentinel)))

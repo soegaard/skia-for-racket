@@ -116,7 +116,7 @@
     (check-not-exn
      (lambda ()
        (expand-page-form
-        '(with-document-page
+        '(with-pdf-page
            (canvas (error 'expansion-only "document expression ran")
                    (error 'expansion-only "width expression ran")
                    (error 'expansion-only "height expression ran"))
@@ -126,20 +126,20 @@
     (check-not-exn
      (lambda ()
        (expand-page-form
-        '(with-document-page (canvas #f 20 10)
+        '(with-pdf-page (canvas #f 20 10)
            (define saved canvas)
            (define (results) (values saved 'page-complete))
            (results))))))
 
   (test-case "page macro rejects empty and definitions-only bodies during expansion"
     (check-exn exn:fail:syntax?
-               (lambda () (expand-page-form '(with-document-page (canvas #f 20 10)))))
+               (lambda () (expand-page-form '(with-pdf-page (canvas #f 20 10)))))
     (check-exn exn:fail:syntax?
                (lambda ()
                  (expand-page-form
-                  '(with-document-page (canvas #f 20 10) (define saved canvas))))))
+                  '(with-pdf-page (canvas #f 20 10) (define saved canvas))))))
 
   (test-case "page macro requires an identifier in the canvas binding position"
     (check-exn exn:fail:syntax?
                (lambda ()
-                 (expand-page-form '(with-document-page (42 #f 20 10) (void)))))))
+                 (expand-page-form '(with-pdf-page (42 #f 20 10) (void)))))))

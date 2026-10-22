@@ -1534,27 +1534,27 @@ The following links cover the font and text interfaces.
 
 @racket[pictures:make-picture-shader]
 
-@racket[document?]
+@racket[pdf-document?]
 
 @racket[make-pdf-document]
 
-@racket[document-state]
+@racket[pdf-document-state]
 
-@racket[document-page-count]
+@racket[pdf-document-page-count]
 
-@racket[document-begin-page!]
+@racket[pdf-document-begin-page!]
 
-@racket[document-end-page!]
+@racket[pdf-document-end-page!]
 
-@racket[call-with-document-page]
+@racket[call-with-pdf-page]
 
-@racket[with-document-page]
+@racket[with-pdf-page]
 
-@racket[document-finish!]
+@racket[pdf-document-finish!]
 
-@racket[document-abort!]
+@racket[pdf-document-abort!]
 
-@racket[document->pdf-bytes]
+@racket[pdf-document->bytes]
 
 @racket[save-pdf]
 

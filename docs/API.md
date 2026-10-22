@@ -497,7 +497,7 @@ output-backends ; '(pdf svg raster)
                      #:pdfa? [pdfa? #f]) ; report, not output bytes
 
 (output->bytes/audit page-or-pages format
-                     #:policy [policy 'report]
+                     #:policy [policy 'error]
                      #:title [title ""] #:description [description ""]
                      #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
                      #:id-prefix [prefix #f] #:encoding-quality [quality #f]
@@ -1070,7 +1070,7 @@ semantic text round trips, or exact small-size hinting equivalence.
 ```
 
 SVG is a single-viewport output backend, not an SVG reader or a PDF page.
-Its owned document is a `skia-resource?`, but not a PDF `document?`. It works
+Its owned document is a `skia-resource?`, but not a PDF `pdf-document?`. It works
 with `with-skia`, `skia-close!`, and the existing canvas drawing functions.
 Width and height are finite reals from 0.001 through 32768 SVG user units;
 queries return inexact values. The result has explicit width/height and
@@ -1149,25 +1149,25 @@ See [the SVG guide](SVG-OUTPUT.md) for complete examples and limitations.
 ## PDF documents
 
 ```racket
-(document? value)
+(pdf-document? value)
 (make-pdf-document #:title [title ""] #:author [author ""]
                    #:subject [subject ""] #:keywords [keywords ""]
                    #:creator [creator "skia-for-racket"]
-                   #:producer [producer "Skia/PDF m119; skia-for-racket"]
+                   #:producer [producer #f]
                    #:creation-date [creation-date #f]
                    #:modified-date [modified-date #f]
                    #:raster-dpi [raster-dpi 144]
                    #:encoding-quality [encoding-quality 101])
-(document-state document)              ; open, page, finished, aborted, closed
-(document-page-count document)         ; completed pages
-(document-begin-page! document width height) ; borrowed canvas?
-(document-end-page! document)
-(document-finish! document)
-(document-abort! document)
-(document->pdf-bytes document)          ; independent copy; requires finish
+(pdf-document-state document)              ; open, page, finished, aborted, closed
+(pdf-document-page-count document)         ; completed pages
+(pdf-document-begin-page! document width height) ; borrowed canvas?
+(pdf-document-end-page! document)
+(pdf-document-finish! document)
+(pdf-document-abort! document)
+(pdf-document->bytes document)          ; independent copy; requires finish
 (save-pdf document path #:exists [exists 'error]) ; requires finish
-(call-with-document-page document width height procedure)
-(with-document-page (canvas document width height) body ...)
+(call-with-pdf-page document width height procedure)
+(with-pdf-page (canvas document width height) body ...)
 (call-with-pdf-bytes procedure <same metadata/encoding keywords as make-pdf-document>)
 (call-with-pdf-file path procedure #:exists [exists 'error]
                     <same metadata/encoding keywords as make-pdf-document>)
@@ -1437,8 +1437,10 @@ PNG is encoded by Skia's native PNG encoder, not `racket/draw`. Compression is
 an exact integer from 0 through 9. All PNG scanline filters are enabled. PNG
 byte output contains the full image. `save-png` accepts only `'error` (default,
 refuse existing files) or `'replace` (explicitly overwrite). Encoding finishes
-before opening the output file; filesystem write failures are still possible,
-and file writes are not transactional. Parent directories are not created.
+before writing a same-directory temporary file, which is renamed to the
+destination only after the write succeeds. Failure removes the temporary file
+and leaves an existing destination unchanged. Parent directories are not created;
+successful publication does not promise durability after a system crash.
 The two pixel-output flags must be booleans.
 
 ## Paints
@@ -1958,18 +1960,18 @@ assuming that every still image has a one-frame count.
                    #:lossless? [flag #f])
 
 (image->encoded-bytes image format
-                      #:quality [quality 90]
-                      #:png-compression [level 6]
-                      #:jpeg-downsample [mode 'yuv-420]
-                      #:jpeg-alpha [mode 'ignore]
+                      #:quality [quality #f]
+                      #:png-compression [level #f]
+                      #:jpeg-downsample [mode #f]
+                      #:jpeg-alpha [mode #f]
                       #:webp-lossless? [flag #f])
 
 (save-image image path format
             #:exists [mode 'error]
-            #:quality [quality 90]
-            #:png-compression [level 6]
-            #:jpeg-downsample [mode 'yuv-420]
-            #:jpeg-alpha [mode 'ignore]
+            #:quality [quality #f]
+            #:png-compression [level #f]
+            #:jpeg-downsample [mode #f]
+            #:jpeg-alpha [mode #f]
             #:webp-lossless? [flag #f])
 ```
 
@@ -1982,13 +1984,16 @@ PNG compression is an exact integer 0 through 9 and uses all PNG filters. JPEG
 quality is an exact integer 0 through 100. JPEG downsampling is `'yuv-420`,
 `'yuv-422`, or `'yuv-444`; alpha handling is `'ignore` or `'blend-on-black`.
 WebP quality is any finite real from 0 through 100 and `#:lossless? #t` selects
-Skia's lossless WebP encoder mode. Options irrelevant to the selected generic
-format are ignored.
+Skia's lossless WebP encoder mode. In the generic functions, `#f` selects the
+applicable encoder's default. Non-`#f` options for other formats raise an
+exception: for example, PNG rejects `#:quality 90`.
 
-`save-image` encodes completely before opening the destination, so an encoder
-failure cannot truncate an existing file. `#:exists` is `'error` or `'replace`,
-with the same behavior as `save-png`. Output filename extensions are not used
-to select a codec; the explicit `format` argument controls encoding.
+`save-image` encodes completely, writes a same-directory temporary file, and
+renames it to the destination. Encoding or write failure leaves an existing
+destination unchanged and removes the temporary file. `#:exists` is `'error`
+or `'replace`, with the same behavior as `save-png`; the error policy is checked
+again when renaming. This does not promise durability after a system crash.
+The explicit `format` argument, not the filename extension, selects the codec.
 
 ### Subsets and drawing
 
@@ -2298,6 +2303,10 @@ recording has finished, and may be replayed on any later canvas.
 
 `call-with-picture` records into a fresh picture recorder whose logical size is
 `width` by `height`; the procedure receives a borrowed recording canvas.
+The extents are finite nonnegative reals, not pixel counts. They have no
+32768-unit ceiling or RGBA byte-budget check; coordinate validity and later
+rasterization/serialization limits still apply. Scaled replay requires nonzero
+nominal dimensions.
 `make-picture-recorder` exposes the lower-level begin/finish cycle when callers
 need to interleave recording with other logic. Attempting to begin while the
 recorder is already active, or attempting to finish while it is inactive, is an

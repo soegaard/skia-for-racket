@@ -308,7 +308,7 @@
    (test-case "native PDF filter path produces a complete document"
      (define bs (call-with-pdf-bytes
                  (lambda (d)
-                   (with-document-page (c d 40 32)
+                   (with-pdf-page (c d 40 32)
                      (with-skia ([f (make-dilate-image-filter 2 2)]
                                  [p (make-paint #:color 'blue #:image-filter f)])
                        (source c p))))))

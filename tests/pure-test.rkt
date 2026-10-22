@@ -246,6 +246,19 @@
                 (lambda () (image->webp-bytes #f #:lossless? 1)))
      (check-exn exn:fail:contract?
                 (lambda () (image->encoded-bytes #f 'bmp))))
+   (test-case "generic encoders reject irrelevant options before accessing the image"
+     (for ([entry (in-list '((png #:quality 90)
+                             (png #:jpeg-downsample yuv-420)
+                             (png #:jpeg-alpha ignore)
+                             (png #:webp-lossless? #t)
+                             (jpeg #:png-compression 6)
+                             (jpeg #:webp-lossless? #t)
+                             (webp #:png-compression 6)
+                             (webp #:jpeg-downsample yuv-420)
+                             (webp #:jpeg-alpha ignore)))])
+       (check-exn #rx"does not apply"
+         (lambda () (keyword-apply image->encoded-bytes (list (cadr entry))
+                                   (list (caddr entry)) (list #f (car entry)))))))
    (test-case "font metrics ABI field order"
      (define m
        (make-sk-font-metrics #x0f
@@ -297,7 +310,11 @@
      (check-exn exn:fail:contract? (lambda () (path-point-ref 'not-a-path 0)))
      (check-exn exn:fail:contract? (lambda () (path-add-path! 'a 'b #:mode 'nope))))
    (test-case "picture recording arguments validate before native loading"
-     (check-exn exn:fail:contract? (lambda () (call-with-picture 0 10 void)))
+     (for ([size (in-list (list -1 +inf.0 +nan.0 1e40 'bad))])
+       (check-exn exn:fail:contract? (lambda () (call-with-picture size 10 void)))
+       (check-exn exn:fail:contract? (lambda () (call-with-picture 10 size void)))
+       (check-exn exn:fail:contract? (lambda () (call-with-drawable size 10 void)))
+       (check-exn exn:fail:contract? (lambda () (call-with-drawable 10 size void))))
      (check-exn exn:fail:contract? (lambda () (call-with-picture 10 10 #f))))
    (test-case "draw-picture keywords validate before native loading"
      (check-exn exn:fail:contract? (lambda () (draw-picture 'not-a-canvas 'not-a-picture #:width 10)))

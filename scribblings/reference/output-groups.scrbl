@@ -92,9 +92,9 @@ group to the destination, but ordinary callback side effects persist. Failures d
 replay or drawing the raster image can leave the destination pixels partially changed.
 A policy rejection raises @racket[exn:fail:output-group?] with its report.
 
-The optional label identifies the group in its report and is copied when supplied.
-It may be an empty string and has no length limit. This differs from
-@racket[call-with-output-label], which requires 1 through 200 characters.
+The optional label identifies the group in its report. A supplied string must
+contain 1 through 200 characters and is copied as an immutable string, just as
+with @racket[call-with-output-label]. The default @racket[#f] supplies no label.
 }
 
 @racketblock[

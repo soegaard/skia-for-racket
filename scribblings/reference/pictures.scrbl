@@ -35,8 +35,8 @@ portable between GPU contexts or serializable without readback.
 Returns @racket[#t] for a picture, including a closed picture, and @racket[#f] otherwise.
 }
 
-@defproc[(call-with-picture [width (integer-in 1 32768)]
-                            [height (integer-in 1 32768)]
+@defproc[(call-with-picture [width (and/c real? (>=/c 0))]
+                            [height (and/c real? (>=/c 0))]
                             [proc (-> canvas? any)]
                             [#:spatial-index spatial-index (or/c 'none 'rtree) 'none]) picture?]{
 Records @racket[proc] on a fresh canvas with culling bounds at the origin and
@@ -44,11 +44,12 @@ returns the finished picture. The callback's results are discarded. The
 recorder is released on success or escape; the returned picture is not released.
 Do not use the callback's canvas after the callback returns.
 
-This convenience function requires exact positive integer extents and checks
-that @racket[(* 4 width height)] does not exceed @racket[current-skia-byte-limit].
-It does not allocate a raster page, and this check does not measure or bound the
-memory used by the recorded commands. For noninteger extents, a nonzero origin,
-or recording bounds without this RGBA-size check, use
+The dimensions are finite nonnegative real numbers in local coordinates, not
+pixel counts. Recording does not allocate a raster page, so there is no
+32768-unit ceiling or RGBA-size check on these bounds. Ordinary coordinate
+restrictions still apply. Rasterization and serialization have their own size
+limits. A zero nominal dimension is allowed, but prevents scaled replay with
+@racket[draw-picture]. For a nonzero recording origin, use
 @racket[picture-recorder-begin-recording!]; see @secref["skia-picture-recorders"].
 
 @racketblock[
@@ -179,7 +180,8 @@ process-memory limit.
 
 For recording a drawing callback with automatic recorder cleanup, use
 @racket[call-with-picture]. Explicit recorder operations support recorder reuse
-and recording bounds with a nonzero origin or noninteger extents. The caller
+and recording bounds with a nonzero origin. Both interfaces accept noninteger
+extents. The caller
 must finish the recording to obtain a picture and release the recorder when it
 is no longer needed. The recording canvas must not outlive its recording.
 

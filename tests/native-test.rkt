@@ -327,10 +327,41 @@
      (dynamic-wind void
        (lambda ()
          (with-skia ([s (make-surface 2 2)])
-           (check-exn exn:fail:filesystem? (lambda () (save-png s file)))
+           (check-exn exn:fail? (lambda () (save-png s file)))
            (save-png s file #:exists 'replace)
            (check-equal? (subbytes (file->bytes file) 0 8) #"\211PNG\r\n\032\n")))
        (lambda () (delete-file file))))
+   (test-case "image and surface saves publish only completed files"
+     (define directory (make-temporary-file "skia-image-save-~a" 'directory))
+     (dynamic-wind
+       void
+       (lambda ()
+         (define target (build-path directory "result.png"))
+         (with-skia ([surface (make-surface 2 2 #:background 'red)]
+                     [image (surface-snapshot surface)])
+           (for ([save (in-list (list (lambda (exists) (save-png surface target #:exists exists))
+                                      (lambda (exists) (save-image image target 'png #:exists exists))))])
+             (call-with-output-file target #:exists 'truncate/replace
+               (lambda (out) (write-bytes #"old" out)))
+             (check-exn exn:fail? (lambda () (save 'error)))
+             (check-equal? (file->bytes target) #"old")
+             (parameterize ([current-skia-byte-limit 1])
+               (check-exn exn:fail? (lambda () (save 'replace))))
+             (check-equal? (file->bytes target) #"old")
+             (define guard
+               (make-security-guard (current-security-guard)
+                 (lambda (who path modes)
+                   (when (eq? who 'rename-file-or-directory)
+                     (error 'test "injected rename failure")))
+                 (lambda ignored (void))))
+             (parameterize ([current-security-guard guard])
+               (check-exn #rx"injected" (lambda () (save 'replace))))
+             (check-equal? (file->bytes target) #"old")
+             (check-equal? (length (directory-list directory)) 1)
+             (save 'replace)
+             (check-equal? (subbytes (file->bytes target) 0 8) #"\211PNG\r\n\32\n")
+             (check-equal? (length (directory-list directory)) 1))))
+       (lambda () (delete-directory/files directory))))
    (test-case "bitmap bridge preserves channel order and premultiplied alpha"
      (with-skia ([s (make-surface 1 1 #:background (rgba 255 0 0 128))])
        (define bm (surface->bitmap s))

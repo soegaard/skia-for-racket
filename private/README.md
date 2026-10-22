@@ -116,7 +116,8 @@ or change module dependencies.
 | [audit-trace.rkt](audit-trace.rkt) | Tracks resource provenance and drawing events without exposing native handles. |
 | [output-executor.rkt](output-executor.rkt) | Defines deferred raster plans and validates their execution owner. |
 | [output-group-util.rkt](output-group-util.rkt) | Checks output-group labels, policies, geometry, and execution strategies. |
-| [output-util.rkt](output-util.rkt) | Normalizes page units, insets, text modes, and raster fallback dimensions. |
+| [output-util.rkt](output-util.rkt) | Normalizes page units, insets, text modes, labels, and raster fallback dimensions. |
+| [output-file.rkt](output-file.rkt) | Validates destinations and writes completed image, PDF, SVG, and picture bytes through same-directory temporary files. |
 | [pdf-util.rkt](pdf-util.rkt) | Checks page sizes, metadata, dates, encoding settings, and output paths. |
 | [svg-util.rkt](svg-util.rkt) | Checks dimensions and metadata and canonicalizes generated SVG identifiers. |
 

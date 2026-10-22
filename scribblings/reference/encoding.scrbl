@@ -97,76 +97,75 @@ Color conversion and ICC options follow @secref["skia-encoding-options"].
 }
 
 @defproc[(image->encoded-bytes [image image?] [format (or/c 'png 'jpeg 'webp)]
-                              [#:quality quality any/c 90]
-                              [#:png-compression compression any/c 6]
-                              [#:jpeg-downsample downsample any/c 'yuv-420]
-                              [#:jpeg-alpha alpha any/c 'ignore]
-                              [#:webp-lossless? lossless? any/c #f]
+                              [#:quality quality (or/c #f (real-in 0 100)) #f]
+                              [#:png-compression compression (or/c #f (integer-in 0 9)) #f]
+                              [#:jpeg-downsample downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444) #f]
+                              [#:jpeg-alpha alpha (or/c #f 'ignore 'blend-on-black) #f]
+                              [#:webp-lossless? lossless? boolean? #f]
                               [#:color-space space (or/c color-space? #f) #f]
                               [#:icc-profile profile (or/c bytes? #f) #f]
                               [#:icc-description description (or/c string? #f) #f]) bytes?]{
 Dispatches to @racket[image->png-bytes], @racket[image->jpeg-bytes], or
 @racket[image->webp-bytes] according to @racket[format].
 
-The contracts of the format-specific options depend on @racket[format], as shown
-in the table. An option marked Ignored is not inspected by the selected encoder and
-may have any value. The @racket[any/c] contracts in the signature do not relax
-the restrictions on an option used by the selected format.
+The format-specific options default to @racket[#f], meaning unspecified. The
+selected encoder then uses its normal defaults. Supplying a non-@racket[#f]
+option for another format raises an exception, rather than silently ignoring it.
+The table shows which formats accept each option and its contract when supplied.
 
 @tabular[#:sep @hspace[2]
  (list
   (list @bold{Keyword} @bold{PNG} @bold{JPEG} @bold{WebP})
-  (list @racket[#:quality] "Ignored"
+  (list @racket[#:quality] @racket[#f]
         @racket[(integer-in 0 100)] @racket[(real-in 0 100)])
-  (list @racket[#:png-compression] @racket[(integer-in 0 9)] "Ignored" "Ignored")
-  (list @racket[#:jpeg-downsample] "Ignored"
-        @racket[(or/c 'yuv-420 'yuv-422 'yuv-444)] "Ignored")
-  (list @racket[#:jpeg-alpha] "Ignored"
-        @racket[(or/c 'ignore 'blend-on-black)] "Ignored")
-  (list @racket[#:webp-lossless?] "Ignored" "Ignored" @racket[boolean?]))]
+  (list @racket[#:png-compression] @racket[(integer-in 0 9)] @racket[#f] @racket[#f])
+  (list @racket[#:jpeg-downsample] @racket[#f]
+        @racket[(or/c 'yuv-420 'yuv-422 'yuv-444)] @racket[#f])
+  (list @racket[#:jpeg-alpha] @racket[#f]
+        @racket[(or/c 'ignore 'blend-on-black)] @racket[#f])
+  (list @racket[#:webp-lossless?] @racket[#f] @racket[#f] @racket[boolean?]))]
 
 For PNG, @racket[#:png-compression] supplies the encoder's @racket[#:compression]
 argument. For JPEG, @racket[#:jpeg-downsample] and @racket[#:jpeg-alpha] supply
 @racket[#:downsample] and @racket[#:alpha]. For WebP, @racket[#:webp-lossless?]
 supplies @racket[#:lossless?]. Their meanings and defaults are those of the
-corresponding encoder.
+corresponding encoder: PNG compression 6, JPEG and WebP quality 90, JPEG
+downsampling @racket['yuv-420] and alpha handling @racket['ignore], and lossy
+WebP encoding. JPEG quality must be an exact integer; WebP also accepts
+fractional quality.
 
 The common @racket[#:color-space], @racket[#:icc-profile], and
 @racket[#:icc-description] options apply to all three formats, as described in
 @secref["skia-encoding-options"].
 
-For example, PNG accepts arbitrary values for the options of the other formats:
+For example, select PNG compression without supplying JPEG or WebP options:
 
 @racketblock[
 (with-skia ([image (rgba-bytes->image 1 1 (bytes 50 109 230 255))])
   (define encoded
-    (image->encoded-bytes image 'png
-                         #:quality 'unused
-                         #:jpeg-downsample 'unused
-                         #:jpeg-alpha 'unused
-                         #:webp-lossless? 'unused))
+    (image->encoded-bytes image 'png #:png-compression 6))
   (subbytes encoded 0 8))
 ]
 
-The result is the PNG signature. In contrast, an invalid
-@racket[#:png-compression] value is rejected for this call.
+The result is the PNG signature. Adding @racket[#:quality 90] to this call
+raises an exception because PNG does not use a quality setting.
 }
 
 @section{Writing Images to Files}
 
 @defproc[(save-image [image image?] [filename path-string?] [format (or/c 'png 'jpeg 'webp)]
                      [#:exists exists (or/c 'error 'replace) 'error]
-                     [#:quality quality any/c 90]
-                     [#:png-compression compression any/c 6]
-                     [#:jpeg-downsample downsample any/c 'yuv-420]
-                     [#:jpeg-alpha alpha any/c 'ignore]
-                     [#:webp-lossless? lossless? any/c #f]
+                     [#:quality quality (or/c #f (real-in 0 100)) #f]
+                     [#:png-compression compression (or/c #f (integer-in 0 9)) #f]
+                     [#:jpeg-downsample downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444) #f]
+                     [#:jpeg-alpha alpha (or/c #f 'ignore 'blend-on-black) #f]
+                     [#:webp-lossless? lossless? boolean? #f]
                      [#:color-space space (or/c color-space? #f) #f]
                      [#:icc-profile profile (or/c bytes? #f) #f]
                      [#:icc-description description (or/c string? #f) #f]) void?]{
 Encodes with @racket[image->encoded-bytes] and writes the completed bytes to
 @racket[filename]. The format argument, not the filename extension, chooses the
-encoder. The format-specific option contracts, defaults, and ignored values
+encoder. The format-specific option contracts, defaults, and restrictions
 follow the table in @racket[image->encoded-bytes].
 
 The color-management options in @secref["skia-encoding-options"] apply to every
@@ -274,11 +273,13 @@ The @racket[#:exists] argument defaults to @racket['error], which refuses to
 replace an existing file. Passing @racket['replace] permits replacement.
 The parent directory must already exist.
 
-The complete image is encoded before the destination is opened. An encoding
-failure therefore does not truncate an existing destination. Allocation and
-encoding failures, output-size limit violations, invalid resources, and
-filesystem errors raise exceptions.
+The destination is resolved before encoding. The complete image is encoded,
+then written to a temporary file in the destination directory. Only after the
+write succeeds is that file renamed to the destination. Encoding or writing
+failure leaves an existing destination unchanged and removes the temporary
+file. The @racket['error] policy is checked again at rename time, so a file
+created in the meantime is not overwritten.
 
-A filesystem failure during writing can leave a partial output file.
-Neither function promises atomic file replacement or rollback of a partially
-written file.
+Allocation and encoding failures, output-size limit violations, invalid
+resources, and filesystem errors raise exceptions. The rename publishes a
+complete file; it does not promise that the data will survive a system crash.

@@ -13,7 +13,7 @@
 ;;;
 
 (require "output-policy.rkt" "output.rkt" "private/audit-trace.rkt"
-         "private/pdf-util.rkt" "private/svg-util.rkt")
+         "private/pdf-util.rkt" "private/svg-util.rkt" "private/output-util.rkt")
 (provide (all-from-out "output-policy.rkt")
          current-output-audit-event-limit analyze-output-page
          output->bytes/audit save-output/audit
@@ -35,11 +35,10 @@
 ;   Copies a label containing 1 through 200 characters and runs thunk with that label in the audit
 ;   scope.
 (define (call-with-output-label label thunk)
-  (unless (and (string? label) (<= 1 (string-length label) 200))
-    (raise-argument-error 'call-with-output-label "string containing 1 through 200 characters" label))
+  (define copy (output-label 'call-with-output-label label))
   (unless (and (procedure? thunk) (procedure-arity-includes? thunk 0))
     (raise-argument-error 'call-with-output-label "procedure accepting zero arguments" thunk))
-  (parameterize ([audit-labels (cons (string->immutable-string label) (audit-labels))]) (thunk)))
+  (parameterize ([audit-labels (cons copy (audit-labels))]) (thunk)))
 
 ; with-output-label : syntax (label body ...)
 ;   Associates the body forms' audit observations with a copied output-scope label.
@@ -89,7 +88,7 @@
 ;   (not/c immutable?)) output-audit-report?)
 ;   Exports each page once and returns completed mutable document bytes and an immutable report.
 (define (output->bytes/audit source format
-                             #:policy [policy 'report]
+                             #:policy [policy 'error]
                              #:title [title ""] #:description [description ""]
                              #:text-mode [mode 'auto] #:raster-dpi [dpi 144]
                              #:id-prefix [prefix #f] #:encoding-quality [quality #f]

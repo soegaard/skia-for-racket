@@ -288,7 +288,7 @@
                  (check-exn #rx"GPU"
                    (lambda () (call-with-svg-bytes 8 8 (lambda (c) (draw-image c im 0 0)))))
                  (check-exn #rx"GPU" (lambda () (call-with-pdf-bytes (lambda (d)
-                                                            (call-with-document-page d 8 8
+                                                            (call-with-pdf-page d 8 8
                                                             (lambda (c) (draw-image c im 0 0))))))))))
    (test-case "cross-context upload rejects without implicit transfer"
      (held (lambda () (with-skia ([cpu (cpu-image)]) (gpu-upload-image gpu cpu)))

@@ -66,7 +66,7 @@
           (parameterize ([current-text-output-mode 'outline] [current-gpu-io-ledger ledger])
             (define (draw c) (set! group (draw-output-document c name executor calls)))
             (if (eq? format 'pdf)
-              (with-document-page (c document output-document-width output-document-height) (draw c))
+              (with-pdf-page (c document output-document-width output-document-height) (draw c))
                 (draw (svg-document-canvas document)))))))
     (vector-set! entry 3
       (hasheq 'name (symbol->string name) 'variant (symbol->string variant)
@@ -126,7 +126,7 @@
           (define format (vector-ref entry 1))
           (define bytes
             (if (eq? format 'pdf)
-                (begin (document-finish! document) (document->pdf-bytes document))
+                (begin (pdf-document-finish! document) (pdf-document->bytes document))
                 (begin (svg-document-finish! document) (svg-document->bytes document))))
           (call-with-output-file (vector-ref entry 2)
             (lambda (out) (write-bytes bytes out)) #:exists 'truncate)

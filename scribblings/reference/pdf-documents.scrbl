@@ -24,17 +24,17 @@ not charge a complete RGBA image against the byte limit.
 
 Use @racket[call-with-pdf-file] to write a file or @racket[call-with-pdf-bytes]
 to obtain bytes. Both manage document creation, finalization, and release.
-Their callbacks add pages with @racket[with-document-page] or
-@racket[call-with-document-page].
+Their callbacks add pages with @racket[with-pdf-page] or
+@racket[call-with-pdf-page].
 
-@defproc[(call-with-pdf-file [filename path-string?] [proc (-> document? any)]
+@defproc[(call-with-pdf-file [filename path-string?] [proc (-> pdf-document? any)]
           [#:exists exists (or/c 'error 'replace) 'error]
           [#:title title string? ""]
           [#:author author string? ""]
           [#:subject subject string? ""]
           [#:keywords keywords string? ""]
           [#:creator creator string? "skia-for-racket"]
-          [#:producer producer string? "Skia/PDF m119; skia-for-racket"]
+          [#:producer producer (or/c string? #f) #f]
           [#:creation-date creation-date (or/c date? #f) #f]
           [#:modified-date modified-date (or/c date? #f) #f]
           [#:raster-dpi raster-dpi (real-in 1 9600) 144]
@@ -47,13 +47,13 @@ not redirect the output. Callback or finalization failure leaves an existing
 file untouched rather than replacing it with a partial document.
 }
 
-@defproc[(call-with-pdf-bytes [proc (-> document? any)]
+@defproc[(call-with-pdf-bytes [proc (-> pdf-document? any)]
           [#:title title string? ""]
           [#:author author string? ""]
           [#:subject subject string? ""]
           [#:keywords keywords string? ""]
           [#:creator creator string? "skia-for-racket"]
-          [#:producer producer string? "Skia/PDF m119; skia-for-racket"]
+          [#:producer producer (or/c string? #f) #f]
           [#:creation-date creation-date (or/c date? #f) #f]
           [#:modified-date modified-date (or/c date? #f) #f]
           [#:raster-dpi raster-dpi (real-in 1 9600) 144]
@@ -68,7 +68,7 @@ no page active. The document is released on success or escape.
 
 @section[#:tag "skia-pdf-page-scopes"]{Drawing PDF Pages}
 
-@defproc[(call-with-document-page [document document?]
+@defproc[(call-with-pdf-page [document pdf-document?]
                                   [width (real-in 1/1000 14400)]
                                   [height (real-in 1/1000 14400)]
                                   [proc (-> canvas? any)]) any]{
@@ -89,12 +89,12 @@ resume drawing on an expired page.
 @racketblock[
 (with-skia ([document (make-pdf-document)])
   (define result
-    (call-with-document-page document 120 80
+    (call-with-pdf-page document 120 80
       (lambda (canvas)
         (with-skia ([paint (make-paint #:color 'blue)])
           (draw-rect canvas 10 10 100 60 paint))
         'page-complete)))
-  (list result (document-state document) (document-page-count document)))
+  (list result (pdf-document-state document) (pdf-document-page-count document)))
 ]
 
 This example completes a page but deliberately does not save a file.
@@ -103,10 +103,10 @@ This example completes a page but deliberately does not save a file.
                   "Raster preview of the PDF page's drawing commands: a blue rectangle inset from the page edges."]
 }
 
-@defform[(with-document-page
+@defform[(with-pdf-page
            (canvas-id document-expr width-expr height-expr)
            body ...+)]{
-Like @racket[call-with-document-page], with @racket[canvas-id] bound to the page's
+Like @racket[call-with-pdf-page], with @racket[canvas-id] bound to the page's
 canvas in @racket[body]. The body must be nonempty and end with an expression.
 It may contain internal definitions and return multiple values. The same page
 protection, abort-on-escape, and lifetime rules apply.
@@ -119,7 +119,7 @@ or @racket[call-with-pdf-bytes]. Explicit construction gives control over when
 to add pages, finish the document, and save its bytes. The caller must release
 the document, including when an operation fails.
 
-@defproc[(document? [v any/c]) boolean?]{
+@defproc[(pdf-document? [v any/c]) boolean?]{
 Returns @racket[#t] for a PDF document, including a closed one, and @racket[#f] otherwise.
 An @tech{SVG document} is a separate kind of resource.
 }
@@ -130,12 +130,12 @@ An @tech{SVG document} is a separate kind of resource.
           [#:subject subject string? ""]
           [#:keywords keywords string? ""]
           [#:creator creator string? "skia-for-racket"]
-          [#:producer producer string? "Skia/PDF m119; skia-for-racket"]
+          [#:producer producer (or/c string? #f) #f]
           [#:creation-date creation-date (or/c date? #f) #f]
           [#:modified-date modified-date (or/c date? #f) #f]
           [#:raster-dpi raster-dpi (real-in 1 9600) 144]
           [#:encoding-quality encoding-quality (integer-in 0 101) 101]
-          [#:pdfa? pdfa? boolean? #f]) document?]{
+          [#:pdfa? pdfa? boolean? #f]) pdf-document?]{
 Returns an owned document in the @racket['open] state with no completed pages.
 No file is opened. Native construction failure raises an exception.
 
@@ -146,8 +146,11 @@ current time. A supplied date must have a valid calendar date in years 1 through
 9999 and valid time components, without leap seconds. Its weekday
 must be from 0 through 6. Its UTC offset must be a whole number of minutes,
 between -86340 and 86340 seconds.
-The literal creator and producer defaults shown in the signature are the values
-written by this API.
+The default producer, @racket[#f], writes a string identifying the loaded Skia
+version and @tt{skia-for-racket}, such as @tt{Skia/PDF 119.0; skia-for-racket}.
+It is determined when the document is created, not when the module is imported.
+Supply a string to override it. The generated producer is included in the
+metadata byte limit. The creator defaults to @tt{skia-for-racket}.
 
 The raster DPI controls native fallback resolution for features that PDF cannot
 represent directly. It does not change page dimensions or rescale all vector
@@ -164,12 +167,12 @@ The option alone is not a PDF/A conformance validation of the completed document
 
 @section[#:tag "skia-pdf-lifecycle"]{Pages and Document State}
 
-Use @racket[with-document-page] or @racket[call-with-document-page] to end a page
+Use @racket[with-pdf-page] or @racket[call-with-pdf-page] to end a page
 automatically and abort the document if drawing fails. Manual page operations
 leave page completion to the caller. A page must end before another begins or
 the document is finished.
 
-@defproc[(document-state [document document?])
+@defproc[(pdf-document-state [document pdf-document?])
           (or/c 'open 'page 'finished 'aborted 'closed)]{
 Returns the current lifecycle state. The @racket['open] state means that another
 page can begin; @racket['page] means a page is active; @racket['finished] means
@@ -178,13 +181,13 @@ releases the native resource and reports @racket['aborted]. Ordinary release
 reports @racket['closed]. This query remains usable after release.
 }
 
-@defproc[(document-page-count [document document?]) exact-nonnegative-integer?]{
+@defproc[(pdf-document-page-count [document pdf-document?]) exact-nonnegative-integer?]{
 Returns the number of successfully ended pages. An active or failed page is not
 included. The stored count remains readable after finishing, aborting, or closing.
 It does not imply that an aborted document can be saved.
 }
 
-@defproc[(document-begin-page! [document document?]
+@defproc[(pdf-document-begin-page! [document pdf-document?]
                                 [width (real-in 1/1000 14400)]
                                 [height (real-in 1/1000 14400)]) canvas?]{
 Begins a page and returns its borrowed canvas. The document must be open and
@@ -192,14 +195,14 @@ between pages. Native page-creation failure aborts and releases the document.
 The result is not an independently closable canvas.
 }
 
-@defproc[(document-end-page! [document document?]) void?]{
+@defproc[(pdf-document-end-page! [document pdf-document?]) void?]{
 Ends the active page, increments the completed-page count, and returns the
 document to @racket['open]. It rejects a document with no active page and refuses
 to end a protected page callback or an active protected canvas-state/layer scope.
 After success, the page's canvas is no longer usable.
 }
 
-@defproc[(document-finish! [document document?]) void?]{
+@defproc[(pdf-document-finish! [document pdf-document?]) void?]{
 Finalizes a document that is open between pages and has at least one completed
 page. Every @tech{named destination} referenced by the document must be defined.
 A missing destination is reported before finalization, allowing a manual caller
@@ -212,7 +215,7 @@ finalization, stream, or output-size failure aborts and releases the document.
 The completed byte count must be positive and fit @racket[current-skia-byte-limit].
 }
 
-@defproc[(document-abort! [document document?]) void?]{
+@defproc[(pdf-document-abort! [document pdf-document?]) void?]{
 Discards access to the document's bytes, ends any active page, releases its
 native resources, and reports @racket['aborted]. It may be repeated on the owning
 thread. Aborting does not remove a file already saved or change a byte string
@@ -221,13 +224,13 @@ already returned to the caller.
 
 @section{Reading and Saving PDF}
 
-@defproc[(document->pdf-bytes [document document?]) (and/c bytes? (not/c immutable?))]{
+@defproc[(pdf-document->bytes [document pdf-document?]) (and/c bytes? (not/c immutable?))]{
 Returns a fresh mutable copy of a finished document's bytes. It does not finish
 the document implicitly and requires the native resource to remain open.
 Mutating the returned bytes does not change the document or a later copy.
 }
 
-@defproc[(save-pdf [document document?] [filename path-string?]
+@defproc[(save-pdf [document pdf-document?] [filename path-string?]
                    [#:exists exists (or/c 'error 'replace) 'error]) void?]{
 Writes an already-finished, still-open document. The destination's parent must
 exist. The default refuses an existing file or link; @racket['replace] permits
@@ -241,9 +244,9 @@ not finish or close the supplied document.
 (with-skia ([document (make-pdf-document #:title "Two pages")]
             [paint (make-paint #:color 'blue)])
   (for ([size '(20 40)])
-    (with-document-page (canvas document 120 80)
+    (with-pdf-page (canvas document 120 80)
       (draw-rect canvas 10 10 size size paint)))
-  (document-finish! document)
+  (pdf-document-finish! document)
   (save-pdf document "two-pages.pdf" #:exists 'replace))
 ]
 

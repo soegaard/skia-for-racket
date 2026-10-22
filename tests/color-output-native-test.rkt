@@ -47,7 +47,7 @@
   (with-skia ([cs (make-rgb-color-space 'srgb 'display-p3)]
               [im (rgba-bytes->image 2 1 sample #:color-space cs)])
     (define bs (image->encoded-bytes im format #:icc-profile (color-space->icc-bytes cs)
-                                    #:icc-description "P3 regression" #:webp-lossless? #t))
+                                    #:icc-description "P3 regression" #:webp-lossless? (eq? format 'webp)))
     (check-true
      (regexp-match? (case format [(png) #rx#"iCCP"] [(jpeg) #rx#"ICC_PROFILE"] [(webp) #rx#"ICCP"])
        bs))
@@ -220,11 +220,11 @@
        (for ([i (in-range 8)]) (check-true (bytes? (image->png-bytes im #:icc-profile profile))))))
    (test-case "PDF-A request adds an output intent and metadata"
      (define bs
-       (call-with-pdf-bytes (lambda (d) (with-document-page (c d 100 80) (void))) #:pdfa? #t))
+       (call-with-pdf-bytes (lambda (d) (with-pdf-page (c d 100 80) (void))) #:pdfa? #t))
      (check-true (regexp-match? #rx#"/OutputIntents" bs))
      (check-true (regexp-match? #rx#"/Metadata" bs)))
    (test-case "default PDF mode retains its previous no-output-intent behavior"
-     (define bs (call-with-pdf-bytes (lambda (d) (with-document-page (c d 100 80) (void)))))
+     (define bs (call-with-pdf-bytes (lambda (d) (with-pdf-page (c d 100 80) (void)))))
      (check-false (regexp-match? #rx#"/OutputIntents" bs)))
    (test-case "shared PDF export forwards PDF-A mode"
      (define p (make-output-page 120 80
@@ -235,6 +235,6 @@
      (with-temp
       (lambda (dir)
         (define name (build-path dir "pdfa.pdf"))
-        (call-with-pdf-file name (lambda (d) (with-document-page (c d 100 80) (void))) #:pdfa? #t)
+        (call-with-pdf-file name (lambda (d) (with-pdf-page (c d 100 80) (void))) #:pdfa? #t)
         (check-true (regexp-match? #rx#"/OutputIntents" (file->bytes name))))))))
 (module+ test (run-tests color-output-native-tests))

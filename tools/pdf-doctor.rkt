@@ -27,11 +27,11 @@
   (define bs
     (call-with-pdf-bytes
      (lambda (doc)
-       (with-document-page (c doc 200 100)
+       (with-pdf-page (c doc 200 100)
          (set! expired c)
          (with-skia ([paint (make-paint #:color 'red)])
            (draw-circle c 50 50 25 paint)))
-       (with-document-page (c doc 100 200)
+       (with-pdf-page (c doc 100 200)
          (unless (skia-closed? expired)
            (error 'doctor "ended PDF canvas became live on the next page"))
          (define rejected?
@@ -39,7 +39,7 @@
              (canvas-save! expired) #f))
          (unless rejected? (error 'doctor "expired PDF canvas was accepted"))
          (with-canvas-state c (canvas-translate! c 10 10)))
-       (unless (= (document-page-count doc) 2)
+       (unless (= (pdf-document-page-count doc) 2)
          (error 'doctor "wrong PDF page count")))
      #:title "Racket Skia PDF doctor"))
   (unless (and (regexp-match? #rx#"^%PDF-" bs)

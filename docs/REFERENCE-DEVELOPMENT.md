@@ -832,7 +832,7 @@ is `eadcff7fce37fc9c1e64e5a4a48fb4835c9fcaa2`, which precedes R3e. The increment
 patch needs R3e already applied; the cumulative alternative includes R3e. The
 611 bindings, 845 mapped export paths, and 28 chapters are unchanged.
 
-The `with-document-page` grammar uses `canvas-id` for its binding position,
+The `with-pdf-page` grammar uses `canvas-id` for its binding position,
 `document-expr`, `width-expr`, and `height-expr` for its arguments, and `body ...+`
 for the nonempty body. Its description notes the required final expression.
 The implementation already rejects an empty body through the generated `lambda`;
@@ -1768,6 +1768,24 @@ recaptured through runtime reflection. The historical capture receipt is
 unchanged. Reader-only syntax checks and source inspection do not certify native
 behavior. No rendering or test suites were run for this change; generated HTML,
 images, and release receipts were not refreshed.
+
+## Chapters 7 and 8 API update
+
+The PDF lifecycle now uses `pdf-document-*`, `call-with-pdf-page`, and
+`with-pdf-page`, without compatibility aliases. Picture and drawable capture
+accept nonnegative real extents without a raster-sized allocation budget;
+the no-draw canvas limits are unchanged. Image saves use the shared completed-file
+writer. Generic image encoding rejects non-`#f` options for other formats.
+Audited byte export defaults to the error policy, audit and group labels share
+the 1-through-200-character limit, and the default PDF producer identifies the
+loaded native version.
+
+The headless inventory and Reference coverage were updated from source, not
+runtime reflection. Historical capture receipts remain unchanged. Reader-only
+syntax checks and source inspection do not certify native behavior. No rendering
+or tests were run; generated HTML and images were not refreshed. Earlier dated
+notes about ignored encoding options and literal producer defaults describe
+their historical baselines, not these revised contracts.
 
 ## Source inventory
 

@@ -78,9 +78,10 @@ audited export when the callback must execute only once overall.
                      #:exists 'replace #:policy 'error))
 ```
 
-`output->bytes/audit` defaults to `#:policy 'report`. It returns two values:
-encoded bytes and an immutable report. `save-output/audit` defaults to the
-stricter `#:policy 'error` and returns the report after successful publication.
+`output->bytes/audit` and `save-output/audit` both default to `#:policy 'error`.
+The former returns encoded bytes and an immutable report; the latter returns
+the report after successful publication. Choose `#:policy 'report` explicitly
+to collect observations without rejecting unsupported features.
 It resolves the destination before the callback, completes drawing/finalization
 before publication, and uses the existing temporary-file/rename writers.
 An audit failure does not truncate or replace the destination.

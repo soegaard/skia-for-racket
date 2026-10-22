@@ -61,7 +61,7 @@
   (void/reference-sink rect-value picture)
   (make-drawable-record handle (picture-width picture) (picture-height picture)))
 
-; call-with-drawable : (integer-in 1 32768) (integer-in 1 32768) (-> canvas? any) -> drawable?
+; call-with-drawable : (and/c real? (>=/c 0)) (and/c real? (>=/c 0)) (-> canvas? any) -> drawable?
 ;   Calls the drawing function once on a temporary picture-recording canvas, then returns the
 ;   captured recorded drawable.
 (define (call-with-drawable width height draw)

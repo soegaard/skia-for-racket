@@ -7,7 +7,7 @@
 ;; Checks trust, byte budgets, bounds, and paths for recorded pictures.
 ;; Protects picture serialization and deserialization at the public API boundary.
 
-(require racket/file racket/path "check.rkt")
+(require "output-file.rkt" "check.rkt")
 (provide check-picture-trust picture-data-snapshot picture-header
          picture-size-override picture-output-path
          read-picture-file-bytes write-picture-file-bytes!)
@@ -129,16 +129,7 @@
 ;   Checks the output parent, directory conflicts, and error-or-replace policy before writing a
 ;   picture.
 (define (picture-output-path who filename exists)
-  (unless (memq exists '(error replace))
-    (raise-argument-error who "'error or 'replace" exists))
-  (define target (picture-path who filename))
-  (when (directory-exists? target)
-    (raise-arguments-error who "picture destination is a directory" "path" target))
-  (unless (directory-exists? (path-only target))
-    (raise-arguments-error who "picture destination directory does not exist" "path" target))
-  (when (and (eq? exists 'error) (or (file-exists? target) (link-exists? target)))
-    (raise-arguments-error who "picture destination already exists" "path" target))
-  target)
+  (output-file-path who filename exists "picture"))
 
 ; write-picture-file-bytes! : symbol? bytes? path-string? symbol? -> void?
 ;   Validates a picture snapshot and publishes it by same-directory atomic rename, removing the
@@ -146,19 +137,4 @@
 (define (write-picture-file-bytes! who bs filename exists)
   (define copy (picture-data-snapshot who bs))
   (define target (picture-output-path who filename exists))
-  (define temporary #f)
-  (call-with-continuation-barrier
-   (lambda ()
-     (dynamic-wind
-       (lambda ()
-         (parameterize-break #f
-           (set! temporary (make-temporary-file ".skia-picture-~a.tmp" #f (path-only target)))))
-       (lambda ()
-         (call-with-output-file temporary
-           (lambda (out) (write-bytes copy out) (void))
-           #:exists 'truncate/replace #:mode 'binary)
-         ;; Rename also enforces 'error against a concurrently created target.
-         (rename-file-or-directory temporary target (eq? exists 'replace)))
-       (lambda ()
-         (when (and temporary (file-exists? temporary)) (delete-file temporary))))))
-  (void))
+  (write-output-file-bytes! who copy target exists ".skia-picture-~a.tmp"))

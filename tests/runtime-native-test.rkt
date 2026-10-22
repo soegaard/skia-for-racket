@@ -364,7 +364,7 @@
        (define bs
          (call-with-pdf-bytes
           (lambda (d)
-            (with-document-page (c d 30 30)
+            (with-pdf-page (c d 30 30)
               (draw-rasterized c 0 0 20 20
                 (lambda (rc) (with-skia ([p (make-paint #:shader sh)]) (draw-paint rc p))))))))
        (check-true (regexp-match? #rx#"^%PDF-" bs))

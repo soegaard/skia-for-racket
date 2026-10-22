@@ -140,6 +140,10 @@ native drawable constructor. `call-with-drawable` first captures authoring once;
 its callback receives an ordinary recording canvas. Neither native replay nor
 fan-out reruns that application callback.
 
+`call-with-drawable` accepts finite nonnegative real extents, like
+`call-with-picture`. Recording bounds have no pixel-dimension ceiling or RGBA
+byte-budget check; ordinary coordinate restrictions still apply.
+
 The public drawable subset is deliberately **recorded-only**. It does not expose
 an externally mutable or Racket callback-backed native drawable. A native
 `SkDrawable` can support more general mutation, but this wrapper does not pretend

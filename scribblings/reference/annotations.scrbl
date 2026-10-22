@@ -111,11 +111,11 @@ subject to the active output policy.
 
 @racketblock[
 (with-skia ([document (make-pdf-document)])
-  (with-document-page (canvas document 120 80)
+  (with-pdf-page (canvas document 120 80)
     (canvas-link-destination! canvas 10 10 80 20 "details"))
-  (with-document-page (canvas document 120 80)
+  (with-pdf-page (canvas document 120 80)
     (canvas-define-destination! canvas "details" 10 10))
-  (document-finish! document)
+  (pdf-document-finish! document)
   (save-pdf document "linked-pages.pdf" #:exists 'replace))
 ]
 

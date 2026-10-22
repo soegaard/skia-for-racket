@@ -84,6 +84,29 @@
 (define picture-native-tests
   (test-suite "Persistent pictures: native streams, retained resources, spatial indexing, and audit"
 
+   (test-case "recording accepts fractional, zero, and large logical extents without a raster budget"
+     (for* ([size '(0 10.5 40000)] [index '(none rtree)])
+       (define calls 0)
+       (define saved #f)
+       (parameterize ([current-skia-byte-limit 1])
+         (with-skia ([picture
+                      (call-with-picture size 12.25
+                        (lambda (canvas) (set! saved canvas) (set! calls (add1 calls)))
+                        #:spatial-index index)])
+           (check-= (picture-width picture) size 0)
+           (check-= (picture-height picture) 12.25 0)
+           (check-true (skia-closed? saved))
+           (check-equal? calls 1)))))
+   (test-case "empty nominal dimensions still reject scaled replay"
+     (with-skia ([picture (call-with-picture 0 10 void)] [surface (make-surface 2 2)])
+       (check-exn exn:fail?
+         (lambda () (draw-picture (surface-canvas surface) picture #:width 2 #:height 2)))))
+   (test-case "fractional recordings keep serialization and rasterization limits"
+     (with-skia ([picture (call-with-picture 40.5 30.25 void)])
+       (parameterize ([current-skia-byte-limit 1])
+         (check-exn exn:fail? (lambda () (picture->bytes picture)))
+         (check-exn exn:fail? (lambda () (picture->image picture 2 2))))))
+
    ;;;
    ;;; Serialization, Copies, and File Publication
    ;;;

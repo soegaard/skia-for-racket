@@ -57,10 +57,10 @@
 (define (skia-dc-compatibility [target 'raster])
   (unless (memq target '(raster gpu pdf svg))
     (raise-argument-error 'skia-dc-compatibility "'raster, 'gpu, 'pdf, or 'svg" target))
-  (define document? (and (memq target '(pdf svg)) #t))
+  (define pdf-document? (and (memq target '(pdf svg)) #t))
   (define (status method)
     (cond [(memq method noop-methods) 'checked-no-op]
-          [(and document? (memq method '(copy erase))) 'explicit-raster-group]
+          [(and pdf-document? (memq method '(copy erase))) 'explicit-raster-group]
           [else 'supported-with-limits]))
   (hasheq 'schema 1 'stage "0.64" 'target target
           'scope "wrapper declarations, not execution evidence"
@@ -78,7 +78,7 @@
             pango-family-cascades pango-font-variants pango-gravity pango-variation-axes
             persistent-gpu-dc automatic-cpu-fallback)
           'document_limits
-          (and document?
+          (and pdf-document?
                '(bounded-explicit-raster-for-pixel-operations conservative-alpha-and-pattern-fallback
                  native-text-or-annotation-loss-rejected))
           'documentation "docs/DC-COMPATIBILITY.md"))

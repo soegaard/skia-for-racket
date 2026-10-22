@@ -120,8 +120,9 @@ The result contains the byte count and @racket[#"chunked output"].
 
 The live image writers validate @emph{all} encoding options, even those not used
 by the selected format. In particular, quality must be an exact integer for PNG,
-JPEG, and WebP. This differs from @racket[image->encoded-bytes], whose inactive
-options are ignored and whose WebP quality accepts noninteger real values.
+JPEG, and WebP. This differs from @racket[image->encoded-bytes], which rejects
+non-@racket[#f] options for other formats and accepts noninteger real values
+for WebP quality.
 The live signatures have no ICC-profile override or destination color-space
 keyword. They retain the image's native color interpretation; they are not an
 implicit color conversion interface.

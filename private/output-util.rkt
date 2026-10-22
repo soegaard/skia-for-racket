@@ -4,12 +4,19 @@
 ;;; Output Geometry and Policy
 ;;;
 
-;; Normalizes page units, insets, text modes, and raster fallback dimensions.
+;; Normalizes page units, insets, text modes, labels, and raster fallback dimensions.
 ;; Provides common settings used by PDF, SVG, and raster exporters.
 
 (require "check.rkt")
 (provide output-unit-factor output-insets output-text-mode raster-output-scale
-         output-drawing-procedure rasterized-geometry svg-with-point-size)
+         output-drawing-procedure output-label rasterized-geometry svg-with-point-size)
+
+; output-label : symbol? string? -> (and/c string? immutable?)
+;   Checks the shared 1-through-200-character limit and copies a label for reports.
+(define (output-label who label)
+  (unless (and (string? label) (<= 1 (string-length label) 200))
+    (raise-argument-error who "string containing 1 through 200 characters" label))
+  (string->immutable-string label))
 
 ;; These factors are exact. Convert to C floats only at the drawing boundary.
 

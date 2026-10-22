@@ -5214,15 +5214,6 @@
         },
         {
           "allowed_keywords": [],
-          "arity_mask": "16",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "call-with-document-page",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -5306,6 +5297,15 @@
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "call-with-pdf-file",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "16",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "call-with-pdf-page",
           "phase": "0",
           "required_keywords": []
         },
@@ -6543,78 +6543,6 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "destination-id",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document->pdf-bytes",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document-abort!",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "8",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document-begin-page!",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document-end-page!",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document-finish!",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document-page-count",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document-state",
-          "phase": "0",
-          "required_keywords": []
-        },
-        {
-          "allowed_keywords": [],
-          "arity_mask": "2",
-          "export_kind": "value",
-          "kind": "procedure",
-          "name": "document?",
           "phase": "0",
           "required_keywords": []
         },
@@ -13094,6 +13022,78 @@
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
+          "name": "pdf-document->bytes",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "pdf-document-abort!",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "8",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "pdf-document-begin-page!",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "pdf-document-end-page!",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "pdf-document-finish!",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "pdf-document-page-count",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "pdf-document-state",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "pdf-document?",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "2",
+          "export_kind": "value",
+          "kind": "procedure",
           "name": "picture->bytes",
           "phase": "0",
           "required_keywords": []
@@ -15952,13 +15952,13 @@
         {
           "export_kind": "syntax",
           "kind": "syntax",
-          "name": "with-document-page",
+          "name": "with-output-label",
           "phase": "0"
         },
         {
           "export_kind": "syntax",
           "kind": "syntax",
-          "name": "with-output-label",
+          "name": "with-pdf-page",
           "phase": "0"
         },
         {

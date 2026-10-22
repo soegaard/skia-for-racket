@@ -802,7 +802,6 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | call-with-canvas-layer/options | stable | 0 | procedure | 2 | none | #:backdrop, #:clip, #:options, #:paint |
 | call-with-canvas-matrix | stable | 0 | procedure | 3 | none | #:replace? |
 | call-with-canvas-state | stable | 0 | procedure | 2 | none | none |
-| call-with-document-page | stable | 0 | procedure | 4 | none | none |
 | call-with-drawable | stable | 0 | procedure | 3 | none | none |
 | call-with-nodraw-canvas | stable | 0 | procedure | 3 | none | none |
 | call-with-nway-canvas | stable | 0 | procedure | 2 | none | none |
@@ -810,6 +809,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | call-with-overdraw-canvas | stable | 0 | procedure | 2 | none | none |
 | call-with-pdf-bytes | stable | 0 | procedure | 1 | none | #:author, #:creation-date, #:creator, #:encoding-quality, #:keywords, #:modified-date, #:pdfa?, #:producer, #:raster-dpi, #:subject, #:title |
 | call-with-pdf-file | stable | 0 | procedure | 2 | none | #:author, #:creation-date, #:creator, #:encoding-quality, #:exists, #:keywords, #:modified-date, #:pdfa?, #:producer, #:raster-dpi, #:subject, #:title |
+| call-with-pdf-page | stable | 0 | procedure | 4 | none | none |
 | call-with-picture | stable | 0 | procedure | 3 | none | #:spatial-index |
 | call-with-raster-buffer-canvas | stable | 0 | procedure | 2 | none | none |
 | call-with-raster-buffer-pixmap | stable | 0 | procedure | 2 | none | #:writable? |
@@ -939,14 +939,6 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | default-font-manager | stable | 0 | procedure | 0 | none | none |
 | descriptor->color-space | stable | 0 | procedure | 1 | none | none |
 | destination-id | stable | 0 | procedure | 1 | none | none |
-| document->pdf-bytes | stable | 0 | procedure | 1 | none | none |
-| document-abort! | stable | 0 | procedure | 1 | none | none |
-| document-begin-page! | stable | 0 | procedure | 3 | none | none |
-| document-end-page! | stable | 0 | procedure | 1 | none | none |
-| document-finish! | stable | 0 | procedure | 1 | none | none |
-| document-page-count | stable | 0 | procedure | 1 | none | none |
-| document-state | stable | 0 | procedure | 1 | none | none |
-| document? | stable | 0 | procedure | 1 | none | none |
 | draw-arc | stable | 0 | procedure | 8 | none | #:use-center? |
 | draw-atlas | stable | 0 | procedure | 4 | none | #:blend-mode, #:colors, #:cull, #:paint, #:sampling |
 | draw-atlas/portable | stable | 0 | procedure | 4 | none | #:alpha, #:sampling |
@@ -1407,9 +1399,9 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | mixed-text-line-direction | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-origin-x | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-runs | stable | 0 | procedure | 1 | none | none |
-| mixed-text-line-text | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-source-map | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-source-range | stable | 0 | procedure | 1 | none | none |
+| mixed-text-line-text | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line-width | stable | 0 | procedure | 1 | none | none |
 | mixed-text-line? | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-direction | stable | 0 | procedure | 1 | none | none |
@@ -1418,9 +1410,9 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | mixed-text-run-origin-x | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-script | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-shaped-run | stable | 0 | procedure | 1 | none | none |
-| mixed-text-run-text | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-source-map | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-source-range | stable | 0 | procedure | 1 | none | none |
+| mixed-text-run-text | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run-width | stable | 0 | procedure | 1 | none | none |
 | mixed-text-run? | stable | 0 | procedure | 1 | none | none |
 | named-transfer-function | stable | 0 | procedure | 1 | none | none |
@@ -1602,6 +1594,14 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | path-union | stable | 0 | procedure | 2 | none | none |
 | path-verbs | stable | 0 | procedure | 1 | none | none |
 | path-xor | stable | 0 | procedure | 2 | none | none |
+| pdf-document->bytes | stable | 0 | procedure | 1 | none | none |
+| pdf-document-abort! | stable | 0 | procedure | 1 | none | none |
+| pdf-document-begin-page! | stable | 0 | procedure | 3 | none | none |
+| pdf-document-end-page! | stable | 0 | procedure | 1 | none | none |
+| pdf-document-finish! | stable | 0 | procedure | 1 | none | none |
+| pdf-document-page-count | stable | 0 | procedure | 1 | none | none |
+| pdf-document-state | stable | 0 | procedure | 1 | none | none |
+| pdf-document? | stable | 0 | procedure | 1 | none | none |
 | picture->bytes | stable | 0 | procedure | 1 | none | none |
 | picture->drawable | stable | 0 | procedure | 1 | none | none |
 | picture->image | stable | 0 | procedure | 3 | none | #:background |
@@ -1758,11 +1758,11 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | shaped-run-advance-x | stable | 0 | procedure | 1 | none | none |
 | shaped-run-advance-y | stable | 0 | procedure | 1 | none | none |
 | shaped-run-clusters | stable | 0 | procedure | 1 | none | none |
-| shaped-run-glyph-count | stable | 0 | procedure | 1 | none | none |
 | shaped-run-direction | stable | 0 | procedure | 1 | none | none |
-| shaped-run-text | stable | 0 | procedure | 1 | none | none |
+| shaped-run-glyph-count | stable | 0 | procedure | 1 | none | none |
 | shaped-run-glyphs | stable | 0 | procedure | 1 | none | none |
 | shaped-run-positions | stable | 0 | procedure | 1 | none | none |
+| shaped-run-text | stable | 0 | procedure | 1 | none | none |
 | shaped-run? | stable | 0 | procedure | 1 | none | none |
 | shaper? | stable | 0 | procedure | 1 | none | none |
 | simple-text-bounds | stable | 0 | procedure | 2 | none | #:paint |
@@ -1847,9 +1847,9 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | text-layout-line-height | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-origin-x | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-run | stable | 0 | procedure | 1 | none | none |
-| text-layout-line-text | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-source-map | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-source-range | stable | 0 | procedure | 1 | none | none |
+| text-layout-line-text | stable | 0 | procedure | 1 | none | none |
 | text-layout-line-width | stable | 0 | procedure | 1 | none | none |
 | text-layout-line? | stable | 0 | procedure | 1 | none | none |
 | text-layout-lines | stable | 0 | procedure | 1 | none | none |
@@ -1901,8 +1901,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | with-canvas-layer | stable | 0 | syntax | — | — | — |
 | with-canvas-matrix | stable | 0 | syntax | — | — | — |
 | with-canvas-state | stable | 0 | syntax | — | — | — |
-| with-document-page | stable | 0 | syntax | — | — | — |
 | with-output-label | stable | 0 | syntax | — | — | — |
+| with-pdf-page | stable | 0 | syntax | — | — | — |
 | with-skia | stable | 0 | syntax | — | — | — |
 | xyz-d50-concat | stable | 0 | procedure | 2 | none | none |
 | xyz-d50-invert | stable | 0 | procedure | 1 | none | none |

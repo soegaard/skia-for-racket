@@ -48,7 +48,7 @@
 ; pdf-bytes : (canvas? -> any) -> bytes?
 ;   Finishes a single 200-by-160-point PDF page drawn by the callback.
 (define (pdf-bytes draw)
-  (call-with-pdf-bytes (lambda (d) (call-with-document-page d 200 160 draw))))
+  (call-with-pdf-bytes (lambda (d) (call-with-pdf-page d 200 160 draw))))
 
 ; foreign-error : (-> any) -> (or/c exn? #f)
 ;   Captures the exception from a worker thread, or false when the operation succeeds.
@@ -118,9 +118,9 @@
    (test-case "PDF destinations resolve forward across pages"
      (define bs (call-with-pdf-bytes
                  (lambda (d)
-                   (call-with-document-page d 200 160
+                   (call-with-pdf-page d 200 160
                      (lambda (c) (canvas-link-destination! c 10 20 30 40 "next")))
-                   (call-with-document-page d 300 180
+                   (call-with-pdf-page d 300 180
                      (lambda (c) (canvas-define-destination! c "next" 15 25))))))
      (check-true (has? #rx#"/Dests" bs))
      (check-true (has? #rx#"/Dest" bs)))
@@ -144,7 +144,7 @@
          (call-with-pdf-bytes
           (lambda (d)
             (for ([i (in-range 2)])
-              (call-with-document-page d 100 100
+              (call-with-pdf-page d 100 100
                 (lambda (c) (canvas-define-destination! c "same" 0 0)))))))))
    (test-case "duplicate destinations fail through SVG canvas aliases"
      (with-skia ([d (make-svg-document 100 100)])
@@ -153,11 +153,11 @@
          (lambda () (canvas-define-destination! (svg-document-canvas d) "same" 1 2)))))
    (test-case "undefined PDF destinations fail before finish and can be resolved"
      (with-skia ([d (make-pdf-document)])
-       (call-with-document-page d 100 100 (lambda (c) (canvas-link-destination! c 1 1 5 5 "later")))
-       (check-exn #rx"undefined" (lambda () (document-finish! d)))
-       (check-equal? (document-state d) 'open)
-       (call-with-document-page d 100 100 (lambda (c) (canvas-define-destination! c "later" 0 0)))
-       (check-not-exn (lambda () (document-finish! d)))))
+       (call-with-pdf-page d 100 100 (lambda (c) (canvas-link-destination! c 1 1 5 5 "later")))
+       (check-exn #rx"undefined" (lambda () (pdf-document-finish! d)))
+       (check-equal? (pdf-document-state d) 'open)
+       (call-with-pdf-page d 100 100 (lambda (c) (canvas-define-destination! c "later" 0 0)))
+       (check-not-exn (lambda () (pdf-document-finish! d)))))
    (test-case "undefined SVG destinations fail before native canvas destruction"
      (with-skia ([d (make-svg-document 100 100)])
        (define c (svg-document-canvas d))
@@ -223,8 +223,8 @@
          (check-equal? (canvas-save-count c) n))))
    (test-case "expired page and finished SVG canvases are rejected"
      (with-skia ([d (make-pdf-document)])
-       (define c (document-begin-page! d 100 100))
-       (document-end-page! d)
+       (define c (pdf-document-begin-page! d 100 100))
+       (pdf-document-end-page! d)
        (check-exn #rx"closed" (lambda () (canvas-annotate-url! c 0 0 5 5 uri))))
      (with-skia ([d (make-svg-document 100 100)])
        (define c (svg-document-canvas d))
@@ -264,14 +264,14 @@
          (call-with-output-file path (lambda (p) (write-bytes #"keep" p)) #:exists 'replace)
          (check-exn #rx"undefined"
            (lambda () (call-with-pdf-file path
-                        (lambda (d) (call-with-document-page d 100 100
+                        (lambda (d) (call-with-pdf-page d 100 100
                                       (lambda (c) (canvas-link-destination! c 1 1 5 5 "missing"))))
                         #:exists 'replace)))
          (check-equal? (file->bytes path) #"keep"))
        (lambda () (delete-file path))))
    (test-case "PDF/A mode can include URL and named link annotations"
      (define bs (call-with-pdf-bytes
-                 (lambda (d) (call-with-document-page d 100 100
+                 (lambda (d) (call-with-pdf-page d 100 100
                                (lambda (c)
                                  (canvas-annotate-url! c 1 1 20 10 uri)
                                  (canvas-link-destination! c 1 20 20 10 "n")

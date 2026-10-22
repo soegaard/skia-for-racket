@@ -151,14 +151,14 @@
      (check-exn #rx"closed" (lambda () (canvas-concat! stale matrix-identity))))
    (test-case "ended PDF canvas cannot affect the next page"
      (with-skia ([doc (make-pdf-document)])
-       (define old (document-begin-page! doc 50 40))
+       (define old (pdf-document-begin-page! doc 50 40))
        (canvas-concat! old (matrix-translate 10 5))
-       (document-end-page! doc)
-       (define current (document-begin-page! doc 60 40))
+       (pdf-document-end-page! doc)
+       (define current (pdf-document-begin-page! doc 60 40))
        (check-exn #rx"closed" (lambda () (canvas-set-transform! old matrix-identity)))
        (check-true (matrix? (canvas-transform current)))
-       (document-end-page! doc)
-       (document-finish! doc)))
+       (pdf-document-end-page! doc)
+       (pdf-document-finish! doc)))
    (test-case "SVG and PDF accept ordinary affine matrix drawing"
      (define (drawing c)
        (with-skia ([p (make-paint #:color 'blue)])
@@ -170,7 +170,7 @@
      (check-false (regexp-match? #rx#"data:image/" svg))
      (check-true (regexp-match? #rx#"^%PDF-"
                                (call-with-pdf-bytes
-                                (lambda (d) (call-with-document-page d 70 60 drawing))))))
+                                (lambda (d) (call-with-pdf-page d 70 60 drawing))))))
    (test-case "raw commands preserve all verbs, control points and conic weight"
      (with-skia ([p (make-path all-commands)])
        (check-equal? (path->commands p) all-commands)

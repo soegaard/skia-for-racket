@@ -399,7 +399,9 @@ intentional embedded images. The @racket['error] policy permits explicit raster
 groups; it does not require the entire document to be vector-only.
 
 The @racket[output->bytes/audit] function returns document bytes and an audit
-report. Export both formats without writing files:
+report. Its default policy is @racket['error], as with @racket[save-output/audit].
+Use @racket[#:policy 'report] explicitly when you want findings without rejecting
+unsupported features. Export both formats without writing files:
 
 @vector-interaction[
 (define-values (svg-bytes svg-export-report)
