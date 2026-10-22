@@ -13,11 +13,16 @@ released.
 
 @section{Resource Kinds and Validity}
 
-An @deftech{owned resource} has a native lifetime managed by its wrapper. An
-@deftech{ordinary CPU resource}, such as a CPU @tech{surface} or @tech{paint},
-has fallback cleanup after it becomes unreachable. Ordinary Racket bindings
-are sufficient when the exact release time does not matter. Fallback cleanup
-has no predictable timing; use explicit release when its timing matters.
+An @deftech{owned resource} has a Racket wrapper responsible for releasing its
+native reference. Owned resources can use CPU or GPU storage; ownership and
+where the resource is used are separate distinctions.
+
+An @deftech{ordinary CPU resource}, such as a CPU @tech{surface} or @tech{paint},
+is an owned resource with fallback cleanup after it becomes unreachable.
+Ordinary Racket bindings are sufficient when the exact release time does not
+matter. Fallback cleanup has no predictable timing; use explicit release when
+its timing matters. GPU resources have additional requirements described in
+their entries.
 
 A @deftech{borrowed canvas} has no independent native lifetime. Its owner and
 any callback or @tech{GPU activation} that supplied it must remain valid. Keeping the
@@ -28,7 +33,7 @@ Native use and explicit release of an ordinary CPU resource belong to the Racket
 thread that created it. A reference to the wrapper does not permit cross-thread
 native access.
 
-@bold{Conceptual diagram.} Lifetime relationships are timelines. A CPU surface
+The figure below shows how these lifetimes are related. A CPU surface
 owns its borrowed canvas, which becomes invalid when the surface closes; an
 independently owned snapshot can remain open afterward. Similarly, a buffer's
 @tech{pixmap} and subset are callback-scoped views even if the caller keeps references
@@ -49,8 +54,9 @@ This predicate is not a classifier for every object in the separate GPU APIs.
 @defproc[(skia-closed? [v (or/c skia-resource? canvas?)]) boolean?]{
 Returns whether @racket[v] has been closed or its borrowed target has
 expired. For a surface canvas, closure follows the surface. Callback and GPU
-canvases additionally follow their documented scope. The query does not reopen
-an object, activate a context, or prove that a later operation will succeed.
+canvases additionally follow their documented scope. The query does not activate
+a GPU context. An open resource must still satisfy the thread and activation
+requirements of the operation that uses it.
 }
 
 @section{Explicit Release}
@@ -63,17 +69,28 @@ those requirements.
 
 @defproc[(skia-close! [resource skia-resource?]) void?]{
 Releases @racket[resource]'s owned native reference. Releasing an ordinary CPU
-resource again on its creating thread is harmless. Explicit release cancels its
-fallback cleanup; it does not schedule a second native release.
+resource again on its creating thread is harmless. Closing it from another
+Racket thread raises an exception, even if it is already closed. Explicit
+release cancels its fallback cleanup.
 
-The operation can raise when an exclusive borrow or protected use forbids
-closure. A failed close must not be treated as successful release. A borrowed
-canvas cannot be closed with this function; close its owner at the permitted
-point instead. A resource may keep another native object alive through its own
-reference to that object; see the constructor's rules for its input resources.
+Some operations require a resource to remain open throughout a callback. For
+example, closing a raster buffer during @racket[call-with-raster-buffer-pixmap],
+or a target surface during @racket[call-with-overdraw-canvas], raises an
+exception. Follow the enclosing operation's rules for when closure is allowed;
+a failed close must not be treated as successful release.
+
+A borrowed canvas cannot be closed with this function; close its owner at the
+permitted point instead. A resource may keep another native object alive through
+its own reference to that object; see the constructor's rules for its input
+resources.
 }
 
 @section{Scoped Resource Management}
+
+Use @racket[call-with-skia-resource] or @racket[with-skia] when resources should
+be closed as soon as a computation finishes, including when it raises an
+exception. If cleanup itself raises an exception, that exception propagates in
+place of any exception already being raised by the computation.
 
 @defproc[(call-with-skia-resource [resource skia-resource?]
                                 [proc (-> skia-resource? any)]) any]{
@@ -132,7 +149,8 @@ timing predictable.
 @defparam[current-skia-byte-limit limit exact-positive-integer?]{
 Controls the byte limit used by checked image and encoding operations. The
 initial value is @racket[(* 256 1024 1024)], or 256 MiB. For
-@racket[make-surface], @racket[(* 4 width height)] must not exceed this limit.
+@racket[make-surface], which uses four bytes per pixel,
+@racket[(* 4 width height)] must not exceed this limit.
 
 The parameter is not a process-wide native-memory cap. It does not account for
 all native temporaries, driver allocations, or resources already allocated.

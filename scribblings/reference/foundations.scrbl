@@ -2,10 +2,13 @@
 
 @title[#:tag "skia-reference-foundations" #:style 'toc]{Foundations}
 
-Skia combines ordinary Racket values with native resources whose validity can
-depend on ownership, lifetime, thread, and native-library availability. Numeric
-conventions, pixel coverage, cleanup rules, capability checks, and process-global
-cache behavior establish assumptions used throughout the API.
+This chapter explains conventions and rules used throughout the Reference:
+which numeric limits apply, how antialiasing affects pixel coverage, and how to
+manage native resources.
+
+The later sections describe native-library checks, shared caches, and memory
+reports. Consult these when diagnosing installation problems or investigating
+memory use.
 
 @local-table-of-contents[]
 

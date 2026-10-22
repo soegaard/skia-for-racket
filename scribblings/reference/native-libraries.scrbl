@@ -11,16 +11,23 @@
 @defmodule[skia/native-capabilities #:no-declare]
 @(declare-exporting skia skia/native-capabilities #:use-sources (skia/native-capabilities))
 
-Native availability checks load the native libraries and check their compatibility with this
-package. Importing a public library or reading the installed ABI catalogue does not establish
-native availability. Symbol presence, ABI
-compatibility, successful backend creation, and hardware acceleration are separate claims.
+Use these functions to diagnose native-library installation and compatibility
+problems. @racket[skia-check!] checks Skia, while @racket[harfbuzz-check!] checks
+the separate library used for text shaping. Both load the selected native
+library and raise an exception if it is unavailable or incompatible.
 
-The Skia library is selected once per process-local module instance and shared with its lazy GPU
-registries. Set @envvar{RACKET_SKIA_LIBRARY} before the first native use to select an explicit
-library file. The default search uses the packaged platform library and the system library
-search. Library selection and compatibility-check results are cached; changing an environment
-variable afterward is not a supported library-switching operation.
+Importing a public Racket library or reading the installed ABI catalogue does
+not perform these checks. The ABI describes the native functions and data
+layouts expected by the bindings. Compatible layouts and available function
+symbols do not by themselves establish that a GPU backend can be created or
+that it uses hardware acceleration.
+
+The loaded Racket modules select the Skia library on first native use. CPU and
+GPU operations then use that same library. Set @envvar{RACKET_SKIA_LIBRARY}
+before first use to select an explicit library file. Otherwise, the search tries
+the packaged platform library, then the system library search. Library selection
+and compatibility-check results are cached; changing an environment variable
+afterward does not switch the selected library.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -101,6 +108,10 @@ This need not be the fully resolved path of the file actually loaded.
 
 @section{Installed ABI Catalogue}
 
+The catalogue describes the native interfaces supported by this version of the
+Racket package. Use it to inspect compatibility requirements without loading
+Skia. To inspect the library actually loaded, use the diagnostics below.
+
 @subsection{Default Package}
 
 @(declare-exporting skia)
@@ -124,7 +135,7 @@ policy, not a runtime observation.
 }
 
 @defproc[(native-abi-profiles)
-          (listof hash?)]{
+          (listof (and/c hash? immutable?))]{
 Returns the supported profiles from the installed catalogue as immutable hash tables. The
 list is not a list of libraries found on the machine. It does not verify optional entry points
 or backend creation.
@@ -142,19 +153,61 @@ or backend creation.
 
 @defproc[(skia-native-capabilities)
           (and/c hash? immutable?)]{
-Checks library compatibility with @racket[skia-check!] and returns a report containing the
-selected library name or path, native version, supported profile, pointer size, and required CPU
-symbol/layout results. The flags for optional GPU symbol probing, backend creation, and hardware
-acceleration remain false: this operation has not established those properties. The version
-functions do not certify package identity. The report is not a rendering test.
+Checks library compatibility with @racket[skia-check!] and returns an immutable
+hash table describing the selected library and the checks that succeeded.
+Use this report when diagnosing which native library was selected and whether
+it matches the package's expected interface.
+
+The report has the following keys:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Key} @bold{Value and meaning})
+  (list @racket['schema] @elem{@racket[1], the report format version.})
+  (list @racket['default_package_version]
+        @elem{A string: the configured @racket[native-package-version].})
+  (list @racket['library_request]
+        @elem{A string: the name or path used to load the library, as in
+              @racket[skia-native-library-path].})
+  (list @racket['milestone]
+        @elem{An exact nonnegative integer: the native milestone.})
+  (list @racket['increment]
+        @elem{An exact nonnegative integer: the native increment.})
+  (list @racket['native_version]
+        @elem{A string combining milestone and increment, as in
+              @racket[skia-native-version].})
+  (list @racket['pointer_bytes]
+        @elem{An exact positive integer: the size of a native pointer in bytes.})
+  (list @racket['profile]
+        @elem{An immutable hash table: the matching supported ABI profile from
+              @racket[native-abi-profiles].})
+  (list @racket['required_cpu_symbols_resolved]
+        @elem{@racket[#t]: all required CPU function symbols were found.})
+  (list @racket['racket_layouts_checked]
+        @elem{@racket[#t]: the Racket foreign-structure layouts passed the ABI checks.})
+  (list @racket['required_cpu_symbol_count]
+        @elem{An exact nonnegative integer: the number of required CPU symbols checked.})
+  (list @racket['package_identity_from_version_functions]
+        @elem{@racket[#f]: the native version does not uniquely identify the package.})
+  (list @racket['optional_gpu_symbols_probed]
+        @elem{@racket[#f]: optional GPU symbols were not checked by this operation.})
+  (list @racket['backend_creation_verified]
+        @elem{@racket[#f]: GPU backend creation was not tested.})
+  (list @racket['hardware_acceleration_verified]
+        @elem{@racket[#f]: hardware acceleration was not tested.}))]
+
+The three GPU flags mean that the corresponding properties have not been
+verified, not that GPU support is unavailable. This operation does not render
+anything or create a GPU context.
 }
 
 @defproc[(skia-native-symbol-inventory [names (listof symbol?)])
-          (listof hash?)]{
+          (listof (and/c hash? immutable?))]{
 Runs @racket[skia-check!], then checks the requested symbol addresses in that same loaded library.
-Results preserve input order, including duplicates. Each immutable result hash table contains a string
-@racket['name] and boolean @racket['available]. Missing symbols yield false; they are not
-invoked.
+Results preserve input order, including duplicates. Each immutable result hash
+table has a @racket['name] key whose value is the symbol's name as a string, and
+an @racket['available] key whose boolean value indicates whether the symbol was
+found. The requested symbols are looked up but not called.
 
 An address does not establish the function signature, ownership contract, presence of a real
 implementation rather than a stub, or usable hardware. This operation does not bypass the
