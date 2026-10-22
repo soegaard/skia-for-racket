@@ -90,6 +90,7 @@
 ;   linked.
 (define scribblings
   '(("scribblings/reference/reference.scrbl" (multi-page) (gui-library) "skia-reference")
+    ("scribblings/guide/guide.scrbl" () (gui-library) "skia-guide")
     ("scribblings/tutorials/index.scrbl" () (gui-library) "skia-tutorials")
     ("scribblings/quick/quick.scrbl" () (omit-start) "skia-tutorial-quick")
     ("scribblings/tutorials/clock/clock.scrbl" () (omit-start) "skia-tutorial-clock")

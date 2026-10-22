@@ -8,7 +8,8 @@
 
 (provide feedback-style
          skia-feedback-style
-         documentation-notice)
+         documentation-notice
+         guide-feedback-form)
 
 (define-runtime-path feedback-js "paragraph-feedback.js")
 (define-runtime-path feedback-css "paragraph-feedback.css")
@@ -82,3 +83,21 @@
                     "Please flag any overly dense or unintelligible sentences.")
     (notice-element "skia-ai-notice__item"
                     "It is enough to write “check” as a comment."))))
+
+;; guide-feedback-form : -> paragraph?
+;; Provides a visible, JavaScript-enhanced issue form for the planned Guide.
+(define (guide-feedback-form)
+  (make-paragraph
+   (make-style
+    "fb-form fb-form--guide"
+    (list (make-alt-tag "div")
+          (make-attributes (list (cons 'data-feedback-form "guide")))))
+   (list
+    (make-element
+     (make-style
+      "fb-form__fallback"
+      (list (make-alt-tag "a")
+            (make-attributes
+             (list (cons 'href
+                         "https://github.com/soegaard/skia-for-racket/issues/new?labels=docs-feedback&title=Guide%20feedback")))))
+     (list "Open a GitHub issue with a suggestion for the Guide.")))))

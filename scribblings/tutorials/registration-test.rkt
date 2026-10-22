@@ -53,11 +53,13 @@
 
   ; expected-manual-count : real?
   ;   Counts the collection manuals and individual tutorials expected in registration.
-  (define expected-manual-count (+ 2 (length tutorials)))
+  (define expected-manual-count
+    (+ (length (available-documentation-collections)) (length tutorials)))
   (check-equal? (length documents) expected-manual-count)
   (check-equal? (length (remove-duplicates sources)) expected-manual-count)
   (check-equal? (length (remove-duplicates names)) expected-manual-count)
   (check-not-false (member "scribblings/tutorials/index.scrbl" sources))
+  (check-not-false (member "scribblings/guide/guide.scrbl" sources))
   (check-not-false (member "scribblings/quick/quick.scrbl" sources))
   (for ([tutorial (in-list tutorials)])
     (check-not-false (member (tutorial-output-directory (hash-ref tutorial 'id)) names)))

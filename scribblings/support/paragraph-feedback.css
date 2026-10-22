@@ -42,6 +42,9 @@
   font-family: monospace;
   font-size: 0.85em;
 }
+.fb-form__intro { display: block; }
+.fb-form--guide { margin: 1.25em 0; }
+.fb-form__fallback { color: inherit; }
 .fb-label { display: block; margin-top: 0.5em; }
 .fb-form textarea {
   display: block;

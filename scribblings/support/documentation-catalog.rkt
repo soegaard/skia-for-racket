@@ -52,9 +52,9 @@
    (documentation-collection
     'reference "Reference" #t
     "skia/scribblings/reference/reference.scrbl" "skia-reference" 'reference)
-   ;; Keep the disabled record here so enabling a real Guide is a single,
-   ;; validated metadata change.  A disabled record deliberately has no target.
-   (documentation-collection 'guide "Guide" #f #f "skia-guide" 'guide)
+   (documentation-collection
+    'guide "Guide" #t
+    "skia/scribblings/guide/guide.scrbl" "skia-guide" 'guide)
    (documentation-collection
     'tutorials "Tutorials" #t
     "skia/scribblings/tutorials/index.scrbl" "skia-tutorials" 'tutorials)))
@@ -140,23 +140,21 @@
   (check-equal? (map documentation-collection-id documentation-collections)
                 '(reference guide tutorials))
   (check-equal? (map documentation-collection-id (available-documentation-collections))
-                '(reference tutorials))
+                '(reference guide tutorials))
 
-  ; synthetic-guide : documentation-collection?
-  ;   Supplies an enabled Guide record solely to test destination validation.
-  (define synthetic-guide
-    (documentation-collection 'guide "Guide" #t
-                              "skia/scribblings/guide/guide.scrbl" "skia-guide" 'guide))
+  ; guide-record : documentation-collection?
+  ;   Retrieves the live Guide record to exercise destination validation.
+  (define guide-record (documentation-collection-by-id 'guide))
   (check-not-exn
    (lambda ()
      (validate-documentation-collections!
       (list (first documentation-collections)
-            synthetic-guide
+            guide-record
             (last documentation-collections)))))
   (check-exn exn:fail?
              (lambda ()
                (validate-documentation-collections!
-                (list (struct-copy documentation-collection synthetic-guide
+      (list (struct-copy documentation-collection guide-record
                                    [module-path #f])))))
   (check-exn exn:fail?
              (lambda ()

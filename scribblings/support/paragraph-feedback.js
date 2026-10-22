@@ -27,6 +27,38 @@
   // Avoid IDs that Scribble or other document extensions already assigned.
   const usedIds = new Set([...document.querySelectorAll("[id]")].map(node => node.id));
 
+  function installGuideFeedbackForm(form) {
+    if (!repo) return;
+
+    const url = location.origin + location.pathname;
+    form.innerHTML = `
+      <span class="fb-form__intro">Tell me what questions, tasks, or examples would make the Guide useful to you.</span>
+      <a class="fb-link"></a>
+      <label class="fb-label">What would you like the Guide to cover?
+        <textarea placeholder="For example: explain how to choose a surface, export a document, or structure a drawing program"></textarea>
+      </label>
+      <div class="fb-actions">
+        <button type="button" data-via="github">Open GitHub issue</button>
+      </div>`;
+    const link = form.querySelector(".fb-link");
+    link.href = url;
+    link.textContent = url;
+
+    form.addEventListener("click", event => {
+      if (event.target.dataset?.via !== "github") return;
+
+      const comment = form.querySelector("textarea").value.trim();
+      const title = `Guide suggestion: ${document.title}`;
+      const body = "**What would you like the Guide to cover?**\n\n" +
+                   (comment || "<!-- Share a topic, question, task, or example. -->") +
+                   `\n\n**Guide page:** ${url}`;
+      const query = new URLSearchParams({ title, body, labels: "docs-feedback" });
+      window.open(`https://github.com/${repo}/issues/new?${query}`, "_blank", "noopener");
+    });
+  }
+
+  document.querySelectorAll('[data-feedback-form="guide"]').forEach(installGuideFeedbackForm);
+
   document.querySelectorAll(".maincolumn .main p").forEach(paragraph => {
     if (paragraph.closest(
       ".refpara, .tocset, .navsettop, .navsetbottom, .SPretitle, .skia-doc-nav, .skia-ai-notice"
