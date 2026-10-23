@@ -17,8 +17,11 @@ python3 tools/prepare-bad-apple.py --download
 ```
 
 This verifies the pinned `frames.js` SHA-256, extracts all 6,568 frame arrays and 19,110 separate
-path strings, then writes `output/bad-apple/frames.json.gz`. Use `--frames-js PATH` to prepare an
-already-downloaded, hash-verified source instead.
+path strings, then writes `output/bad-apple/frames.json.gz`. The default gzip level is intentionally
+fast (`1`): it trades a modestly larger asset for substantially quicker preparation while retaining
+a portable, streamable format. Use `--compression-level 9` when minimizing local disk size matters
+more than preparation time, or `--frames-js PATH` to prepare an already-downloaded, hash-verified
+source instead.
 
 To fetch the matching MP4 for optional sound:
 
@@ -95,5 +98,7 @@ The same `draw-bad-apple-frame` procedure feeds both presenters. It clears lette
 The raster adapter maintains a physical-size Skia surface and explicitly scales its detached bitmap
 into the logical GUI rectangle. The GPU adapter only touches the callback-scoped borrowed frame.
 
-All native paths and paints are created, used, and closed on the GUI handler thread. Closing during
-data load or incremental path preparation invalidates queued work and releases any partial paths.
+All native paths and paints are created, used, and closed on the GUI handler thread. Paths preserve
+their source coordinates; one canvas transform maps them to the 480 × 360 view box while drawing.
+This avoids transforming every native path during preparation. Closing during data load or
+incremental path preparation invalidates queued work and releases any partial paths.

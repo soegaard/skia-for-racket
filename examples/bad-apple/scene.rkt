@@ -28,7 +28,7 @@
          bad-apple-scene-close!
          draw-bad-apple-frame)
 
-(struct bad-apple-scene (frames fill white path-count closed?) #:mutable #:transparent)
+(struct bad-apple-scene (frames fill white source->view-box path-count closed?) #:mutable #:transparent)
 
 ;; `paths-rev` contains newly constructed native paths for the frame currently being compiled.
 ;; Every path is registered immediately, making error/cancellation cleanup straightforward.
@@ -107,6 +107,10 @@
      (vector->immutable-vector (bad-apple-scene-builder-frames builder))
      (bad-apple-scene-builder-fill builder)
      (bad-apple-scene-builder-white builder)
+     (apply make-matrix
+            (vector->list
+             (bad-apple-asset-source->view-box
+              (bad-apple-scene-builder-asset builder))))
      (bad-apple-scene-builder-completed-paths builder)
      #f))
   (set-bad-apple-scene-builder-scene! builder scene)
@@ -134,10 +138,6 @@
     [else
      (define started (current-inexact-monotonic-milliseconds))
      (define source-frames (bad-apple-asset-frames (bad-apple-scene-builder-asset builder)))
-     (define transform (apply make-matrix
-                              (vector->list
-                               (bad-apple-asset-source->view-box
-                                (bad-apple-scene-builder-asset builder)))))
      (define parsed 0)
      (with-handlers ([exn?
                       (lambda (error)
@@ -162,10 +162,9 @@
                 (begin (finish-current-frame! builder) (loop))
                 (let ([path (svg-path->path (vector-ref source-frame path-index)
                                              #:fill-rule 'winding)])
-                  ;; Register before transforming, so either operation is covered by cleanup.
+                  ;; Register immediately, so cleanup covers a path if later builder work fails.
                   (set-bad-apple-scene-builder-paths-rev!
                    builder (cons path (bad-apple-scene-builder-paths-rev builder)))
-                  (path-transform! path transform)
                   (set-bad-apple-scene-builder-path-index! builder (add1 path-index))
                   (set-bad-apple-scene-builder-completed-paths!
                    builder (add1 (bad-apple-scene-builder-completed-paths builder)))
@@ -212,6 +211,11 @@
       (canvas-scale! canvas scale scale)
       (canvas-clip-rect! canvas 0 0 source-width source-height)
       (draw-rect canvas 0 0 source-width source-height (bad-apple-scene-white scene))
-      (for ([path (in-vector (vector-ref (bad-apple-scene-frames scene) frame-index))])
-        (draw-path canvas path (bad-apple-scene-fill scene)))))
+      ;; Keep source coordinates in the prepared native paths. The conversion then costs one
+      ;; canvas concatenation per painted frame instead of one native path mutation per path at
+      ;; startup; the scoped canvas state restores the display transform afterward.
+      (with-canvas-state canvas
+        (canvas-concat! canvas (bad-apple-scene-source->view-box scene))
+        (for ([path (in-vector (vector-ref (bad-apple-scene-frames scene) frame-index))])
+          (draw-path canvas path (bad-apple-scene-fill scene))))))
   (void))

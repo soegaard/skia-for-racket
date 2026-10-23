@@ -221,11 +221,14 @@ def prepared_asset(frames: list[list[str]]) -> dict[str, Any]:
     }
 
 
-def write_prepared_asset(path: Path, asset: dict[str, Any]) -> None:
+def write_prepared_asset(path: Path, asset: dict[str, Any], compression_level: int) -> None:
     encoded = json.dumps(asset, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     def write(output: Any) -> None:
-        with gzip.GzipFile(filename="", mode="wb", fileobj=output, mtime=0, compresslevel=9) as zipped:
+        # The prepared asset is local, generated data. Level 1 completes dramatically sooner than
+        # level 9 while retaining gzip's dependency-free, streamable format and a compact file.
+        with gzip.GzipFile(filename="", mode="wb", fileobj=output, mtime=0,
+                           compresslevel=compression_level) as zipped:
             zipped.write(encoded)
 
     atomic_replace(path, write)
@@ -255,6 +258,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--with-audio", action="store_true", help="also download the matching MP4")
     parser.add_argument("--output", type=Path, default=Path("output/bad-apple/frames.json.gz"))
     parser.add_argument("--downloads", type=Path, default=Path("downloads/bad-apple"))
+    parser.add_argument("--compression-level", type=int, choices=range(10), default=1,
+                        help="gzip compression level (0-9, default: 1 for quick preparation)")
     arguments = parser.parse_args(argv)
 
     try:
@@ -266,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.with_audio:
             media_path = fetch_verified(MEDIA_URL, arguments.downloads / "BadApple.mp4", MEDIA_SHA256)
         frames = parse_frames(frames_path.read_bytes())
-        write_prepared_asset(arguments.output, prepared_asset(frames))
+        write_prepared_asset(arguments.output, prepared_asset(frames), arguments.compression_level)
         write_provenance(arguments.output.with_name("provenance.json"), frames_path, media_path)
     except (OSError, PreparationError, urllib.error.URLError) as error:
         print(f"prepare-bad-apple.py: {error}", file=sys.stderr)

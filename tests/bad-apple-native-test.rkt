@@ -33,7 +33,7 @@
 (define bad-apple-native-tests
   (test-suite
    "Bad Apple native scene"
-   (test-case "native compilation transforms once and a blank frame clears the previous drawing"
+   (test-case "native compilation preserves source paths and a blank frame clears the previous drawing"
      (define scene (compile-bad-apple-scene (fixture-asset)))
      (dynamic-wind
        void

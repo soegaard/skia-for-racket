@@ -21,8 +21,9 @@ inspectors, and native ABI probes. It is not the public drawing API.
 
 [prepare-bad-apple.py](prepare-bad-apple.py) downloads or verifies the pinned third-party Bad
 Apple!! frame source, validates its deliberately narrow SVG subset, and writes the gzip JSON asset
-used by [examples/bad-apple.rkt](../examples/bad-apple.rkt). It is opt-in and does not run during
-package builds or routine tests.
+used by [examples/bad-apple.rkt](../examples/bad-apple.rkt). Its default gzip level favors fast
+local preparation; pass `--compression-level 9` when a smaller generated asset is worth the extra
+CPU time. It is opt-in and does not run during package builds or routine tests.
 [render-bad-apple-frame.rkt](render-bad-apple-frame.rkt) renders one zero-based prepared frame to
 PNG for static acceptance comparisons.
 
