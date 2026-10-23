@@ -15,6 +15,7 @@ to be imported by comparison tools instead of run alone.
 
 - [advanced-canvases.rkt](advanced-canvases.rkt) — Demonstrates native recorded drawables, canvas stacks, and compositing layers.
 - [advanced-codecs.rkt](advanced-codecs.rkt) — Renders a contact sheet of animation disposal and EXIF orientation cases.
+- [bad-apple.rkt](bad-apple.rkt) — Plays prepared Bad Apple!! SVG paths through a shared raster or direct-GPU scene; see [bad-apple/README.md](bad-apple/README.md).
 - [bidi-controls.rkt](bidi-controls.rkt) — Compares explicit Unicode embedding, override, and isolate controls in shaped text.
 - [bitmap-bridge.rkt](bitmap-bridge.rkt) — Copies a Skia drawing into a Racket bitmap and saves the detached result.
 - [break-providers.rkt](break-providers.rkt) — Demonstrates application-supplied word breaks and visible hyphen opportunities.

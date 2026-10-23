@@ -17,6 +17,15 @@ inspectors, and native ABI probes. It is not the public drawing API.
 | [validate-release-scope.py](validate-release-scope.py), [release_scope.py](release_scope.py), [release_graph.py](release_graph.py) | Validate release scope and its dependency/evidence graph. |
 | [install-native.sh](install-native.sh), [install-native-windows.py](install-native-windows.py), [install-native-windows.ps1](install-native-windows.ps1), [install-harfbuzz.sh](install-harfbuzz.sh) | Explicit native dependency installation, distinct from read-only checks. |
 
+## External example preparation
+
+[prepare-bad-apple.py](prepare-bad-apple.py) downloads or verifies the pinned third-party Bad
+Apple!! frame source, validates its deliberately narrow SVG subset, and writes the gzip JSON asset
+used by [examples/bad-apple.rkt](../examples/bad-apple.rkt). It is opt-in and does not run during
+package builds or routine tests.
+[render-bad-apple-frame.rkt](render-bad-apple-frame.rkt) renders one zero-based prepared frame to
+PNG for static acceptance comparisons.
+
 ## File families
 
 - `*-doctor.rkt` runs a focused native diagnostic or writes captures and a receipt.

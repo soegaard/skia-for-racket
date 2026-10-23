@@ -17,7 +17,13 @@
 (require "tests/pict-pure-test.rkt")
 (require "tests/racket-draw-pure-test.rkt")
 (require "tests/gpu-render-pure-test.rkt")
+(require "tests/bad-apple-data-test.rkt")
+(require "tests/bad-apple-transport-test.rkt")
 (require racket/runtime-path "tests/small-gap-pure-test.rkt")
+
+; bad-apple-native-tests-file : path?
+; Locates the native scene regression suite for explicit dynamic loading.
+(define-runtime-path bad-apple-native-tests-file "tests/bad-apple-native-test.rkt")
 
 ; small-gap-native-tests-file : path?
 ;   Locates the small gap native test suite for explicit dynamic loading.
@@ -387,7 +393,9 @@
      (run-tests gpu-egl-pure-tests)
      (run-tests gpu-output-pure-tests)
      (run-tests gpu-cache-pure-tests)
-     (run-tests gpu-performance-pure-tests)))
+     (run-tests gpu-performance-pure-tests)
+     (run-tests bad-apple-data-tests)
+     (run-tests bad-apple-transport-tests)))
 
   ;;;
   ;;; Optional Native Test Suites and Exit Status
@@ -463,6 +471,7 @@
               (run-tests (dynamic-require output-group-native-tests-file 'output-group-native-tests))
               (run-tests (dynamic-require portable-native-tests-file 'portable-native-tests))
               (run-tests (dynamic-require color-filter-native-tests-file 'color-filter-native-tests))
+              (run-tests (dynamic-require bad-apple-native-tests-file 'bad-apple-native-tests))
               (run-tests
                (dynamic-require raster-buffer-native-tests-file 'raster-buffer-native-tests))))])
   (exit (if (zero? failures) 0 1)))
