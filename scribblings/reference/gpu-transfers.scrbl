@@ -13,10 +13,12 @@ If the result will only be drawn again in the same @tech{GPU context}, keep it a
 image, @racket[render-gpu->raster-image] manages rendering and readback together.
 
 A @deftech{GPU readback} explicitly copies drawing results into CPU memory.
-The operations here are synchronous and can wait for submitted work. Except
-for the one-shot constructor, they require the owning context to be active.
-No readback performs presentation or silently switches failed GPU rendering
-to the CPU.
+The operations here flush pending Skia work, submit it, and wait for GPU
+completion before copying pixels. They are synchronous; there is no asynchronous
+readback interface. Except for the one-shot constructor, they require the owning
+context to be active. No readback presents a window or silently switches failed
+GPU rendering to the CPU. See @secref["skia-gpu-synchronization"] for the
+distinction between flushing, submission, and waiting.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -34,8 +36,7 @@ Runs @racket[draw] on the GPU and returns the result as an image in CPU memory.
 The helper creates a context and an offscreen surface using RGBA8888 pixels
 with @tech{premultiplied alpha}. It calls @racket[draw] once with the surface's borrowed
 Skia canvas, then reads back the pixels. The returned image is an owned resource.
-The callback must accept one positional argument and no required keywords.
-Its zero, one, or multiple results are ignored.
+The callback's zero, one, or multiple results are ignored.
 
 The backend is required; there is no automatic backend selection or CPU fallback.
 OpenGL requires a matching provider. Metal and Direct3D create owned native
@@ -78,6 +79,22 @@ They are useful when a context is reused across drawings or when a particular
 pixel format is needed. The caller manages resource lifetimes and must activate
 the owning context with @racket[call-with-gpu-context].
 
+Choose the result according to what the CPU code needs:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{CPU result} @bold{Operations})
+  (list "An image to draw, filter, or encode"
+        @para{@racket[gpu-surface->raster-image] or @racket[gpu-image->raster-image]})
+  (list "A mutable buffer with a pixel description"
+        @para{@racket[gpu-surface->raster-buffer] or @racket[gpu-image->raster-buffer]})
+  (list "Tightly packed eight-bit RGBA bytes"
+        @para{@racket[gpu-surface->rgba-bytes] or @racket[gpu-image->rgba-bytes]})
+  (list "Pixels written into existing storage"
+        @para{@racket[gpu-surface-read-pixmap!] checks the readback before
+              changing the destination. The buffer writers below write directly
+              and may leave partial changes on failure.}))]
+
 A surface readback requires a balanced save/layer stack at @tech{save count} 1.
 Reading a GPU image first draws it into a temporary GPU surface in the same
 context. This uses one-to-one scaling, @tech{nearest sampling}, and source replacement.
@@ -86,10 +103,10 @@ Opaque images use opaque storage; other images use premultiplied storage.
 Creating the temporary surface can fail if its format is unsupported or
 allocation fails. This is not a raw texture-memory download.
 
-The byte helpers convert to eight-bit RGBA. The typed buffer and raster-image
-helpers preserve the selected format by default, including supported F16/F32
-storage. Returned CPU resources are independent of the GPU context, but retain
-their ordinary CPU thread and lifetime rules.
+The byte helpers convert to eight-bit RGBA. The operations returning new raster
+buffers or images preserve the selected format by default, including supported
+F16/F32 storage. Returned CPU resources are independent of the GPU context, but
+retain their ordinary CPU thread and lifetime rules.
 
 @subsection{Eight-Bit Copies}
 
@@ -104,9 +121,7 @@ alpha} unless requested otherwise. A supplied live color space selects the
 readback destination interpretation; false uses the surface's native color
 space. The color-space argument accepts a resource, not a @tech{color-space descriptor}.
 
-The operation performs a @tech{GPU flush}, @tech{GPU submission}, and
-@tech{GPU wait} before copying pixels. Float or
-higher-bit-depth sources are explicitly converted to eight-bit output.
+Float or higher-bit-depth sources are explicitly converted to eight-bit output.
 The output allocation must fit @racket[current-skia-byte-limit]; exceeding it
 raises an exception before allocating the output. If GPU synchronization or
 pixel readback fails, the function raises an exception without returning a
@@ -119,10 +134,10 @@ partial byte string. Later GPU changes do not alter a successful result.
 Like @racket[gpu-surface->rgba-bytes], after drawing the image one-to-one into a
 temporary surface in the same context. A false color-space argument preserves
 the image's color interpretation through that surface. The image is not consumed.
-The temporary GPU resources are retired before the call returns or raises an exception.
+The temporary GPU resources are closed before the call returns or raises an exception.
 }
 
-@subsection{Typed Copies}
+@subsection{Raster Buffers and Images}
 
 @defproc[(gpu-surface->raster-buffer [surface gpu-surface?]
           [#:info info (or/c image-info? #f) #f]
@@ -176,8 +191,11 @@ independent CPU image.
 
 For a new CPU image, use @racket[gpu-surface->raster-image] or
 @racket[gpu-image->raster-image]. The operations in this section write into
-caller-owned storage instead. The caller supplies matching dimensions and
-formats, and must observe each operation\'s rules for borrowing and failed writes.
+caller-owned storage instead. The caller supplies matching dimensions and a
+supported destination format, and must observe each operation's rules for
+borrowing and failed writes. Prefer @racket[gpu-surface-read-pixmap!] when a
+failed read must leave the destination unchanged. The direct buffer writers
+accept fewer formats and do not provide that guarantee.
 
 @defproc[(gpu-surface-read-pixmap! [surface gpu-surface?] [destination pixmap?]) void?]{
 Reads the full surface into @racket[destination].
@@ -188,8 +206,8 @@ remain active. The source and destination must agree on whether a
 color-space tag is present. Supported tagged conversions are performed by the
 native readback; this function does not silently relabel samples.
 
-The operation waits for GPU work, reads into temporary tight storage, and
-validates the result before copying pixels to the destination. A failed read or
+The operation reads into temporary tight storage and validates the result before
+copying pixels to the destination. A failed read or
 invalid converted sample leaves the destination unchanged. Destination row padding is never
 changed. Native format support can still make a well-formed request fail.
 }
@@ -198,9 +216,9 @@ changed. Native format support can still make a well-formed request fail.
                                         [destination raster-buffer?]) void?]{
 Reads the surface's pixels into @racket[destination].
 
-The destination must be an idle, owned CPU buffer with exactly matching dimensions.
-This legacy writer accepts only RGBA8888 premultiplied storage. It acquires an exclusive
-GPU-transfer scope and uses the destination's color interpretation and stride.
+The destination must be an idle, owned CPU buffer with exactly matching dimensions
+and RGBA8888 premultiplied storage. The operation borrows the buffer exclusively
+for the transfer and uses its color interpretation and stride.
 The context must be active and the surface save/layer stack balanced.
 
 Unlike @racket[gpu-surface-read-pixmap!], this writer exposes the destination to
@@ -218,7 +236,7 @@ image's dimensions and use RGBA8888 premultiplied storage. The direct destinatio
 can leave partial writes after a native failure, just like the surface operation.
 }
 
-The following helper fills a typed destination inside its writable pixmap scope.
+The following helper fills an existing raster buffer inside its writable pixmap scope.
 The buffer remains the caller's resource, rather than being consumed by readback.
 
 @racketblock[

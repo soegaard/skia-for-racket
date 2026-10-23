@@ -215,7 +215,7 @@ and offset describe which pixels to use and where to draw them.
                  (vector/c exact-integer? exact-integer?
                            (integer-in 1 32768) (integer-in 1 32768))) #f])
           (values image?
-                  (and/c (vector/c exact-integer? exact-integer?
+                  (and/c (vector/c exact-nonnegative-integer? exact-nonnegative-integer?
                                    exact-positive-integer? exact-positive-integer?) immutable?)
                   (and/c (vector/c exact-integer? exact-integer?) immutable?))]{
 Applies @racket[filter] to @racket[image] on the CPU.
@@ -230,6 +230,9 @@ Returns three values:
  @item{An immutable offset vector @racket[#(x y)], giving the position of that
    rectangle's upper-left corner in the input image's coordinate system.
    This is not necessarily the position of the full result image's origin.}]
+
+The source rectangle's x and y coordinates are nonnegative because it selects
+pixels within the result image. The placement offset can be negative.
 
 The @racket[subset] and @racket[clip] rectangles are lists or vectors of four
 exact integers: x, y, width, and height. The subset selects input pixels and

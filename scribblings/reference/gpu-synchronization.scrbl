@@ -37,9 +37,10 @@ Use @racket[gpu-submit!] to submit flushed work, or
 @defproc[(gpu-submit! [context gpu-context?] [#:wait? wait? boolean? #f]) void?]{
 Requests @tech{GPU submission} of previously flushed work. A true @racket[wait?]
 requests that the submitted GPU work finish before this call returns. This operation
-does not first flush all pending Skia commands; use @racket[gpu-wait!] when those
-commands must be included. Native submission
-failure raises an exception. No pixel readback or presentation is performed.
+does not first flush all pending Skia commands. Use @racket[gpu-flush-and-submit!]
+to include those commands, with @racket[#:wait? #t] if completion is required.
+Native submission failure raises an exception. No pixel readback or presentation
+is performed.
 }
 
 @defproc[(gpu-flush-and-submit! [context gpu-context?]
@@ -49,8 +50,9 @@ A failure of either stage propagates and does not undo work already submitted.
 }
 
 @defproc[(gpu-wait! [context gpu-context?]) void?]{
-Flushes and submits with @racket[#:wait? #t], including pending Skia commands
-in the completion request. It neither presents a frame nor copies pixels.
+Equivalent to @racket[(gpu-flush-and-submit! context #:wait? #t)]: flushes pending
+Skia commands, submits the work, and waits for completion. It neither presents
+a frame nor copies pixels.
 Successful completion is not an interoperability fence for a different device
 or an unrelated queue.
 }
@@ -82,8 +84,10 @@ Reports the context's budgeted cache usage and limit.
 The result is an immutable hash table containing the backend, context generation,
 @racket['limit_bytes], @racket['budgeted_resources], and @racket['budgeted_bytes].
 The usage count and bytes describe budgeted resources, not total VRAM.
-The @racket['purgeable_bytes], @racket['total_gpu_bytes], and
-@racket['limit_is_hard_allocation_cap] fields are false. The reported values need
+The @racket['purgeable_bytes] and @racket['total_gpu_bytes] fields are
+@racket[#f] because those measurements are unavailable, not because their values
+are zero. The @racket['limit_is_hard_allocation_cap] field is @racket[#f] because
+the cache limit does not impose a total GPU-memory cap. The reported values need
 not describe the same moment and do not account for all driver memory.
 }
 
@@ -120,7 +124,7 @@ freed-byte count and does not guarantee that GPU work has finished when it retur
 Requests release of context resources without abandoning the context. The
 context remains usable. The native implementation may flush and submit work,
 but this operation does not guarantee that GPU work has finished when it returns.
-It does not retire live image/surface wrappers or replace orderly context closure.
+It does not close live image/surface wrappers or replace orderly context closure.
 }
 
 @section{Bounded Memory Reports}

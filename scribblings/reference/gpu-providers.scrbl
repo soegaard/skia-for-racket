@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require scribble/eval
-          (for-label racket/base racket/contract skia/gpu))
+          (for-label racket/base racket/contract skia/gpu skia/gpu-egl skia/gpu-racket-gl))
 
 @(define backend-eval (make-base-eval))
 @(backend-eval '(require skia/gpu))
@@ -13,9 +13,15 @@
 
 A @deftech{GPU backend} identifies the graphics interface used by a Skia
 @tech{GPU context}. A @deftech{GPU provider} supplies access to a particular native host
-context or device. A provider is not a Skia context, a rendering target, or a
-promise of hardware acceleration. Context construction and lifetime are
-specified in @secref["skia-gpu-contexts"].
+context or device. Supply a provider when Skia should use an OpenGL host that
+your application already owns. The adapters in @secref["skia-gpu-opengl-hosts"]
+cover existing Racket and EGL contexts; write provider callbacks only for a
+host that those adapters do not cover.
+
+You do not need to construct a provider for the owned Metal and Direct3D routes
+of @racket[make-gpu-context], or for @racket[make-egl-gpu-context]. A provider
+is not itself a Skia context or a drawing target. Context construction and
+lifetime are specified in @secref["skia-gpu-contexts"].
 
 Importing the @racketmodname[skia/gpu] library does not load a native graphics
 library, create a GPU context, or initialize a GUI. Backend declarations and provider
@@ -37,19 +43,27 @@ that a context can be created.
 
 @defproc[(gpu-backend-capabilities [backend (or/c 'opengl 'metal 'direct3d)])
           (and/c hash? immutable?)]{
-Returns a declaration of the wrapper's support for @racket[backend].
+Returns a declaration of the library's support for @racket[backend], without
+checking the current machine.
 The hash table contains @racket['backend], @racket['engine], @racket['native_backend],
 @racket['owned_context], @racket['platforms], @racket['software_selection], and
 @racket['features]. The feature hash table describes offscreen rendering, images,
 explicit transfers, cache controls, presentation, document execution, and
 external-resource interoperation.
 
+The @racket['engine] value is @racket["ganesh"], the name of the upstream Skia
+GPU engine used by this package. The @racket['owned_context] field describes
+whether @racket[make-gpu-context] creates its own native host for this backend.
+Its false value for OpenGL does not exclude the separate owned EGL constructor.
+
 The @racket['scope] is @racket["wrapper-declarations"], and
 @racket['runtime_availability] is @racket["not-probed"]. The
 @racket['native_probe_performed], @racket['hardware_acceleration_verified],
 @racket['visible_pixels_verified], and @racket['performance_measured] fields
-are all @racket[#f]. Nested hash tables and strings are immutable. No field in this
-result certifies that the selected backend works on the current machine.
+are all @racket[#f] because this function does not perform those checks or
+measurements. They do not report failed tests or measured software rendering.
+Nested hash tables and strings are immutable. To try creating a context, use
+one of the constructors in @secref["skia-reference-gpu-rendering"].
 
 @examples[#:eval backend-eval
   (eval:check (gpu-backends) '(opengl metal direct3d))
@@ -75,7 +89,13 @@ provider or check whether its host still exists.
           [#:current? current? procedure?]
           [#:describe describe procedure? (lambda () (hasheq))]
           [#:get-proc-address resolve (or/c procedure? #f) #f]) gpu-provider?]{
-Creates a GPU provider from the supplied callbacks.
+Creates a GPU provider from the supplied callbacks. For an existing Racket
+OpenGL context, prefer @racket[make-racket-gl-provider]; for a currently bound
+desktop-EGL context, prefer @racket[make-current-egl-gpu-provider].
+
+Only external OpenGL providers are accepted by @racket[make-gpu-context].
+Provider values for Metal or Direct3D can be constructed, but passing them to
+that function raises an unavailability exception; use its owned-device routes.
 
 The provider belongs to the current Racket thread. Construction checks callback
 arities but does not invoke them, activate the host, or load Skia.
@@ -120,9 +140,6 @@ The callbacks have the following obligations:
 All callbacks must be procedures with no required keyword arguments. The
 constructor's positional-arity check does not establish their behavior.
 
-Only external OpenGL providers are accepted by @racket[make-gpu-context].
-Provider values for Metal or Direct3D can be constructed, but passing them to
-that function raises an unavailability exception; use its owned-device routes.
 The EGL adapters use the names @racket['egl-owned] and @racket['egl-current].
 Those names also select a default interface route that avoids the native GL
 interface factory.

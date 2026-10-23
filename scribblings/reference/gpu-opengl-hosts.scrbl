@@ -5,10 +5,14 @@
 
 @title[#:tag "skia-gpu-opengl-hosts"]{OpenGL Hosts}
 
-An OpenGL @tech{GPU context} needs a host that can make the matching native
-OpenGL context current. The operations here either construct an owned EGL host
-or adapt an existing host. They do not create a presentation window, swap
-buffers, or turn a host-owned context into a package-owned one.
+For headless OpenGL drawing on Linux, use @racket[make-egl-gpu-context] to
+create both a native host and its Skia @tech{GPU context}. When an application
+already owns an OpenGL context, use an adapter below to create a provider for
+@racket[make-gpu-context] instead.
+
+The host must make the matching native OpenGL context current during Skia
+operations. These adapters do not create a presentation window or swap buffers.
+Adapting an existing host does not transfer ownership of it to the package.
 
 @section{Owned and Borrowed EGL Hosts}
 
@@ -36,15 +40,15 @@ pbuffer is not an application render target or a window.
 The constructor creates desktop OpenGL, not OpenGL ES. Consequently its explicit
 interface selection is limited to @racket['default], @racket['auto], and
 @racket['desktop]. If required EGL facilities are missing, the selected device
-cannot be used, or EGL or Ganesh context creation fails, the constructor raises
-an exception. There is no GLX, GUI, different-backend, or CPU fallback.
+cannot be used, or the native EGL or Skia context cannot be created, the
+constructor raises an exception. There is no GLX, GUI, different-backend, or CPU fallback.
 The returned context follows the ownership, thread,
 shutdown, and close rules in @secref["skia-gpu-contexts"].
 
 The owned adapter saves and restores a previously current native binding around
 activation. It owns its EGL context and optional pbuffer, and destroys them only
-after Ganesh has been destroyed. It does not treat each context as permission to
-terminate an EGL display owned by unrelated native code.
+after the native Skia context has been destroyed. It does not terminate an EGL
+display owned by unrelated native code.
 }
 
 @defproc[(make-current-egl-gpu-provider) gpu-provider?]{
@@ -56,8 +60,9 @@ and its draw/read surfaces are current. The result can be passed to
 The provider saves and restores native binding state during each activation but
 does not create, destroy, initialize, or terminate the host's EGL objects. The
 host must keep them valid until the resulting GPU context is closed. Capturing a
-package-owned EGL context as a second Ganesh domain is rejected. This operation
-does not claim that the external host is headless or display-server-free.
+package-owned EGL context to create a second Skia GPU context for the same host
+is rejected. The external host may depend on a window or display server even
+though this adapter creates neither.
 }
 
 @section{Racket OpenGL Hosts}

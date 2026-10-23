@@ -4,10 +4,25 @@
 
 @title[#:tag "skia-gpu-diagnostics"]{GPU Diagnostics}
 
-The property queries below report information about a @tech{GPU context} without
-measuring performance or synchronizing GPU work. @racket[gpu-smoke-test] instead
-draws a fixed pattern, waits for completion, and checks the resulting pixels.
-Neither establishes that rendering is hardware accelerated.
+Choose a report according to what you need to know:
+
+@itemlist[
+ @item{@racket[gpu-backend-capabilities] describes the library's supported
+       interfaces without probing the current machine.}
+ @item{@racket[gpu-context-info] combines construction choices and initial native
+       measurements with current wrapper state and child-resource counts. It
+       does not refresh those native measurements.}
+ @item{@racket[gpu-surface-format-info] queries the active context's format limits;
+       it does not attempt a surface allocation.}
+ @item{@racket[gpu-cache-info] and @racket[gpu-memory-statistics] report cache or
+       Skia resource usage, not total device memory.}
+ @item{The OpenGL queries below describe the context's selected interface and
+       advertised extensions.}]
+
+These queries do not draw a test image or measure rendering performance.
+@racket[gpu-smoke-test] instead draws a fixed pattern, waits for completion,
+and checks the resulting pixels. Neither the queries nor the rendering check
+establish that rendering is hardware accelerated.
 
 @section{OpenGL Interface Diagnostics}
 
@@ -34,9 +49,9 @@ digits, and underscores. If the name violates these requirements or
 @racket[context] does not use OpenGL, the function raises an exception.
 A well-formed name that the interface does not advertise returns @racket[#f].
 
-The query examines the interface used to create this Ganesh context. Extension
-membership alone does not certify rendering support, a driver path, or visual
-correctness. No flush, submission, wait, or pixel readback is implied.
+An advertised extension does not establish that a particular drawing operation
+uses it or produces the expected pixels. The query performs no flush, submission,
+wait, or pixel readback.
 }
 
 @section{Fixed Rendering Diagnostic}
@@ -53,7 +68,7 @@ four fixed color regions. It flushes and submits the work, waits for completion,
 then reads and verifies the RGBA pixels before returning.
 
 The result records the dimensions, transfer format, backend identity,
-and immutable RGBA bytes. Temporary GPU resources are retired on exit. This is
+and immutable RGBA bytes. Temporary GPU resources are closed on exit. This is
 a functional diagnostic with an explicit readback; it is not a general drawing
 API, benchmark, presentation test, or proof of hardware acceleration.
 }

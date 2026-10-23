@@ -12,6 +12,10 @@
 @defmodule[skia/surface-properties #:no-declare]
 @(declare-exporting skia skia/surface-properties #:use-sources (skia/surface-properties))
 
+Use surface properties when a drawing target needs a known display-subpixel
+arrangement or a rendering request such as dithering. Otherwise, omit the
+surface-properties argument to use unknown pixel geometry and unset flags.
+
 A @deftech{surface-properties value} describes a drawing target's pixel
 geometry and requests settings for font rendering, @tech{multisample antialiasing},
 and @tech{dithering}. These rendering settings are separate from the surface's
@@ -26,19 +30,19 @@ default, @racket['unknown], leaves the display's subpixel arrangement unspecifie
 Use @racket[make-surface-properties] to create a value, then pass it as the
 @racket[#:surface-properties] argument to @racket[make-gpu-surface]. The same
 argument to @racket[call-with-gpu-frame-dc] configures the @tech{GPU surface} used for
-drawing during its callback. Omitting the argument uses unknown pixel geometry
-and leaves all rendering flags unset.
+drawing during its callback.
 
 A properties value is immutable and can be reused for several surfaces.
 Creating one does not allocate a surface or change an existing surface.
 The flags record requests; whether Skia fulfills them depends on the drawing
 backend. Inspecting a flag reports the request, not whether it took effect.
 
-In the current API, custom properties can be supplied when creating GPU
-surfaces, but not through the raster constructors @racket[make-surface] or
-@racket[make-surface-from-info]. Properties are not exclusive to GPU surfaces:
-@racket[surface-properties-of] can inspect either a raster surface or a GPU
-surface.
+Pixel geometry and font-rendering properties are relevant to raster surfaces
+as well as GPU surfaces. The current API only accepts custom properties when
+creating GPU surfaces: neither @racket[make-surface] nor
+@racket[make-surface-from-info] has a surface-properties argument.
+@racket[surface-properties-of] can nevertheless inspect either kind of surface.
+The dynamic-MSAA request is specific to GPU rendering.
 
 @section{Creating and Inspecting Properties}
 

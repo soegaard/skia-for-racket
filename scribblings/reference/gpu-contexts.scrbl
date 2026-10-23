@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/gpu))
+@(require (for-label racket/base racket/contract skia skia/gpu skia/gpu-egl))
 
 @title[#:tag "skia-gpu-contexts"]{GPU Contexts and Lifetimes}
 
@@ -22,6 +22,25 @@ must run on that thread, not in a future. Entering a context does not transfer
 ownership to a different thread. A context is managed with
 @racket[gpu-context-close!], not @racket[skia-close!] or @racket[with-skia].
 The ordinary resource protocol still manages its GPU-dependent child resources.
+
+For normal use, follow this order:
+
+@itemlist[#:style 'ordered
+ @item{Create the context on the thread that will use and close it.}
+ @item{Enter @racket[call-with-gpu-context], create a GPU surface, and draw
+       through its canvas using the ordinary Skia drawing operations.}
+ @item{Reuse surfaces and images across activations as needed. Obtain a fresh
+       canvas in each activation. Perform any required submission, wait, or
+       CPU readback before cleanup.}
+ @item{On the final use, close the GPU-dependent child resources with
+       @racket[skia-close!] or @racket[with-skia], then leave the activation.}
+ @item{Call @racket[gpu-context-close!] outside all GPU activations.}]
+
+Closing a child wrapper prevents further use of that wrapper and queues its
+native release. Activation entry and exit drain pending releases, as does
+context closure. None of these cleanup steps replaces a @tech{GPU wait} or
+@tech{GPU readback}. Lost hosts and failed releases require the separate routes
+in @secref["skia-gpu-context-shutdown"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -50,9 +69,11 @@ platform selection or CPU fallback. An explicit backend must agree with the
 provider's declaration.
 
 @itemlist[
- @item{The @racket['opengl] backend requires an explicit host provider. The host
-       must remain available for normal execution and closure. Closing the Skia
-       context does not destroy the caller's external host.}
+ @item{For @racket['opengl], this constructor requires an explicit host provider.
+       The host must remain available for normal execution and closure. Closing the Skia
+       context does not destroy the caller's external host. On Linux,
+       @racket[make-egl-gpu-context] instead creates an owned, headless
+       desktop-OpenGL host and its Skia context together.}
  @item{The @racket['metal] backend creates and owns a device and queue on macOS.
        Omit the provider. External Metal providers are not accepted.}
  @item{The @racket['direct3d] backend creates and owns a Direct3D 12 device and
@@ -66,8 +87,8 @@ Adapter options other than @racket[#f] are rejected outside Direct3D. For exampl
 @racket[(make-gpu-context provider)] uses the supplied OpenGL host.
 
 The @racket[options] argument selects native defaults or an explicit immutable
-request, as described in @secref["skia-gpu-context-options"]. The returned report
-identifies that request; it is not an effective-options readback.
+request, as described in @secref["skia-gpu-context-options"].
+@racket[gpu-context-info] records that request, not the effective native settings.
 
 The @racket[interface] argument selects OpenGL interface construction. Values
 other than @racket['default] are rejected for Metal and Direct3D:
@@ -112,13 +133,14 @@ limits a borrowed GPU canvas to the activation that supplied it. A canvas
 obtained in an inner scope expires when that scope exits, even if an outer scope for the same
 context remains active. Entering the context again does not revive old canvases.
 
-Cleanup retires the activation after normal return, an exception, or an escape.
+Cleanup ends the activation after normal return, an exception, or an escape.
 Reentry through a saved continuation is rejected. State cleanup is not pixel
 rollback, and a release failure can leave the context requiring explicit cleanup.
 
-The following helper creates and enters a context when called, then closes it
-on exit. The callback must retire all GPU children it creates before returning.
-A failed close is not silently replaced with abandonment.
+The following example defines @racket[call-with-new-gpu-context]; it is not
+exported by the library. This local helper creates and enters a context, then
+closes it on exit. Its callback must close all GPU-dependent children it creates
+before returning. A failed close is not silently replaced with abandonment.
 
 @racketblock[
 (require skia/gpu)
@@ -130,8 +152,8 @@ A failed close is not silently replaced with abandonment.
     (lambda () (gpu-context-close! context))))
 ]
 
-On macOS, when a Metal context can be created, the following expression returns
-context information and closes the context before returning:
+On a macOS system where a Metal context can be created, this use of the local
+helper returns context information and closes the context before returning:
 @racket[(call-with-new-gpu-context gpu-context-info #:backend 'metal)].
 Defining the helper alone creates no context.
 }
@@ -170,27 +192,60 @@ future. No active GPU scope is required, and the query remains available after
 abandonment or closure. It does not activate the provider or refresh native
 capability and cache measurements.
 
-The hash table combines construction-time diagnostics with current wrapper fields:
+The hash table combines wrapper identity and state with construction-time
+information. The wrapper fields are as follows:
 @racket['backend] and @racket['provider] are strings; @racket['generation] is
 an exact positive integer; @racket['state] is a string; @racket['live_children],
 @racket['pending_releases], and @racket['failed_releases] are counts; and
 @racket['shutdown_requested] is a boolean. Child counts concern tracked resource
 references, not a count of every native allocation.
 
-The @racket['context_factory], @racket['context_options_source], and
-@racket['context_options] fields record construction choices. The
-@racket['context_options_native_readback] field is @racket[#f]. Native limits,
-initial cache measurements, and provider details are snapshots, not promises
-that the device remains usable or that current resource usage is unchanged.
+Its construction-time fields include @racket['context_factory],
+@racket['context_options_source], and @racket['context_options]. These record
+which constructor and settings were requested. The
+@racket['context_options_native_readback] field is @racket[#f] because the
+effective native settings are not queried; it does not mean that the requests
+were rejected. Native limits, initial cache measurements, and provider details
+also describe construction time. Use @racket[gpu-cache-info] for current cache
+usage. Neither report establishes that the device will remain usable.
 }
 
-@section{Release, Abandonment, and Shutdown}
+@section[#:tag "skia-gpu-context-shutdown"]{Release, Abandonment, and Shutdown}
+
+Choose the cleanup operation according to whether the native host is still
+usable and which thread is making the request:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Situation} @bold{Action})
+  (list "Normal end of use"
+        @para{Close child resources, then call @racket[gpu-context-close!].})
+  (list "Host is lost or unsafe to activate"
+        @para{Call @racket[gpu-context-abandon!], close child resources,
+              then call @racket[gpu-context-close!].})
+  (list "Host is usable, but the context must stop and release resources"
+        @para{Call @racket[gpu-context-release-and-abandon!], close child
+              resources, then call @racket[gpu-context-close!].})
+  (list "Shutdown requested from another thread"
+        @para{Call @racket[gpu-context-request-shutdown!]. The owner thread
+              must close children and close the context or call
+              @racket[gpu-drain-pending-contexts!].})
+  (list "Native release has an indeterminate outcome"
+        @para{Do not retry that release. The failed release record, or the
+              context in @racket['release-failed], remains quarantined.}))]
+
+Context closure and abandonment run on the owner thread, outside all GPU
+activations. A shutdown request is only a notification: it prevents further
+execution but does not close children or release native resources. Its flag is
+separate from @racket[gpu-context-state], so a @racket['ready] context with a
+pending request cannot be used for drawing. The entries below give the
+preconditions and failure behavior for each operation.
 
 @defproc[(gpu-context-close! [context gpu-context?]) void?]{
 Closes a context on its owning thread, outside every GPU execution scope.
 Pending releases are drained first. Closure then requires no live GPU children
 and no indeterminate native release records. A live-child failure does not
-silently close those children; retire them and retry closure.
+silently close those children; close them and retry context closure.
 
 A ready context's provider is activated for teardown. An abandoned context
 can release its remaining ownership without activating a lost host. A successful
@@ -212,7 +267,7 @@ successful rendering or as a request to clear pixels.
 
 Successful abandonment prevents future drawing and invalidates
 @tech[#:key "borrowed canvas"]{borrowed canvases}.
-It does not close child wrappers or release the context itself. Retire the
+It does not close child wrappers or release the context itself. Close the
 children with @racket[skia-close!], then use @racket[gpu-context-close!].
 Repeated abandonment of an abandoned or closed context is harmless. A context
 in @racket['release-failed] is rejected rather than retried through this route.
@@ -226,7 +281,7 @@ scopes, and requires no pending shutdown request. Unlike
 drains releases, and invokes the healthy-host release operation.
 
 Success leaves the context abandoned, not closed. Live children are not silently
-retired, and the native context and owned host handles remain until final close.
+closed, and the native context and owned host handles remain until final close.
 The operation does not promise completion of prior drawing or preserve
 unsubmitted content. It is not a CPU fence or a readback.
 
@@ -244,7 +299,7 @@ from another Racket thread. It is harmless for an already closed context.
 
 The request flag is separate from @racket[gpu-context-state]. It prevents new
 execution and invalidates borrowed canvases, but does not force the state to
-@racket['closed] or close live children. The owning thread must retire children
+@racket['closed] or close live children. The owning thread must close children
 and perform closure or drain pending context shutdowns. GC and custodian
 notifications use this request mechanism; they do not perform off-thread native
 teardown. If the owning thread has terminated, resources may therefore be left
@@ -254,7 +309,7 @@ allocated rather than released from the wrong thread.
 @defproc[(gpu-drain-releases! [context gpu-context?]) exact-nonnegative-integer?]{
 Drains queued child-resource releases on the owning thread and returns the
 number of release jobs processed by that call. It does not collect garbage or
-retire live wrappers. A ready or closing context requires the correct active
+close live wrappers. A ready or closing context requires the correct active
 GPU scope. An abandoned context requires no current host.
 
 Pending jobs are removed from the queue before processing. A failed release is not
@@ -272,7 +327,7 @@ owned by other threads are not processed.
 
 With @racket[abandon?] false, normal closure requires an available host. With
 @racket[abandon?] true, the lost-host abandonment operation is attempted first.
-Neither mode silently retires live children. If one shutdown raises a value satisfying
+Neither mode silently closes live children. If one shutdown raises a value satisfying
 @racket[exn:fail?], its report contains a @racket['shutdown_error] string and processing
 continues. Other raised values are not converted into reports. Inspect the
 reports: returning a list does not imply that every selected context closed.

@@ -23,7 +23,7 @@ result is not an independently usable CPU image. Use the explicit operations in
 Native image operations require the owner thread, a live image, and the correct
 active context. Resources derived from a GPU image retain their GPU dependency;
 closing the source wrapper does not make those derived resources context-free.
-Retire all such resources before closing the context. Neither image upload nor
+Close all such resources before closing the context. Neither image upload nor
 snapshot creation implicitly presents a window or returns CPU pixels.
 
 @section{Residency and Context Association}
@@ -89,7 +89,7 @@ Captures the surface's current contents as a GPU image.
 The image is independently owned. The native save/layer stack must be balanced
 at @tech{save count} 1. Later drawing to or closure of the surface does not alter the
 image's captured contents. The
-snapshot remains tied to the same context and must be retired before context
+snapshot remains tied to the same context and must be closed before context
 closure. This operation performs no CPU pixel readback and does not promise
 that preceding GPU commands have completed.
 }
@@ -111,26 +111,40 @@ copy, a resampling operation, or a transfer to another GPU context.
 
 @defproc[(gpu-image-apply-filter
           [image gpu-image?] [filter image-filter?]
-          [#:subset subset (or/c list? vector? #f) #f]
-          [#:clip clip (or/c list? vector?)])
+          [#:clip clip
+           (or/c (list/c exact-integer? exact-integer?
+                         (integer-in 1 32768) (integer-in 1 32768))
+                 (vector/c exact-integer? exact-integer?
+                           (integer-in 1 32768) (integer-in 1 32768)))]
+          [#:subset subset
+           (or/c #f
+                 (list/c exact-integer? exact-integer?
+                         (integer-in 1 32768) (integer-in 1 32768))
+                 (vector/c exact-integer? exact-integer?
+                           (integer-in 1 32768) (integer-in 1 32768))) #f])
          (values gpu-image?
                  (and/c (vector/c exact-nonnegative-integer? exact-nonnegative-integer?
                                   exact-positive-integer? exact-positive-integer?) immutable?)
                  (and/c (vector/c exact-integer? exact-integer?) immutable?))]{
 Applies @racket[filter] to the image in its active GPU context.
 
-Returns three values: the result image, a valid source rectangle within that
-image, and its destination offset. The image is an owned GPU resource; the last
-two results are immutable vectors. They have the same placement
-convention as @racket[image-apply-filter]: extract the valid rectangle and place
-its upper-left corner at the returned offset. Do not assume the entire returned
-image is the filter's valid output.
+Returns three values: an owned GPU image, an immutable source-rectangle vector
+@racket[#(x y width height)] selecting pixels within that image, and an immutable
+offset vector @racket[#(x y)] giving their placement in the input image's
+coordinate system. The source rectangle has nonnegative x and y coordinates;
+the placement offset can be negative.
+
+Extract the source rectangle and place its upper-left corner at the returned
+offset, as with @racket[image-apply-filter]. Do not assume the entire returned
+image is valid output or that the offset positions the full image's origin.
+See @secref["skia-image-filter-results"] for the shared placement explanation
+and diagram.
 
 Both input rectangles use exact x, y, width, and height components. Extents must
 be from 1 through 32768, and edges must fit signed 32-bit integers. A false subset
 selects the entire input; otherwise it must be inside the image. The required
-clip bounds the result in filter coordinates. Intermediate edges after
-subtracting the subset origin must also fit signed 32-bit arithmetic. The image
+clip bounds the result in the input image's coordinate system. Intermediate edges
+after subtracting the subset origin must also fit signed 32-bit arithmetic. The image
 and clip undergo conservative sixteen-byte-per-pixel budget checks, and the clip
 and result must fit the context's texture-size limit.
 

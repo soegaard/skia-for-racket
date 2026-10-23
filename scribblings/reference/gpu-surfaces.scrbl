@@ -103,10 +103,11 @@ its backend and generation, the color type, @racket['max_sample_count], and
 @racket['max_render_target_size]. The @racket['renderable] field is true exactly
 when the maximum sample count is positive.
 
-This is a capability query, not an allocation test. The
-@racket['allocation_verified] and @racket['actual_sample_count] fields are false.
-It performs no pixel readback. Context creation and this query must still
-succeed on the selected machine before the report is available.
+This query does not allocate a surface. The @racket['allocation_verified] field
+is @racket[#f] because allocation has not been attempted, not because it failed.
+The @racket['actual_sample_count] field is also @racket[#f]: there is no allocated
+target whose sample count could be reported. A positive limit does not guarantee
+that a later allocation will succeed. The query performs no pixel readback.
 }
 
 @defproc[(gpu-surface-info [surface gpu-surface?]) (and/c hash? immutable?)]{
@@ -114,8 +115,10 @@ Returns metadata after checking the live surface's native context and
 backend association. The surface must be used in its owning activation.
 The hash table records dimensions, color and alpha types, top-left origin, backend,
 context generation, budgeted status, surface properties, and the requested and
-maximum sample counts. The actual sample count remains false, not a copy of
-the request. The report does not read pixels or certify visible presentation.
+maximum sample counts. The @racket['actual_sample_count] field is @racket[#f]
+because the actual count is not exposed for this owned surface; it does not mean
+zero samples, and the requested count is not a substitute for it. The report
+does not read pixels or check window presentation.
 }
 
 @defproc[(gpu-surface->image-info [surface gpu-surface?]) image-info?]{

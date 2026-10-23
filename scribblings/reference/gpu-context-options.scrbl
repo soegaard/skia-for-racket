@@ -17,6 +17,10 @@ settings. Create the value with @racket[make-gpu-context-options] and pass it
 as @racket[#:options] to @racket[make-gpu-context]. These settings apply to the
 context, not to an individual surface or drawing operation.
 
+If you do not need a particular setting, omit @racket[#:options] to use Skia's
+native defaults. Constructing an options value is not a required step in
+creating a context.
+
 A @deftech{GPU context options} value is an immutable Racket structure containing
 requests used when constructing a @tech{GPU context}. Constructing or inspecting
 options does not load Skia or probe a backend.
@@ -26,6 +30,8 @@ native defaults. Passing an options value supplies the settings stored in that
 value, including the defaults from @racket[make-gpu-context-options]. Options
 are requests: backend support and driver workarounds can affect which requests
 take effect. The API does not report the effective settings.
+@racket[gpu-context-info] records the requested options, while
+@racket[gpu-cache-info] reports the active context's cache usage and limit.
 
 @section{Construction}
 
