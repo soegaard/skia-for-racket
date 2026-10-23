@@ -222,7 +222,7 @@ def check(root: pathlib.Path, *, require_integration=False):
         'private/lifetime.rkt':['domain-resource?','resource-pointer','domain-resource-close!',
                                 'new-gpu-owned','lifetime-native-call','setter-slots','getter-slots'],
         'private/native.rkt':['lifetime-native-call'],
-        'raster-buffers.rkt':['module* gpu-transfer-internals','call-with-raster-buffer-gpu-transfer'],
+        'raster-buffers.rkt':['call-with-pixmap-write-staging','module* image-operation-internals'],
         'run-tests.rkt':['tests/gpu-surface-pure-test.rkt','(run-tests gpu-surface-pure-tests)',
                          'tests/gpu-image-pure-test.rkt','(run-tests gpu-image-pure-tests)',
                          'tests/gpu-metal-pure-test.rkt','(run-tests gpu-metal-pure-tests)',

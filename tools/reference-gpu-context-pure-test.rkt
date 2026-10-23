@@ -100,9 +100,9 @@
       (check-true (immutable? info))
       (check-true (immutable? (hash-ref info 'features)))
       (check-equal? (hash-ref info 'scope) "wrapper-declarations")
-      (check-equal? (hash-ref info 'runtime_availability) "not-probed")
-      (check-false (hash-ref info 'native_probe_performed))
-      (check-false (hash-ref info 'hardware_acceleration_verified))))
+      (check-false (hash-has-key? info 'runtime_availability))
+      (check-false (hash-has-key? info 'native_probe_performed))
+      (check-false (hash-has-key? info 'hardware_acceleration_verified))))
 
   (test-case "options preserve all six defaults"
     (define options (make-gpu-context-options))
@@ -223,13 +223,11 @@
       (lambda () (make-gpu-context #:backend 'metal #:gl-interface 'gles)))
     (check-exn exn:fail:contract?
       (lambda () (make-gpu-context #:backend 'metal #:adapter 'hardware)))
-    (define external-metal
-      (make-gpu-provider #:name 'test #:backend 'metal #:key (gensym)
-                        #:call-as-current void #:current? void))
-    (check-exn
-      (lambda (e) (and (exn:fail:gpu:unavailable? e)
-                       (eq? (exn:fail:gpu:unavailable-step e) 'metal-provider)))
-      (lambda () (make-gpu-context external-metal))))
+    (for ([backend '(metal direct3d)])
+      (check-exn exn:fail:contract?
+        (lambda ()
+          (make-gpu-provider #:name 'test #:backend backend #:key (gensym)
+                            #:call-as-current void #:current? void)))))
 
   (test-case "same-context nesting preserves values without reactivating the host"
     (with-fake

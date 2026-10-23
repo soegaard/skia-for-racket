@@ -76,7 +76,8 @@ or change module dependencies.
 | [integer-pixel-util.rkt](integer-pixel-util.rkt) | Packs and unpacks supported integer pixel formats and alpha modes. |
 | [pixel-sample-util.rkt](pixel-sample-util.rkt) | Dispatches sample encoding and decoding to integer or floating-point formats. |
 | [raster-buffer-util.rkt](raster-buffer-util.rkt) | Checks byte layouts, pixel coordinates, subsets, and raster callbacks. |
-| [surface-property-native.rkt](surface-property-native.rkt) | Converts surface-property descriptions and scopes temporary native records. |
+| [surface-property-allocation.rkt](surface-property-allocation.rkt) | Scopes temporary native surface properties for CPU and GPU constructors. |
+| [surface-property-native.rkt](surface-property-native.rkt) | Queries surface properties and shares their native conversion. |
 
 ### Codecs and incremental decoding
 

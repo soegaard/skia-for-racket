@@ -176,7 +176,7 @@
          (with-skia ([surface (make-gpu-surface context 4 3 #:background 'red)])
            (check-equal? (surface-backend surface) (selected-backend))
            (check-equal? (image-info-color-type (gpu-surface->image-info surface)) 'rgba-8888)
-           (check-false (hash-ref (gpu-surface-info surface) 'actual_sample_count))
+           (check-false (hash-has-key? (gpu-surface-info surface) 'actual_sample_count))
            (probe (read-surface surface) 4 2 1 '(255 0 0 255))))))
 
    (gpu-case "snapshot owns captured contents after surface mutation and closure"
@@ -281,12 +281,12 @@
              #:writable? #t)
            (check-equal? (raster-buffer->storage-bytes buffer) before)))))
 
-   (gpu-case "legacy destination format restriction is enforced"
+   (gpu-case "destination dimensions are checked before writing"
      (with-active
        (lambda (context)
          (with-skia ([surface (make-gpu-surface context 2 2 #:background 'blue)]
                      [wrong (make-raster-buffer-from-info
-                             (make-image-info 2 2 #:color-type 'bgra-8888))]
+                             (make-image-info 3 2 #:color-type 'bgra-8888))]
                      [right (make-raster-buffer 2 2)])
            (check-exn exn:fail?
              (lambda () (gpu-surface-read-raster-buffer! surface wrong)))
@@ -343,7 +343,7 @@
        (lambda (context)
          (define before (gpu-cache-info context))
          (define limit (hash-ref before 'limit_bytes))
-         (check-false (hash-ref before 'limit_is_hard_allocation_cap))
+         (check-false (hash-has-key? before 'limit_is_hard_allocation_cap))
          (dynamic-wind void
            (lambda ()
              (check-pred void? (gpu-set-cache-limit! context 0))
@@ -368,8 +368,8 @@
          (for ([format '(rgba-8888 rgba-f16 rgba-f32)])
            (define info (gpu-surface-format-info context format))
            (check-true (immutable? info))
-           (check-false (hash-ref info 'allocation_verified))
-           (check-false (hash-ref info 'actual_sample_count))
+           (check-false (hash-has-key? info 'allocation_verified))
+           (check-false (hash-has-key? info 'actual_sample_count))
            (check-equal? (hash-ref info 'renderable)
                          (positive? (hash-ref info 'max_sample_count)))))))
 

@@ -106,7 +106,7 @@ fail rather than silently relabel it.
 selected format maximum, and detached `surface_properties`. **Requested and actual
 sample count are distinct**. Pinned Skia may round a request to a supported count;
 its C wrapper does not expose the actual count of a Skia-owned target. Therefore
-`actual_sample_count` stays `#f`, rather than pretending the request was observed.
+the report omits an actual sample count rather than treating the request as an observation.
 Native sample-count getters for external GL descriptors do not solve this owned-
 surface limitation.
 
@@ -141,9 +141,12 @@ This does not promise infinite precision inside every native shader/filter; nati
 arithmetic and supported format pairs still constrain results.
 
 The existing `gpu-surface->rgba-bytes` and `gpu-image->rgba-bytes` remain explicit
-eight-bit conversions. Legacy `gpu-surface-read-raster-buffer!` and
-`gpu-image-read-raster-buffer!` retain their RGBA8888-premultiplied destination
-restriction. Use the new pixmap/buffer entry points for generalized transfers.
+eight-bit conversions. The existing-storage writers
+`gpu-surface-read-raster-buffer!` and `gpu-image-read-raster-buffer!` borrow
+writable pixmaps and use the same checked path as `gpu-surface-read-pixmap!`
+and `gpu-image-read-pixmap!`. They accept the formats described by
+`image-info?`, subject to native conversion support. Failures leave the
+destination unchanged; padding is preserved.
 
 Float precision provenance is retained on targets, snapshots and typed detached
 images. Strict PDF/SVG publication requires an explicit integer conversion or the

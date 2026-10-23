@@ -24,8 +24,8 @@ The bindings are lazy and separate from the required CPU symbol inventory.
 `budgeted_bytes`. The pinned m119 `GrDirectContext::getResourceCacheUsage`
 implementation counts **budgeted** resources, despite broader wording in some
 upstream documentation. It does not report total device memory, textures held
-outside that cache, process RSS, or Racket managed memory. `total_gpu_bytes`
-and `purgeable_bytes` are `#f`: the pinned C shim does not expose those queries.
+outside that cache, process RSS, or Racket managed memory. The pinned C shim
+does not expose total GPU memory or purgeable-byte queries.
 `gpu-context-info` retains its historical creation-time cache fields; use the
 new live query after changing a budget.
 

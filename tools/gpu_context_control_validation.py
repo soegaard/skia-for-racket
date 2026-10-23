@@ -102,7 +102,7 @@ def inspect(path:Path,token:str,backend:str,adapter:str):
         explicit=expected_options is not False
         need(info.get('context_factory')==factory+('_with_options' if explicit else ''),'wrong constructor route')
         need(info.get('context_options_source')==('explicit' if explicit else 'native-defaults'),'wrong options provenance')
-        need(same_value(info.get('context_options'),expected_options) and info.get('context_options_native_readback') is False,'request metadata misrepresented')
+        need(same_value(info.get('context_options'),expected_options) and 'context_options_native_readback' not in info,'request metadata misrepresented')
         if backend=='direct3d':need(info.get('adapter_selection')==adapter,'wrong D3D adapter')
         need(row.get('drawing_readbacks')==0 and type(row.get('drawing_readbacks')) is int,'hidden drawing readback')
         need(row.get('readbacks')==1 and type(row.get('readbacks')) is int,'wrong explicit readback count')

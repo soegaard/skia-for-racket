@@ -28,9 +28,10 @@ the order in which color components are stored in the surface's memory. The
 default, @racket['unknown], leaves the display's subpixel arrangement unspecified.
 
 Use @racket[make-surface-properties] to create a value, then pass it as the
-@racket[#:surface-properties] argument to @racket[make-gpu-surface]. The same
-argument to @racket[call-with-gpu-frame-dc] configures the @tech{GPU surface} used for
-drawing during its callback.
+@racket[#:surface-properties] argument to @racket[make-surface],
+@racket[make-surface-from-info], or @racket[make-gpu-surface]. The same argument to
+@racket[call-with-raster-buffer-canvas] or @racket[call-with-gpu-frame-dc] configures
+the temporary surface used for drawing during its callback.
 
 A properties value is immutable and can be reused for several surfaces.
 Creating one does not allocate a surface or change an existing surface.
@@ -38,10 +39,7 @@ The flags record requests; whether Skia fulfills them depends on the drawing
 backend. Inspecting a flag reports the request, not whether it took effect.
 
 Pixel geometry and font-rendering properties are relevant to raster surfaces
-as well as GPU surfaces. The current API only accepts custom properties when
-creating GPU surfaces: neither @racket[make-surface] nor
-@racket[make-surface-from-info] has a surface-properties argument.
-@racket[surface-properties-of] can nevertheless inspect either kind of surface.
+as well as GPU surfaces. @racket[surface-properties-of] can inspect either kind.
 The dynamic-MSAA request is specific to GPU rendering.
 
 @section{Creating and Inspecting Properties}

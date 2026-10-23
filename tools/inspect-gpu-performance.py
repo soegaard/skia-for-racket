@@ -63,9 +63,9 @@ def context_check(c, backend, state='ready', generation=None, live=0):
 def cache_check(s, backend, gen):
     need(s.get('backend')==backend and type(s.get('context_generation')) is int and s.get('context_generation')==gen, 'foreign cache snapshot')
     for k in ('limit_bytes','budgeted_resources','budgeted_bytes'): need(integer(s.get(k)), 'bad cache '+k)
-    need(s.get('total_gpu_bytes') is False and s.get('purgeable_bytes') is False,
+    need('total_gpu_bytes' not in s and 'purgeable_bytes' not in s,
          'unsupported total/purgeable-memory claim')
-    need(s.get('limit_is_hard_allocation_cap') is False, 'cache budget is not a hard allocation cap')
+    need('limit_is_hard_allocation_cap' not in s, 'cache budget is not a hard allocation cap')
 
 def envelope(row, base, conf, backend, gen, live):
     context_check(row['context'],backend,generation=gen,live=live)
@@ -120,7 +120,7 @@ def target_check(t,backend,gen,w,h,conf=None):
     need(t.get('width')==w and t.get('height')==h,'target extent')
     if conf:
         need(t.get('render_path')=='sk_surface_new_render_target' and t.get('origin')=='top-left','offscreen path/origin')
-        need(type(t.get('requested_sample_count')) is int and t.get('requested_sample_count')==conf['sample_count'] and t.get('actual_sample_count') is False,'unproven actual sampling')
+        need(type(t.get('requested_sample_count')) is int and t.get('requested_sample_count')==conf['sample_count'] and 'actual_sample_count' not in t,'unproven actual sampling')
     else:
         need(t.get('render_path')=='sk_surface_new_backend_render_target','presenter target path')
         need(integer(t.get('actual_sample_count')),'queried presenter samples')

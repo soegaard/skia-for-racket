@@ -74,9 +74,7 @@ BACKEND_IDS = MappingProxyType({r['backend']: r['native_backend'] for r in _CATA
 def declared_capabilities(backend):
     require(isinstance(backend, str) and backend in BACKEND_IDS, 'unknown GPU backend')
     row = copy.deepcopy(next(r for r in _CATALOG['backends'] if r['backend'] == backend))
-    row.update(schema=1, scope='wrapper-declarations', native_probe_performed=False,
-               runtime_availability='not-probed', hardware_acceleration_verified=False,
-               visible_pixels_verified=False, performance_measured=False)
+    row.update(schema=1, scope='wrapper-declarations')
     return row
 
 

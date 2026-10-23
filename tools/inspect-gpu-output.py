@@ -479,7 +479,7 @@ def raster_group(group, *, backend, generation, variant, name, nested=False):
              target.get('color_type')=='RGBA8888' and target.get('alpha_type')=='premultiplied' and
              target.get('render_path')=='sk_surface_new_render_target', 'incorrect GPU target geometry/format')
         need(type(target.get('requested_sample_count')) is int and target['requested_sample_count']==0 and
-             target.get('actual_sample_count') is False, 'unverified sample count')
+             'actual_sample_count' not in target, 'unverified sample count')
     return execution
 
 
@@ -654,7 +654,7 @@ def synthetic(directory, backend='opengl'):
                 target=dict(storage='gpu',backend=backend,native_backend=BACKENDS[backend],
                             context_matches=True,context_generation=17,width=210,height=144,origin='top-left',
                             color_type='RGBA8888',alpha_type='premultiplied',render_path='sk_surface_new_render_target',
-                            requested_sample_count=0,actual_sample_count=False)
+                            requested_sample_count=0)
                 execution=dict(phase='completed',requested=variant,backend=backend if variant=='gpu' else 'raster',
                                context_generation=17 if variant=='gpu' else False,fallback=False,image_storage='cpu-owned',
                                readback_count=1 if variant=='gpu' else 0,transfer='gpu-to-cpu' if variant=='gpu' else 'none',

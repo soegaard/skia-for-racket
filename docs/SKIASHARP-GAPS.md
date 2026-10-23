@@ -2492,7 +2492,7 @@ Compose snapshot and checked subset; no tighter allocation guarantee.
 
 **supported-with-limits**; next stage: **none scheduled**; origin: `m119`.
 
-Nine reviewed integer/F16/F32 format requests use context-specific native capability checks, exact color/alpha snapshot validation and explicit allocation rejection. Full-color frame DCs carry copied color interpretation, samples and properties in the staging key. Actual sample count is not exposed by the pinned owned-surface ABI. Typed downloads are explicit; legacy RGBA-buffer transfers remain narrow. No generalized window format or HDR display claim.
+Nine reviewed integer/F16/F32 format requests use context-specific native capability checks, exact color/alpha snapshot validation and explicit allocation rejection. Full-color frame DCs carry copied color interpretation, samples and properties in the staging key. Actual sample count is not exposed by the pinned owned-surface ABI. Typed downloads are explicit; buffer and pixmap writers share checked format-aware readback. No generalized window format or HDR display claim.
 
 **Document behavior:** Properties and descriptor checks do not draw. Typed GPU images preserve float provenance through explicit CPU detachment; the document fixtures explicitly convert to RGBA8888, retaining vector markers and links. Presentation remains the existing SDR path.
 

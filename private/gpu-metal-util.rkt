@@ -7,7 +7,8 @@
 ;; Defines injectable Metal platform and context operations and validates options.
 ;; Separates Metal driver policy from native device and queue calls.
 
-(require "gpu-provider.rkt" "gpu-domain.rkt" "gpu-native-scope.rkt" "gpu-metal-handles.rkt")
+(require "gpu-provider.rkt" (submod "gpu-provider.rkt" host-internals)
+         "gpu-domain.rkt" "gpu-native-scope.rkt" "gpu-metal-handles.rkt")
 (provide (struct-out metal-platform-ops) (struct-out metal-context-ops)
          make-metal-components)
 
@@ -40,7 +41,7 @@
   (define (native-call thunk)
     (parameterize ([current-gpu-native-scope scope]) (call-with-gpu-native-scope thunk)))
   (define provider
-    (make-gpu-provider
+    (make-host-provider
      #:name 'metal-owned #:backend 'metal #:key key
      ;; Metal has no OpenGL-style current native context. This is an ownership
      ;; token for our one private queue, not a fabricated OS current context.

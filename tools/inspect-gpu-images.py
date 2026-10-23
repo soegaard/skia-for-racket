@@ -119,7 +119,7 @@ def images(data, directory):
                 target.get('render_path') == 'sk_surface_new_render_target' and
                 exact_int(target.get('width'),420) and exact_int(target.get('height'),260), 'wrong target descriptor')
         require(target.get('color_type') == 'RGBA8888' and target.get('alpha_type') == 'premultiplied' and
-                target.get('actual_sample_count') is False and exact_int(target.get('requested_sample_count'),0),
+                'actual_sample_count' not in target and exact_int(target.get('requested_sample_count'),0),
                 'wrong format or unverified sample-count claim')
         events = scene.get('reuse_events')
         first = 'upload' if name == 'upload-reuse' else 'gpu-snapshot'
@@ -238,7 +238,7 @@ def fixture(directory):
                          'context_generation':1,'width':420,'height':260,'origin':'top-left',
                          'target_kind':'offscreen','render_path':'sk_surface_new_render_target',
                          'color_type':'RGBA8888','alpha_type':'premultiplied',
-                         'actual_sample_count':False,'requested_sample_count':0},
+                         'requested_sample_count':0},
                'reuse_events':[first,{'kind':'gpu-subset','x':0,'y':4,'width':3,'height':4},
                                {'kind':'flush'},{'kind':'submit','wait_requested':False}],
                'download_events':[{'kind':'readback','width':420,'height':260,'row_bytes':1680},

@@ -167,7 +167,7 @@ def inspect(path, token, backend, adapter):
         need(integer(r.get('context_generation'),1), 'missing cache generation')
         for f in ('limit_bytes','budgeted_resources','budgeted_bytes'):
             need(integer(r.get(f)), 'invalid cache counter '+f)
-        need(r.get('total_gpu_bytes') is False and r.get('limit_is_hard_allocation_cap') is False,
+        need('total_gpu_bytes' not in r and 'limit_is_hard_allocation_cap' not in r,
              'budgeted cache presented as total GPU memory')
     need(reports['cache_before']['context_generation']==reports['cache_after']['context_generation'], 'cache context changed')
     need(reports['cache_before']['limit_bytes']==reports['cache_after']['limit_bytes'], 'diagnostics mutated cache policy')

@@ -40,8 +40,7 @@ def synthetic_evidence(root,token=TOKEN,backend='egl',adapter='hardware'):
     root=Path(root);root.mkdir(parents=True,exist_ok=True)
     native_backend='opengl' if backend=='egl' else backend
     cache=dict(backend=native_backend,context_generation=11,limit_bytes=32*1024*1024,
-               budgeted_resources=2,budgeted_bytes=8192,purgeable_bytes=False,total_gpu_bytes=False,
-               limit_is_hard_allocation_cap=False,scope='Ganesh budgeted resource cache; not total VRAM or process RSS')
+               budgeted_resources=2,budgeted_bytes=8192,scope='Ganesh budgeted resource cache; not total VRAM or process RSS')
     reports=dict(cache_before=copy.deepcopy(cache),cache_after=copy.deepcopy(cache),
                  light=memory(),detailed=memory(detailed=True),wrapped=memory(wrapped=True),
                  zero_entries=memory(zero=True),zero_strings=memory(zero=True),zero_bytes=memory(zero=True),

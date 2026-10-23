@@ -51,7 +51,7 @@
                (check-true (hash-ref info 'context_matches))
                (check-equal? (hash-ref info 'native_backend) backend-id)
                (check-equal? (hash-ref info 'render_path) "sk_surface_new_render_target")
-               (check-false (hash-ref info 'actual_sample_count)))))
+               (check-false (hash-has-key? info 'actual_sample_count)))))
    (test-case "default transparent pixels are initialized"
      (target (lambda (s c) (check-equal? (gpu-surface->rgba-bytes s) (make-bytes 256)))))
    (test-case "opaque background survives submission and readback"
@@ -184,7 +184,7 @@
        (target (lambda (s c)
                  (draw-picture c picture)
                  (check-equal? (pixel (gpu-surface->rgba-bytes s) 4 4) (bytes 255 0 0 255))))))
-   (test-case "direct strided readback preserves padding and alpha"
+   (test-case "checked strided readback preserves padding and alpha"
      (target
       (lambda (s c)
         (canvas-clear! c (rgba 255 0 0 128))
@@ -200,6 +200,17 @@
         (with-skia ([buffer (make-raster-buffer 4 8)])
           (define before (raster-buffer->storage-bytes buffer))
           (check-exn exn:fail? (lambda () (gpu-surface-read-raster-buffer! s buffer)))
+          (check-equal? (raster-buffer->storage-bytes buffer) before))
+        (with-skia ([tagged (make-raster-buffer-from-info
+                            (make-image-info 8 8 #:color-space 'srgb))])
+          (define before (raster-buffer->storage-bytes tagged))
+          (check-exn #rx"tagged/untagged"
+            (lambda () (gpu-surface-read-raster-buffer! s tagged)))
+          (check-equal? (raster-buffer->storage-bytes tagged) before))
+        (with-skia ([buffer (make-raster-buffer 8 8)])
+          (define before (raster-buffer->storage-bytes buffer))
+          (parameterize ([current-skia-byte-limit 4])
+            (check-exn exn:fail? (lambda () (gpu-surface-read-raster-buffer! s buffer))))
           (check-equal? (raster-buffer->storage-bytes buffer) before)))))
    (test-case "active pixmap borrow excludes GPU writes into the same buffer"
      (target

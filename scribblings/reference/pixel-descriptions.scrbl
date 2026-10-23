@@ -184,8 +184,8 @@ The example below collects these values into a list.
                            'image-copy 'raster-canvas 'gpu-readback)])
           boolean?]{
 Returns whether the description satisfies this wrapper's format-level rule
-for @racket[operation]. Raster canvases reject unpremultiplied alpha. GPU readback
-requires RGBA8888 with premultiplied alpha. The other listed operations return
+for @racket[operation]. Raster canvases reject unpremultiplied alpha. All other
+listed operations, including GPU readback, return
 @racket[#t] for a valid description. This is not a probe of a native library,
 device, codec, available memory, or a particular resource's lifetime.
 }

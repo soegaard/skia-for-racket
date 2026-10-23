@@ -49,11 +49,11 @@
      (for ([b (in-list (gpu-backends))])
        (define c (gpu-backend-capabilities b))
        (check-equal? (hash-ref c 'scope) "wrapper-declarations")
-       (check-equal? (hash-ref c 'runtime_availability) "not-probed")
-       (check-false (hash-ref c 'native_probe_performed))
-       (check-false (hash-ref c 'hardware_acceleration_verified))
-       (check-false (hash-ref c 'visible_pixels_verified))
-       (check-false (hash-ref c 'performance_measured))))
+       (check-false (hash-has-key? c 'runtime_availability))
+       (check-false (hash-has-key? c 'native_probe_performed))
+       (check-false (hash-has-key? c 'hardware_acceleration_verified))
+       (check-false (hash-has-key? c 'visible_pixels_verified))
+       (check-false (hash-has-key? c 'performance_measured))))
    (test-case "capability hashes and nested hashes are immutable"
      (define c (gpu-backend-capabilities 'direct3d))
      (check-true (immutable? c)) (check-true (immutable? (hash-ref c 'features)))
@@ -77,7 +77,7 @@
    (test-case "WARP is a selection declaration, not an availability result"
      (define c (gpu-backend-capabilities 'direct3d))
      (check-equal? (hash-ref c 'software_selection) "explicit-warp")
-     (check-equal? (hash-ref c 'runtime_availability) "not-probed"))
+     (check-false (hash-has-key? c 'runtime_availability)))
    (test-case "all production raster plans accept registered GPUs"
      (for ([b (in-list (gpu-backends))])
        (check-eq? (output-raster-plan-backend (prepare-output-raster (plan b) 'picture)) b)))

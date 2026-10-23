@@ -18,16 +18,13 @@
     (raise-argument-error 'render-metal-example "name from gpu-scene-names" scene))
   (define target (path->complete-path path))
   (make-directory* (or (path-only target) (current-directory)))
-  (define context (make-gpu-context #:backend 'metal))
   (define image
-    (dynamic-wind void
-      (lambda ()
-        (call-with-gpu-context context
-          (lambda ()
-            (with-skia ([surface (make-gpu-surface context gpu-scene-width gpu-scene-height)])
-              (draw-gpu-scene (surface-canvas surface) scene)
-              (gpu-surface->raster-image surface)))))
-      (lambda () (gpu-context-close! context))))
+    (call-with-new-gpu-context
+     (lambda () (make-gpu-context #:backend 'metal))
+     (lambda (context)
+       (with-skia ([surface (make-gpu-surface context gpu-scene-width gpu-scene-height)])
+         (draw-gpu-scene (surface-canvas surface) scene)
+         (gpu-surface->raster-image surface)))))
   (with-skia ([detached image]) (save-image detached target 'png #:exists 'replace))
   target)
 

@@ -247,7 +247,7 @@ def offscreen(data, directory):
                 'wrong target dimensions/origin')
         require(target.get('color_type') == 'RGBA8888' and target.get('alpha_type') == 'premultiplied',
                 'unexpected offscreen format')
-        require(target.get('actual_sample_count') is False and target.get('requested_sample_count') == 0,
+        require('actual_sample_count' not in target and target.get('requested_sample_count') == 0,
                 'invented actual offscreen sample count or unexpected request')
         events = scene.get('io_events',[])
         reads = [e for e in events if e.get('kind') == 'readback']
@@ -420,7 +420,7 @@ def fixture(directory):
           'target':{'width':420,'height':260,'storage':'gpu','target_kind':'offscreen','backend':'opengl',
                     'native_backend':0,'context_matches':True,'render_path':'sk_surface_new_render_target',
                     'context_generation':1,'origin':'top-left','color_type':'RGBA8888','alpha_type':'premultiplied',
-                    'actual_sample_count':False,'requested_sample_count':0}})
+                    'requested_sample_count':0}})
     return data
 
 

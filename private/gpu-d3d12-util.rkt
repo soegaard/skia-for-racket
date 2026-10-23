@@ -7,7 +7,7 @@
 ;; Defines injectable platform and context operations and validates device requests.
 ;; Separates Direct3D driver policy from its native system calls.
 
-(require "gpu-provider.rkt" "gpu-domain.rkt")
+(require "gpu-provider.rkt" (submod "gpu-provider.rkt" host-internals) "gpu-domain.rkt")
 (provide (struct-out d3d12-platform-ops) (struct-out d3d12-context-ops)
          d3d12-selection! make-d3d12-components)
 
@@ -63,7 +63,7 @@
   (define device #f)
   (define queue #f)
   (define provider
-    (make-gpu-provider
+    (make-host-provider
      #:name 'd3d12-owned #:backend 'direct3d #:key key
      ;; This is a private queue ownership scope, not an OS current-context API.
      #:current? (lambda () (and (eq? creator (current-thread)) (eq? key (current-key))))

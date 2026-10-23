@@ -58,7 +58,7 @@
      (for ([v '(-1 1.0 65 #f)])
        (check-exn exn:fail? (lambda () (options #:samples v)))))
    (test-case "single sample and native rounding are not invented"
-     (check-false (hash-ref (options #:samples 3) 'actual_sample_count))
+     (check-false (hash-has-key? (options #:samples 3) 'actual_sample_count))
      (check-equal? (hash-ref (options #:samples 3) 'requested_sample_count) 3))
    (test-case "opaque creation rejects translucent clear"
      (check-exn exn:fail? (lambda () (options #:opaque? #t #:alpha 128))))

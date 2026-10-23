@@ -11,7 +11,7 @@ COMMON_CASES = (
     'filter result geometry supplies a contained subset and offset',
     'typed readback writes pixels but preserves row padding',
     'tagged-to-untagged typed readback fails without destination mutation',
-    'legacy destination format restriction is enforced',
+    'destination dimensions are checked before writing',
     'snapshots readback and targeted flush reject unbalanced stacks',
     'typed CPU image remains usable after the GPU context is closed',
     'targeted flush requests no readback submission or completion',

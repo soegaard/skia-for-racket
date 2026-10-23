@@ -108,7 +108,7 @@ class Reports(unittest.TestCase):
         for color,bpp in gv.FORMATS.items():
             (root/(color+'.pixels')).write_bytes(capture(color))
             cap=dict(backend='opengl',context_generation=1,color_type_name=color,renderable=True,
-                     max_sample_count=4,allocation_verified=False,actual_sample_count=False)
+                     max_sample_count=4)
             rows.append(dict(color_type=color,status='passed',capability=cap,width=8,height=6,
                 alpha_type='opaque' if color in ('rgb-888x','gray-8','rgb-565') else 'premul',
                 bytes_per_pixel=bpp,row_bytes=10*bpp,readbacks=1,file=color+'.pixels',

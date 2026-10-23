@@ -113,7 +113,7 @@
                                 [surface (make-gpu-surface ctx 80 64)]
                                 [readback (make-raster-buffer-from-info (make-image-info 80 64))]
                                 [wrong (make-raster-buffer-from-info
-                                         (make-image-info 80 64 #:color-type 'gray-8 #:alpha-type
+                                         (make-image-info 79 64 #:color-type 'gray-8 #:alpha-type
                                            'opaque))])
                       (skia-close! cpu)
                       (define ledger (box '()))
@@ -122,7 +122,7 @@
                         (draw-integer-fixture (surface-canvas surface) image #:scale 1))
                       (set! draw-reads (+ draw-reads (read-count ledger)))
                       (check-equal? (read-count ledger) 0)
-                      ;; A wrong bpp must never get past the transfer lease.
+                      ;; A dimension mismatch must leave all destination storage unchanged.
                       (define before (raster-buffer->storage-bytes wrong))
                       (check-exn exn:fail?
                         (lambda () (gpu-surface-read-raster-buffer! surface wrong)))

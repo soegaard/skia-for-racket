@@ -29,8 +29,8 @@ the calling forms change.
 
 Baseline: `4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1`
 (`Clarify Pict bridge introduction`). R4g adds an opt-in
-`skia/racket-draw` reference chapter. The Reference now has 1261 definitions,
-1986 documented export paths, and 84 conceptual chapters. The headless
+`skia/racket-draw` reference chapter. The Reference now has 1273 definitions,
+1998 documented export paths, and 84 conceptual chapters. The headless
 inventory records seven bridge exports, including the two unchanged
 `skia/bitmap` bindings re-exported from the bridge. No export paths are
 deferred.
@@ -253,8 +253,8 @@ qualified by macOS and successful backend creation. Existing examples are retain
 The four new chapters separate offscreen surfaces, GPU image ownership, explicit
 readback and one-shot rendering, and synchronization/cache controls. Native canvas
 operations remain the drawing interface; no DC adapter is introduced. The typed
-pixmap writer stages and validates pixels before committing them, whereas the
-legacy RGBA8888 premultiplied buffer writer does not promise rollback. GPU image
+pixmap and buffer writers stage and validate pixels before committing them;
+failures leave the destination unchanged. GPU image
 readback uses a same-context GPU staging surface, not a raw texture-memory copy.
 
 All 98 earlier displayed blocks and 25 evaluated blocks are preserved. Four new

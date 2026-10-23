@@ -69,8 +69,8 @@
       (check-not-exn (lambda () (jsexpr->string s))))
     (test-case "budgeted usage is not total VRAM"
       (define s (cache-snapshot 'opengl 2 0 2 256)) (check-equal? (hash-ref s 'budgeted_bytes) 256)
-      (check-false (hash-ref s 'total_gpu_bytes))
-      (check-false (hash-ref s 'limit_is_hard_allocation_cap)))
+      (check-false (hash-has-key? s 'total_gpu_bytes))
+      (check-false (hash-has-key? s 'limit_is_hard_allocation_cap)))
     (test-case "negative native count rejected"
       (check-exn exn:fail? (lambda () (cache-snapshot 'metal 1 0 -1 0))))
     (test-case "invalid context rejected"

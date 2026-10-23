@@ -305,7 +305,7 @@
                 (lambda () (make-gpu-surface context 8 6 #:sample-count (add1 maximum))))
               (with-skia ([s (make-gpu-surface context 8 6 #:sample-count (min 4 maximum))])
                 (check-equal? (hash-ref (gpu-surface-info s) 'requested_sample_count) (min 4 maximum))
-                (check-false (hash-ref (gpu-surface-info s) 'actual_sample_count)))))
+                (check-false (hash-has-key? (gpu-surface-info s) 'actual_sample_count)))))
           (test! "failed readback leaves destination and padding untouched"
             (lambda ()
               (with-skia ([space (make-srgb-color-space)]
@@ -334,12 +334,18 @@
                       (check-= (vector-ref sample 0) 0.2140411 0.001)
                       (check-= (vector-ref sample 1) 0.0508761 0.001)
                       (check-= (vector-ref sample 2) 0.5225216 0.001)))))))
-          (test! "legacy buffer transfer still rejects incompatible layouts"
+          (test! "buffer readback supports float storage with preserved padding"
             (lambda ()
-              (with-skia ([s (make-gpu-surface context 8 6)]
+              (with-skia ([s (make-gpu-surface context 8 6 #:background 'red)]
                            [b (make-raster-buffer-from-info
-                                (make-image-info 8 6 #:color-type 'rgba-f16))])
-                (check-exn exn:fail? (lambda () (gpu-surface-read-raster-buffer! s b))))))
+                                (make-image-info 8 6 #:color-type 'rgba-f16) #:row-bytes 80)])
+                (gpu-surface-read-raster-buffer! s b)
+                (call-with-raster-buffer-pixmap b
+                  (lambda (v) (check-equal? (pixmap-sample v 0 0) '#(1.0 0.0 0.0 1.0))))
+                (define storage (raster-buffer->storage-bytes b))
+                (for ([y (in-range 6)])
+                  (check-equal? (subbytes storage (+ (* y 80) 64) (* (add1 y) 80))
+                                (make-bytes 16))))))
           (test! "context affinity is enforced before drawing"
             (lambda ()
               (check-true (and foreign-image (gpu-image? foreign-image)))

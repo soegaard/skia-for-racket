@@ -26,8 +26,8 @@ An unsupported platform, missing framework/symbol, null device, null queue,
 or null Ganesh result raises an explicit exception. The constructor does not
 fall back to OpenGL or CPU rendering. `auto`, device selection, external
 Metal providers, supplied queues, and texture adoption are not supported by
-this constructor. Supplying a provider whose backend is `metal` is rejected
-rather than guessing at ownership of external native pointers.
+this constructor. Public `make-gpu-provider` accepts only `'opengl`; Metal
+contexts use the owned-device route instead.
 
 The context belongs to its creating Racket thread. The existing activation,
 nesting, continuation, shutdown, and child-close rules apply unchanged.

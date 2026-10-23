@@ -14,6 +14,7 @@
 (require "codec-incremental-state.rkt")
 (require "codec-scanline-state.rkt")
 (require "stream-resource.rkt")
+(require "../surface-properties.rkt" "surface-property-allocation.rkt")
 ;; 0.68b private bridge: no native pointers are re-exported by main.rkt.
 (module* font-query-internals #f
   (provide font-h typeface-h make-typeface-record font-owner set-font-owner!
@@ -1973,27 +1974,30 @@
 ;; Surfaces -----------------------------------------------------------------
 
 ; make-surface : (integer-in 1 32768) (integer-in 1 32768) [#:background color?] [#:color-space
-;   (or/c color-space? #f)] -> surface?
+;   (or/c color-space? #f)] [#:surface-properties surface-properties?] -> surface?
 ;   Creates an owned CPU raster surface with the given pixel dimensions and clears it to
 ;   background.
 (define (make-surface w h #:background [background 'transparent]
-                      #:color-space [cs #f])
+                      #:color-space [cs #f]
+                      #:surface-properties [properties (make-surface-properties)])
   (define who 'make-surface)
   (check-dimensions who w h)
+  (unless (surface-properties? properties)
+    (raise-argument-error who "surface-properties?" properties))
   (define argb (color->argb background))
   (define cs-hnd (optional-color-space-h who cs))
   (skia-check!)
-  (define ptr
-    (if cs-hnd
-        (call-with-owned
-         who (list cs-hnd)
-         (lambda (cp)
-           (sk_surface_new_raster
-            (make-sk-image-info cp w h rgba-8888 alpha-premul) 0 #f)))
-        (sk_surface_new_raster
-         (make-sk-image-info #f w h rgba-8888 alpha-premul) 0 #f)))
   (define hnd
-    (new-owned who 'surface (lambda () ptr) sk_surface_unref))
+    (call-with-native-surface-properties who properties
+      (lambda (props)
+        (call-with-owned who (if cs-hnd (list cs-hnd) '())
+          (lambda pointers
+            (new-owned who 'surface
+              (lambda ()
+                (sk_surface_new_raster
+                 (make-sk-image-info (and cs-hnd (car pointers)) w h rgba-8888 alpha-premul)
+                 0 props))
+              sk_surface_unref))))))
   (initialize-resource
    (make-surface-record hnd w h '())
    (lambda (s) (canvas-clear! (surface-canvas s) argb))))

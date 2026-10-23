@@ -95,7 +95,7 @@ HDR-window-presentation claim.
 native capability for the requested color type. Skia can round a request to a
 supported sample count.
 For a Skia-owned offscreen target this C ABI has no actual-sample-count getter;
-`gpu-surface-info` therefore reports `actual_sample_count` as `#f`, not as a
+`gpu-surface-info` therefore omits the actual count rather than reporting a
 fabricated zero or the requested value. A request above the capability fails;
 it never selects CPU rendering. `#:budgeted?` controls Skia cache accounting,
 not a hard physical allocation cap.
@@ -196,13 +196,12 @@ zero-copy GPU snapshot. The image remains valid after surface mutation, closure
 and complete GPU teardown and can enter existing CPU shader/picture/document
 APIs without retaining a GPU execution dependency.
 
-`gpu-surface-read-raster-buffer!` borrows the existing 0.37 native CPU buffer
-exclusively. Its dimensions must exactly match. Native readback writes the
-active RGBA bytes directly with the buffer's stride and premultiplied alpha;
-row padding is untouched. The destination's declared color space controls native
-conversion. An active pixmap/canvas borrow rejects before transfer. A dimension
-mismatch leaves storage unchanged; an unexpected native transfer failure need
-not roll back writes already made. This is CPU memory, not a GPU-mapped pixmap.
+`gpu-surface-read-raster-buffer!` borrows a writable pixmap from an idle CPU
+buffer and calls `gpu-surface-read-pixmap!`. Dimensions must match exactly.
+The pixel description controls native conversion; source and destination must
+agree on whether a color-space tag is present. Readback is staged and validated
+before copying pixels, so failures leave the destination unchanged and row
+padding is untouched. This is CPU memory, not GPU-mapped storage.
 
 ## Deliberately rejected implicit operations
 

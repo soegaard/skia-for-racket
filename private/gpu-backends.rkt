@@ -92,7 +92,4 @@
 (define (gpu-backend-capabilities backend)
   (check-gpu-backend! 'gpu-backend-capabilities backend)
   (hash-set* (hash-ref registry backend)
-             'schema 1 'scope "wrapper-declarations"
-             'native_probe_performed #f 'runtime_availability "not-probed"
-             'hardware_acceleration_verified #f 'visible_pixels_verified #f
-             'performance_measured #f))
+             'schema 1 'scope "wrapper-declarations"))

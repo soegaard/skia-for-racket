@@ -159,7 +159,7 @@ def inspect(root,token,backend,adapter,render=None):
         require(cap.get('color_type_name')==color,'capability color mismatch')
         require(cap.get('backend')==('opengl' if backend=='egl' else backend),'capability backend mismatch')
         require(integer(cap.get('context_generation'),1),'invalid context generation')
-        require(cap.get('allocation_verified') is False and cap.get('actual_sample_count') is False,'maximum is not allocation/sample evidence')
+        require('allocation_verified' not in cap and 'actual_sample_count' not in cap,'maximum is not allocation/sample evidence')
         require(integer(cap.get('max_sample_count')),'invalid maximum samples')
         require(cap.get('renderable') is (cap['max_sample_count']>0),'inconsistent native capability')
         if row.get('status')=='unsupported':

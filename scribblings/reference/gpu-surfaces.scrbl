@@ -103,10 +103,8 @@ its backend and generation, the color type, @racket['max_sample_count], and
 @racket['max_render_target_size]. The @racket['renderable] field is true exactly
 when the maximum sample count is positive.
 
-This query does not allocate a surface. The @racket['allocation_verified] field
-is @racket[#f] because allocation has not been attempted, not because it failed.
-The @racket['actual_sample_count] field is also @racket[#f]: there is no allocated
-target whose sample count could be reported. A positive limit does not guarantee
+This query does not allocate a surface or report an actual sample count.
+A positive limit does not guarantee
 that a later allocation will succeed. The query performs no pixel readback.
 }
 
@@ -115,9 +113,8 @@ Returns metadata after checking the live surface's native context and
 backend association. The surface must be used in its owning activation.
 The hash table records dimensions, color and alpha types, top-left origin, backend,
 context generation, budgeted status, surface properties, and the requested and
-maximum sample counts. The @racket['actual_sample_count] field is @racket[#f]
-because the actual count is not exposed for this owned surface; it does not mean
-zero samples, and the requested count is not a substitute for it. The report
+maximum sample counts. The actual sample count is not exposed for an owned
+offscreen surface, and the requested count is not a substitute for it. The report
 does not read pixels or check window presentation.
 }
 

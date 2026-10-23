@@ -114,7 +114,7 @@
         (check-equal? (hash-ref e 'context_factory) (string-append factory "_with_options"))
         (check-true (immutable? (hash-ref e 'context_factory)))
         (check-false (hash-ref d 'context_options))
-        (check-false (hash-ref e 'context_options_native_readback))))
+        (check-false (hash-has-key? e 'context_options_native_readback))))
     (test-case "unrelated metadata is preserved"
       (check-equal?
         (hash-ref (add-context-options-diagnostics (hasheq 'user_edit 17) #f 'metal) 'user_edit) 17)

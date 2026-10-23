@@ -193,12 +193,14 @@ For a new CPU image, use @racket[gpu-surface->raster-image] or
 @racket[gpu-image->raster-image]. The operations in this section write into
 caller-owned storage instead. The caller supplies matching dimensions and a
 supported destination format, and must observe each operation's rules for
-borrowing and failed writes. Prefer @racket[gpu-surface-read-pixmap!] when a
-failed read must leave the destination unchanged. The direct buffer writers
-accept fewer formats and do not provide that guarantee.
+borrowing. All four operations use the same checked readback path: failed
+reads leave the destination unchanged, and row padding is preserved. Use a
+pixmap writer inside an existing writable pixmap scope, or a buffer writer
+to borrow an idle buffer for the duration of the transfer.
 
 @defproc[(gpu-surface-read-pixmap! [surface gpu-surface?] [destination pixmap?]) void?]{
-Reads the full surface into @racket[destination].
+Reads the full surface into @racket[destination]. The context must be active
+and the surface save/layer stack balanced.
 
 The destination must be a live, writable pixmap with exactly matching dimensions.
 Its description and stride come from the pixmap, whose exclusive scope must
@@ -212,28 +214,29 @@ invalid converted sample leaves the destination unchanged. Destination row paddi
 changed. Native format support can still make a well-formed request fail.
 }
 
+@defproc[(gpu-image-read-pixmap! [image gpu-image?] [destination pixmap?]) void?]{
+Like @racket[gpu-surface-read-pixmap!], after drawing the image into a temporary
+GPU surface in the same context. The image must be used in its owning activation.
+The destination has the same format, color-space, dimension, and writability
+requirements, and remains unchanged if staging or readback fails.
+}
+
 @defproc[(gpu-surface-read-raster-buffer! [surface gpu-surface?]
                                         [destination raster-buffer?]) void?]{
 Reads the surface's pixels into @racket[destination].
 
-The destination must be an idle, owned CPU buffer with exactly matching dimensions
-and RGBA8888 premultiplied storage. The operation borrows the buffer exclusively
-for the transfer and uses its color interpretation and stride.
-The context must be active and the surface save/layer stack balanced.
-
-Unlike @racket[gpu-surface-read-pixmap!], this writer exposes the destination to
-the native readback directly. A native failure can leave partial writes;
-rollback is not promised. Use @racket[gpu-surface-read-pixmap!] to check pixels
-in temporary storage before changing the destination, or an operation that
-returns a new copy when the caller must never receive partially written pixels.
+The destination must be an idle, owned CPU buffer. This function borrows a
+writable pixmap and calls @racket[gpu-surface-read-pixmap!]; it accepts the same
+formats and enforces the same dimension and color-space requirements. A failure
+leaves the buffer unchanged. The context must be active and the surface
+save/layer stack balanced.
 }
 
 @defproc[(gpu-image-read-raster-buffer! [image gpu-image?]
                                       [destination raster-buffer?]) void?]{
-Like @racket[gpu-surface-read-raster-buffer!], after drawing the image into a
-temporary GPU surface in the same context. The destination must match the original
-image's dimensions and use RGBA8888 premultiplied storage. The direct destination write
-can leave partial writes after a native failure, just like the surface operation.
+Like @racket[gpu-image-read-pixmap!], borrowing a writable pixmap from the idle
+destination buffer. The same format and color-space rules apply; failures leave
+the buffer unchanged, and padding is preserved.
 }
 
 The following helper fills an existing raster buffer inside its writable pixmap scope.

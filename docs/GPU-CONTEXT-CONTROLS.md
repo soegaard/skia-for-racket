@@ -79,7 +79,8 @@ pointer or Racket option value is retained by Skia.
 - `context_factory`: the factory route selected by the wrapper.
 - `context_options_source`: `"native-defaults"` or `"explicit"`.
 - `context_options`: `#f` or the requested configuration hash.
-- `context_options_native_readback`: always `#f`.
+
+Effective native options are not queried; the report describes requests, not a readback of settings.
 
 **The pinned C ABI has no effective-options getter.** These fields are not
 native readback and must not be relabelled as verified effective settings.

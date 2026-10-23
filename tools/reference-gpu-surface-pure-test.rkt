@@ -143,8 +143,8 @@
     (define report (cache-snapshot 'metal 1 100 2 80))
     (check-true (immutable? report))
     (check-equal? (hash-ref report 'budgeted_resources) 2)
-    (check-false (hash-ref report 'total_gpu_bytes))
-    (check-false (hash-ref report 'limit_is_hard_allocation_cap)))
+    (check-false (hash-has-key? report 'total_gpu_bytes))
+    (check-false (hash-has-key? report 'limit_is_hard_allocation_cap)))
 
   ;;;
   ;;; One-Shot Rendering and Failure Cleanup

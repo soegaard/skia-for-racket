@@ -40,7 +40,7 @@ def gpu_fixture(directory):
         rows.append(dict(name=name, file=name+'.rgba', drawing_readbacks=0, inspection_readbacks=1,
             target=dict(storage='gpu', backend='opengl', native_backend=0, context_matches=True,
                         width=64, height=48, context_generation=1, color_type='RGBA8888',
-                        alpha_type='premultiplied', requested_sample_count=0, actual_sample_count=False,
+                        alpha_type='premultiplied', requested_sample_count=0,
                         render_path='sk_surface_new_render_target'),
             io=[dict(kind='readback',width=64,height=48,row_bytes=256),dict(kind='flush'),
                 dict(kind='submit',wait_requested=True)]))
@@ -50,7 +50,7 @@ def gpu_fixture(directory):
               'foreign_backdrop_rejected','layer_exception_cleanup','nway_exception_cleanup',
               'overdraw_capability_checked','overdraw_supported')}
     checks['overdraw_capability'] = dict(backend='opengl',color_type_name='alpha-8',renderable=True,
-                                       max_sample_count=4,allocation_verified=False)
+                                       max_sample_count=4)
     return dict(schema=1,stage=v.STAGE,status='passed',run_token=TOKEN,backend='egl',adapter='hardware',
                 cases=v.GPU_CASES,failures=0,checks=checks,contexts_closed=True,captures=rows,
                 float_order='little',hdr_verified=False,physical_display_verified=False)

@@ -3354,6 +3354,15 @@
         },
         {
           "allowed_keywords": [],
+          "arity_mask": "4",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "call-with-new-gpu-context",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",
@@ -3823,6 +3832,15 @@
           "export_kind": "value",
           "kind": "procedure",
           "name": "gpu-image-info",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
+          "arity_mask": "4",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "gpu-image-read-pixmap!",
           "phase": "0",
           "required_keywords": []
         },
@@ -5337,9 +5355,11 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "surface-properties"
+          ],
           "arity_mask": "4",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "call-with-raster-buffer-canvas",
           "phase": "0",
@@ -10258,7 +10278,8 @@
         {
           "allowed_keywords": [
             "background",
-            "color-space"
+            "color-space",
+            "surface-properties"
           ],
           "arity_mask": "4",
           "export_kind": "syntax",
@@ -10270,7 +10291,8 @@
         {
           "allowed_keywords": [
             "background",
-            "row-bytes"
+            "row-bytes",
+            "surface-properties"
           ],
           "arity_mask": "2",
           "export_kind": "syntax",
@@ -17879,9 +17901,11 @@
     {
       "exports": [
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "surface-properties"
+          ],
           "arity_mask": "4",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "call-with-raster-buffer-canvas",
           "phase": "0",
@@ -17951,7 +17975,8 @@
         {
           "allowed_keywords": [
             "background",
-            "row-bytes"
+            "row-bytes",
+            "surface-properties"
           ],
           "arity_mask": "2",
           "export_kind": "syntax",

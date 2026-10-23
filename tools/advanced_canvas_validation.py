@@ -181,7 +181,7 @@ def inspect_gpu(directory: Path, token: str, backend: str, adapter: str) -> dict
         for key, value in (('width', 64), ('height', 48), ('requested_sample_count', 0)):
             need(exact(target.get(key), value), 'wrong GPU target ' + key)
         need(target.get('color_type') == 'RGBA8888' and target.get('alpha_type') == 'premultiplied'
-             and target.get('actual_sample_count') is False, 'wrong/invented GPU format/sample metadata')
+             and 'actual_sample_count' not in target, 'wrong/invented GPU format/sample metadata')
         current = target.get('context_generation')
         need(type(current) is int and current > 0 and (generation is None or generation == current),
              'foreign capture context')
@@ -196,7 +196,7 @@ def inspect_gpu(directory: Path, token: str, backend: str, adapter: str) -> dict
          and capability['max_sample_count'] >= 0
          and capability.get('renderable') is (capability['max_sample_count'] > 0)
          and capability.get('renderable') is checks['overdraw_supported']
-         and capability.get('allocation_verified') is False,
+         and 'allocation_verified' not in capability,
          'overdraw skip is not justified by native format capability')
     if checks['overdraw_supported']:
         need(safe_file(directory, 'overdraw.alpha').read_bytes() == expected_overdraw(),

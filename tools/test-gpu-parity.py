@@ -82,8 +82,10 @@ class PolicyTests(unittest.TestCase):
     def test_declarations_not_probe(self):
         for b in policy.BACKEND_IDS:
             c=policy.declared_capabilities(b)
-            self.assertEqual(c['runtime_availability'],'not-probed')
-            self.assertFalse(c['native_probe_performed']);self.assertFalse(c['hardware_acceleration_verified'])
+            self.assertEqual(c['scope'], 'wrapper-declarations')
+            self.assertNotIn('runtime_availability', c)
+            self.assertNotIn('native_probe_performed', c)
+            self.assertNotIn('hardware_acceleration_verified', c)
     def test_declarations_detached(self):
         c=policy.declared_capabilities('direct3d');c['features']['offscreen']=False
         self.assertTrue(policy.declared_capabilities('direct3d')['features']['offscreen'])
@@ -377,7 +379,7 @@ class IntegrationTests(unittest.TestCase):
     def test_no_native_probe_in_declaration(self):
         s=(ROOT/'private/gpu-backends.rkt').read_text()
         self.assertNotIn('ffi-lib',s);self.assertNotIn('dynamic-require',s)
-        self.assertIn('runtime_availability "not-probed"',s)
+        self.assertNotIn('runtime_availability',s)
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

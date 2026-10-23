@@ -84,10 +84,8 @@ Reports the context's budgeted cache usage and limit.
 The result is an immutable hash table containing the backend, context generation,
 @racket['limit_bytes], @racket['budgeted_resources], and @racket['budgeted_bytes].
 The usage count and bytes describe budgeted resources, not total VRAM.
-The @racket['purgeable_bytes] and @racket['total_gpu_bytes] fields are
-@racket[#f] because those measurements are unavailable, not because their values
-are zero. The @racket['limit_is_hard_allocation_cap] field is @racket[#f] because
-the cache limit does not impose a total GPU-memory cap. The reported values need
+Purgeable bytes and total GPU memory are not measured. The cache limit does not
+impose a total GPU-memory cap. The reported values need
 not describe the same moment and do not account for all driver memory.
 }
 

@@ -26,9 +26,6 @@
   (hasheq 'width w 'height h 'color_type "RGBA8888"
           'alpha_type (if opaque? "opaque" "premultiplied")
           'origin "top-left" 'requested_sample_count samples
-          'actual_sample_count #f
-          'sample_count_note
-            "The pinned C API does not expose the sample count of this Skia-owned target."
           'budgeted budgeted? 'storage "gpu" 'target_kind "offscreen"))
 
 ; gpu-transfer-shape! : symbol? any/c any/c any/c any/c -> void?

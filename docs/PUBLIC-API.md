@@ -583,6 +583,7 @@ Experimental optional execution/integration API; existing backend, owner-thread 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
 | call-with-gpu-context | experimental | 0 | procedure | 2 | none | none |
+| call-with-new-gpu-context | experimental | 0 | procedure | 2 | none | none |
 | exn:fail:gpu:unavailable-step | experimental | 0 | procedure | 1 | none | none |
 | exn:fail:gpu:unavailable? | experimental | 0 | procedure | 1 | none | none |
 | gpu-backend-capabilities | experimental | 0 | procedure | 1 | none | none |
@@ -634,6 +635,7 @@ Experimental optional execution/integration API; existing backend, owner-thread 
 | gpu-image->rgba-bytes | experimental | 0 | procedure | 1 | none | #:color-space, #:premultiplied? |
 | gpu-image-apply-filter | experimental | 0 | procedure | 2 | #:clip | #:clip, #:subset |
 | gpu-image-info | experimental | 0 | procedure | 1 | none | none |
+| gpu-image-read-pixmap! | experimental | 0 | procedure | 2 | none | none |
 | gpu-image-read-raster-buffer! | experimental | 0 | procedure | 2 | none | none |
 | gpu-image-subset | experimental | 0 | procedure | 5 | none | none |
 | gpu-image? | experimental | 0 | procedure | 1 | none | none |
@@ -811,7 +813,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | call-with-pdf-file | stable | 0 | procedure | 2 | none | #:author, #:creation-date, #:creator, #:encoding-quality, #:exists, #:keywords, #:modified-date, #:pdfa?, #:producer, #:raster-dpi, #:subject, #:title |
 | call-with-pdf-page | stable | 0 | procedure | 4 | none | none |
 | call-with-picture | stable | 0 | procedure | 3 | none | #:spatial-index |
-| call-with-raster-buffer-canvas | stable | 0 | procedure | 2 | none | none |
+| call-with-raster-buffer-canvas | stable | 0 | procedure | 2 | none | #:surface-properties |
 | call-with-raster-buffer-pixmap | stable | 0 | procedure | 2 | none | #:writable? |
 | call-with-skia-resource | stable | 0 | procedure | 2 | none | none |
 | call-with-svg-bytes | stable | 0 | procedure | 3 | none | #:description, #:id-prefix, #:title |
@@ -1298,8 +1300,8 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | make-srgb-color-space | stable | 0 | procedure | 0 | none | none |
 | make-srgb-to-linear-gamma-color-filter | stable | 0 | procedure | 0 | none | none |
 | make-sum-path-effect | stable | 0 | procedure | 2 | none | none |
-| make-surface | stable | 0 | procedure | 2 | none | #:background, #:color-space |
-| make-surface-from-info | stable | 0 | procedure | 1 | none | #:background, #:row-bytes |
+| make-surface | stable | 0 | procedure | 2 | none | #:background, #:color-space, #:surface-properties |
+| make-surface-from-info | stable | 0 | procedure | 1 | none | #:background, #:row-bytes, #:surface-properties |
 | make-surface-properties | stable | 0 | procedure | 0 | none | #:always-dither?, #:device-independent-fonts?, #:dynamic-msaa?, #:pixel-geometry |
 | make-svg-document | stable | 0 | procedure | 2 | none | #:description, #:id-prefix, #:title |
 | make-sweep-gradient-color4f-shader | stable | 0 | procedure | 3 | #:color-space | #:color-space, #:end-angle, #:matrix, #:positions, #:start-angle, #:tile-mode |
@@ -2168,14 +2170,14 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
-| call-with-raster-buffer-canvas | stable | 0 | procedure | 2 | none | none |
+| call-with-raster-buffer-canvas | stable | 0 | procedure | 2 | none | #:surface-properties |
 | call-with-raster-buffer-pixmap | stable | 0 | procedure | 2 | none | #:writable? |
 | color-space->descriptor | stable | 0 | procedure | 1 | none | none |
 | descriptor->color-space | stable | 0 | procedure | 1 | none | none |
 | image->image-info | stable | 0 | procedure | 1 | none | none |
 | make-raster-buffer | stable | 0 | procedure | 2 | none | #:color-space, #:row-bytes |
 | make-raster-buffer-from-info | stable | 0 | procedure | 1 | none | #:row-bytes |
-| make-surface-from-info | stable | 0 | procedure | 1 | none | #:background, #:row-bytes |
+| make-surface-from-info | stable | 0 | procedure | 1 | none | #:background, #:row-bytes, #:surface-properties |
 | pixmap->rgba-bytes | stable | 0 | procedure | 1 | none | #:premultiplied? |
 | pixmap->storage-bytes | stable | 0 | procedure | 1 | none | none |
 | pixmap-alphaf | stable | 0 | procedure | 3 | none | none |

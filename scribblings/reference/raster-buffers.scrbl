@@ -532,20 +532,25 @@ copy the image's pixels.
 }
 
 @defproc[(make-surface-from-info [info image-info?] [#:row-bytes row-bytes (or/c #f
-          exact-positive-integer?) #f] [#:background background (or/c #f color?) #f])
+          exact-positive-integer?) #f] [#:background background (or/c #f color?) #f]
+          [#:surface-properties properties surface-properties? (make-surface-properties)])
           surface?]{
 Creates an owned CPU surface in a supported drawing format. Dimensions must be positive;
 unpremultiplied raster targets are rejected. Stride and allocation follow
 @racket[image-info-storage-layout]. The default clear is opaque black for opaque formats and
 transparent black otherwise. An explicit background uses @racket[canvas-clear!]. The surface has
-independent storage, not a borrow from a raster buffer.
+independent storage, not a borrow from a raster buffer. The @racket[properties]
+argument requests pixel geometry and rendering settings as for @racket[make-surface].
 }
 
-@defproc[(call-with-raster-buffer-canvas [buffer raster-buffer?] [proc (-> canvas? any)])
+@defproc[(call-with-raster-buffer-canvas [buffer raster-buffer?] [proc (-> canvas? any)]
+          [#:surface-properties properties surface-properties? (make-surface-properties)])
           any]{
 Calls @racket[proc] once with a canvas drawing directly into the buffer and returns its values.
 The buffer must be idle and support raster drawing. The callback must accept one canvas without
-required keywords. Pixels are not copied or cleared on entry.
+required keywords. Pixels are not copied or cleared on entry. The
+@racket[properties] configure the temporary raster surface, not the buffer's
+pixel format; see @secref["skia-surface-properties"].
 
 The canvas is borrowed, protected by a canvas-state scope, and expires on exit. Buffer storage
 cannot be accessed through a second canvas or pixmap scope while this callback runs. Drawn

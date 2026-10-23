@@ -122,7 +122,7 @@
                         (lambda (o) (write-bytes pixels o)) #:exists 'error)
                       (set! captures (cons (hasheq 'scene (symbol->string scene) 'file name)
                                        captures)))))
-                (test-case "legacy readback refuses both float destination layouts"
+                (test-case "tagged float destinations reject an untagged source without changes"
                   (with-skia ([surface (make-gpu-surface context 2 2)])
                     (for ([format-name (in-vector float-pixel-formats)])
                       (with-skia ([buffer

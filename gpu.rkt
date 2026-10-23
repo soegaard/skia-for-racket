@@ -13,7 +13,8 @@
 ;;;
 
 (require "private/gpu-backends.rkt")
-(require racket/runtime-path (only-in ffi/unsafe void/reference-sink)
+(require racket/runtime-path racket/future (only-in ffi/unsafe void/reference-sink)
+         (only-in (submod "private/gpu-domain.rkt" presentation-internals) domain-execution-active?)
          "private/gpu-context.rkt" "private/gpu-presenter.rkt"
          "private/gpu-domain.rkt" "private/gpu-provider.rkt"
          "private/gpu-surfaces.rkt" "private/gpu-images.rkt"
@@ -26,7 +27,7 @@
          make-gpu-surface gpu-surface? gpu-surface-info
          gpu-flush! gpu-submit! gpu-flush-and-submit! gpu-wait!
          gpu-surface->rgba-bytes gpu-surface->raster-image gpu-surface-read-raster-buffer!
-         gpu-context? make-gpu-context call-with-gpu-context
+         gpu-context? make-gpu-context call-with-gpu-context call-with-new-gpu-context
          gpu-context-backend gpu-context-generation gpu-context-state gpu-context-info
          gpu-context-close! gpu-context-abandon! gpu-context-request-shutdown!
          gpu-drain-releases! gpu-drain-pending-contexts! gpu-smoke-test
@@ -106,6 +107,30 @@
 ;;;
 ;;; Context Scopes and State Queries
 ;;;
+
+; call-with-new-gpu-context : (-> gpu-context?) (-> gpu-context? any) -> any
+;   Creates and activates a context, then closes it outside the activation on every exit.
+(define (call-with-new-gpu-context create proc)
+  (define who 'call-with-new-gpu-context)
+  (for ([callback (in-list (list create proc))] [arity (in-list '(0 1))])
+    (unless (and (procedure? callback) (procedure-arity-includes? callback arity)
+                 (let-values ([(required allowed) (procedure-keywords callback)])
+                   (null? required)))
+      (raise-argument-error who
+        (format "procedure accepting ~a arguments and no required keywords" arity) callback)))
+  (when (or (current-future) (domain-execution-active?))
+    (error who "create a context outside GPU activations and futures"))
+  (call-with-continuation-barrier
+   (lambda ()
+     (define context #f)
+     (dynamic-wind void
+       (lambda ()
+         ;; Install cleanup ownership before a pending break can escape the constructor result.
+         (parameterize-break #f (set! context (create)))
+         (unless (gpu-context? context)
+           (raise-arguments-error who "constructor did not return a GPU context" "result" context))
+         (call-with-gpu-context context (lambda () (proc context))))
+       (lambda () (when (gpu-context? context) (gpu-context-close! context)))))))
 
 ; call-with-gpu-context : gpu-context? (-> any) -> any
 ;   Activates the context's provider, calls thunk without arguments, and returns its multiple

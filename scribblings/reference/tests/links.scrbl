@@ -3435,6 +3435,7 @@ The following links cover the font and text interfaces.
 @racket[gpu:make-gpu-context]
 
 @racket[gpu:call-with-gpu-context]
+@racket[gpu:call-with-new-gpu-context]
 
 @racket[gpu:gpu-context-backend]
 
@@ -3515,6 +3516,7 @@ The following links cover the font and text interfaces.
 @racket[gpu:gpu-image->raster-image]
 @racket[gpu:gpu-surface-read-pixmap!]
 @racket[gpu:gpu-surface-read-raster-buffer!]
+@racket[gpu:gpu-image-read-pixmap!]
 @racket[gpu:gpu-image-read-raster-buffer!]
 @racket[gpu:render-gpu->raster-image]
 @racket[gpu:gpu-flush!]

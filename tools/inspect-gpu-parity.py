@@ -62,7 +62,7 @@ def lifecycle(data, directory):
                 t.get('render_path') == 'sk_surface_new_render_target', 'Metal cycle did not render the required target')
         require(exact_int(t.get('width'), 8) and exact_int(t.get('height'), 8) and exact_int(t.get('row_bytes'), 32),
                 'incorrect Metal smoke layout')
-        require(t.get('actual_sample_count') is False and exact_int(t.get('requested_sample_count'), 0),
+        require('actual_sample_count' not in t and exact_int(t.get('requested_sample_count'), 0),
                 'unsupported actual-sample claim')
         require(t.get('transfer_format') == 'RGBA8888-unpremultiplied' and
                 cycle.get('encoded_after_teardown') is True, 'missing post-teardown CPU output')
@@ -219,7 +219,7 @@ def fixture(directory):
         data['cycles'].append(dict(index=index, initial_context=shared.fixture_metal_context(generation=index+1),
             closed_context=shared.fixture_metal_context(True, index+1), image=name, encoded_after_teardown=True,
             target=dict(native_backend=2, context_matches=True, exact_pixels=True, width=8, height=8, row_bytes=32,
-                        origin='top-left', render_path='sk_surface_new_render_target', actual_sample_count=False,
+                        origin='top-left', render_path='sk_surface_new_render_target',
                         requested_sample_count=0, transfer_format='RGBA8888-unpremultiplied')))
     raw['metal-lifecycle'] = data
     raw['cross-backend'] = dict(schema_version=1, stage='0.41', kind='cross-backend', status='passed',

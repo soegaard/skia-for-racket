@@ -50,15 +50,10 @@ Every result also explicitly contains:
 
 ```racket
 'scope "wrapper-declarations"
-'native_probe_performed #f
-'runtime_availability "not-probed"
-'hardware_acceleration_verified #f
-'visible_pixels_verified #f
-'performance_measured #f
 ```
 
-The false evidence fields mean **not verified by this query**, not that the
-machine lacks hardware or that rendering has failed. Successful native
+This query does not probe native availability, verify hardware acceleration or
+visible pixels, or measure performance. Successful native
 construction, context diagnostics and actual validation are separate evidence.
 Use `gpu-context-info` for a context that has actually been created.
 

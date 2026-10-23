@@ -114,8 +114,8 @@
      (bad (lambda () (make-surface-from-info (info 'rgba-8888 'unpremul)))))
    (test-case "GPU readback cannot treat arbitrary storage as RGBA"
      (for ([f (in-vector integer-pixel-formats)])
-       (check-equal? (image-info-supports? (info f) 'gpu-readback) (eq? f 'rgba-8888)))
-     (check-false (image-info-supports? (info 'rgba-8888 'opaque) 'gpu-readback)))
+       (check-true (image-info-supports? (info f) 'gpu-readback)))
+     (check-true (image-info-supports? (info 'rgba-8888 'opaque) 'gpu-readback)))
    (test-case "unrecognized operations reject instead of advertising support"
      (bad (lambda () (image-info-supports? (info 'rgba-8888) 'gpu-hdr))))
    (test-case "bytes per pixel and channel precision are independent"

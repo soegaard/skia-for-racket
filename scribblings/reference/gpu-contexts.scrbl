@@ -137,25 +137,37 @@ Cleanup ends the activation after normal return, an exception, or an escape.
 Reentry through a saved continuation is rejected. State cleanup is not pixel
 rollback, and a release failure can leave the context requiring explicit cleanup.
 
-The following example defines @racket[call-with-new-gpu-context]; it is not
-exported by the library. This local helper creates and enters a context, then
-closes it on exit. Its callback must close all GPU-dependent children it creates
-before returning. A failed close is not silently replaced with abandonment.
+}
+
+@defproc[(call-with-new-gpu-context [create (-> gpu-context?)]
+                                    [proc (-> gpu-context? any)]) any]{
+Calls @racket[create] once to obtain a new context, activates it, and calls
+@racket[proc] with that context. Returns the callback's values after leaving the
+activation and closing the context. Closure is also attempted after an exception
+or escape; reentry through a saved continuation is rejected.
+
+Use this function for a context needed only during one computation. The
+@racket[create] callback must create a fresh context on the current thread, using
+@racket[make-gpu-context] or @racket[make-egl-gpu-context], for example. Call this
+function outside GPU activations and futures. Both callbacks must accept their
+specified arguments without required keywords.
+
+The drawing callback must close all GPU-dependent children before it exits,
+typically with @racket[with-skia]. A failure to close the context is propagated;
+this function does not silently abandon it. Contexts themselves are not
+resources accepted by @racket[with-skia].
+
+On a macOS system where a Metal context can be created, calling
+@racket[inspect-metal-context] returns context information and closes the context
+before returning. Defining this procedure creates no context:
 
 @racketblock[
 (require skia/gpu)
-(define (call-with-new-gpu-context proc #:backend backend #:provider [provider #f])
-  (define context (make-gpu-context provider #:backend backend))
-  (dynamic-wind
-    void
-    (lambda () (call-with-gpu-context context (lambda () (proc context))))
-    (lambda () (gpu-context-close! context))))
+(define (inspect-metal-context)
+  (call-with-new-gpu-context
+   (lambda () (make-gpu-context #:backend 'metal))
+   gpu-context-info))
 ]
-
-On a macOS system where a Metal context can be created, this use of the local
-helper returns context information and closes the context before returning:
-@racket[(call-with-new-gpu-context gpu-context-info #:backend 'metal)].
-Defining the helper alone creates no context.
 }
 
 @section{Identity and State}
@@ -202,10 +214,8 @@ references, not a count of every native allocation.
 
 Its construction-time fields include @racket['context_factory],
 @racket['context_options_source], and @racket['context_options]. These record
-which constructor and settings were requested. The
-@racket['context_options_native_readback] field is @racket[#f] because the
-effective native settings are not queried; it does not mean that the requests
-were rejected. Native limits, initial cache measurements, and provider details
+which constructor and settings were requested; effective native settings are
+not queried. Native limits, initial cache measurements, and provider details
 also describe construction time. Use @racket[gpu-cache-info] for current cache
 usage. Neither report establishes that the device will remain usable.
 }

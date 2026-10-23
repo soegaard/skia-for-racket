@@ -15,6 +15,8 @@
 (require ffi/unsafe
          "color.rkt"
          "image-info.rkt"
+         "surface-properties.rkt"
+         "private/surface-property-allocation.rkt"
          "private/core.rkt"
          "private/native.rkt"
          "private/check.rkt"
@@ -658,11 +660,14 @@
     (lambda () (when space (skia-close! space)))))
 
 ; make-surface-from-info : image-info? [#:row-bytes (or/c #f exact-positive-integer?)] [#:background
-;   (or/c #f color?)] -> surface?
+;   (or/c #f color?)] [#:surface-properties surface-properties?] -> surface?
 ;   Creates an owned CPU surface in a supported drawing format.
-(define (make-surface-from-info info #:row-bytes [row-bytes #f] #:background [background #f])
+(define (make-surface-from-info info #:row-bytes [row-bytes #f] #:background [background #f]
+                                #:surface-properties [properties (make-surface-properties)])
   (define who 'make-surface-from-info)
   (nonempty-info who info)
+  (unless (surface-properties? properties)
+    (raise-argument-error who "surface-properties?" properties))
   (unless (image-info-supports? info 'raster-canvas)
     (error who "unpremultiplied raster targets are not supported"))
   (define-values (rb minimum allocation) (image-info-storage-layout info #:row-bytes row-bytes))
@@ -672,7 +677,10 @@
   (call-with-image-info-native who info
     (lambda (native _cp)
       (define handle
-        (new-owned who 'surface (lambda () (sk_surface_new_raster native rb #f)) sk_surface_unref))
+        (call-with-native-surface-properties who properties
+          (lambda (props)
+            (new-owned who 'surface
+              (lambda () (sk_surface_new_raster native rb props)) sk_surface_unref))))
       (when (float-info? info) (audit-mark-float-pixels! handle))
       (define result
         (make-surface-record handle (image-info-width info) (image-info-height info) '()))
@@ -680,11 +688,15 @@
         (canvas-clear! (surface-canvas result) clear)
         result))))
 
-; call-with-raster-buffer-canvas : raster-buffer? (-> canvas? any) -> any
+; call-with-raster-buffer-canvas : raster-buffer? (-> canvas? any)
+;   [#:surface-properties surface-properties?] -> any
 ;   Calls proc once with a canvas drawing directly into the buffer and returns its values.
-(define (call-with-raster-buffer-canvas b proc)
+(define (call-with-raster-buffer-canvas b proc
+                                      #:surface-properties [properties (make-surface-properties)])
   (define who 'call-with-raster-buffer-canvas)
   (raster-procedure who proc) (buffer-h who b)
+  (unless (surface-properties? properties)
+    (raise-argument-error who "surface-properties?" properties))
   (unless (image-info-supports? (buffer-format-info b) 'raster-canvas)
     (error who "unpremultiplied raster targets are not supported"))
   (call-exclusive who b 'canvas
@@ -697,38 +709,18 @@
               (define w (raster-buffer-resource-width b)) (define h (raster-buffer-resource-height b))
               (define info (buffer-native-info b w h))
               (define handle
-                (new-owned who 'surface
-                  (lambda ()
-                    (sk_surface_new_raster_direct
-                     info pixels (raster-buffer-resource-row-bytes b) #f #f #f))
-                  sk_surface_unref))
+                (call-with-native-surface-properties who properties
+                  (lambda (props)
+                    (new-owned who 'surface
+                      (lambda ()
+                        (sk_surface_new_raster_direct
+                         info pixels (raster-buffer-resource-row-bytes b) props #f #f))
+                      sk_surface_unref))))
               (when (float-info? (buffer-format-info b)) (audit-mark-float-pixels! handle))
               (set! surface (make-surface-record handle w h '()))) #:idle? #f)
           (define c (surface-canvas surface))
           (with-canvas-state c (proc c)))
         (lambda () (when surface (skia-close! surface)))))))
-
-;; The existing GPU readback ABI supplies only width/height/stride/color-space:
-;; it writes RGBA8888 premultiplied. Reject other formats BEFORE exposing memory.
-(module* gpu-transfer-internals #f
-  (provide call-with-raster-buffer-gpu-transfer)
-
-  ; call-with-raster-buffer-gpu-transfer : raster-buffer? procedure? -> any/c
-  ;   Exclusively lends compatible raster storage for an explicit GPU readback operation.
-  (define (call-with-raster-buffer-gpu-transfer b proc)
-    (define who 'gpu-surface-read-raster-buffer!)
-    (buffer-h who b)
-    (unless (image-info-supports? (buffer-format-info b) 'gpu-readback)
-      (error who
-             "GPU readback requires RGBA8888 premultiplied storage; convert explicitly after readback"))
-    (call-exclusive who b 'gpu-transfer
-      (lambda ()
-        (define p (call-buffer who b values #:idle? #f))
-        (begin0
-          (proc p (raster-buffer-resource-width b) (raster-buffer-resource-height b)
-                (raster-buffer-resource-row-bytes b) (raster-buffer-resource-colorspace b))
-          (void/reference-sink b))))))
-
 
 ;; Float color reads return unpremultiplied values in the PIXMAP's color space,
 ;; without converting them to sRGB. Raw pixmap-sample instead returns stored

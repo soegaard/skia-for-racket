@@ -338,15 +338,27 @@
              (with-skia ([im (gpu-upload-image other cpu)])
                (check-eq? (skia-resource-gpu-context im) other)
                (check-equal? (gpu-image->rgba-bytes im) image-test-pixels)))))))
-   (test-case "readback into a padded raster buffer preserves row padding"
-     (uploaded (lambda (cpu im)
-                 (with-skia ([buffer (make-raster-buffer 8 8 #:row-bytes 40)])
-                   (gpu-image-read-raster-buffer! im buffer)
-                   (check-equal? (raster-buffer->rgba-bytes buffer) image-test-pixels)
-                   (define storage (raster-buffer->storage-bytes buffer))
-                   (for ([y (in-range 8)])
-                     (check-equal? (subbytes storage (+ (* y 40) 32) (* (add1 y) 40))
-                                   (make-bytes 8 0)))))))
+   (test-case "buffer and pixmap image readback agree across formats and preserve padding"
+     (uploaded
+      (lambda (cpu im)
+        (for ([format '(rgba-8888 bgra-8888 rgba-f16 rgba-f32)])
+          (define info (make-image-info 8 8 #:color-type format))
+          (define tight (image-info-min-row-bytes info))
+          (define stride (+ tight 8))
+          (with-skia ([buffer (make-raster-buffer-from-info info #:row-bytes stride)])
+            (define expired #f)
+            (call-with-raster-buffer-pixmap buffer
+              (lambda (view)
+                (set! expired view)
+                (gpu-image-read-pixmap! im view)) #:writable? #t)
+            (check-equal? (raster-buffer->rgba-bytes buffer) image-test-pixels)
+            (define first (raster-buffer->storage-bytes buffer))
+            (gpu-image-read-raster-buffer! im buffer)
+            (check-equal? (raster-buffer->storage-bytes buffer) first)
+            (check-exn exn:fail? (lambda () (gpu-image-read-pixmap! im expired)))
+            (for ([y (in-range 8)])
+              (check-equal? (subbytes first (+ (* y stride) tight) (* (add1 y) stride))
+                            (make-bytes 8 0))))))))
    (test-case "half-alpha and color-space metadata survive explicit detachment"
      (call-with-gpu-context gpu
        (lambda ()
@@ -403,13 +415,19 @@
           (call-with-raster-buffer-pixmap buffer
             (lambda (view)
               (check-exn #rx"active|borrow|scope"
-                (lambda () (gpu-image-read-raster-buffer! im buffer)))))
+                (lambda () (gpu-image-read-raster-buffer! im buffer)))
+              (check-exn exn:fail?
+                (lambda () (gpu-image-read-pixmap! im view)))))
           (check-equal? (raster-buffer->storage-bytes buffer) (make-bytes 256))))))
    (test-case "GPU image buffer readback rejects incompatible dimensions without writes"
      (uploaded
       (lambda (cpu im)
         (with-skia ([buffer (make-raster-buffer 4 8)])
           (check-exn #rx"dimensions" (lambda () (gpu-image-read-raster-buffer! im buffer)))
+          (call-with-raster-buffer-pixmap buffer
+            (lambda (view)
+              (check-exn #rx"dimensions" (lambda () (gpu-image-read-pixmap! im view))))
+            #:writable? #t)
           (check-equal? (raster-buffer->storage-bytes buffer) (make-bytes 128))))))
    (test-case "closing a retained shader outside activation queues its native destruction"
      (held retained-shader

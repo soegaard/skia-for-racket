@@ -211,7 +211,25 @@ teardown errors are reported instead of becoming successful CPU fallbacks.
 For an animation, keep the GPU context and images between frames rather than
 calling the one-shot helper for each frame.
 
-For repeated rendering, create a context once with @racket[make-gpu-context],
+For several operations within one computation, use
+@racket[call-with-new-gpu-context]. Supply a constructor callback and a drawing
+callback; the context is activated for drawing and closed after that callback
+exits. Close child resources inside the callback with @racket[with-skia]:
+
+@racketblock[
+(call-with-new-gpu-context
+ (lambda () (make-gpu-context #:backend 'metal))
+ (lambda (context)
+   (with-skia ([surface (make-gpu-surface context 760 420)])
+     (draw-scene (surface-canvas surface))
+     (gpu-surface->raster-image surface))))
+]
+
+This example requires Metal on macOS. On headless Linux, the constructor callback
+can instead call @racket[make-egl-gpu-context]. The returned CPU image has its
+own lifetime; close it after saving or otherwise using it.
+
+For repeated rendering across separate callbacks, create a context once with @racket[make-gpu-context],
 activate it with @racket[call-with-gpu-context], and reuse GPU surfaces and
 images across frames. The @racket[gpu-surface-snapshot] function can keep an
 image GPU-resident for later drawing. The lower-level

@@ -117,6 +117,74 @@
      (check-eq? (domain-state d) 'closed)
      (check-equal? (events log)
        '(activate create describe deactivate activate release-context deactivate)))
+   (test-case "new context scope preserves values and closes after activation"
+     (define-values (p driver log abandoned?) (make-mock))
+     (define saved #f)
+     (check-equal?
+      (call-with-values
+       (lambda ()
+         (call-with-new-gpu-context
+          (lambda () (set! saved (wrap-gpu-domain (make-gpu-domain p driver))) saved)
+          (lambda (c)
+            (check-eq? c saved)
+            (check-true (and (current-mock) #t))
+            (values 10 20)))) list)
+      '(10 20))
+     (check-eq? (gpu-context-state saved) 'closed)
+     (check-equal? (events log)
+       '(activate create describe deactivate activate reset deactivate
+         activate release-context deactivate)))
+   (test-case "new context scope closes on callback failure and escape"
+     (for ([mode '(exception escape)])
+       (define-values (p driver log abandoned?) (make-mock))
+       (define saved #f)
+       (define (run escape)
+         (call-with-new-gpu-context
+          (lambda () (set! saved (wrap-gpu-domain (make-gpu-domain p driver))) saved)
+          (lambda (_)
+            (if (eq? mode 'exception) (error 'test "callback failed") (escape 'escaped)))))
+       (if (eq? mode 'exception)
+           (check-exn #rx"callback failed" (lambda () (let/ec escape (run escape))))
+           (check-eq? (let/ec escape (run escape)) 'escaped))
+       (check-eq? (gpu-context-state saved) 'closed)
+       (check-equal? (event-count log 'release-context) 1)))
+   (test-case "new context scope rejects continuation reentry after closure"
+     (define-values (p driver log abandoned?) (make-mock))
+     (define resume #f)
+     (call-with-new-gpu-context
+      (lambda () (wrap-gpu-domain (make-gpu-domain p driver)))
+      (lambda (_) (call/cc (lambda (k) (set! resume k)))))
+     (check-equal? (event-count log 'release-context) 1)
+     (check-exn exn:fail:contract:continuation? (lambda () (resume 'again)))
+     (check-equal? (event-count log 'release-context) 1))
+   (test-case "new context scope validates callbacks before construction"
+     (define created? #f)
+     (define (create) (set! created? #t) #f)
+     (for ([bad (list #f (lambda () 1) (lambda (x #:required y) y))])
+       (check-exn exn:fail:contract? (lambda () (call-with-new-gpu-context create bad))))
+     (check-false created?)
+     (check-exn exn:fail:contract? (lambda () (call-with-new-gpu-context #f values)))
+     (check-exn exn:fail:contract? (lambda () (call-with-new-gpu-context create values))))
+   (test-case "new context scope rejects nested acquisition and propagates close failure"
+     (define-values (p driver log abandoned?) (make-mock))
+     (define saved #f)
+     (define child #f)
+     (check-exn exn:fail?
+       (lambda ()
+         (call-with-new-gpu-context
+          (lambda () (set! saved (wrap-gpu-domain (make-gpu-domain p driver))) saved)
+          (lambda (c)
+            (define called? #f)
+            (check-exn exn:fail?
+              (lambda () (call-with-new-gpu-context
+                          (lambda () (set! called? #t) c) values)))
+            (check-false called?)
+            (set! child (mock-resource (context-domain 'test c) log abandoned?))))))
+     (check-false (unbox abandoned?))
+     (check-equal? (event-count log 'release-context) 0)
+     (domain-resource-close! child)
+     (gpu-context-close! saved)
+     (check-eq? (gpu-context-state saved) 'closed))
    (test-case "same host cannot have two live Ganesh domains"
      (call-with-mock
       (lambda (d p driver log a)
@@ -421,10 +489,15 @@
    (test-case "public API rejects invalid contexts without native loading"
      (check-exn exn:fail:contract? (lambda () (call-with-gpu-context #f void)))
      (check-exn exn:fail:contract? (lambda () (make-gpu-context #f))))
-   (test-case "public Metal rendering request is explicit unavailability"
-     (define p (make-gpu-provider #:name 'test #:backend 'metal #:key 'unimplemented
-                                  #:call-as-current void #:current? void))
-     (check-exn exn:fail:gpu:unavailable? (lambda () (make-gpu-context p))))
+   (test-case "external non-OpenGL providers fail before invoking callbacks"
+     (define called? #f)
+     (for ([backend '(metal direct3d auto)])
+       (check-exn exn:fail:contract?
+         (lambda ()
+           (make-gpu-provider #:name 'test #:backend backend #:key 'unsupported
+             #:call-as-current (lambda (_) (set! called? #t))
+             #:current? (lambda () (set! called? #t))))))
+     (check-false called?))
    (test-case "software renderer names override vendor hardware hints"
      (check-equal? (renderer-class "Intel" "Mesa llvmpipe") "software")
      (check-equal? (renderer-class "Google" "SwiftShader") "software")

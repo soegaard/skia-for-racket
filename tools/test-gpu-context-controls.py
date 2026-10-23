@@ -27,8 +27,7 @@ def synthetic_evidence(root,token=TOKEN,backend='egl',adapter='hardware'):
     rows=[]
     for g,(name,opts) in enumerate(v.CONFIGS.items(),1):
         info=dict(backend=rbackend,state='ready',generation=g,context_factory=base+('_with_options' if opts is not False else ''),
-                  context_options_source='explicit' if opts is not False else 'native-defaults',context_options=copy.deepcopy(opts),
-                  context_options_native_readback=False,adapter_selection=adapter)
+                  context_options_source='explicit' if opts is not False else 'native-defaults',context_options=copy.deepcopy(opts),adapter_selection=adapter)
         (root/(name+'.rgba')).write_bytes(v.pixels())
         rows.append(dict(name=name,file=name+'.rgba',width=32,height=24,info=info,requested_options=copy.deepcopy(opts),
                          drawing_readbacks=0,readbacks=1,events=[flush('surface',g),dict(kind='gpu-snapshot'),flush('image',g),

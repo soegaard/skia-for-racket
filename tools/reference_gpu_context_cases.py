@@ -4,7 +4,7 @@ GPU_CONTEXT_EXPORTS = (
     'gpu-backends gpu-backend? gpu-backend-capabilities '
     'make-gpu-provider gpu-provider? gpu-provider-name gpu-provider-backend '
     'exn:fail:gpu:unavailable? exn:fail:gpu:unavailable-step '
-    'gpu-context? make-gpu-context call-with-gpu-context gpu-context-backend '
+    'gpu-context? make-gpu-context call-with-gpu-context call-with-new-gpu-context gpu-context-backend '
     'gpu-context-generation gpu-context-state gpu-context-info gpu-context-close! '
     'gpu-context-abandon! gpu-context-release-and-abandon! gpu-context-request-shutdown! '
     'gpu-drain-releases! gpu-drain-pending-contexts!').split()
@@ -26,6 +26,7 @@ R4A_PROCEDURES.update({
                              'get-proc-address', 'key', 'name']),
     'make-gpu-context': (3, ['adapter', 'adapter-index', 'backend', 'gl-interface', 'options']),
     'call-with-gpu-context': (4, []),
+    'call-with-new-gpu-context': (4, []),
     'gpu-drain-pending-contexts!': (1, ['abandon?']),
     'make-gpu-context-options': (1, ['allow-path-mask-caching?', 'avoid-stencil-buffers?',
                                    'buffer-map-threshold', 'glyph-cache-texture-maximum-bytes',

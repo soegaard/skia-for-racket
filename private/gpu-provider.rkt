@@ -49,14 +49,28 @@
   (unless (and (procedure? p) (procedure-arity-includes? p n))
     (raise-argument-error who (format "procedure accepting ~a arguments" n) p)))
 
-; make-gpu-provider : #:name symbol? #:backend (or/c 'opengl 'metal 'direct3d) #:key (or/c symbol?
+; make-gpu-provider : #:name symbol? #:backend 'opengl #:key (or/c symbol?
 ;   exact-positive-integer?) #:call-as-current procedure? #:current? procedure? [#:describe
 ;   procedure?] [#:get-proc-address (or/c procedure? #f)] -> gpu-provider?
-;   Creates a provider value owned by the current Racket thread.
+;   Creates an external OpenGL provider owned by the current Racket thread.
 (define (make-gpu-provider #:name name #:backend backend #:key key
                            #:call-as-current activate #:current? current?
                            #:describe [describe (lambda () (hasheq))]
                            #:get-proc-address [resolve #f])
+  (unless (eq? backend 'opengl)
+    (raise-argument-error 'make-gpu-provider "'opengl" backend))
+  (make-host-provider #:name name #:backend backend #:key key
+                      #:call-as-current activate #:current? current?
+                      #:describe describe #:get-proc-address resolve))
+
+; make-host-provider : #:name symbol? #:backend symbol? #:key (or/c symbol? exact-positive-integer?)
+;   #:call-as-current procedure? #:current? procedure? [#:describe procedure?]
+;   [#:get-proc-address (or/c procedure? #f)] -> gpu-provider?
+;   Constructs checked host callbacks for external GL or the private owned-device adapters.
+(define (make-host-provider #:name name #:backend backend #:key key
+                            #:call-as-current activate #:current? current?
+                            #:describe [describe (lambda () (hasheq))]
+                            #:get-proc-address [resolve #f])
   (define who 'make-gpu-provider)
   (unless (symbol? name) (raise-argument-error who "symbol?" name))
   (check-gpu-backend! who backend)
@@ -65,6 +79,8 @@
   (arity who activate 1) (arity who current? 0) (arity who describe 0)
   (when resolve (arity who resolve 1))
   (gpu-provider name backend key activate current? describe (current-thread) resolve))
+
+(module* host-internals #f (provide make-host-provider))
 
 ;;;
 ;;; Activation, Restoration, and Detached Diagnostics

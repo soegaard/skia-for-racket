@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "cf982356ee25b1e4abbb3c2de8a9a153ad035c2a"
+      "git_blob": "27386dc1a515c42e7aefa8f5e79e901448a06f0f"
     },
     {
       "file": "api/public-api-gui.json",
@@ -11937,6 +11937,16 @@
       "space": null
     },
     {
+      "name": "call-with-new-gpu-context",
+      "chapter": "scribblings/reference/gpu-contexts.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
       "name": "gpu-context-backend",
       "chapter": "scribblings/reference/gpu-contexts.scrbl",
       "canonical_module": "skia/gpu",
@@ -12347,6 +12357,16 @@
     },
     {
       "name": "gpu-image-read-raster-buffer!",
+      "chapter": "scribblings/reference/gpu-transfers.scrbl",
+      "canonical_module": "skia/gpu",
+      "exports": [
+        "skia/gpu"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "gpu-image-read-pixmap!",
       "chapter": "scribblings/reference/gpu-transfers.scrbl",
       "canonical_module": "skia/gpu",
       "exports": [

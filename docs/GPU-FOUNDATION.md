@@ -58,6 +58,7 @@ Linux uses GLX: this is not native Wayland or display-server-free EGL support.
 | `(gpu-context-generation context)` | Unique process/place-local monotonically assigned generation; not a portable cache key. |
 | `(gpu-context-state context)` | Lifecycle symbol: `initializing`, `ready`, `abandoned`, `closing`, or `closed`. Normal successful construction returns `ready`. |
 | `(gpu-context-info context)` | Detached immutable diagnostic hash on the owner thread. Includes provider, generation, state, cached native limits/driver identity, live-child and release-queue counts. Cached cache usage is explicitly initial usage, not a live reading. |
+| `(call-with-new-gpu-context create proc)` | Calls a zero-argument constructor, activates the new context for `proc`, then closes it outside the activation on every exit. Preserves multiple values; child resources must be closed within the callback. |
 | `(call-with-gpu-context context thunk)` | Activates the host and calls a zero-argument procedure synchronously. Preserves multiple values. Reentrant use of the same domain is allowed; nested foreign domains and futures are rejected. |
 | `(gpu-smoke-test context)` | Activates the context, makes the private GPU target, draws and reads back the fixed pattern, and returns detached data. No public GPU surface or canvas is returned. |
 | `(gpu-drain-releases! context)` | Drains queued child destruction while the context is active, or after successful abandonment without native activation. Returns the number of jobs in the detached batch. |
@@ -82,7 +83,7 @@ not silently converted to a successful fallback.
 ```racket
 (make-gpu-provider
  #:name name                    ; symbol
- #:backend backend              ; 'opengl or 'metal
+ #:backend backend              ; 'opengl only
  #:key identity                 ; stable symbol or positive integer
  #:call-as-current activate     ; (zero-argument-thunk -> any)
  #:current? current?            ; (-> any), truthy only for the correct host
@@ -90,7 +91,8 @@ not silently converted to a successful fallback.
 ```
 
 `gpu-provider?`, `gpu-provider-name` and `gpu-provider-backend` are public
-queries. Construction does not invoke callbacks. The provider is owned by its
+queries. Public construction accepts only OpenGL; use the owned-device context
+constructors for Metal and Direct3D. Construction does not invoke callbacks. The provider is owned by its
 creator Racket thread. `activate` must synchronously call its argument exactly
 once on that thread while the correct native context is current. The wrapper
 returns the callback's values and does not let the provider hide a callback

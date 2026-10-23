@@ -14,8 +14,7 @@ def ctx(gen,backend='opengl',state='ready',live=0):
   native_backend=0 if backend=='opengl' else 2,binding_package='3.119.1',native_version='119.0',renderer='Synthetic fixture',renderer_class='software',
   api_version='Synthetic API',vendor='Synthetic',owns_command_queue=backend=='metal')
 def cache(gen,backend='opengl'):
- return dict(backend=backend,context_generation=gen,limit_bytes=32*1024**2,budgeted_resources=2,budgeted_bytes=100,
-             total_gpu_bytes=False,purgeable_bytes=False,limit_is_hard_allocation_cap=False)
+ return dict(backend=backend,context_generation=gen,limit_bytes=32*1024**2,budgeted_resources=2,budgeted_bytes=100)
 def one():return dict(start_ms=10,end_ms=11,elapsed_ms=1,host_cpu_ms=1,gc_cpu_ms=0)
 def completion(upload=False):
  r=dict(timepoints_ms=[10,11,12,13,14],draw_ms=1,flush_ms=1,submit_ms=1,completion_wait_ms=1,completed_ms=4,
@@ -51,7 +50,7 @@ def performance(directory,backend='opengl'):
    isolated_driver_compile_ms=False,warmup_completed=1,warmup_replay=[completion()],first_use=completion(),warm_replay=[completion() for _ in range(3)],upload=uploads,readback=reads,
    authoring_recording=[one() for _ in range(3)],cpu_raster=[one() for _ in range(3)],sksl_effect_construction=[one() for _ in range(3)] if name=='runtime' else [],
    cache_after=cache(gen,backend),cpu_image=name+'.cpu.png',gpu_image=name+'.gpu.png',target=dict(storage='gpu',context_matches=True,backend=backend,context_generation=gen,
-   native_backend=0 if backend=='opengl' else 2,width=128,height=128,origin='top-left',render_path='sk_surface_new_render_target',requested_sample_count=0,actual_sample_count=False))
+   native_backend=0 if backend=='opengl' else 2,width=128,height=128,origin='top-left',render_path='sk_surface_new_render_target',requested_sample_count=0))
   png(directory,s['cpu_image']);png(directory,s['gpu_image']);r['scenes'].append(s)
  for i in range(3):
   gen=10+i;c=dict(index=i,frames=60,initial_context=ctx(gen,backend),closed_context=ctx(gen,backend,'closed'),baseline_cache=cache(gen,backend),

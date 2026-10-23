@@ -24,7 +24,6 @@
          (prefix-in n: "gpu-native.rkt")
          (only-in "native.rkt" skia-check! sk_colorspace_ref sk_colorspace_unref)
          (submod "core.rkt" gpu-surface-internals)
-         (submod "../raster-buffers.rkt" gpu-transfer-internals)
          "../color.rkt")
 (provide gpu-surface-format-info gpu-surface->image-info gpu-surface-read-pixmap!
          gpu-surface->raster-buffer make-gpu-surface gpu-surface? gpu-surface-info
@@ -113,8 +112,7 @@
           'context_generation (domain-generation d) 'color_type label
           'color_type_name (symbol->string color-type)
           'renderable (positive? maximum) 'max_sample_count maximum
-          'max_render_target_size (n:gr_recording_context_max_render_target_size cp)
-          'allocation_verified #f 'actual_sample_count #f))
+          'max_render_target_size (n:gr_recording_context_max_render_target_size cp)))
 
 ; make-gpu-surface : gpu-context? (integer-in 1 32768) (integer-in 1 32768) [#:background color?]
 ;   [#:color-space (or/c color-space? #f)] [#:sample-count (integer-in 0 64)] [#:opaque? boolean?]
@@ -161,9 +159,7 @@
             'color_type_name (symbol->string color-type)
             'alpha_type (if (eq? alpha 'opaque) "opaque" "premultiplied")
             'alpha_type_name (symbol->string alpha) 'origin "top-left"
-            'requested_sample_count samples 'actual_sample_count #f
-            'sample_count_note
-              "Skia may round a request up. The pinned C API exposes only the maximum, not this owned target's actual count."
+            'requested_sample_count samples
             'surface_properties (surface-properties->jsexpr properties)
             'max_sample_count max-samples
             'budgeted budgeted? 'storage "gpu" 'target_kind "offscreen"))
@@ -303,11 +299,8 @@
 (define (gpu-surface-read-raster-buffer! s buffer)
   (define who 'gpu-surface-read-raster-buffer!)
   (gpu-surface-domain/checked who s)
-  (call-with-raster-buffer-gpu-transfer
-   buffer
-   (lambda (pixels width height row-bytes colorspace)
-     (gpu-transfer-shape! who (surface-width s) (surface-height s) width height)
-     (read-into! who s pixels row-bytes colorspace alpha-premul)))
+  (r:call-with-raster-buffer-pixmap buffer
+    (lambda (destination) (gpu-surface-read-pixmap! s destination)) #:writable? #t)
   (void))
 
 ;; Detached metadata is verified against a temporary native snapshot, not just

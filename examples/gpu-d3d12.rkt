@@ -36,25 +36,18 @@
      [("--adapter-index") number "exact hardware adapter index" (set! index (string->number number))]
      #:args (output-png) (path->complete-path output-png)))
 
-  ; context : gpu-context?
-  ;   Owns the explicitly selected GPU context for the example's rendering work.
-  (define context (make-gpu-context #:backend 'direct3d #:adapter adapter #:adapter-index index))
-  (write-json (gpu-context-info context)) (newline)
-
   ; detached : image?
-  ;   Retains the CPU image after the temporary GPU context has been closed.
+  ;   Holds the CPU image after the temporary GPU context has been closed.
   (define detached
-    (dynamic-wind
-      void
-      (lambda ()
-        (call-with-gpu-context context
-          (lambda ()
-            (with-skia ([surface (make-gpu-surface context 320 180 #:background 'white)]
-                        [paint (make-paint #:color 'blue)])
-              (draw-rect (surface-canvas surface) 24 24 140 96 paint)
-              ;; Explicit completion and CPU transfer are part of this call.
-              (gpu-surface->raster-image surface)))))
-      (lambda () (gpu-context-close! context))))
+    (call-with-new-gpu-context
+     (lambda () (make-gpu-context #:backend 'direct3d #:adapter adapter #:adapter-index index))
+     (lambda (context)
+       (write-json (gpu-context-info context)) (newline)
+       (with-skia ([surface (make-gpu-surface context 320 180 #:background 'white)]
+                   [paint (make-paint #:color 'blue)])
+         (draw-rect (surface-canvas surface) 24 24 140 96 paint)
+         ;; Explicit completion and CPU transfer are part of this call.
+         (gpu-surface->raster-image surface)))))
   ;; The context is closed: only the detached CPU image remains.
   (with-skia ([image detached])
     (make-directory* (path-only destination))

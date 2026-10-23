@@ -50,23 +50,18 @@
     (set! backend (case (system-type 'os) [(macosx) 'metal] [(windows) 'direct3d] [else 'egl])))
   (unless (memq adapter '(hardware warp)) (error 'gpu-diagnostics "invalid adapter"))
 
-  ; context : gpu-context?
-  ;   Owns the explicitly selected GPU context for the example's rendering work.
-  (define context
-    (case backend
-      [(egl) (make-egl-gpu-context #:gl-interface 'auto)]
-      [(metal) (make-gpu-context #:backend 'metal)]
-      [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
-      [else (error 'gpu-diagnostics "unknown backend")]))
-  (dynamic-wind void
-    (lambda ()
-      (call-with-gpu-context context
-        (lambda ()
-          (with-skia ([surface (make-gpu-surface context 32 24)])
-            (canvas-clear! (surface-canvas surface) (rgb 17 34 51))
-            ;; Explicit submission is example setup, not part of the diagnostic.
-            (gpu-flush! context)
-            (gpu-submit! context #:wait? #t)
-            (write-json (describe-current-gpu context))
-            (newline)))))
-    (lambda () (gpu-context-close! context))))
+  (call-with-new-gpu-context
+   (lambda ()
+     (case backend
+       [(egl) (make-egl-gpu-context #:gl-interface 'auto)]
+       [(metal) (make-gpu-context #:backend 'metal)]
+       [(direct3d) (make-gpu-context #:backend 'direct3d #:adapter adapter)]
+       [else (error 'gpu-diagnostics "unknown backend")]))
+   (lambda (context)
+     (with-skia ([surface (make-gpu-surface context 32 24)])
+       (canvas-clear! (surface-canvas surface) (rgb 17 34 51))
+       ;; Explicit submission is example setup, not part of the diagnostic.
+       (gpu-flush! context)
+       (gpu-submit! context #:wait? #t)
+       (write-json (describe-current-gpu context))
+       (newline)))))

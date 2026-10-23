@@ -8,19 +8,9 @@
 ;; Supports consistent pixel geometry and flags across surface constructors.
 
 (require "../surface-properties.rkt" (submod "../surface-properties.rkt" internals)
-         "native.rkt" "core.rkt" "lifetime.rkt"
-         (submod "core.rkt" gpu-surface-internals)
-         (submod "core.rkt" image-operation-internals))
+         "native.rkt" "core.rkt" "lifetime.rkt" "surface-property-allocation.rkt"
+         (submod "core.rkt" gpu-surface-internals))
 (provide call-with-native-surface-properties surface-properties/native surface-properties-of)
-
-; call-with-native-surface-properties : symbol? surface-properties? procedure? -> any
-;   Creates a temporary native properties object and deletes it after the callback on every exit.
-(define (call-with-native-surface-properties who p proc)
-  (unless (surface-properties? p) (raise-argument-error who "surface-properties?" p))
-  (skia-check!)
-  (call-with-native-temporary who 'surface-properties
-    (lambda () (sk_surfaceprops_new (surface-properties-flags p) (properties->geometry-code p)))
-    sk_surfaceprops_delete proc))
 
 ; surface-properties/native : symbol? cpointer? -> surface-properties?
 ;   Copies flags and pixel geometry from a borrowed native properties pointer without deleting it.

@@ -187,7 +187,7 @@
             (gpu-submit! c #:wait? #t)
             (gpu-surface->rgba-bytes s)))))
     (check-equal? (read-count (unbox ledger)) 1)
-    (check-false (hash-ref info 'context_options_native_readback))
+    (check-false (hash-has-key? info 'context_options_native_readback))
     (define filename (string-append name ".rgba"))
     (call-with-output-file (build-path directory filename) (lambda (out) (write-bytes pixels out))
       #:exists 'error #:mode 'binary)

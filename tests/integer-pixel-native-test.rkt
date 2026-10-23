@@ -11,8 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require rackunit racket/list racket/vector "../main.rkt" "integer-pixel-fixtures.rkt"
-         (submod "../raster-buffers.rkt" gpu-transfer-internals))
+(require rackunit racket/list racket/vector "../main.rkt" "integer-pixel-fixtures.rkt")
 (provide integer-pixel-native-tests)
 
 ;;;
@@ -339,14 +338,16 @@
              (check-exn exn:fail?
                (lambda () (pixmap-convert! (pixmap-subset v 0 0 2 1) (pixmap-subset v 2 1 2 1)))))
            #:writable? #t))))
-   (test-case "legacy GPU transfer rejects incompatible formats before exposing an address"
-     (for ([format (in-vector integer-pixel-formats)] #:unless (eq? format 'rgba-8888))
+   (test-case "all integer buffer formats expose a scoped writable pixmap"
+     (for ([format (in-vector integer-pixel-formats)])
        (with-buffer format
          (lambda (b _)
-           (define called? #f)
-           (check-exn exn:fail? (lambda () (call-with-raster-buffer-gpu-transfer b
-             (lambda args (set! called? #t)))))
-           (check-false called?) (check-equal? (raster-buffer-width b) 4)))))
+           (call-with-raster-buffer-pixmap b
+             (lambda (v)
+               (check-true (pixmap-writable? v))
+               (check-eq? (image-info-color-type (pixmap-image-info v)) format))
+             #:writable? #t)
+           (check-equal? (raster-buffer-width b) 4)))))
    (test-case "lowered byte budgets reject copies without invalidating the buffer"
      (with-buffer 'rgba-8888
        (lambda (b _)

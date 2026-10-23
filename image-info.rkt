@@ -230,8 +230,6 @@
   ;; This table is a wrapper contract, not evidence of runtime/device support.
   (case operation
     [(raster-canvas) (not (eq? (image-info-alpha-type info) 'unpremul))]
-    [(gpu-readback) (and (eq? (image-info-color-type info) 'rgba-8888)
-                         (eq? (image-info-alpha-type info) 'premul))]
     [else #t]))
 
 ;;;

@@ -41,5 +41,4 @@
   ;; Verified against m119 GrDirectContext.cpp: usage is BUDGETED, not total.
   (hasheq 'backend (symbol->string backend) 'context_generation generation
           'limit_bytes limit 'budgeted_resources count 'budgeted_bytes bytes
-          'purgeable_bytes #f 'total_gpu_bytes #f 'limit_is_hard_allocation_cap #f
           'scope "Ganesh budgeted resource cache; not total VRAM or process RSS"))

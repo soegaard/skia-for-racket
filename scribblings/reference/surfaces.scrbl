@@ -48,7 +48,9 @@ Returns @racket[#t] for a Skia canvas and @racket[#f] otherwise.
 @defproc[(make-surface [width (integer-in 1 32768)]
                        [height (integer-in 1 32768)]
                        [#:background background color? 'transparent]
-                       [#:color-space space (or/c color-space? #f) #f]) surface?]{
+                       [#:color-space space (or/c color-space? #f) #f]
+                       [#:surface-properties properties surface-properties?
+                        (make-surface-properties)]) surface?]{
 Creates a surface containing a bitmap that is @racket[width] pixels wide and
 @racket[height] pixels high. It initially fills every pixel with
 @racket[background], which defaults to @racket['transparent].
@@ -66,6 +68,10 @@ For another pixel format, such as alpha-only or floating-point storage, use
 The @racket[space] argument associates a @tech{color space} with the surface.
 The default, @racket[#f], means that no color space is associated with the
 surface.
+
+The @racket[properties] value requests pixel geometry and rendering settings;
+see @secref["skia-surface-properties"]. The default uses unknown pixel geometry
+and no extra rendering flags.
 
 The returned surface is a resource with its own lifetime. See
 @secref["skia-resources"] for release rules.

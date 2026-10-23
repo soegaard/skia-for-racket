@@ -9,6 +9,7 @@
 
 (require (only-in "native.rkt" sk_image_get_color_type)
          "image-operation-util.rkt"
+         (only-in (submod "../raster-buffers.rkt" image-operation-internals) view-owner)
          (prefix-in r: "../raster-buffers.rkt"))
 (require ffi/unsafe ffi/unsafe/atomic
          "core.rkt" "types.rkt" "check.rkt" "lifetime.rkt"
@@ -17,10 +18,11 @@
          (submod "core.rkt" gpu-image-internals)
          (submod "core.rkt" gpu-surface-internals)
          (only-in "gpu-native.rkt" gr_direct_context_is_abandoned)
-         (only-in "../raster-buffers.rkt" raster-buffer? raster-buffer-width raster-buffer-height))
+         (only-in "../raster-buffers.rkt" raster-buffer?))
 (provide gpu-image->raster-buffer gpu-image? image-residency skia-resource-gpu-context
          gpu-upload-image gpu-surface-snapshot gpu-image-subset gpu-image-info
-         gpu-image->rgba-bytes gpu-image->raster-image gpu-image-read-raster-buffer!)
+         gpu-image->rgba-bytes gpu-image->raster-image gpu-image-read-raster-buffer!
+         gpu-image-read-pixmap!)
 
 ;;;
 ;;; Image Residency and Domain Ownership
@@ -247,11 +249,20 @@
   (define who 'gpu-image-read-raster-buffer!)
   (gpu-h who im)
   (unless (raster-buffer? buffer) (raise-argument-error who "raster-buffer?" buffer))
-  (unless (and (= (image-width im) (raster-buffer-width buffer))
-               (= (image-height im) (raster-buffer-height buffer)))
-    (error who "source image and destination buffer dimensions must match"))
+  (r:call-with-raster-buffer-pixmap buffer
+    (lambda (destination) (gpu-image-read-pixmap! im destination)) #:writable? #t))
+
+; gpu-image-read-pixmap! : gpu-image? pixmap? -> void?
+;   Reads into a matching writable pixmap through checked staging, leaving it unchanged on failure.
+(define (gpu-image-read-pixmap! im destination)
+  (define who 'gpu-image-read-pixmap!)
+  (gpu-h who im)
+  (view-owner who destination #t)
+  (unless (and (= (image-width im) (r:pixmap-width destination))
+               (= (image-height im) (r:pixmap-height destination)))
+    (error who "source image and destination pixmap dimensions must match"))
   (call-with-image-staging who im
-    (lambda (s) (gpu-surface-read-raster-buffer! s buffer))))
+    (lambda (surface) (gpu-surface-read-pixmap! surface destination))))
 
 (module* image-operation-internals #f
   (provide gpu-h context-pointer))

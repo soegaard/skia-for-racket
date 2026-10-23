@@ -122,10 +122,12 @@ can also be CPU copies when constructing the independent raster image. No
 asynchronous transfer or performance claim is made.
 
 Raster-buffer readback requires matching dimensions and an idle exclusive
-buffer. It writes premultiplied RGBA using the buffer's stride and color space;
-row padding is preserved. An active canvas/pixmap borrow, dimension mismatch,
-or closed buffer is rejected. A native transfer failure can leave partial
-writes; destination writes are not transactional.
+buffer. It uses the buffer's pixel description, stride, and color space.
+Both `gpu-image-read-raster-buffer!` and `gpu-image-read-pixmap!` stage and
+validate the readback before copying pixels. Row padding is preserved and
+failures leave the destination unchanged. The pixmap must be writable; the
+buffer writer borrows one itself. Tagged and untagged storage cannot be mixed,
+and native format conversions can still fail.
 
 Existing CPU helpers deliberately remain explicit boundaries. `image->rgba-bytes`,
 image encoders, `image-convert-color-space`, `image-original-encoded-bytes`, and

@@ -65,10 +65,15 @@ class Sources(unittest.TestCase):
         source=self.text('raster-buffers.rkt')
         self.assertIn('(* (buffer-bpp b) (pixmap-x v))',source)
         self.assertNotIn('(* 4 (pixmap-x v))',source)
-    def test_gpu_transfer_guard_precedes_exclusive_pointer_borrow(self):
-        s=self.text('raster-buffers.rkt');s=s[s.index('(define (call-with-raster-buffer-gpu-transfer'):]
-        self.assertLess(s.index("'gpu-readback"),s.index('(call-exclusive'))
-        self.assertIn('rgba-8888',self.text('image-info.rkt'))
+    def test_gpu_buffer_writers_share_checked_pixmap_readback(self):
+        for kind in ('surface', 'image'):
+            s = self.text('private/gpu-' + ('surfaces' if kind == 'surface' else 'images') + '.rkt')
+            s = s[s.index('(define (gpu-' + kind + '-read-raster-buffer!'):]
+            body = s.split('\n; ', 1)[0]
+            self.assertIn('r:call-with-raster-buffer-pixmap', body)
+            self.assertIn('gpu-' + kind + '-read-pixmap!', body)
+            self.assertIn('#:writable? #t', body)
+        self.assertNotIn('gpu-transfer-internals', self.text('raster-buffers.rkt'))
     def test_owned_color_space_refs_have_matching_cleanup(self):
         s=self.text('raster-buffers.rkt')
         self.assertIn('(when cp (sk_colorspace_ref cp))',s)

@@ -83,7 +83,8 @@ RGBA conversion, independent raster-image copies, and native opacity inspection.
 `convert`, `image-copy`, `raster-canvas`, and `gpu-readback`. Its answer is the
 wrapper's format/alpha contract, not a successful execution receipt. Pairwise
 conversion also checks dimensions, exclusive leases and color interpretation.
-`gpu-readback` is true **only for RGBA8888 premultiplied storage**. Unknown
+`gpu-readback` is true for all valid descriptions; native format conversion
+may still fail for a particular source and destination. Unknown
 operations raise an error rather than returning an ambiguous false value.
 
 The default alpha type is always `premul`; callers choosing RGBX, Gray8 or RGB565
@@ -240,12 +241,11 @@ Both reject unpremultiplied raster targets. New surfaces are cleared to black
 (opaque targets) or transparent black, unless an explicit background is supplied.
 Opaque-only formats necessarily discard transparency when drawing.
 
-This stage does not change GPU surface/presenter formats. Existing
-`gpu-surface-read-raster-buffer!` and the image readback route write RGBA8888
-premultiplied pixels. The private transfer lease now rejects incompatible
-formats/alpha types **before exposing the buffer address**. Read back into a
-compatible RGBA buffer, then explicitly convert. Existing `gpu-upload-image`
-remains the upload vocabulary; there is no new implicit transfer operation.
+The GPU buffer and pixmap writers accept the formats described by `image-info?`,
+subject to native conversion support. They check dimensions and color-space
+tags, stage and validate the readback, and copy only pixel bytes into the
+destination. Failures leave storage unchanged, including row padding.
+`gpu-upload-image` remains the upload vocabulary; transfers are explicit.
 
 The acceptance program explicitly converts and nearest-scales each integer
 fixture into a 64x32 RGBA image, uploads that image, draws it into an existing

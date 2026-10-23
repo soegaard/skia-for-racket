@@ -93,7 +93,7 @@
          (check-equal? (gpu-context-state context) 'ready)
          (define info (gpu-context-info context))
          (check-equal? (hash-ref info 'context_options_source) "native-defaults")
-         (check-false (hash-ref info 'context_options_native_readback))
+         (check-false (hash-has-key? info 'context_options_native_readback))
          (check-true (immutable? info))
          (check-false (hash-ref info 'shutdown_requested)))))
 
@@ -104,7 +104,7 @@
          (define info (gpu-context-info context))
          (check-equal? (hash-ref info 'context_options_source) "explicit")
          (check-equal? (hash-ref info 'context_options) (gpu-context-options->jsexpr options))
-         (check-false (hash-ref info 'context_options_native_readback)))
+         (check-false (hash-has-key? info 'context_options_native_readback)))
        #:options options))
 
    (test-case "same-context nesting preserves zero and multiple results"

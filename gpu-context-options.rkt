@@ -117,8 +117,7 @@
     (hasheq 'context_factory
             (string->immutable-string (if options (string-append factory "_with_options") factory))
             'context_options_source (if options "explicit" "native-defaults")
-            'context_options (and options (gpu-context-options->jsexpr options))
-            'context_options_native_readback #f))
+            'context_options (and options (gpu-context-options->jsexpr options))))
 
   ; add-context-options-diagnostics : hash? (or/c #f gpu-context-options?) symbol? -> hash?
   ;   Adds factory and requested-option metadata to immutable context diagnostics.
