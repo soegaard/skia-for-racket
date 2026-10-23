@@ -1,8 +1,10 @@
 # Owned raster buffers and scoped pixmaps
 
 `raster-buffers.rkt` (also exported by `main.rkt`) provides mutable CPU pixel
-storage with an explicit row stride. The storage is native-allocated RGBA8888
-with premultiplied alpha. A buffer is an ordinary `skia-resource?`; use
+storage with an explicit row stride. `make-raster-buffer` allocates RGBA8888
+with premultiplied alpha; `make-raster-buffer/from-info` supports the formats
+described in [INTEGER-PIXELS.md](INTEGER-PIXELS.md) and
+[FLOAT-PIXELS.md](FLOAT-PIXELS.md). A buffer is an ordinary `skia-resource?`; use
 `with-skia`, `call-with-skia-resource`, `skia-close!`, and `skia-closed?`.
 
 `raster-buffer?` recognizes the owned buffer type, including after explicit close.
@@ -60,9 +62,9 @@ The full allocation is `row-bytes * height`; its minimum pixel extent is
 against `current-skia-byte-limit` and against the native signed pointer range.
 This is a per-allocation/copy limit, not a process-wide memory or Skia-cache quota.
 
-An optional live `color-space?` is retained by native reference. Closing its
-original Racket wrapper does not invalidate the buffer. Omitting the space
-means untagged storage, like the existing default raster surface. Writing RGBA
+The optional color-space descriptor is `'srgb`, `'linear-srgb`, ICC bytes, or
+`#f` for untagged storage. ICC bytes are copied. Use `color-space->descriptor`
+when starting with a live color-space resource. Writing RGBA
 samples does not perform gamut conversion or attach a different profile: the
 samples are interpreted in the buffer's declared space.
 
@@ -92,9 +94,10 @@ points on the buffer are not.
   premultiplied Racket staging followed by Skia's raster-copy constructor:
   **two explicit copies**, with no retained mutable backing store.
 
-Straight input is premultiplied once using `(channel * alpha + 127) / 255` with
-integer quotient. Already-premultiplied input must satisfy R, G, B <= A for every
-pixel. The entire input is checked and copied before destination mutation, so a
+Straight input is premultiplied once by the shared native conversion path,
+regardless of which raster-buffer constructor allocated the destination.
+Already-premultiplied input must satisfy R, G, B <= A for every pixel.
+The entire input is checked and copied before destination mutation, so a
 late invalid pixel cannot cause a partially committed upload. Callers must not
 concurrently mutate an input byte string while it is being copied.
 Unpremultiplication of low-alpha pixels is necessarily lossy at 8-bit precision.
@@ -119,7 +122,7 @@ including metadata, require an active lease on the creator thread:
 | `pixmap-row-bytes` | Parent stride; a subset does not become tightly packed. |
 | `pixmap-writable?` | Boolean permission of this lease. |
 | `(pixmap-subset view x y width height)` | Nonempty integer rectangle completely inside the view. Does not silently clip. Nested offsets accumulate. |
-| `(pixmap-pixel view x y)` | Native unpremultiplied `rgba` color at a checked pixel. |
+| `(pixmap-pixel view x y #:color-space [space 'pixmap])` | Unpremultiplied `rgba` color in the view's space by default, or converted to an explicit descriptor. |
 | `(pixmap-set-pixel! view x y color)` | Native erase of one checked pixel. Requires a writable lease. |
 | `(pixmap-fill! view color)` | Native erase of the whole view. Does not fill parent padding. |
 | `(pixmap->rgba-bytes view #:premultiplied? [#f])` | Detached tight bytes for the view. |
@@ -169,7 +172,8 @@ substitute for a recorded vector picture. No general borrowed views over existin
 surfaces/images are exposed in this pass: that would also need to coordinate
 Skia copy-on-write and mutation notifications. Arbitrary external pointers,
 retained Racket byte strings, foreign release callbacks, general mutable bitmap
-wrappers, F16/F32 formats, GPU surfaces, and performance claims are out of scope.
+wrappers, GPU surfaces, and performance claims are out of scope. F16/F32 storage
+is covered in [FLOAT-PIXELS.md](FLOAT-PIXELS.md).
 
 ## Native references
 
@@ -181,5 +185,6 @@ The implementation targets the SkiaSharp m119 C ABI at mono/skia commit
 - `include/c/sk_pixmap.h`: temporary descriptors, color reads/erase, readback,
   and scaling. `SkPixmap` does not own pixel storage.
 
-Six native callouts are added; existing image-info and sampling layouts are
-reused. Public mutable storage always uses RGBA8888 + premultiplied alpha.
+The original RGBA buffer interface adds six native callouts and reuses the
+image-info and sampling layouts. Both raster-buffer constructors now store an
+`image-info` value and share the same native pixel-conversion path.

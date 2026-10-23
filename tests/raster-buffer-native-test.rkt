@@ -236,7 +236,7 @@
          (check-equal? (subbytes (raster-buffer->storage-bytes copy) 8 20) (make-bytes 12)))))
    (test-case "color-space reference survives source wrapper"
      (define cs (make-linear-srgb-color-space))
-     (with-skia ([b (make-raster-buffer 2 2 #:color-space cs)])
+     (with-skia ([b (make-raster-buffer 2 2 #:color-space (color-space->descriptor cs))])
        (skia-close! cs)
        (with-skia ([im (raster-buffer->image b)] [tag (image-color-space im)])
          (check-true (color-space-linear-gamma? tag)))))

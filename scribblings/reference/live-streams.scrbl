@@ -135,24 +135,23 @@ The result contains the byte count and @racket[#"chunked output"].
 
 @section{Writing Images and Pictures}
 
-The live image writers validate @emph{all} encoding options, even those not used
-by the selected format. In particular, quality must be an exact integer for PNG,
-JPEG, and WebP. This differs from @racket[image->encoded-bytes], which rejects
-non-@racket[#f] options for other formats and accepts noninteger real values
-for WebP quality.
-The live signatures have no ICC-profile override or destination color-space
-keyword. They retain the image's native color interpretation; they are not an
-implicit color conversion interface.
+The live image writers use the options and defaults of @racket[image->encoded-bytes].
+Non-@racket[#f] options for other formats raise an exception. JPEG quality must
+be an exact integer; WebP quality can be fractional. Color-space conversion
+and ICC-profile metadata follow @secref["skia-encoding-options"].
 See @secref["skia-encoding-destinations"] for a comparison with byte-string and
 file output, including what remains at the destination after a failure.
 
 @defproc[(image->port [image image?] [output output-port?]
           [format (or/c 'png 'jpeg 'webp)]
-          [#:quality quality (integer-in 0 100) 90]
-          [#:png-compression compression (integer-in 0 9) 6]
-          [#:jpeg-downsample downsample (or/c 'yuv-420 'yuv-422 'yuv-444) 'yuv-420]
-          [#:jpeg-alpha alpha (or/c 'ignore 'blend-on-black) 'ignore]
+          [#:quality quality (or/c #f (real-in 0 100)) #f]
+          [#:png-compression compression (or/c #f (integer-in 0 9)) #f]
+          [#:jpeg-downsample downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444) #f]
+          [#:jpeg-alpha alpha (or/c #f 'ignore 'blend-on-black) #f]
           [#:webp-lossless? lossless? boolean? #f]
+          [#:color-space space (or/c color-space? #f) #f]
+          [#:icc-profile profile (or/c bytes? #f) #f]
+          [#:icc-description description (or/c string? #f) #f]
           [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
           [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
           exact-nonnegative-integer?]{
@@ -177,11 +176,15 @@ also apply.
 @section{Writing Documents}
 
 Use these writers when the destination is already a port or native stream.
-They do not offer every option available for byte-string and file export;
-see the destination comparison in @secref["skia-reference-documents-output"].
+They share the format and metadata options of byte-string and file export.
+For page limits, annotation support, and failure behavior, see @secref["skia-reference-documents-output"].
 
 @defproc[(output->port [source (or/c output-page? (cons/c output-page? (listof output-page?)))]
           [output output-port?] [format (or/c 'pdf 'svg)]
+          [#:title title string? ""] [#:description description string? ""]
+          [#:id-prefix prefix (or/c string? #f) #f]
+          [#:encoding-quality quality (or/c (integer-in 0 101) #f) #f]
+          [#:pdfa? pdfa? boolean? #f]
           [#:policy policy (or/c 'report 'error 'vector-only) 'error]
           [#:text-mode mode (or/c 'auto 'native 'outline) 'auto]
           [#:raster-dpi dpi (real-in 1 9600) 144]
@@ -197,8 +200,8 @@ failures while writing can leave partial output.
 
 The text-mode and DPI rules are those of @racket[output->bytes]. The automatic
 mode uses native text for PDF and outlines for SVG. SVG output includes physical
-point dimensions. This function does not accept the metadata or identifier
-keywords of @racket[output->bytes]. @tech{Named destinations} cannot be authored on
+point dimensions. Title, description, SVG ID prefix, PDF encoding quality, and
+PDF/A options have the same defaults and restrictions as @racket[output->bytes]. @tech{Named destinations} cannot be authored on
 the intermediate picture-recording canvas; use direct document output when such
 annotations are required.
 
@@ -228,14 +231,17 @@ is provided by these three native-stream operations.
 
 @defproc[(image-write-stream! [image image?] [stream skia-output-stream?]
           [format (or/c 'png 'jpeg 'webp)]
-          [#:quality quality (integer-in 0 100) 90]
-          [#:png-compression compression (integer-in 0 9) 6]
-          [#:jpeg-downsample downsample (or/c 'yuv-420 'yuv-422 'yuv-444) 'yuv-420]
-          [#:jpeg-alpha alpha (or/c 'ignore 'blend-on-black) 'ignore]
-          [#:webp-lossless? lossless? boolean? #f])
+          [#:quality quality (or/c #f (real-in 0 100)) #f]
+          [#:png-compression compression (or/c #f (integer-in 0 9)) #f]
+          [#:jpeg-downsample downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444) #f]
+          [#:jpeg-alpha alpha (or/c #f 'ignore 'blend-on-black) #f]
+          [#:webp-lossless? lossless? boolean? #f]
+          [#:color-space space (or/c color-space? #f) #f]
+          [#:icc-profile profile (or/c bytes? #f) #f]
+          [#:icc-description description (or/c string? #f) #f])
           exact-nonnegative-integer?]{
 Encodes a CPU-compatible image to a memory or file output stream. All encoding
-options are validated as for @racket[image->port], including inactive options.
+options follow @racket[image->encoded-bytes], including format restrictions.
 The caller retains ownership of both resources.
 }
 
@@ -248,16 +254,19 @@ The operation uses the same SKP representation and compatibility limitations as
 
 @defproc[(output-write-stream!
           [source (or/c output-page? (cons/c output-page? (listof output-page?)))]
-          [stream skia-output-stream?]
+          [stream skia-output-stream?] [format (or/c 'pdf 'svg)]
+          [#:title title string? ""] [#:description description string? ""]
+          [#:id-prefix prefix (or/c string? #f) #f]
+          [#:encoding-quality quality (or/c (integer-in 0 101) #f) #f]
+          [#:pdfa? pdfa? boolean? #f]
           [#:policy policy (or/c 'report 'error 'vector-only) 'error]
           [#:text-mode mode (or/c 'auto 'native 'outline) 'auto]
           [#:raster-dpi dpi (real-in 1 9600) 144])
           exact-nonnegative-integer?]{
-Writes one through 1024 output pages as PDF to a native output stream.
-It follows @racket[output->port]'s record-once and preflight rules, using the
-stream's budget, with the same restrictions on metadata options and named
-destinations. There is no format argument: SVG output is provided by
-@racket[output->port], where its physical-size header can be handled correctly.
-The automatic text mode is native. The caller owns the output stream, which
-remains open after the operation.
+Writes one through 1024 PDF pages or one SVG page to a native output stream.
+The required format argument selects the document format. Options, physical-size
+handling, record-once preflight, and restrictions on named destinations follow
+@racket[output->port], using the stream's budget. Automatic text mode is native
+for PDF and outline for SVG. The caller owns the stream, which remains open
+after successful writing.
 }

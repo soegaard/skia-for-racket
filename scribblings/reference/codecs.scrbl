@@ -62,9 +62,8 @@ pixels, normalize orientation, or enforce the full-raster allocation limits of
 @defproc[(codec-frame-count [codec codec?])
           exact-positive-integer?]{
 Returns the number of frame indices exposed by the codec. A still image has
-one frame. Use this count to select indices for @racket[codec->image], not
-@racket[encoded-image-info-frame-count]; the distinction is explained in
-@secref["skia-codec-frame-information"]. Successfully reading the frame count
+one frame. This agrees with @racket[encoded-image-info-frame-count].
+Successfully reading the frame count
 does not guarantee that every frame can be decoded.
 }
 
@@ -86,7 +85,7 @@ the returned color-space resource. The query does not convert any samples.
 @defproc[(codec->image [codec codec?]
           [#:frame-index index (integer-in 0 2147483647) 0]
           [#:normalize-origin? normalize? boolean? #t]
-          [#:color-space space (or/c color-space? #f) #f])
+          [#:color-space space (or/c 'source #f 'srgb 'linear-srgb bytes?) 'source])
           image?]{
 Decodes the selected frame into a new image.
 
@@ -98,12 +97,12 @@ result, including incomplete input, raises an exception instead of returning
 partially initialized pixels.
 
 The codec reconstructs the requested frame's dependencies into a fresh buffer.
-Calls need not be made in frame order. The @racket[#f] color-space default
-preserves the codec's color space; supplying an open @racket[color-space?]
-resource requests conversion during decoding. The returned image keeps its own
-native reference to that space. This differs from the descriptor arguments and
-sRGB defaults of scanline and incremental decoding; see
-@secref["skia-pixel-descriptions"].
+Calls need not be made in frame order. The @racket['source] color-space default
+preserves the codec's color space, including an untagged source. Supply a
+@tech{color-space descriptor} to request a destination space; @racket[#f]
+requests untagged output. Scanline and incremental decoding use the same
+color-space choices. Use @racket[color-space->descriptor] when starting with a
+live color-space resource. The returned image owns its pixel data and color-space reference.
 
 The default permutes pixels to top-left orientation without resampling. Origins
 that exchange axes also exchange the output width and height. Disabling
@@ -121,7 +120,7 @@ coordinates. This function neither scales the image nor selects a subset.
           (image-width image) (image-height image))))
 ]
 
-A still PNG has one selectable frame; its animation-metadata count can be zero.
+The result is @racket['(1 1 3 2)]: both frame counts include the still image's frame.
 
 @reference-figure["codec-image.png"
                   "The decoded three-by-two image is solid blue, enlarged here with nearest sampling."]
@@ -129,7 +128,7 @@ A still PNG has one selectable frame; its animation-metadata count can be zero.
 
 @defproc[(image-frame-from-bytes [encoded bytes?] [index (integer-in 0 2147483647) 0]
           [#:normalize-origin? normalize? boolean? #t]
-          [#:color-space space (or/c color-space? #f) #f])
+          [#:color-space space (or/c 'source #f 'srgb 'linear-srgb bytes?) 'source])
           image?]{
 Decodes frame @racket[index] from @racket[encoded] and returns it as an image.
 
@@ -140,7 +139,7 @@ temporary codec is closed before returning, without invalidating the image.
 
 @defproc[(image-frame-from-file [filename path-string?] [index (integer-in 0 2147483647) 0]
           [#:normalize-origin? normalize? boolean? #t]
-          [#:color-space space (or/c color-space? #f) #f])
+          [#:color-space space (or/c 'source #f 'srgb 'linear-srgb bytes?) 'source])
           image?]{
 Decodes frame @racket[index] from @racket[filename] and returns it as an image.
 
@@ -232,11 +231,10 @@ queries when sizing an orientation-normalized result.
 }
 
 @defproc[(encoded-image-info-frame-count [info encoded-image-info?])
-          exact-nonnegative-integer?]{
-Returns the native animation-metadata count captured by the probe. A still
-image commonly reports zero. This is not @racket[codec-frame-count], which
-exposes one selectable frame for a still image; see
-@secref["skia-codec-frame-information"].
+          exact-positive-integer?]{
+Returns the number of selectable frames captured by the probe, including one
+for a still image. This agrees with @racket[codec-frame-count] for the same input.
+The count does not guarantee that decoding any selected frame will succeed.
 }
 
 @section[#:tag "skia-codec-frame-information"]{Animation Frame Information}
@@ -246,27 +244,24 @@ when implementing animation playback. Decode its pixels separately with
 @racket[codec->image]; that operation reconstructs the frame's dependencies
 without requiring you to supply earlier frames.
 
-Selectable frames and animation metadata are different:
-
-@itemlist[
- @item{@racket[codec-frame-count] counts frames that can be selected for
-   decoding. It is always at least one, including for a still image.}
- @item{@racket[encoded-image-info-frame-count] reports how many entries Skia
-   supplied in its animation metadata. A still image can have zero. Do not
-   use this value as the number of frames available to @racket[codec->image].}
- @item{@racket[codec-frame-info] returns @racket[#f] for frame zero of a still
-   image when no animation metadata exists. This means there is no animation
-   record, not that the frame cannot be decoded.}]
+Both frame-count queries count selectable frames, including one for a still
+image. @racket[codec-frame-info] returns a record for every valid frame index.
+Inspecting these records does not decode the pixels or establish that decoding will succeed.
 
 Frame information is stored in an immutable Racket structure. Durations are in milliseconds,
 indices are zero-based, and rectangles remain in encoded pixel coordinates.
 
 @defproc[(codec-frame-info [codec codec?] [index (integer-in 0 2147483647)])
-          (or/c codec-frame-info? #f)]{
-Returns metadata for a valid selectable frame. A still image with no native
-animation metadata returns @racket[#f] for index zero. An invalid index or failure
-to obtain metadata for an animation frame raises an exception.
-The result does not contain the frame's pixels.
+          codec-frame-info?]{
+Returns metadata for a valid selectable frame. An invalid index or failure to
+obtain metadata for an animation frame raises an exception.
+
+For a still image without animation metadata, frame zero has no required earlier
+frame, duration zero, disposal @racket['keep], blend @racket['src], and a rectangle
+covering the full encoded image. Its alpha type comes from the image description;
+@racket[codec-frame-info-has-alpha-within-bounds?] is true unless that type is
+@racket['opaque]. The fully-received flag is @racket[#f] because no per-frame
+receipt information is available. The result does not contain the frame's pixels.
 }
 
 @defproc[(codec-frame-info? [v any/c])
@@ -295,6 +290,7 @@ Returns the frame duration in milliseconds; zero is permitted.
 @defproc[(codec-frame-info-fully-received? [info codec-frame-info?])
           boolean?]{
 Returns whether the native codec reports the frame data as fully received.
+For a still image without animation metadata, returns @racket[#f] (not reported).
 This metadata flag is not a substitute for a successful pixel decode.
 }
 

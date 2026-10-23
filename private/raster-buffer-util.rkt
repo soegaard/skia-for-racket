@@ -8,7 +8,7 @@
 ;; Prepares native raster storage operations with explicit stride and size limits.
 
 (require "check.rkt" (only-in ffi/unsafe ctype-sizeof _intptr))
-(provide raster-layout raster-point raster-subset prepare-raster-input raster-procedure)
+(provide raster-layout raster-point raster-subset checked-rgba-input raster-procedure)
 
 ;; RGBA8888 storage has four bytes/pixel, and every row starts on a 4-byte
 ;; boundary. Charge ALL allocated bytes, including the last row's padding.
@@ -55,10 +55,9 @@
   (unless (and (procedure? proc) (procedure-arity-includes? proc 1))
     (raise-argument-error who "procedure accepting one argument" proc)))
 
-; prepare-raster-input : symbol? integer? integer? bytes? any/c boolean? -> bytes?
-;   Snapshots packed premultiplied RGBA input, validating all pixels before a destination can be
-;   changed.
-(define (prepare-raster-input who w h data row-bytes premultiplied?)
+; checked-rgba-input : symbol? integer? integer? bytes? any/c boolean? -> bytes?
+;   Copies logical RGBA rows without changing alpha representation, checking premultiplied samples.
+(define (checked-rgba-input who w h data row-bytes premultiplied?)
   (boolean who premultiplied?)
   (unless (bytes? data) (raise-argument-error who "bytes?" data))
   (define-values (rb minimum allocation) (raster-layout who w h row-bytes))
@@ -77,7 +76,6 @@
       (when (and premultiplied? (> v a))
         (raise-arguments-error who "premultiplied RGB must not exceed alpha"
                                "pixel" (list x y) "channel" c "value" v "alpha" a))
-      (bytes-set! out (+ dst c)
-                  (if premultiplied? v (quotient (+ (* v a) 127) 255))))
+      (bytes-set! out (+ dst c) v))
     (bytes-set! out (+ dst 3) a))
   out)

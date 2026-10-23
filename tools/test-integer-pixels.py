@@ -55,12 +55,12 @@ class Sources(unittest.TestCase):
         found=[f for f in forms if isinstance(f,list) and f[:2]==['define-native','sk_pixmap_compute_is_opaque']]
         self.assertEqual(len(found),1)
         self.assertEqual(found[0][2],['_fun','_pointer','->','_stdbool'])
-    def test_legacy_constructor_arity_is_preserved_by_auto_field(self):
-        self.assertIn('[description #:auto #:mutable]',self.text('private/core.rkt'))
-        self.assertIn('set-raster-buffer-resource-description!',self.text('private/core.rkt'))
-        self.assertIn('(make-raster-buffer-record handle w h rb cp (box #f))',self.text('raster-buffers.rkt'))
-    def test_default_buffer_premultiplication_stays_in_existing_helper(self):
-        self.assertIn('(prepare-raster-input who w h data row-bytes premultiplied?)',self.text('raster-buffers.rkt'))
+    def test_all_buffers_have_immutable_format_descriptions(self):
+        self.assertIn('state description layout-range)',self.text('private/core.rkt'))
+        self.assertNotIn('set-raster-buffer-resource-description!',self.text('private/core.rkt'))
+        self.assertIn('(make-raster-buffer-record handle w h rb cp (box #f) description layout-range)',self.text('raster-buffers.rkt'))
+    def test_rgba_inputs_share_validation_and_native_conversion(self):
+        self.assertIn('(checked-rgba-input who w h data rb premultiplied?)',self.text('raster-buffers.rkt'))
     def test_no_rgba_hard_coded_subset_offset(self):
         source=self.text('raster-buffers.rkt')
         self.assertIn('(* (buffer-bpp b) (pixmap-x v))',source)
@@ -115,7 +115,7 @@ class Sources(unittest.TestCase):
         arities={'sk_pixmap_new_with_params':3,'sk_pixmap_read_pixels':6,'sk_pixmap_scale_pixels':3,
                  'sk_pixmap_compute_is_opaque':1,'sk_pixmap_erase_color':3,'sk_image_new_raster_copy':3,
                  'sk_surface_new_raster':3,'sk_surface_new_raster_direct':6,'dynamic-wind':3,
-                 'call-with-native-temporary':5,'make-raster-buffer-record':6,'make-surface-record':4,
+                 'call-with-native-temporary':5,'make-raster-buffer-record':8,'make-surface-record':4,
                  'make-image-record':3,'new-owned':4,'call-with-owned':3}
         def walk(f):
             if not isinstance(f,list) or not f or f[0]=='quote':return

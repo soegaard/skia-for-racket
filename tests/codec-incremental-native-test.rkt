@@ -187,10 +187,19 @@
       (with-skia ([s (make-codec-incremental #:alpha-type 'premul)])
         (complete s) (check-equal? (image-info-alpha-type (codec-incremental-info s)) 'premul)
         (check-equal? (snapshot-rgba s) (incremental-fixture-pixels))))
-    (test-case "detached sRGB metadata is preserved"
-      (with-skia ([s (make-codec-incremental)])
-        (complete s) (check-equal? (image-info-color-space (codec-incremental-info s)) 'srgb)
-        (check-equal? (codec-incremental-origin s) 'top-left)))
+    (test-case "source-preserving and explicit color spaces are reported"
+      (with-skia ([codec (codec-from-bytes (incremental-fixture-bytes))])
+        (define source (codec-color-space codec))
+        (dynamic-wind void
+         (lambda ()
+           (for ([space (in-list '(source #f srgb linear-srgb))])
+             (with-skia ([s (make-codec-incremental #:color-space space)])
+               (complete s)
+               (check-equal? (image-info-color-space (codec-incremental-info s))
+                             (if (eq? space 'source)
+                                 (and source (color-space->descriptor source)) space))
+               (check-equal? (codec-incremental-origin s) 'top-left))))
+         (lambda () (when source (skia-close! source))))))
     (test-case "interlaced initialized rows are not mistaken for completion"
       (with-skia ([s (make-codec-incremental)])
         (define chunks (incremental-fixture-parts #:interlaced? #t))

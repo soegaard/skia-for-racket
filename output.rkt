@@ -200,9 +200,8 @@
                        #:id-prefix [prefix #f] #:encoding-quality [quality #f]
                        #:pdfa? [pdfa? #f])
   (define who 'output->bytes)
-  (boolean who pdfa?)
-  (when (and pdfa? (eq? format 'svg))
-    (raise-arguments-error who "#:pdfa? is PDF-only" "given" pdfa?))
+  (define-values (_title _description _prefix q)
+    (document-output-options who format title description prefix quality pdfa?))
   (define pages (output-pages who source format))
   (output-text-mode who mode #:auto? #t)
   (pdf-raster-dpi who dpi)
@@ -211,9 +210,6 @@
   (define effective-mode (if (eq? mode 'auto) (if (eq? format 'svg) 'outline 'native) mode))
   (cond
     [(eq? format 'pdf)
-     (when prefix (raise-arguments-error who "#:id-prefix is SVG-only" "given" prefix))
-     (define q (if quality (pdf-encoding-quality who quality) 101))
-     (pdf-metadata-bytes who (list title description))
      (call-with-pdf-bytes
       (lambda (doc)
         (for ([page (in-list pages)] [index (in-naturals 1)])
@@ -224,10 +220,7 @@
              (lambda (c) (draw-output-page c page #:text-mode effective-mode #:raster-dpi dpi))))))
       #:title title #:subject description #:raster-dpi dpi #:encoding-quality q #:pdfa? pdfa?)]
     [else
-     (when quality (raise-arguments-error who "#:encoding-quality is PDF-only" "given" quality))
      (define id (or prefix "skia"))
-     (svg-id-prefix who id)
-     (define-values (_title _desc) (svg-metadata who title description))
      (define page (car pages))
      (define-values (w h) (output-page-size-in-points page))
      (svg-with-point-size

@@ -104,18 +104,19 @@
 ;;;
 
 ; make-codec-incremental : [#:color-type (or/c 'rgba-8888 'bgra-8888)] [#:alpha-type (or/c 'premul
-;   'unpremul)] [#:color-space (or/c #f 'srgb 'linear-srgb bytes?)] [#:row-bytes (or/c
+;   'unpremul)] [#:color-space (or/c 'source #f 'srgb 'linear-srgb bytes?)] [#:row-bytes (or/c
 ;   exact-positive-integer? #f)] [#:limit exact-positive-integer?] -> codec-incremental-session?
 ;   Returns a session in 'awaiting-input state with no decoded destination.
 (define (make-codec-incremental #:color-type [color 'rgba-8888]
                                #:alpha-type [alpha 'unpremul]
-                               #:color-space [space 'srgb]
+                               #:color-space [space 'source]
                                #:row-bytes [row-bytes #f]
                                #:limit [limit (current-skia-byte-limit)])
   (define who 'make-codec-incremental)
   (define template (incremental-options who color alpha space row-bytes limit))
   (live-streams-check!) ; reuse exactly one process-global callback provider
-  (define c (incremental-cell (make-incremental-input limit) template row-bytes limit
+  (define c (incremental-cell (make-incremental-input limit) template (eq? space 'source)
+                             row-bytes limit
                              #f #f #f #f 0 0 #f 'awaiting-input 'not-started #f
                              -1 #f 0 0 0 0))
   (make-incremental-session-record
@@ -254,7 +255,10 @@
       (define height (sk-image-info-height source))
       (unless (and (<= 1 width 32768) (<= 1 height 32768))
         (error who "native image dimensions exceed the supported bounds"))
-      (define info (image-info-with-dimensions (incremental-cell-template c) width height))
+      (define info
+        (codec-output-info who cp
+          (image-info-with-dimensions (incremental-cell-template c) width height)
+          (incremental-cell-source-space? c)))
       (define-values (stride _minimum size)
         (image-info-storage-layout info #:row-bytes (incremental-cell-requested-row-bytes c)))
       (set-incremental-cell-info! c info)
@@ -279,7 +283,9 @@
   (unless (incremental-cell-pixels c) (allocate-destination! c))
   (set-incremental-cell-starts! c (add1 (incremental-cell-starts c)))
   (define result
-    (call-with-image-info-native 'codec-incremental-step! (incremental-cell-info c)
+    (call-with-codec-output-info-native
+      'codec-incremental-step! (incremental-cell-codec c) (incremental-cell-info c)
+      (incremental-cell-source-space? c)
       (lambda (info _space)
         ;; The native start copies its image-info but may make source callbacks
         ;; before returning. Do not lend a movable Racket cstruct during them.

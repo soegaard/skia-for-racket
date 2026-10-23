@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "d4abc2573ddb00c333670ba8161aba710afb7ba3"
+      "git_blob": "cf982356ee25b1e4abbb3c2de8a9a153ad035c2a"
     },
     {
       "file": "api/public-api-gui.json",

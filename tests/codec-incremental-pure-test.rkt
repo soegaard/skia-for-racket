@@ -152,7 +152,7 @@
           (make-incremental-progress 'needs-input 'incomplete-input #f))))
     (test-case "default options validate without native initialization"
       (check-equal?
-        (image-info-color-type (incremental-options 'test 'rgba-8888 'unpremul 'srgb #f 4096))
+        (image-info-color-type (incremental-options 'test 'rgba-8888 'unpremul 'source #f 4096))
         'rgba-8888))
     (test-case "BGRA premul options are explicit"
       (check-equal?

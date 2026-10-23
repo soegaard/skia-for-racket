@@ -9,20 +9,44 @@
 
 (require "../image-info.rkt" (submod "../image-info.rkt" internals)
          "core.rkt" "native.rkt" "types.rkt" "lifetime.rkt"
-         (submod "core.rkt" color-internals))
+         (submod "core.rkt" color-internals)
+         (only-in (submod "core.rkt" codec-query-internals) call-with-codec-image-info))
 (provide color-space->descriptor descriptor->color-space
-         call-with-image-info-native borrowed-color-space->descriptor)
+         call-with-image-info-native borrowed-color-space->descriptor
+         codec-output-info call-with-codec-output-info-native)
 
 ; descriptor->color-space : (or/c #f 'srgb 'linear-srgb bytes?) -> (or/c #f color-space?)
 ;   Returns #f for an absent description, or a newly owned native color space for a named
 ;   description or copied ICC bytes.
 (define (descriptor->color-space descriptor)
-  (define d (copy-descriptor 'descriptor->color-space descriptor))
-  (case d
-    [(#f) #f]
-    [(srgb) (make-srgb-color-space)]
-    [(linear-srgb) (make-linear-srgb-color-space)]
-    [else (color-space-from-icc-bytes d)]))
+  (make-descriptor-color-space 'descriptor->color-space descriptor))
+
+; codec-output-info : symbol? cpointer? image-info? boolean? -> image-info?
+;   Resolves a source-preserving decode request to a concrete output description.
+(define (codec-output-info who cp template source?)
+  (if (and source? (not (eq? (image-info-color-type template) 'alpha-8)))
+      (call-with-codec-image-info who cp
+        (lambda (native)
+          (make-image-info (image-info-width template) (image-info-height template)
+            #:color-type (image-info-color-type template)
+            #:alpha-type (image-info-alpha-type template)
+            #:color-space
+            (borrowed-color-space->descriptor who (sk-image-info-colorspace native)))))
+      template))
+
+; call-with-codec-output-info-native : symbol? cpointer? image-info? boolean? procedure? -> any/c
+;   Preserves the codec's original native profile when requested, without serializing it again.
+(define (call-with-codec-output-info-native who cp info source? proc)
+  (if (and source? (not (eq? (image-info-color-type info) 'alpha-8)))
+      (call-with-codec-image-info who cp
+        (lambda (source)
+          (define space (sk-image-info-colorspace source))
+          (proc (make-sk-image-info
+                 space (image-info-width info) (image-info-height info)
+                 (vector-ref (format-data who (image-info-color-type info)) 0)
+                 (case (image-info-alpha-type info) [(opaque) 1] [(premul) 2] [(unpremul) 3]))
+                space)))
+      (call-with-image-info-native who info proc)))
 
 ; color-space->descriptor : color-space? -> (or/c 'srgb 'linear-srgb (and/c bytes? immutable?))
 ;   Returns a detached color-space description.

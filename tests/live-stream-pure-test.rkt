@@ -108,23 +108,48 @@
   (test-case "quota before chunk" (define p (open-output-bytes))
     (check-exn exn:fail? (lambda () (live-write-all 'test p #"abc" (box 0) 2 #f)))
     (check-equal? (get-output-bytes p) #""))
-  (test-case "SVG physical dimensions" (define-values (f end) (make-svg-header-filter 'test 64 48))
+  (test-case "SVG physical dimensions"
+    (define-values (f end) (make-svg-header-filter 'test 64 48 #"" #"" #"skia"))
     (define r (f #"<svg width=\"64\" height=\"48\"><rect/></svg>")) (end)
     (check-true (regexp-match? #rx#"width=\"64pt\"" r))
-    (check-true (regexp-match? #rx#"viewBox=\"0 0 64 48\"" r)))
-  (test-case "split SVG header" (define-values (f end) (make-svg-header-filter 'test 64 48))
+    (check-true (regexp-match? #rx#"viewBox=\"0 0 64 48\"" r))
+    (define source
+      (bytes-append
+       #"<svg width=\"64\" height=\"48\"><use href=\"#clip99\"/><clipPath id=\"clip99\"/>"
+       #"<rect fill=\"url(#clip99)\"/><a href=\"https://example.test/url(#literal)\">"
+       #"<text>url(#text)</text></a></svg>"))
+    (define (rewritten chunks)
+      (define-values (filter finish)
+        (make-svg-header-filter 'test 64 48 #"A &amp; B" #"Description" #"demo"))
+      (define result (apply bytes-append (map filter chunks)))
+      (finish)
+      result)
+    (define expected (rewritten (list source)))
+    (check-true (regexp-match? #rx#"<title>A &amp; B</title><desc>Description</desc>" expected))
+    (check-true (regexp-match? #rx#"id=\"demo-0\"" expected))
+    (check-true (regexp-match? #rx#"href=\"#demo-0\"" expected))
+    (check-true (regexp-match? #rx#"url\\(#demo-0\\)" expected))
+    (check-true (regexp-match? #rx#"https://example.test/url\\(#literal\\)" expected))
+    (check-true (regexp-match? #rx#">url\\(#text\\)<" expected))
+    (check-equal? (rewritten (for/list ([b (in-bytes source)]) (bytes b))) expected)
+    (for ([split (in-range (add1 (bytes-length source)))])
+      (check-equal? (rewritten (list (subbytes source 0 split) (subbytes source split))) expected)))
+  (test-case "split SVG header"
+    (define-values (f end) (make-svg-header-filter 'test 64 48 #"" #"" #"skia"))
     (check-equal? (f #"<?xml version=\"1.0\"?><sv") #"")
     (check-true (regexp-match? #rx#"<svg" (f #"g width=\"64\" height=\"48\">")))
     (check-equal? (f #"<rect/></svg>") #"<rect/></svg>") (end))
   (test-case "duplicate SVG dimensions"
-    (define-values (f end) (make-svg-header-filter 'test 64 48))
+    (define-values (f end) (make-svg-header-filter 'test 64 48 #"" #"" #"skia"))
     (check-exn exn:fail? (lambda () (f #"<svg width=\"1\" width=\"2\" height=\"3\">"))))
-  (test-case "missing SVG dimensions" (define-values (f end) (make-svg-header-filter 'test 64 48))
+  (test-case "missing SVG dimensions"
+    (define-values (f end) (make-svg-header-filter 'test 64 48 #"" #"" #"skia"))
     (check-exn exn:fail? (lambda () (f #"<svg width=\"1\">"))))
   (test-case "incomplete SVG cannot finish"
-    (define-values (f end) (make-svg-header-filter 'test 64 48)) (f #"<svg ")
+    (define-values (f end) (make-svg-header-filter 'test 64 48 #"" #"" #"skia")) (f #"<svg ")
     (check-exn exn:fail? end))
-  (test-case "SVG header bound" (define-values (f end) (make-svg-header-filter 'test 64 48))
+  (test-case "SVG header bound"
+    (define-values (f end) (make-svg-header-filter 'test 64 48 #"" #"" #"skia"))
     (check-exn exn:fail? (lambda () (f (make-bytes 16385 32)))))))
 (module+ main
 

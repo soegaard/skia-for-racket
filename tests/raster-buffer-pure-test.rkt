@@ -24,7 +24,7 @@
 
 ; input : exact-nonnegative-integer? exact-nonnegative-integer? bytes? [any/c boolean?] -> any
 ;   Validates supplied pixel bytes and their stride/premultiplication declaration.
-(define (input w h bs [rb #f] [pm? #f]) (prepare-raster-input 'test w h bs rb pm?))
+(define (input w h bs [rb #f] [pm? #f]) (checked-rgba-input 'test w h bs rb pm?))
 
 ;;;
 ;;; Regression Suite
@@ -72,10 +72,10 @@
    (test-case "variadic callback accepted" (check-not-exn (lambda () (raster-procedure 't list))))
    (test-case "opaque input unchanged"
      (check-equal? (input 1 1 (bytes 12 24 48 255)) (bytes 12 24 48 255)))
-   (test-case "transparent RGB discarded"
-     (check-equal? (input 1 1 (bytes 255 64 128 0)) (bytes 0 0 0 0)))
-   (test-case "premultiplication rounds to nearest"
-     (check-equal? (input 1 1 (bytes 255 128 64 128)) (bytes 128 64 32 128)))
+   (test-case "input validation preserves transparent unpremultiplied RGB"
+     (check-equal? (input 1 1 (bytes 255 64 128 0)) (bytes 255 64 128 0)))
+   (test-case "premultiplication is left to the shared native conversion"
+     (check-equal? (input 1 1 (bytes 255 128 64 128)) (bytes 255 128 64 128)))
    (test-case "valid premultiplied input preserved"
      (check-equal? (input 1 1 (bytes 64 32 16 64) #f #t) (bytes 64 32 16 64)))
    (test-case "invalid premultiplied input rejected"

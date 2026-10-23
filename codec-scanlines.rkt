@@ -78,24 +78,27 @@
     (unless (= expected (sk_codec_next_scanline ptr))
       (error who "native next-row position disagrees with the scanline order"))))
 
-; start-session : symbol? procedure? real? image-info? -> codec-scanline-session?
+; start-session : symbol? procedure? real? image-info? boolean? -> codec-scanline-session?
 ;   Creates a private codec, validates scaled geometry and row order, and adopts the scanline
 ;   cursor.
-(define (start-session who create-codec scale template)
+(define (start-session who create-codec scale template source?)
   ;; This codec is private: no public codec can reset the scanline cursor, and
   ;; closing a caller's native stream cannot invalidate its private duplicate.
   (define codec (create-codec))
   (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! codec) (raise e))])
     (define source (codec-info codec))
     (define-values (width height) (codec-scaled-dimensions codec scale))
-    (define info (image-info-with-dimensions template width height))
+    (define info
+      (call-with-owned who (list (codec-h who codec))
+        (lambda (cp)
+          (codec-output-info who cp (image-info-with-dimensions template width height) source?))))
     ;; Check that at least a single row fits; do not allocate the full image.
     (define-values (_rb _minimum _size)
       (image-info-storage-layout (image-info-with-dimensions info width 1)))
     (define handle (codec-h who codec))
     (call-with-owned who (list handle)
       (lambda (ptr)
-        (call-with-image-info-native who info
+        (call-with-codec-output-info-native who ptr info source?
           (lambda (native _space)
             ;; Null options = first frame, full width, no subset. Native SkCodec
             ;; copies image-info (and its color-space reference) on success.
@@ -115,49 +118,50 @@
 
 ; codec-scanline-from-bytes : bytes? [#:scale (and/c real? (>/c 0))] [#:color-type (or/c 'rgba-8888
 ;   'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32)] [#:alpha-type
-;   (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c #f 'srgb 'linear-srgb bytes?)] ->
+;   (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c 'source #f 'srgb 'linear-srgb bytes?)] ->
 ;   codec-scanline-session?
 ;   Starts a session from copied, nonempty encoded bytes.
 (define (codec-scanline-from-bytes bytes #:scale [scale 1]
                                    #:color-type [color 'rgba-8888]
                                    #:alpha-type [alpha 'unpremul]
-                                   #:color-space [space 'srgb])
+                                   #:color-space [space 'source])
   (define who 'codec-scanline-from-bytes)
   (unless (bytes? bytes) (raise-argument-error who "bytes?" bytes))
   (define-values (requested template) (scanline-options who scale color alpha space))
-  (start-session who (lambda () (codec-from-bytes bytes)) requested template))
+  (start-session who (lambda () (codec-from-bytes bytes)) requested template (eq? space 'source)))
 
 ; codec-scanline-from-stream : skia-input-stream? [#:scale (and/c real? (>/c 0))] [#:color-type
 ;   (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565 'rgba-1010102 'rgba-f16
-;   'rgba-f32)] [#:alpha-type (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c #f 'srgb
+;   'rgba-f32)] [#:alpha-type (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c 'source #f 'srgb
 ;   'linear-srgb bytes?)] -> codec-scanline-session?
 ;   Starts a session through a private duplicate at byte zero.
 (define (codec-scanline-from-stream stream #:scale [scale 1]
                                     #:color-type [color 'rgba-8888]
                                     #:alpha-type [alpha 'unpremul]
-                                    #:color-space [space 'srgb])
+                                    #:color-space [space 'source])
   (define who 'codec-scanline-from-stream)
   (unless (skia-input-stream? stream) (raise-argument-error who "skia-input-stream?" stream))
   (define-values (requested template) (scanline-options who scale color alpha space))
-  (start-session who (lambda () (codec-from-stream stream)) requested template))
+  (start-session who (lambda () (codec-from-stream stream)) requested template (eq? space 'source)))
 
 ; codec-scanline-from-port/buffered : input-port? [#:scale (and/c real? (>/c 0))] [#:color-type
 ;   (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8 'rgb-565 'rgba-1010102 'rgba-f16
-;   'rgba-f32)] [#:alpha-type (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c #f 'srgb
+;   'rgba-f32)] [#:alpha-type (or/c 'opaque 'premul 'unpremul)] [#:color-space (or/c 'source #f 'srgb
 ;   'linear-srgb bytes?)] [#:limit exact-positive-integer?] [#:close? boolean?] [#:cancel-evt (or/c
 ;   evt? #f)] -> codec-scanline-session?
 ;   Validates the requested output options, buffers the unread port input, and starts a session.
 (define (codec-scanline-from-port/buffered in #:scale [scale 1]
                                            #:color-type [color 'rgba-8888]
                                            #:alpha-type [alpha 'unpremul]
-                                           #:color-space [space 'srgb]
+                                           #:color-space [space 'source]
                                            #:limit [limit (current-skia-byte-limit)]
                                            #:close? [close? #f] #:cancel-evt [cancel #f])
   (define who 'codec-scanline-from-port/buffered)
   (define-values (requested template) (scanline-options who scale color alpha space))
   (with-skia ([stream (buffered-port->input-stream
                       in #:limit limit #:close? close? #:cancel-evt cancel)])
-    (start-session who (lambda () (codec-from-stream stream)) requested template)))
+    (start-session who (lambda () (codec-from-stream stream)) requested template
+                   (eq? space 'source))))
 
 ;;;
 ;;; Session Metadata and Row Mapping

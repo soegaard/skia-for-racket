@@ -64,4 +64,5 @@
               (and (exact-positive-integer? row-bytes) (<= row-bytes #x7fffffff)
                    (zero? (modulo row-bytes 4))))
     (raise-argument-error who "#f or positive 4-byte-aligned row stride" row-bytes))
-  (make-image-info 1 1 #:color-type color #:alpha-type alpha #:color-space space))
+  (make-image-info 1 1 #:color-type color #:alpha-type alpha
+                   #:color-space (if (eq? space 'source) #f space)))

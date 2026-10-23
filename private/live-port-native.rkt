@@ -222,6 +222,10 @@
 ;   Allocates a temporary descriptor for raster pixels borrowed from an image.
 (define-raw sk_pixmap_new (_fun #:blocking? #t -> _pointer))
 
+; sk_pixmap_set_colorspace : (_fun #:blocking? #t _pointer _pointer -> _void) (FFI)
+;   Sets a temporary pixmap metadata tag without converting its pixels.
+(define-raw sk_pixmap_set_colorspace (_fun #:blocking? #t _pointer _pointer -> _void))
+
 ; sk_pixmap_destructor : (_fun #:blocking? #t _pointer -> _void) (FFI)
 ;   Releases a temporary pixmap descriptor without owning the image pixels it describes.
 (define-raw sk_pixmap_destructor (_fun #:blocking? #t _pointer -> _void))
@@ -850,19 +854,21 @@
   n)
 
 ; native-encode-image : native-reference? output-port? symbol? real? exact-integer? exact-integer?
-;   exact-integer? boolean? exact-positive-integer? any/c procedure? -> (values vector? hash?
+;   exact-integer? boolean? any/c any/c any/c exact-positive-integer? any/c procedure?
+;   -> (values vector? hash?
 ;   exact-nonnegative-integer? exact-nonnegative-integer?)
 ;   Encodes a retained CPU image with validated format options; the service finish hook releases
 ;   leases after all native calls end.
 (define (native-encode-image ref out format quality compression downsample alpha lossless?
-                             limit cancel finish)
+                             icc text sentinel limit cancel finish)
   (checked-ready)
   (define image (reference-pointer ref))
+  (define profile (and icc (reference-pointer icc)))
   (define options
     (case format
-      [(png) (make-png #xf8 compression #f #f #f)]
-      [(jpeg) (make-jpeg quality downsample alpha #f #f #f)]
-      [(webp) (make-webp (if lossless? 1 0) (exact->inexact quality) #f #f)]))
+      [(png) (make-png #xf8 compression #f profile text)]
+      [(jpeg) (make-jpeg quality downsample alpha #f profile text)]
+      [(webp) (make-webp (if lossless? 1 0) (exact->inexact quality) profile text)]))
   (define encode (case format [(png) sk_pngencoder_encode] [(jpeg) sk_jpegencoder_encode]
                               [(webp) sk_webpencoder_encode]))
   (call-with-values
@@ -872,10 +878,15 @@
         (define pixmap (sk_pixmap_new))
         (define output (sk_managedwstream_new #f))
         (define okay (and pixmap output (sk_image_peek_pixels image pixmap)
+                           (begin
+                             ;; Match buffered PNG's explicit ICC override workaround.
+                             (when (and profile (eq? format 'png))
+                               (sk_pixmap_set_colorspace pixmap sentinel))
+                             #t)
                            (encode output pixmap options)))
         (when output (sk_managedwstream_destroy output))
         (when pixmap (sk_pixmap_destructor pixmap))
-        (void/reference-sink ref options)
+        (void/reference-sink ref icc options)
         (vector (if okay 'ok 'native-encode-failure)))
       #:output out #:limit limit #:cancel-evt cancel #:finish finish))
    checked-result))
@@ -996,16 +1007,18 @@
       #:limit limit #:cancel-evt cancel #:finish finish))
    checked-result))
 
-; native-write-pages : (listof native-reference?) list? output-port? symbol? real?
-;   exact-positive-integer? any/c procedure? -> (values vector? hash? exact-nonnegative-integer?
+; native-write-pages : (listof native-reference?) list? output-port? symbol? real? any/c any/c
+;   exact-integer? boolean? exact-positive-integer? any/c procedure?
+;   -> (values vector? hash? exact-nonnegative-integer?
 ;   exact-nonnegative-integer?)
 ;   Replays retained pictures into PDF pages or a single SVG canvas, pairing references and sizes
 ;   in page order and finalizing before cleanup.
-(define (native-write-pages refs sizes out format dpi limit cancel finish)
+(define (native-write-pages refs sizes out format dpi title description quality pdfa?
+                            limit cancel finish)
   (checked-ready)
   (define pointers (map reference-pointer refs))
   (define bounds (make-rect 0.0 0.0 (caar sizes) (cadar sizes)))
-  (define metadata (make-pdf #f #f #f #f #f #f #f #f dpi #f 101))
+  (define metadata (make-pdf title #f description #f #f #f #f #f dpi pdfa? quality))
   (call-with-values
    (lambda ()
      (run-operation

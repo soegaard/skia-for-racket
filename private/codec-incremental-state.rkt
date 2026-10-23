@@ -13,7 +13,7 @@
          incremental-session-record-cell incremental-session-record-creator
            make-incremental-session-record)
 (struct incremental-cell
-  (input template requested-row-bytes limit
+  (input template source-space? requested-row-bytes limit
          [codec #:mutable] [pixels #:mutable] [info #:mutable] [origin #:mutable]
          [stride #:mutable] [size #:mutable] [started? #:mutable] [status #:mutable]
          [result #:mutable] [rows #:mutable] [last-visible #:mutable]
@@ -21,7 +21,8 @@
          [decodes #:mutable] [allocations #:mutable]))
 ;; Fields:
 ;;   input: incremental-input buffer. template: one-pixel image-info carrying requested format and
-;;   color interpretation. requested-row-bytes: requested stride or #f for tight rows. limit:
+;;   color interpretation. source-space?: whether to use the encoded source's color space.
+;;   requested-row-bytes: requested stride or #f for tight rows. limit:
 ;;   positive byte-allocation limit captured at construction.
 ;;   codec and pixels: mutable native decoder and pixel-buffer pointers, or #f before
 ;;   allocation/after release. info and origin: decoded image-info and encoded orientation,

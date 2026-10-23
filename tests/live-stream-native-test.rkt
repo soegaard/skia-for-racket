@@ -163,10 +163,34 @@
   (test-case "JPEG and WebP native output"
     (with-image (lambda (im)
                   (for ([format '(jpeg webp)]) (define out (open-output-bytes))
-                    (image->port im out format #:quality 100 #:webp-lossless? #t)
+                    (image->port im out format #:quality (if (eq? format 'webp) 99.5 100)
+                                 #:webp-lossless? (eq? format 'webp))
                     (with-skia ([again (image-from-bytes (get-output-bytes out))])
                       (check-equal? (image-width again) 2)
-                      (when (eq? format 'webp) (check-equal? (image->rgba-bytes again) pixels)))))))
+                      (when (eq? format 'webp) (check-equal? (image->rgba-bytes again) pixels))))))
+    (with-skia ([space (make-srgb-color-space)] [linear (make-linear-srgb-color-space)]
+                [im (rgba-bytes->image 2 2 pixels #:color-space space)])
+      (define profile (color-space->icc-bytes linear))
+      (for ([format '(png jpeg webp)])
+        (define q (case format [(png) #f] [(jpeg) 93] [(webp) 93.5]))
+        (define expected
+          (image->encoded-bytes im format #:quality q #:color-space linear
+                                #:icc-profile profile #:icc-description "Streaming parity"))
+        (define out (open-output-bytes))
+        (image->port im out format #:quality q #:color-space linear
+                     #:icc-profile profile #:icc-description "Streaming parity")
+        (check-equal? (get-output-bytes out) expected)
+        (with-skia ([stream (make-memory-output-stream)])
+          (image-write-stream! im stream format #:quality q #:color-space linear
+                               #:icc-profile profile #:icc-description "Streaming parity")
+          (check-equal? (output-stream->bytes stream) expected)))
+      (define unchanged (open-output-bytes))
+      (check-exn exn:fail? (lambda () (image->port im unchanged 'png #:quality 90)))
+      (check-exn exn:fail?
+                 (lambda () (image->port im unchanged 'jpeg #:webp-lossless? #t)))
+      (check-exn exn:fail?
+                 (lambda () (image->port im unchanged 'png #:icc-description "No profile")))
+      (check-equal? (get-output-bytes unchanged) #"")))
   (test-case "port callback cannot use caller-thread-affine image wrappers"
     (with-skia ([im (rgba-bytes->image 2 2 pixels)])
       (define collected (open-output-bytes))
@@ -215,17 +239,35 @@
                  (check-equal? (file->bytes path) #"new"))))
   (test-case "PDF and SVG author once"
     (for ([format '(pdf svg)]) (define count 0) (define out (open-output-bytes))
-      (output->port (page (lambda (c) (set! count (add1 count)) (draw-red c))) out format)
+      (output->port (page (lambda (c) (set! count (add1 count)) (draw-red c))) out format
+                    #:title "Title & detail" #:description "Description <here>"
+                    #:id-prefix (and (eq? format 'svg) "live")
+                    #:encoding-quality (and (eq? format 'pdf) 95)
+                    #:pdfa? (eq? format 'pdf))
       (check-equal? count 1)
       (check-true (regexp-match? (if (eq? format 'pdf) #rx#"^%PDF" #rx#"<svg")
-                    (get-output-bytes out)))))
-  (test-case "native PDF stream output"
-    (with-skia ([out (make-memory-output-stream)]) (output-write-stream! (page) out)
-      (check-true (regexp-match? #rx#"^%PDF" (output-stream->bytes out)))))
+                    (get-output-bytes out)))
+      (when (eq? format 'svg)
+        (check-true (regexp-match? #rx#"<title>Title &amp; detail</title>"
+                                  (get-output-bytes out))))))
+  (test-case "native PDF and SVG stream output with metadata"
+    (for ([format '(pdf svg)])
+      (with-skia ([out (make-memory-output-stream)])
+        (define count 0)
+        (output-write-stream! (page (lambda (c) (set! count (add1 count)) (draw-red c))) out format
+                              #:title "Native title" #:description "Native description"
+                              #:id-prefix (and (eq? format 'svg) "native")
+                              #:encoding-quality (and (eq? format 'pdf) 101))
+        (check-equal? count 1)
+        (define data (output-stream->bytes out))
+        (check-true (regexp-match? (if (eq? format 'pdf) #rx#"^%PDF" #rx#"<svg") data))
+        (when (eq? format 'svg)
+          (check-true (regexp-match? #rx#"width=\"64pt\"" data))
+          (check-true (regexp-match? #rx#"<title>Native title</title>" data))))))
   (test-case "closed native output rejects before authoring"
     (define out (make-memory-output-stream)) (skia-close! out) (define count 0)
     (check-exn exn:fail?
-      (lambda () (output-write-stream! (page (lambda (c) (set! count (add1 count)))) out)))
+      (lambda () (output-write-stream! (page (lambda (c) (set! count (add1 count)))) out 'pdf)))
     (check-equal? count 0))
   (test-case "imported picture remains unknown to document audit"
     (with-skia ([pic (picture)] [loaded (picture-from-bytes (picture->bytes pic) #:trusted? #t)])

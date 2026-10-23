@@ -7,11 +7,11 @@ by `main.rkt`; metadata alone can be required from `image-info.rkt`.
 
 ## Compatibility and scope
 
-Existing calls to `make-surface`, `make-raster-buffer`, `rgba-bytes->image`, bitmap
-conversion, and RGBA byte accessors keep their existing meaning. In particular,
-`make-raster-buffer` still creates RGBA8888 premultiplied storage, with the same
-four-byte stride alignment and exact Racket premultiplication rule. Adding new
-formats does not turn an RGBA accessor into an accessor for arbitrary raw bytes.
+`make-raster-buffer` creates RGBA8888 premultiplied storage with four-byte
+stride alignment and a color-space descriptor. Both raster constructors use
+the same format representation and native RGBA conversion. Raw storage-byte
+accessors remain separate from RGBA accessors. Existing allocation ceilings are
+unchanged and are preserved when copying a buffer.
 
 This stage adds seven selected integer formats, not every Skia enum. ARGB4444,
 other packed/planar formats, float formats, allocation flags and externally owned
@@ -130,10 +130,8 @@ An unrepresentable space is not mislabeled sRGB. Each constructed buffer/image
 retains its own native color-space reference. Closing the original wrapper does
 not invalidate a dependent buffer, snapshot or descriptor.
 
-`raster-buffer-image-info` returns detached information. For a legacy buffer,
-exporting its native color space into a descriptor may fail even though ordinary
-legacy drawing remains valid. New metadata operations do not alter legacy
-construction or make old calls depend on an ICC round trip.
+`raster-buffer-image-info` returns the description stored at construction for
+both constructors; it does not need to export a live native profile.
 
 ## Buffer and view APIs
 
@@ -211,7 +209,7 @@ conversion. Construct/import a buffer with the correct source descriptor before
 requesting a color-space transform. No metadata-relabeling setter is introduced.
 
 RGBA write APIs interpret input RGBA under the destination buffer's color-space
-interpretation, as the legacy API did; they do not silently tag input sRGB.
+interpretation; they do not silently tag input sRGB.
 `#:premultiplied?` explicitly selects input alpha semantics. RGBA reads are
 explicit eight-bit conversions and may quantize packed higher-precision samples.
 

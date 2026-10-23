@@ -4972,6 +4972,9 @@
           "allowed_keywords": [
             "cancel-evt",
             "close?",
+            "color-space",
+            "icc-description",
+            "icc-profile",
             "jpeg-alpha",
             "jpeg-downsample",
             "limit",
@@ -5004,6 +5007,9 @@
         },
         {
           "allowed_keywords": [
+            "color-space",
+            "icc-description",
+            "icc-profile",
             "jpeg-alpha",
             "jpeg-downsample",
             "png-compression",
@@ -5039,10 +5045,15 @@
           "allowed_keywords": [
             "cancel-evt",
             "close?",
+            "description",
+            "encoding-quality",
+            "id-prefix",
             "limit",
+            "pdfa?",
             "policy",
             "raster-dpi",
-            "text-mode"
+            "text-mode",
+            "title"
           ],
           "arity_mask": "8",
           "export_kind": "syntax",
@@ -5053,11 +5064,16 @@
         },
         {
           "allowed_keywords": [
+            "description",
+            "encoding-quality",
+            "id-prefix",
+            "pdfa?",
             "policy",
             "raster-dpi",
-            "text-mode"
+            "text-mode",
+            "title"
           ],
-          "arity_mask": "4",
+          "arity_mask": "8",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "output-write-stream!",
@@ -8080,6 +8096,9 @@
           "allowed_keywords": [
             "cancel-evt",
             "close?",
+            "color-space",
+            "icc-description",
+            "icc-profile",
             "jpeg-alpha",
             "jpeg-downsample",
             "limit",
@@ -8665,6 +8684,9 @@
         },
         {
           "allowed_keywords": [
+            "color-space",
+            "icc-description",
+            "icc-profile",
             "jpeg-alpha",
             "jpeg-downsample",
             "png-compression",
@@ -11399,10 +11421,15 @@
           "allowed_keywords": [
             "cancel-evt",
             "close?",
+            "description",
+            "encoding-quality",
+            "id-prefix",
             "limit",
+            "pdfa?",
             "policy",
             "raster-dpi",
-            "text-mode"
+            "text-mode",
+            "title"
           ],
           "arity_mask": "8",
           "export_kind": "syntax",
@@ -11909,11 +11936,16 @@
         },
         {
           "allowed_keywords": [
+            "description",
+            "encoding-quality",
+            "id-prefix",
+            "pdfa?",
             "policy",
             "raster-dpi",
-            "text-mode"
+            "text-mode",
+            "title"
           ],
-          "arity_mask": "4",
+          "arity_mask": "8",
           "export_kind": "syntax",
           "kind": "procedure",
           "name": "output-write-stream!",
@@ -13352,7 +13384,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -13370,7 +13404,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "4",
           "export_kind": "value",
           "kind": "procedure",
@@ -13379,7 +13415,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "4",
           "export_kind": "value",
           "kind": "procedure",
@@ -13415,7 +13453,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -13453,7 +13493,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "16",
           "export_kind": "value",
           "kind": "procedure",
@@ -13462,7 +13504,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "16",
           "export_kind": "value",
           "kind": "procedure",
@@ -17946,7 +17990,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -17964,7 +18010,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "4",
           "export_kind": "value",
           "kind": "procedure",
@@ -17973,7 +18021,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "4",
           "export_kind": "value",
           "kind": "procedure",
@@ -18009,7 +18059,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "8",
           "export_kind": "value",
           "kind": "procedure",
@@ -18047,7 +18099,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "16",
           "export_kind": "value",
           "kind": "procedure",
@@ -18056,7 +18110,9 @@
           "required_keywords": []
         },
         {
-          "allowed_keywords": [],
+          "allowed_keywords": [
+            "color-space"
+          ],
           "arity_mask": "16",
           "export_kind": "value",
           "kind": "procedure",

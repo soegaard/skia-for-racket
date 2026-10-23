@@ -7,8 +7,43 @@
 ;; Prepares ICC profile and description values for native image encoders.
 ;; Shares color-profile lifetime handling across PNG, JPEG, and WebP output.
 
-(require "native.rkt" "lifetime.rkt" "color-output-util.rkt")
-(provide call-with-encoder-profile)
+(require ffi/unsafe/atomic "native.rkt" "lifetime.rkt" "color-output-util.rkt"
+         "live-native-lease.rkt")
+(provide call-with-encoder-profile make-encoder-profile-reference)
+
+; make-encoder-profile-reference : symbol? any/c any/c -> (values any/c any/c any/c)
+;   Creates a worker-owned profile lease, description pointer, and PNG metadata sentinel.
+;   The lease keeps parsed curves and all backing native storage alive until worker completion.
+(define (make-encoder-profile-reference who input description)
+  (define bs (checked-encoding-profile who input))
+  (define desc (icc-description-bytes who bs description))
+  (if (not bs)
+      (values #f #f #f)
+      (call-as-atomic
+       (lambda ()
+         (define releases '())
+         (define (release-all)
+           (for ([release (in-list releases)]) (release))
+           (set! releases '()))
+         (define (acquire create destroy)
+           (define p (or (create) (error who "native encoding metadata allocation failed")))
+           (set! releases (cons (lambda () (destroy p)) releases))
+           p)
+         (with-handlers ([(lambda (_) #t) (lambda (e) (release-all) (raise e))])
+           (skia-check!)
+           (define data
+             (acquire (lambda () (sk_data_new_with_copy bs (bytes-length bs))) sk_data_unref))
+           (define profile
+             (acquire sk_colorspace_icc_profile_new sk_colorspace_icc_profile_delete))
+           (unless (sk_colorspace_icc_profile_parse (sk_data_get_data data) (bytes-length bs) profile)
+             (error who "native ICC parser rejected the encoding profile"))
+           (acquire (lambda () (sk_colorspace_new_icc profile)) sk_colorspace_unref)
+           (define text (or desc #"skia-for-racket RGB\0"))
+           (define text-data
+             (acquire (lambda () (sk_data_new_with_copy text (bytes-length text))) sk_data_unref))
+           (define sentinel (acquire sk_colorspace_new_srgb_linear sk_colorspace_unref))
+           (values (make-native-reference profile (lambda (_) (release-all)))
+                   (sk_data_get_data text-data) sentinel))))))
 
 ; temporary : symbol? any/c any/c any/c any/c -> any
 ;   Owns a temporary native encoder resource through one callback and closes it on every exit.

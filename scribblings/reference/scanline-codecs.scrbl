@@ -28,9 +28,9 @@ use an @tech{incremental decoding session} for explicitly supplied chunks.
 Scanline output preserves @tech{encoded orientation}. The session's row order describes
 native consumption order, not EXIF orientation normalization.
 
-By default, decoded rows use unpremultiplied RGBA8888 in sRGB. These are
-destination choices, not promises to preserve the source's alpha representation
-or color space. See @secref["skia-reference-streams-pixels-codecs"] for the
+By default, decoded rows use unpremultiplied RGBA8888 and preserve the source's
+color space. The alpha representation is a destination choice, not a promise
+to preserve the source's alpha representation. See @secref["skia-reference-streams-pixels-codecs"] for the
 comparison with whole-image decoding, and @secref["skia-pixel-descriptions"]
 for the color-space descriptor accepted here.
 
@@ -52,17 +52,17 @@ Returns @racket[#t] for a scanline session, including a closed one, and @racket[
           [#:color-type color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
                                  'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32) 'rgba-8888]
           [#:alpha-type alpha-type (or/c 'opaque 'premul 'unpremul) 'unpremul]
-          [#:color-space space (or/c #f 'srgb 'linear-srgb bytes?) 'srgb])
+          [#:color-space space (or/c 'source #f 'srgb 'linear-srgb bytes?) 'source])
           codec-scanline-session?]{
 Starts a session from copied, nonempty encoded bytes. The scale follows
 @racket[codec-scaled-dimensions]: the decoder chooses supported dimensions for the
 requested scale. These may differ from the exact requested ratio. Pixel-format
 and alpha combinations follow @racket[make-image-info], and native scanline support
 is checked separately.
-The default requests unpremultiplied RGBA8888 in sRGB. The destination description
-is independent of the encoded source metadata. A @racket[#f] color-space
-descriptor requests untagged output, not preservation of the codec's space as
-in @racket[codec->image].
+The default requests unpremultiplied RGBA8888. @racket['source] preserves the
+source's color space; a @tech{color-space descriptor} requests another destination
+space, and @racket[#f] requests untagged output, just as in @racket[codec->image].
+Alpha-only output has no color space, including with @racket['source].
 
 The session checks that at least one output row fits the byte limit without
 allocating a full output raster. Requested batches are bounded separately.
@@ -75,7 +75,7 @@ image height; a different output height raises an exception.
           [#:color-type color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
                                  'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32) 'rgba-8888]
           [#:alpha-type alpha-type (or/c 'opaque 'premul 'unpremul) 'unpremul]
-          [#:color-space space (or/c #f 'srgb 'linear-srgb bytes?) 'srgb])
+          [#:color-space space (or/c 'source #f 'srgb 'linear-srgb bytes?) 'source])
           codec-scanline-session?]{
 Starts a session through a private duplicate at byte zero. The original stream
 is neither consumed nor closed, and closing it does not invalidate the session.
@@ -88,7 +88,7 @@ The scale, format, color, and native-support rules are those of
           [#:color-type color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
                                  'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32) 'rgba-8888]
           [#:alpha-type alpha-type (or/c 'opaque 'premul 'unpremul) 'unpremul]
-          [#:color-space space (or/c #f 'srgb 'linear-srgb bytes?) 'srgb]
+          [#:color-space space (or/c 'source #f 'srgb 'linear-srgb bytes?) 'source]
           [#:limit limit exact-positive-integer? (current-skia-byte-limit)]
           [#:close? close? boolean? #f] [#:cancel-evt cancel (or/c evt? #f) #f])
           codec-scanline-session?]{

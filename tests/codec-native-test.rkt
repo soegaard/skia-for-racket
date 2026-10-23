@@ -135,15 +135,23 @@
        (unless answer (kill-thread worker))
        (check-equal? answer '(#t #t #t))
        (check-equal? (frame-pixels c 0) (vector-ref gif-expected-frames 0))))
-   (test-case "still PNG/JPEG/WebP have one decodable frame without changing legacy metadata"
+   (test-case "still PNG/JPEG/WebP expose one frame and a complete metadata record"
      (with-skia ([source (rgba-bytes->image 3 2 (vector-ref gif-expected-frames 1))])
        (for ([format (in-list '(png jpeg webp))])
          (define bs (image->encoded-bytes source format #:webp-lossless? (eq? format 'webp)))
          (with-skia ([c (codec-from-bytes bs)] [legacy (image-from-bytes bs)])
            (check-equal? (codec-frame-count c) 1)
            (check-equal? (codec-info c) (encoded-image-info-from-bytes bs))
-           (when (zero? (encoded-image-info-frame-count (codec-info c)))
-             (check-false (codec-frame-info c 0)))
+           (check-equal? (encoded-image-info-frame-count (codec-info c)) 1)
+           (define frame (codec-frame-info c 0))
+           (check-true (codec-frame-info? frame))
+           (check-equal? (codec-frame-info-index frame) 0)
+           (check-false (codec-frame-info-required-frame frame))
+           (check-equal? (codec-frame-info-duration frame) 0)
+           (check-false (codec-frame-info-fully-received? frame))
+           (check-equal? (codec-frame-info-disposal-method frame) 'keep)
+           (check-equal? (codec-frame-info-blend frame) 'src)
+           (check-equal? (codec-frame-info-rect frame) '#(0 0 3 2))
            (check-equal? (frame-pixels c 0) (image->rgba-bytes legacy))
            (check-exn exn:fail:contract? (lambda () (codec->image c #:frame-index 1)))))))
    (test-case "all EXIF origins normalize exactly once and expose display dimensions"
@@ -173,8 +181,11 @@
                  [linear (make-linear-srgb-color-space)]
                  [source (rgba-bytes->image 1 1 (bytes 128 128 128 255) #:color-space srgb)]
                  [c (codec-from-bytes (image->png-bytes source))]
-                 [plain (codec->image c #:color-space srgb)]
-                 [converted (codec->image c #:color-space linear)])
+                 [plain (codec->image c #:color-space 'srgb)]
+                 [converted (codec->image c #:color-space 'linear-srgb)]
+                 [untagged (codec->image c #:color-space #f)])
+       (check-false (image-color-space untagged))
+       (check-exn exn:fail:contract? (lambda () (codec->image c #:color-space srgb)))
        (with-skia ([tag (image-color-space converted)])
          (check-true (color-space=? tag linear)))
        (define expected (image->rgba-bytes plain #:color-space linear))

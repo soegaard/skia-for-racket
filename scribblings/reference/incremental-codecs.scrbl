@@ -21,10 +21,11 @@ not read a Racket port or keep arbitrary port callbacks. It decodes the first fr
 encoded dimensions and @tech{encoded orientation}, without subset selection, scaling, or a
 fallback to one-shot decoding.
 
-The default destination is unpremultiplied RGBA8888 in sRGB. In contrast,
-@racket[codec->image] defaults to premultiplied alpha and keeps the codec's color space. The
-@racket[#:color-space] argument accepts a @tech{color-space descriptor};
-@racket[#f] requests untagged output, not preservation of the source space.
+The default destination is unpremultiplied RGBA8888. As with @racket[codec->image],
+@racket[#:color-space 'source] preserves the codec's color space. Supply a
+@tech{color-space descriptor} to choose another destination space;
+@racket[#f] requests untagged output. Whole-image decoding still uses
+premultiplied rather than unpremultiplied alpha by default.
 See @secref["skia-reference-streams-pixels-codecs"] for the decoding comparison.
 
 The encoded input and decoded pixels can remain in memory at the same time.
@@ -63,13 +64,13 @@ and @racket[#f] otherwise.
 @defproc[(make-codec-incremental
           [#:color-type color-type (or/c 'rgba-8888 'bgra-8888) 'rgba-8888]
           [#:alpha-type alpha-type (or/c 'premul 'unpremul) 'unpremul]
-          [#:color-space space (or/c #f 'srgb 'linear-srgb bytes?) 'srgb]
+          [#:color-space space (or/c 'source #f 'srgb 'linear-srgb bytes?) 'source]
           [#:row-bytes row-bytes (or/c exact-positive-integer? #f) #f]
           [#:limit limit exact-positive-integer? (current-skia-byte-limit)])
           codec-incremental-session?]{
 Returns a session in @racket['awaiting-input] state with no decoded destination.
-The destination color-space description follows @racket[make-image-info],
-with the sRGB default described above. A supplied stride
+The destination space uses the source-preserving default described above;
+explicit descriptors follow @racket[make-image-info]. A supplied stride
 must be positive, divisible by four, and at most @racket[2147483647]. Its lower
 bound relative to the image width is checked when the header reveals dimensions.
 A false stride selects tight storage then.

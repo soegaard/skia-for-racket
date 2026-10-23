@@ -64,30 +64,20 @@ an incomplete image.
 @section[#:tag "skia-raster-buffer-allocation"]{Allocation and Copies}
 
 @racket[make-raster-buffer] provides premultiplied RGBA8888 storage with an
-optional live color-space resource. @racket[make-raster-buffer-from-info]
+optional @tech{color-space descriptor}. @racket[make-raster-buffer-from-info]
 accepts the formats, alpha types, and color-space descriptors described in
 @secref["skia-pixel-descriptions"].
 
-The choice affects some later operations even when both buffers describe
-premultiplied RGBA8888 pixels:
-
-@itemlist[
- @item{@racket[pixmap-write-rgba!] premultiplies unpremultiplied RGBA input
-   using exact integer arithmetic for a buffer made by @racket[make-raster-buffer].
-   For one made by @racket[make-raster-buffer-from-info], it uses Skia's
-   conversion instead. Rounded channel values can differ between these paths.}
- @item{@racket[pixmap-scale!] rejects a tagged/untagged pair when either buffer
-   was made from a pixel description. With two buffers made by
-   @racket[make-raster-buffer], it leaves that conversion to Skia.
-   @racket[pixmap-convert!] rejects such a pair regardless of the constructors.}]
-
-These rules are preserved by @racket[raster-buffer-copy]. Matching pixel
-descriptions alone do not make the two constructor choices interchangeable
-for these operations.
+Both constructors use the same pixel representation and conversion rules.
+Use the simpler constructor for ordinary premultiplied RGBA8888 storage and the
+description-based constructor to choose another format or alpha type.
+Their existing allocation limits remain as described below; copies preserve
+the original buffer's allocation ceiling. Conversion never depends on which
+constructor created a buffer.
 
 @defproc[(make-raster-buffer [width (integer-in 1 32768)] [height (integer-in 1 32768)]
           [#:row-bytes row-bytes (or/c #f exact-positive-integer?) #f] [#:color-space space
-          (or/c #f color-space?) #f])
+          (or/c #f 'srgb 'linear-srgb bytes?) #f])
           raster-buffer?]{
 Creates a raster buffer of the given size, initialized to transparent black.
 
@@ -96,10 +86,9 @@ four times the width. An explicit stride must be at least that large and divisib
 four. The full stride times height must fit @racket[current-skia-byte-limit] and the native
 signed pointer-arithmetic range. Padding is initialized to zero.
 
-The buffer keeps its own native reference to a supplied live color space; closing its wrapper
-does not invalidate the buffer. A false space creates untagged storage.
-The space describes the stored samples; subsequent pixel operations specify
-whether their inputs use that space or are converted from sRGB.
+The descriptor specifies the stored samples' color space; @racket[#f] creates
+untagged storage. ICC bytes are copied. Use @racket[color-space->descriptor]
+to describe an existing color-space resource.
 }
 
 @defproc[(make-raster-buffer-from-info [info image-info?] [#:row-bytes row-bytes (or/c #f
@@ -289,29 +278,30 @@ The result is @racket['(#t expired)]. The wrapper remains recognizable, but its 
 
 Use @racket[pixmap-sample] and @racket[pixmap-set-sample!] when an algorithm
 needs the stored channel values, including their bit depths and
-premultiplication. Color access instead separates RGB from alpha, but reads
-and writes do not necessarily use the same color space:
+premultiplication. Color access instead separates RGB from alpha. Reads and
+writes use the pixmap's own color space by default:
 
 @itemlist[
  @item{@racket[pixmap-pixel] and @racket[pixmap-color4f] return unpremultiplied
    values in the pixmap's color space, without converting to sRGB.}
  @item{@racket[pixmap-set-pixel!], @racket[pixmap-fill!],
    @racket[pixmap-set-color4f!], and @racket[pixmap-fill-color4f!] interpret
-   their input as unpremultiplied sRGB and convert to the destination space
-   and storage format.}
+   their input in that same space. All six color operations accept
+   @racket[#:color-space] to request another interpretation, such as @racket['srgb].}
  @item{Raw sample and storage-byte operations use the destination's stored
    channel representation without color-space conversion. RGBA-byte transfers
    can convert storage format and alpha representation, but keep the buffer's
    color interpretation.}]
 
-For example, reading a linear-sRGB color with @racket[pixmap-color4f] and
-passing it unchanged to @racket[pixmap-set-color4f!] treats those values as sRGB
-on the write, changing the color. Use the sample operations when you need to
-read and write stored channels without that reinterpretation. Byte-color reads
-can also lose precision, so they are not a general way to preserve stored samples.
+The default @racket['pixmap] means the view's color space. A descriptor requests
+conversion to that space on a read, or from it on a write. @racket[#f] means
+untagged; conversion between tagged and untagged colors raises an exception
+because the missing interpretation cannot be inferred.
 
-For opaque storage, the byte-color setters force maximum alpha; the
-floating-point setters instead reject an input whose alpha is not one.
+A color read followed by a write does not reinterpret the color, but storage
+rounding and byte quantization can still lose precision. Use raw sample operations
+when you need the stored channel values. Both byte and floating-point setters
+reject translucent colors for opaque storage.
 
 A @deftech{pixel sample} contains stored logical channels, not necessarily a display color.
 Integer channels use the widths returned by @racket[image-info-channel-bits]. BGRA storage still
@@ -344,19 +334,20 @@ validated before writing. A rejected sample leaves the destination unchanged.
 }
 
 @defproc[(pixmap-pixel [view pixmap?] [x exact-nonnegative-integer?] [y
-          exact-nonnegative-integer?])
+          exact-nonnegative-integer?]
+          [#:color-space space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?) 'pixmap])
           rgba?]{
 Returns an unpremultiplied eight-bit color. For floating-point storage, this explicitly clips
 extended RGB to the unit range and quantizes it. The result is not a raw sample and is not an
-automatic conversion to sRGB. The color-space distinction from
-@racket[pixmap-set-pixel!] is explained above.
+automatic conversion to sRGB. Supply @racket[#:color-space 'srgb] to request that conversion.
 }
 
 @defproc[(pixmap-color4f [view pixmap?] [x exact-nonnegative-integer?] [y
-          exact-nonnegative-integer?])
+          exact-nonnegative-integer?]
+          [#:color-space space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?) 'pixmap])
           color4f?]{
 Returns the unpremultiplied floating-point color in the pixmap's color space. It does not
-convert to sRGB. Use @racket[pixmap-sample] to inspect stored, possibly premultiplied channels
+convert to sRGB unless requested. Use @racket[pixmap-sample] to inspect stored, possibly premultiplied channels
 instead.
 }
 
@@ -367,29 +358,27 @@ Returns normalized alpha without returning or converting the RGB channels. A non
 out-of-range native alpha result raises an exception.
 }
 
-@defproc[(pixmap-fill! [view pixmap?] [color color?])
+@defproc[(pixmap-fill! [view pixmap?] [color color?]
+          [#:color-space space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?) 'pixmap])
           void?]{
-Fills the view's pixels with the supplied unpremultiplied sRGB color, converted
-to the destination color space and storage format. Opaque storage forces
-maximum alpha rather than storing the supplied translucent alpha. Only the
+Fills the view's pixels with the supplied unpremultiplied color, interpreted in
+the pixmap's space by default. Opaque storage rejects translucent input. Only the
 view's pixels are written, not row padding or pixels outside a subset.
 
-@;{Pinned mono/skia 40f75dc0051d141913c07c20d4c19590c7da0cb7:
-   src/core/SkPixmap.cpp routes both erase overloads through SkConvertPixels;
-   src/core/SkColorSpaceXformSteps.cpp interprets its null source space as sRGB.}
 }
 
 @defproc[(pixmap-set-pixel! [view pixmap?] [x exact-nonnegative-integer?] [y
-          exact-nonnegative-integer?] [color color?])
+          exact-nonnegative-integer?] [color color?]
+          [#:color-space space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?) 'pixmap])
           void?]{
-Like @racket[pixmap-fill!], but writes one pixel. It uses color conversion rather than a raw
-stored sample, interpreting its input as sRGB rather than the pixmap's space.
+Like @racket[pixmap-fill!], but writes one pixel, with the same color-space choices.
 }
 
-@defproc[(pixmap-fill-color4f! [view pixmap?] [color color4f?])
+@defproc[(pixmap-fill-color4f! [view pixmap?] [color color4f?]
+          [#:color-space space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?) 'pixmap])
           void?]{
-Fills the view with an unpremultiplied sRGB color converted to the destination color space and
-storage format. Unlike @racket[pixmap-color4f], this operation interprets its argument in sRGB.
+Fills the view with an unpremultiplied color, interpreted in the pixmap's space by default.
+Supply a descriptor to convert from another space before storing it.
 Opaque storage requires alpha one; translucent input is rejected, not made opaque.
 
 The converted sample is validated before destination mutation. Overflow or invalid
@@ -397,10 +386,10 @@ premultiplication leaves the view unchanged. Row padding is not written.
 }
 
 @defproc[(pixmap-set-color4f! [view pixmap?] [x exact-nonnegative-integer?] [y
-          exact-nonnegative-integer?] [color color4f?])
+          exact-nonnegative-integer?] [color color4f?]
+          [#:color-space space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?) 'pixmap])
           void?]{
-Like @racket[pixmap-fill-color4f!], but writes one pixel. Its input is unpremultiplied sRGB, not
-an uninterpreted destination-space sample.
+Like @racket[pixmap-fill-color4f!], but writes one pixel, with the same color-space choices.
 }
 
 @defproc[(pixmap-opaque? [view pixmap?])
@@ -446,8 +435,7 @@ input must have valid premultiplied samples.
 
 Input samples use the destination's color interpretation; they are not implicitly tagged sRGB.
 The conversion is prepared before destination writes, and destination padding is unchanged.
-Premultiplication follows the constructor-dependent rules in
-@secref["skia-raster-buffer-allocation"].
+Both raster-buffer constructors use the same conversion and premultiplication rules.
 }
 
 @racketblock[
@@ -478,11 +466,8 @@ This operation does not resize pixels.
           'nearest 'linear) 'linear])
           void?]{
 Scales and converts the source into the destination. Views must belong to distinct buffers, and
-the destination must be writable. A tagged/untagged pair is rejected when either
-buffer uses an explicit pixel description, as with
-@racket[make-raster-buffer-from-info]. Two buffers made by
-@racket[make-raster-buffer], or copies of them, leave that conversion to Skia;
-see @secref["skia-raster-buffer-allocation"].
+the destination must be writable. Both buffers must be tagged or both untagged;
+a tagged/untagged pair raises an exception rather than assuming a color space.
 
 This operation writes through the native scaler directly. Unlike @racket[pixmap-convert!], it
 does not promise that a failed native call leaves the destination unchanged.

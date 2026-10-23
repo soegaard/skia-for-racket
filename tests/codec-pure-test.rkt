@@ -100,7 +100,7 @@
      (check-exn exn:fail:contract?
                 (lambda () (image-frame-from-bytes #"" #:normalize-origin? 'yes)))
      (check-exn exn:fail:contract?
-                (lambda () (image-frame-from-bytes #"" #:color-space 'srgb))))
+                (lambda () (image-frame-from-bytes #"" #:color-space 'not-a-space))))
    (test-case "codec predicates and result names"
      (check-false (codec? #f))
      (check-false (codec-frame-info? #f))

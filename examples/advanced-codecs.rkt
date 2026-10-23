@@ -19,6 +19,7 @@
 
 ;; A deterministic contact sheet: animation disposal/blending above, all eight
 ;; normalized EXIF orientations below. All input images are local/in-memory.
+;; Decoding preserves the source color space by default; named descriptors request conversion.
 
 ; render-advanced-codecs : path-string? -> void?
 ;   Renders the advanced codecs example to the selected output destination.
@@ -46,7 +47,8 @@
     (with-skia ([gif (codec-from-bytes animated-gif)])
       (for ([i (in-range (codec-frame-count gif))])
         (define x (+ 25 (* i 215)))
-        (with-skia ([im (codec->image gif #:frame-index i)]) (panel im x 82 195 104))
+        (with-skia ([im (codec->image gif #:frame-index i #:color-space 'source)])
+          (panel im x 82 195 104))
         (label (format "Frame ~a  |  ~a ms" i (codec-frame-info-duration (codec-frame-info gif i)))
           x 210)))
     (label "Lossless animated WebP (decoded in reverse order)" 25 250)

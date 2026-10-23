@@ -18,8 +18,8 @@ page dimensions and margins to PDF, SVG, or a raster image. Create it with
 image with @racket[output-page->image].
 
 For port and native-stream destinations, see @racket[output->port] and
-@racket[output-write-stream!]. They differ in available formats, metadata,
-annotations, and failure behavior; compare the routes in
+@racket[output-write-stream!]. They share format and metadata options but differ in page limits,
+annotation support, and failure behavior; compare the routes in
 @secref["skia-reference-documents-output"] before choosing one.
 
 An @deftech{output page} is an immutable Racket structure containing dimensions,

@@ -102,9 +102,10 @@ Use 0.75a native streams or explicitly buffered adapters for retained consumers.
 
 ```racket
 (image->port image out format
-  #:quality [quality 90] #:png-compression [compression 6]
-  #:jpeg-downsample [downsample 'yuv-420] #:jpeg-alpha [alpha 'ignore]
+  #:quality [quality #f] #:png-compression [compression #f]
+  #:jpeg-downsample [downsample #f] #:jpeg-alpha [alpha #f]
   #:webp-lossless? [lossless? #f]
+  #:color-space [space #f] #:icc-profile [profile #f] #:icc-description [description #f]
   #:limit [limit (current-skia-byte-limit)]
   #:close? [close? #f] #:cancel-evt [cancel #f])
 (picture->port picture out
@@ -117,8 +118,10 @@ written. Output comes from native encoder/serializer calls, not a complete
 Racket encoded-byte buffer. Image encoding obtains an independent native raster
 reference, preserving its native color/alpha storage and color-space tag rather
 than routing all formats through an RGBA8 staging buffer. Materializing a lazy
-CPU image can allocate pixels. Custom ICC override/description options remain
-with the existing byte exporters; they are not silently accepted or discarded.
+CPU image can allocate pixels. Encoding options and defaults match
+`image->encoded-bytes`: irrelevant non-`#f` options are rejected, fractional WebP
+quality is accepted, and explicit color conversion and ICC overrides are supported.
+ICC curves and backing data are held by an independent lease through native completion.
 
 Image and picture inputs use the existing CPU-only lifetime gate. GPU-backed
 or GPU-dependent content must be explicitly detached first. No hidden GPU
@@ -131,6 +134,8 @@ for abandonment before launch or an unclaimed result.
 
 ```racket
 (output->port pages out format
+  #:title [title ""] #:description [description ""]
+  #:id-prefix [prefix #f] #:encoding-quality [quality #f] #:pdfa? [pdfa? #f]
   #:policy [policy 'error] #:text-mode [mode 'auto]
   #:raster-dpi [dpi 144]
   #:limit [limit (current-skia-byte-limit)]
@@ -160,12 +165,14 @@ annotations survive native picture replay. Named destinations/links reject at
 the existing recording boundary instead of disappearing silently. `auto` text
 uses outlines for SVG and native PDF text. Unsupported effects, explicit raster
 groups, imported-SKP provenance, and GPU exclusions follow the existing audit.
-Rich metadata, custom SVG ID rewriting, named document destinations, and PDF/A
-settings remain with the established exporters. No unsupported option is silently
-ignored. A successful audit is not itself a visual or PDF/A certificate.
+Title, description, custom SVG ID prefix, PDF encoding quality, and PDF/A settings
+follow `output->bytes`, including rejection of format-inappropriate options.
+Named document destinations remain unsupported through the recording canvas. A successful audit is not itself a visual or PDF/A certificate.
 
-Only the native-produced SVG root header is buffered for physical-unit rewriting,
-with a 16 KiB header limit. The rest streams normally. A temporary transformed
+The native-produced SVG root header is buffered for physical-unit and metadata
+rewriting, with the existing 16 KiB header limit. Resource IDs and references are
+rewritten incrementally across chunk boundaries; image data and ordinary text stream
+through without whole-document buffering. A temporary transformed
 chunk can include that header plus a 64 KiB native chunk; port writes are still
 bounded. The actual transformed byte count is checked before publication.
 
@@ -176,11 +183,14 @@ bounded. The actual transformed byte count is checked before publication.
   #:exists [exists 'error] #:limit [limit (current-skia-byte-limit)])
 (output-stream-flush! stream)
 (image-write-stream! image stream format
-  #:quality [quality 90] #:png-compression [compression 6]
-  #:jpeg-downsample [downsample 'yuv-420] #:jpeg-alpha [alpha 'ignore]
-  #:webp-lossless? [lossless? #f])
+  #:quality [quality #f] #:png-compression [compression #f]
+  #:jpeg-downsample [downsample #f] #:jpeg-alpha [alpha #f]
+  #:webp-lossless? [lossless? #f]
+  #:color-space [space #f] #:icc-profile [profile #f] #:icc-description [description #f])
 (picture-write-stream! picture stream)
-(output-write-stream! pages stream
+(output-write-stream! pages stream format
+  #:title [title ""] #:description [description ""]
+  #:id-prefix [prefix #f] #:encoding-quality [quality #f] #:pdfa? [pdfa? #f]
   #:policy [policy 'error] #:text-mode [mode 'auto] #:raster-dpi [dpi 144])
 ```
 
@@ -191,7 +201,8 @@ and detach operations reject files before any native memory-stream cast.
 separate flush-error acknowledgement guarantee.
 
 The publication consumers accept native memory/file writers. `output-write-stream!`
-is explicitly PDF-only; use `output->port` for SVG's physical root rewriting.
+requires a `'pdf` or `'svg` format argument and uses the same physical-size and
+metadata handling as `output->port`.
 A private port sink forwards bounded native output into the native writer.
 The writer's remaining logical budget is enforced before each chunk, without
 building the whole encoded payload in memory.

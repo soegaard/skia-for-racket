@@ -32,26 +32,18 @@ by alpha. With @deftech{unpremultiplied alpha}, RGB components are stored
 independently of alpha. An alpha-type declaration describes the supplied
 samples; it does not request multiplication or division of their components.
 
-Color-space arguments have two forms in these interfaces:
+Pixel descriptions, raster-buffer constructors, and configurable decoders use
+@tech[#:key "color-space descriptor"]{color-space descriptors}: @racket[#f],
+@racket['srgb], @racket['linear-srgb], or ICC bytes. @racket[#f] always means
+untagged pixels. Descriptors are Racket data, not open native resources.
+Use @racket[color-space->descriptor] to obtain one from a live color space,
+or @racket[descriptor->color-space] for APIs that need a resource.
 
-@itemlist[
- @item{@racket[codec->image] and @racket[make-raster-buffer] accept an open
-   @racket[color-space?] resource. A result using that space keeps its own
-   native reference; closing the supplied wrapper does not invalidate it.}
- @item{@racket[make-image-info], scanline decoding, and incremental decoding
-   accept a @tech{color-space descriptor}: @racket[#f], @racket['srgb],
-   @racket['linear-srgb], or ICC bytes. A descriptor is Racket data, not an
-   open native resource. @racket[make-raster-buffer-from-info] uses the
-   descriptor stored in its pixel description.}]
-
-Use @racket[color-space->descriptor] or @racket[descriptor->color-space] when
-moving between these forms. The meaning of @racket[#f] also depends on the
-operation: @racket[codec->image] preserves the codec's color space, whereas a
-@racket[#f] descriptor specifies untagged pixels. Scanline and incremental
-decoding default to sRGB, requesting conversion rather than preservation of
-the source space. Supplying @racket[#f] to either does not select the
-preserve-source behavior of @racket[codec->image]. Native decoding can reject
-an unsupported destination description.
+Decoders additionally accept @racket['source], their default, to preserve the
+encoded source's color space. This request is resolved when source metadata
+becomes available; it is not a color-space descriptor stored in @racket[image-info].
+Pixel color reads and writes similarly use @racket['pixmap] to mean the view's
+own space. Native decoding can reject an unsupported destination description.
 
 @section{Pixel Descriptions}
 

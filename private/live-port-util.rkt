@@ -92,11 +92,17 @@
             [else (live-pause who cancel) (loop at)]))))
 ;; Rewrite only a bounded native-produced root tag, never a whole XML document.
 
-; make-svg-header-filter : symbol? real? real? -> (values procedure? procedure?)
+; make-svg-header-filter : symbol? real? real? bytes? bytes? bytes? -> (values procedure? procedure?)
 ;   Creates a streaming point-size SVG root rewrite with a 16-KiB header bound, plus a finish check
 ;   that rejects incomplete headers.
-(define (make-svg-header-filter who width height)
+(define (make-svg-header-filter who width height title description prefix)
   (define buffered #"") (define complete? #f)
+  (define-values (rewrite-ids finish-ids) (make-svg-id-filter who prefix))
+  (define metadata
+    (bytes-append
+     (if (zero? (bytes-length title)) #"" (bytes-append #"<title>" title #"</title>"))
+     (if (zero? (bytes-length description)) #""
+         (bytes-append #"<desc>" description #"</desc>"))))
   (define dimensions
     (string->bytes/utf-8
      (format "<svg width=\"~apt\" height=\"~apt\" viewBox=\"0 0 ~a ~a\"" width height width height)))
@@ -115,9 +121,101 @@
                   (error who "native SVG has missing/duplicate dimensions")))
               (define clean (regexp-replace* #px#"\\s(?:width|height|viewBox)=\"[^\"]*\"" root #""))
               (define replaced (regexp-replace #rx#"<svg" clean dimensions))
-              (define out (bytes-append (subbytes buffered 0 start) replaced (subbytes buffered end)))
+              (define empty? (regexp-match? #rx#"/>$" replaced))
+              (define root-output (if empty? (regexp-replace #rx#"/>$" replaced #">") replaced))
+              (define out
+                (bytes-append (subbytes buffered 0 start) root-output metadata
+                              (if empty? #"</svg>" #"") (subbytes buffered end)))
               (set! buffered #"") (set! complete? #t) out]
              [else
               (when (> (bytes-length buffered) 16384) (error who "native SVG root was not found"))
               #""])]))
-  (values filter (lambda () (unless complete? (error who "native SVG root header is incomplete")))))
+  (values (lambda (bytes) (rewrite-ids (filter bytes)))
+          (lambda ()
+            (unless complete? (error who "native SVG root header is incomplete"))
+            (finish-ids))))
+
+; make-svg-id-filter : symbol? bytes? -> (values procedure? procedure?)
+;   Rewrites IDs and local references across chunk boundaries without buffering image data or tags.
+;   Only identifiers and short parser prefixes are held between calls; text and external URLs pass
+;   through unchanged. Forward references are checked after the final native write.
+(define (make-svg-id-filter who prefix)
+  (define names (make-hash))
+  (define definitions (make-hash))
+  (define mode 'text)
+  (define key #"")
+  (define token #"")
+  (define kind 'ordinary)
+  (define pending #"")
+  (define url-prefix #"url(#")
+  (define (name old define?)
+    (when define?
+      (when (hash-has-key? definitions old) (error who "duplicate native SVG resource ID: ~s" old))
+      (hash-set! definitions old #t))
+    (hash-ref! names old
+      (lambda ()
+        (bytes-append prefix #"-" (string->bytes/utf-8 (number->string (hash-count names)))))))
+  (define (append-pending! b)
+    (when (>= (bytes-length pending) (current-skia-byte-limit))
+      (error who "native SVG identifier exceeds current-skia-byte-limit"))
+    (set! pending (bytes-append pending (bytes b))))
+  (define (filter chunk)
+    (define out (open-output-bytes))
+    (define (emit bs) (write-bytes bs out))
+    (for ([b (in-bytes chunk)])
+      (case mode
+        [(text)
+         (write-byte b out)
+         (when (= b 60) (set! mode 'tag) (set! token #""))]
+        [(tag)
+         (write-byte b out)
+         (cond [(= b 62) (set! mode 'text)]
+               [(= b 61) (set! key token) (set! token #"") (set! mode 'quote)]
+               [(memv b '(9 10 13 32)) (set! token #"")]
+               [else (set! token (bytes-append token (bytes b)))])]
+        [(quote)
+         (write-byte b out)
+         (when (= b 34)
+           (set! mode 'value)
+           (set! pending #"")
+           (set! kind (cond [(bytes=? key #"id") 'id]
+                             [(or (bytes=? key #"href") (bytes=? key #"xlink:href")) 'href-start]
+                             [else 'ordinary])))]
+        [(value)
+         (cond
+           [(= b 34)
+            (case kind
+              [(id) (emit (name pending #t))]
+              [(fragment) (emit (bytes-append #"#" (name pending #f)))]
+              [(url) (error who "incomplete native SVG resource reference")]
+              [else (emit pending)])
+            (set! pending #"") (write-byte b out) (set! mode 'tag) (set! token #"")]
+           [else
+            (case kind
+              [(id fragment) (append-pending! b)]
+              [(href-start)
+               (if (= b 35) (set! kind 'fragment)
+                   (begin (write-byte b out) (set! kind 'opaque)))]
+              [(opaque) (write-byte b out)]
+              [(url)
+               (if (= b 41)
+                   (begin (emit (bytes-append url-prefix (name pending #f) #")"))
+                          (set! pending #"") (set! kind 'ordinary))
+                   (append-pending! b))]
+              [else
+               (cond
+                 [(= b (bytes-ref url-prefix (bytes-length pending)))
+                  (append-pending! b)
+                  (when (bytes=? pending url-prefix) (set! kind 'url) (set! pending #""))]
+                 [else
+                  (emit pending)
+                  (if (= b 117) (set! pending #"u")
+                      (begin (write-byte b out) (set! pending #"")))])])])]))
+    (get-output-bytes out))
+  (values filter
+          (lambda ()
+            (unless (and (eq? mode 'text) (zero? (bytes-length pending)))
+              (error who "incomplete native SVG markup"))
+            (for ([old (in-hash-keys names)])
+              (unless (hash-has-key? definitions old)
+                (error who "unresolved native SVG resource: ~s" old))))))

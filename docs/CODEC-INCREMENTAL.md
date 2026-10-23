@@ -37,7 +37,7 @@ are reported as native failures; there is no fallback merely to obtain pixels.
 (make-codec-incremental
  #:color-type [color-type 'rgba-8888]
  #:alpha-type [alpha-type 'unpremul]
- #:color-space [color-space 'srgb]
+ #:color-space [color-space 'source]
  #:row-bytes [row-bytes #f]
  #:limit [limit (current-skia-byte-limit)])
 
@@ -51,7 +51,8 @@ session also has the existing resource finalizer as fallback. Explicit close is
 idempotent and destroys the codec **before** releasing memory retained by it.
 
 `#:color-type` is `'rgba-8888` or `'bgra-8888`; `#:alpha-type` is `'premul` or
-`'unpremul`. `#:color-space` is an existing detached description: `'srgb`,
+`'unpremul`. `#:color-space` defaults to `'source`, preserving the source's
+space once the header is available. Explicit descriptors are `'srgb`,
 `'linear-srgb`, complete ICC bytes, or `#f` for untagged output. Actual conversion
 must be supported by the native codec. No unsupported format is silently
 substituted. Image dimensions are determined from the encoded header, not supplied

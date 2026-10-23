@@ -140,14 +140,14 @@
       (check-equal? (input-stream-position input) 2)
       (check-false (skia-closed? input))))
 
-  (test-case "still-image frame access differs from absent animation metadata"
+  (test-case "still-image frame access and metadata use the same frame count"
     (define png (sample-png))
     (with-skia ([codec (codec-from-bytes png)])
       (define info (codec-info codec))
       (check-equal? (encoded-image-info-format info) 'png)
       (check-equal? (codec-frame-count codec) 1)
-      (check-equal? (encoded-image-info-frame-count info) 0)
-      (check-false (codec-frame-info codec 0))
+      (check-equal? (encoded-image-info-frame-count info) 1)
+      (check-true (codec-frame-info? (codec-frame-info codec 0)))
       (check-exn exn:fail? (lambda () (codec-frame-info codec 1)))
       (with-skia ([image (codec->image codec)])
         (skia-close! codec)

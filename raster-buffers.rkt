@@ -92,14 +92,10 @@
 (define (raster-buffer-byte-size b)
   (metadata 'raster-buffer-byte-size b
             (lambda (v) (* (raster-buffer-resource-row-bytes v) (raster-buffer-resource-height v)))))
-;; Legacy buffers keep their native color space and original constructor ABI.
-;; Only generalized constructors install a detached immutable description.
-
 ; buffer-format-info : raster-buffer? -> image-info?
-;   Returns the retained pixel description or the legacy default-format description.
+;   Returns the buffer's pixel description.
 (define (buffer-format-info b)
-  (or (raster-buffer-resource-description b)
-      (make-image-info (raster-buffer-resource-width b) (raster-buffer-resource-height b))))
+  (raster-buffer-resource-description b))
 
 ; buffer-bpp : raster-buffer? -> exact-positive-integer?
 ;   Returns bytes per pixel for the buffer's retained format.
@@ -119,13 +115,7 @@
 ;   Returns a detached description of an open buffer's dimensions, storage format, alpha type, and
 ;   color interpretation.
 (define (raster-buffer-image-info b)
-  (metadata 'raster-buffer-image-info b
-    (lambda (v)
-      (or (raster-buffer-resource-description v)
-          (make-image-info (raster-buffer-resource-width v) (raster-buffer-resource-height v)
-                           #:color-space (borrowed-color-space->descriptor
-                                          'raster-buffer-image-info
-                                          (raster-buffer-resource-colorspace v)))))))
+  (metadata 'raster-buffer-image-info b buffer-format-info))
 
 ;;;
 ;;; Storage Allocation
@@ -140,10 +130,10 @@
 
 ;; cp is borrowed synchronously. The allocation retains its own native reference.
 
-; allocate-buffer : symbol? integer? integer? integer? any/c [any/c] -> raster-buffer?
+; allocate-buffer : symbol? integer? integer? integer? any/c image-info? symbol? -> raster-buffer?
 ;   Allocates owned strided storage, retains its color space, and initializes format-valid black
 ;   pixels.
-(define (allocate-buffer who w h rb cp [description #f])
+(define (allocate-buffer who w h rb cp description layout-range)
   (define size (* rb h))
   (define handle
     (new-owned who 'raster-buffer
@@ -154,14 +144,12 @@
         (when cp (sk_colorspace_ref cp))
         p)
       (lambda (p) (free p) (when cp (sk_colorspace_unref cp)))))
-  (define result (make-raster-buffer-record handle w h rb cp (box #f)))
+  (define result (make-raster-buffer-record handle w h rb cp (box #f) description layout-range))
   (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! result) (raise e))])
-    (set-raster-buffer-resource-description! result description)
     ;; Opaque formats need initialized maximum alpha, not a zero-alpha lie.
     ;; The unused RGBX byte is initialized to 255; row padding stays zero.
-    (when (and description
-               (or (eq? (image-info-alpha-type description) 'opaque)
-                   (eq? (image-info-color-type description) 'rgb-888x)))
+    (when (or (eq? (image-info-alpha-type description) 'opaque)
+              (eq? (image-info-color-type description) 'rgb-888x))
       (define sample (pixel-sample->bytes who description (pixel-black-sample description)))
       (define bpp (bytes-length sample))
       (define row (make-bytes (* w bpp)))
@@ -173,15 +161,15 @@
     result))
 
 ; make-raster-buffer : (integer-in 1 32768) (integer-in 1 32768) [#:row-bytes (or/c #f
-;   exact-positive-integer?)] [#:color-space (or/c #f color-space?)] -> raster-buffer?
+;   exact-positive-integer?)] [#:color-space (or/c #f 'srgb 'linear-srgb bytes?)] -> raster-buffer?
 ;   Creates an owned RGBA8888 premultiplied buffer initialized to transparent black.
 (define (make-raster-buffer w h #:row-bytes [row-bytes #f] #:color-space [cs #f])
   (define who 'make-raster-buffer)
   (define-values (rb minimum allocation) (raster-layout who w h row-bytes))
-  (define ch (and cs (color-space-h who cs)))
+  (define info (make-image-info w h #:color-space cs))
   (skia-check!)
-  (call-with-owned who (if ch (list ch) '())
-    (lambda ps (allocate-buffer who w h rb (and ch (car ps))))))
+  (call-with-image-info-native who info
+    (lambda (_ cp) (allocate-buffer who w h rb cp info 'pointer))))
 
 ; make-raster-buffer-from-info : image-info? [#:row-bytes (or/c #f exact-positive-integer?)] ->
 ;   raster-buffer?
@@ -193,7 +181,8 @@
   (skia-check!)
   (call-with-image-info-native who info
     (lambda (_ cp)
-      (allocate-buffer who (image-info-width info) (image-info-height info) rb cp info))))
+      (allocate-buffer who (image-info-width info) (image-info-height info)
+                       rb cp info 'signed32))))
 
 ;; The exclusive lease and continuation barrier are the existing 0.37 protocol.
 
@@ -313,37 +302,30 @@
         (lambda (pm) (proc pm address rb b))))
     #:idle? #f))
 
-; pixmap-pixel : pixmap? exact-nonnegative-integer? exact-nonnegative-integer? -> rgba?
+; pixmap-pixel : pixmap? exact-nonnegative-integer? exact-nonnegative-integer?
+;   [#:color-space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?)] -> rgba?
 ;   Returns an unpremultiplied eight-bit color.
-(define (pixmap-pixel v x y)
+(define (pixmap-pixel v x y #:color-space [space 'pixmap])
   (view-owner 'pixmap-pixel v)
   (raster-point 'pixmap-pixel x y (pixmap-width-value v) (pixmap-height-value v))
-  (if (float-info? (view-format-info v))
-      (color4f->rgba (pixmap-color4f v x y) #:out-of-range 'clip)
+  (if (or (not (eq? space 'pixmap)) (float-info? (view-format-info v)))
+      (color4f->rgba (pixmap-color4f v x y #:color-space space) #:out-of-range 'clip)
       (call-view 'pixmap-pixel v
         (lambda (pm address rb b) (color->rgba (sk_pixmap_get_pixel_color pm x y))))))
 
-; pixmap-fill! : pixmap? color? -> void?
-;   Fills the view through the native color eraser.
-(define (pixmap-fill! v color)
-  (define who 'pixmap-fill!)
-  (define argb (color->argb color))
-  (call-view who v
-    (lambda (pm address rb b)
-      (define packed (if (eq? (image-info-alpha-type (buffer-format-info b)) 'opaque)
-                         (bitwise-ior argb #xff000000) argb))
-      (unless (sk_pixmap_erase_color pm packed #f)
-        (error who "native pixel fill failed")))
-    #:write? #t)
-  (void))
+; pixmap-fill! : pixmap? color? [#:color-space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?)] -> void?
+;   Fills the view with a color interpreted in its own space unless another space is supplied.
+(define (pixmap-fill! v color #:color-space [space 'pixmap])
+  (pixmap-fill-color4f! v (color->color4f color) #:color-space space))
 
-; pixmap-set-pixel! : pixmap? exact-nonnegative-integer? exact-nonnegative-integer? color? -> void?
+; pixmap-set-pixel! : pixmap? exact-nonnegative-integer? exact-nonnegative-integer? color?
+;   [#:color-space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?)] -> void?
 ;   Like pixmap-fill!, but writes one pixel.
-(define (pixmap-set-pixel! v x y color)
+(define (pixmap-set-pixel! v x y color #:color-space [space 'pixmap])
   (define who 'pixmap-set-pixel!)
   (view-owner who v #t)
   (raster-point who x y (pixmap-width-value v) (pixmap-height-value v))
-  (pixmap-fill! (pixmap-subset v x y 1 1) color))
+  (pixmap-fill! (pixmap-subset v x y 1 1) color #:color-space space))
 
 ; pixmap-opaque? : pixmap? -> boolean?
 ;   Reports whether all pixels in the view have fully opaque alpha.
@@ -463,39 +445,36 @@
   (define who 'pixmap-write-rgba!)
   (define owner (view-owner who v #t))
   (define w (pixmap-width-value v)) (define h (pixmap-height-value v))
-  (cond
-    [(not (raster-buffer-resource-description owner))
-     ;; Preserve the existing byte-exact Racket premultiplication contract.
-     (copy-tight-to-view! who v (prepare-raster-input who w h data row-bytes premultiplied?))]
-    [else
-     (boolean who premultiplied?)
-     (define src-info (make-image-info w h #:alpha-type (if premultiplied? 'premul 'unpremul)))
-     (define-values (rb _m _n) (image-info-storage-layout src-info #:row-bytes row-bytes))
-     (define input (pixel-tight-input who src-info data rb))
-     (define tight (* w (buffer-bpp owner)))
-     (define out (make-bytes (* tight h)))
-     (call-view who v
-       (lambda (_pm _address _rb b)
-         ;; These RGBA input samples use the destination's color interpretation,
-         ;; as in the legacy write operation; this is NOT an implicit sRGB tag.
-         (define native (make-sk-image-info (raster-buffer-resource-colorspace b) w h rgba-8888
-                                            (if premultiplied? alpha-premul alpha-unpremul)))
-         ;; SkPixmap retains its input address between FFI calls. Use raw,
-         ;; immobile storage, not a borrowed address into a movable byte string.
-         ;; This allocation/cleanup pair is inside call-view's atomic scope.
-         (define memory (malloc (bytes-length input) 'raw))
-         (unless memory (error who "temporary pixel allocation failed"))
-         (dynamic-wind void
-           (lambda ()
-             (memcpy memory input (bytes-length input))
-             (call-with-native-temporary who 'pixmap
-               (lambda () (sk_pixmap_new_with_params native memory (* w 4))) sk_pixmap_destructor
-               (lambda (src)
-                 (unless (sk_pixmap_read_pixels src (buffer-native-info b w h) out tight 0 0)
-                   (error who "native RGBA-to-storage conversion failed")))))
-           (lambda () (free memory)))
-         (void/reference-sink input out)))
-     (copy-tight-to-view! who v out)])
+  (boolean who premultiplied?)
+  (define src-info (make-image-info w h #:alpha-type (if premultiplied? 'premul 'unpremul)))
+  (define-values (rb _m _n)
+    (if (eq? (raster-buffer-resource-layout-range owner) 'pointer)
+        (raster-layout who w h row-bytes)
+        (image-info-storage-layout src-info #:row-bytes row-bytes)))
+  (define input (checked-rgba-input who w h data rb premultiplied?))
+  (define tight (* w (buffer-bpp owner)))
+  (define out (make-bytes (* tight h)))
+  (call-view who v
+    (lambda (_pm _address _rb b)
+      ;; RGBA input samples use the destination's color interpretation.
+      (define native (make-sk-image-info (raster-buffer-resource-colorspace b) w h rgba-8888
+                                         (if premultiplied? alpha-premul alpha-unpremul)))
+      ;; SkPixmap retains its input address between FFI calls. Use raw,
+      ;; immobile storage, not a borrowed address into a movable byte string.
+      ;; This allocation/cleanup pair is inside call-view's atomic scope.
+      (define memory (malloc (bytes-length input) 'raw))
+      (unless memory (error who "temporary pixel allocation failed"))
+      (dynamic-wind void
+        (lambda ()
+          (memcpy memory input (bytes-length input))
+          (call-with-native-temporary who 'pixmap
+            (lambda () (sk_pixmap_new_with_params native memory (* w 4))) sk_pixmap_destructor
+            (lambda (src)
+              (unless (sk_pixmap_read_pixels src (buffer-native-info b w h) out tight 0 0)
+                (error who "native RGBA-to-storage conversion failed")))))
+        (lambda () (free memory)))
+      (void/reference-sink input out)))
+  (copy-tight-to-view! who v out)
   (void))
 
 ;;;
@@ -543,10 +522,7 @@
   (define who 'pixmap-scale!) (define sm (sampling who mode))
   (define dst (view-owner who destination #t)) (define src (view-owner who source))
   (when (eq? dst src) (error who "source and destination must have distinct raster buffers"))
-  ;; Preserve legacy color semantics; new explicit format routes reject an
-  ;; otherwise silent tagged/untagged color interpretation change.
-  (when (or (raster-buffer-resource-description src) (raster-buffer-resource-description dst))
-    (conversion-spaces who src dst))
+  (conversion-spaces who src dst)
   (call-view who source
     (lambda (sp sa sr sb)
       (call-view who destination
@@ -593,9 +569,11 @@
     (lambda (p)
       (define w (raster-buffer-resource-width b)) (define h (raster-buffer-resource-height b))
       (define d (raster-buffer-resource-description b))
+      (define range (raster-buffer-resource-layout-range b))
       (define-values (rb minimum allocation)
-        (if d (image-info-storage-layout d #:row-bytes row-bytes) (raster-layout who w h row-bytes)))
-      (define result (allocate-buffer who w h rb (raster-buffer-resource-colorspace b) d))
+        (if (eq? range 'pointer) (raster-layout who w h row-bytes)
+            (image-info-storage-layout d #:row-bytes row-bytes)))
+      (define result (allocate-buffer who w h rb (raster-buffer-resource-colorspace b) d range))
       (with-handlers ([(lambda (_) #t) (lambda (e) (skia-close! result) (raise e))])
         (call-buffer who result
           (lambda (q)
@@ -760,15 +738,62 @@
 ;;; Floating-Point Pixel Access
 ;;;
 
-; pixmap-color4f : pixmap? exact-nonnegative-integer? exact-nonnegative-integer? -> color4f?
+; call-with-pixel-space : symbol? raster-buffer? any/c procedure? -> any/c
+;   Resolves a pixel color's space and rejects conversions that lack a source or destination tag.
+(define (call-with-pixel-space who b descriptor proc)
+  (define local (raster-buffer-resource-colorspace b))
+  (if (eq? descriptor 'pixmap)
+      (proc local)
+      (let ([space (descriptor->color-space descriptor)])
+        (dynamic-wind void
+          (lambda ()
+            (unless (eq? (and local #t) (and space #t))
+              (error who "cannot convert between tagged and untagged pixel colors"))
+            (call-with-owned who (if space (list (color-space-h who space)) '())
+              (lambda pointers (proc (and space (car pointers))))))
+          (lambda () (when space (skia-close! space)))))))
+
+; convert-pixel-color : symbol? sk-color4f? any/c any/c -> sk-color4f?
+;   Converts one unpremultiplied color between known spaces without changing pixel storage.
+(define (convert-pixel-color who color source destination)
+  (cond
+    [(eq? source destination) color]
+    [else
+     (define memory (malloc 16 'raw))
+     (unless memory (error who "temporary color allocation failed"))
+     (define out (make-bytes 16))
+     (dynamic-wind void
+       (lambda ()
+         (memcpy memory color 16)
+         (call-with-native-temporary who 'pixmap
+           (lambda ()
+             (sk_pixmap_new_with_params (make-sk-image-info source 1 1 16 alpha-unpremul)
+                                       memory 16))
+           sk_pixmap_destructor
+           (lambda (pm)
+             (unless (sk_pixmap_read_pixels
+                      pm (make-sk-image-info destination 1 1 16 alpha-unpremul) out 16 0 0)
+               (error who "native pixel color conversion failed"))))
+         (apply make-sk-color4f
+                (for/list ([offset (in-range 0 16 4)])
+                  (floating-point-bytes->real out (system-big-endian?) offset (+ offset 4)))))
+       (lambda () (free memory)))]))
+
+; pixmap-color4f : pixmap? exact-nonnegative-integer? exact-nonnegative-integer?
+;   [#:color-space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?)] -> color4f?
 ;   Returns the unpremultiplied floating-point color in the pixmap's color space.
-(define (pixmap-color4f v x y)
+(define (pixmap-color4f v x y #:color-space [space 'pixmap])
   (define who 'pixmap-color4f)
   (view-owner who v)
   (raster-point who x y (pixmap-width-value v) (pixmap-height-value v))
   (define out (make-sk-color4f 0.0 0.0 0.0 0.0))
-  (call-view who v (lambda (pm _a _rb _b) (sk_pixmap_get_pixel_color4f pm x y out)))
-  (native->color4f out))
+  (call-view who v
+    (lambda (pm _a _rb b)
+      (sk_pixmap_get_pixel_color4f pm x y out)
+      (call-with-pixel-space who b space
+        (lambda (target)
+          (native->color4f
+           (convert-pixel-color who out (raster-buffer-resource-colorspace b) target)))))))
 
 ; pixmap-alphaf : pixmap? exact-nonnegative-integer? exact-nonnegative-integer? -> (real-in 0 1)
 ;   Returns normalized alpha without returning or converting the RGB channels.
@@ -780,10 +805,10 @@
   (unless (and (real? a) (<= 0 a 1)) (error who "native alpha is not finite/in [0,1]"))
   a)
 
-; pixmap-fill-color4f! : pixmap? color4f? -> void?
-;   Fills the view with an unpremultiplied sRGB color converted to the destination color space and
-;   storage format.
-(define (pixmap-fill-color4f! v color)
+; pixmap-fill-color4f! : pixmap? color4f?
+;   [#:color-space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?)] -> void?
+;   Fills with an unpremultiplied color, using the pixmap's space by default.
+(define (pixmap-fill-color4f! v color #:color-space [space 'pixmap])
   (define who 'pixmap-fill-color4f!)
   (define native (color4f-native who color))
   (define b (view-owner who v #t))
@@ -798,15 +823,20 @@
       (dynamic-wind void
         (lambda ()
           (memset scratch 0 bpp)
-          ;; Pinned SkPixmap::erase converts UNPREMULTIPLIED sRGB into the
-          ;; destination space. It is not a raw local-space sample write.
-          ;; Stage one native pixel first so overflow/invalid converted samples
-          ;; reject before any destination mutation (including late failures).
-          (call-with-native-temporary who 'pixmap
-            (lambda () (sk_pixmap_new_with_params (buffer-native-info owner 1 1) scratch bpp))
-            sk_pixmap_destructor
-            (lambda (sp)
-              (unless (sk_pixmap_erase_color4f sp native #f) (error who "native float fill failed"))))
+          ;; Convert explicitly, then use an untagged scratch view so erase does
+          ;; not interpret local channels as sRGB. Validate before publishing.
+          (call-with-pixel-space who owner space
+            (lambda (source)
+              (define converted
+                (convert-pixel-color who native source (raster-buffer-resource-colorspace owner)))
+              (define local-info (buffer-native-info owner 1 1))
+              (set-sk-image-info-colorspace! local-info #f)
+              (call-with-native-temporary who 'pixmap
+                (lambda () (sk_pixmap_new_with_params local-info scratch bpp))
+                sk_pixmap_destructor
+                (lambda (sp)
+                  (unless (sk_pixmap_erase_color4f sp converted #f)
+                    (error who "native float fill failed"))))))
           (define data (make-bytes bpp))
           (memcpy data scratch bpp)
           (define sample (pixel-bytes->sample who info data))
@@ -819,13 +849,13 @@
         (lambda () (free scratch)))) #:write? #t)
   (void))
 
-; pixmap-set-color4f! : pixmap? exact-nonnegative-integer? exact-nonnegative-integer? color4f? ->
-;   void?
+; pixmap-set-color4f! : pixmap? exact-nonnegative-integer? exact-nonnegative-integer? color4f?
+;   [#:color-space (or/c 'pixmap #f 'srgb 'linear-srgb bytes?)] -> void?
 ;   Like pixmap-fill-color4f!, but writes one pixel.
-(define (pixmap-set-color4f! v x y color)
+(define (pixmap-set-color4f! v x y color #:color-space [space 'pixmap])
   (view-owner 'pixmap-set-color4f! v #t)
   (raster-point 'pixmap-set-color4f! x y (pixmap-width-value v) (pixmap-height-value v))
-  (pixmap-fill-color4f! (pixmap-subset v x y 1 1) color))
+  (pixmap-fill-color4f! (pixmap-subset v x y 1 1) color #:color-space space))
 
 
 ;; Internal image read/scale transaction. The callback is library-authored,

@@ -10,6 +10,32 @@
 (require racket/list "check.rkt")
 (provide (all-defined-out))
 
+; encoding-options : symbol? symbol? any/c any/c any/c any/c any/c -> (values any/c any/c
+;   symbol? symbol? boolean?)
+;   Applies the same format-specific defaults and restrictions to buffered and live encoders.
+(define (encoding-options who format quality compression downsample alpha lossless?)
+  (unless (memq format '(png jpeg webp))
+    (raise-argument-error who "'png, 'jpeg, or 'webp" format))
+  (for ([option (in-list (list (list '#:quality quality '(jpeg webp))
+                               (list '#:png-compression compression '(png))
+                               (list '#:jpeg-downsample downsample '(jpeg))
+                               (list '#:jpeg-alpha alpha '(jpeg))
+                               (list '#:webp-lossless? lossless? '(webp))))])
+    (when (and (cadr option) (not (memq format (caddr option))))
+      (raise-arguments-error who "encoding option does not apply to the selected format"
+                             "format" format "keyword" (car option) "value" (cadr option))))
+  (define q (or quality 90))
+  (case format [(jpeg) (quality-integer who q)] [(webp) (quality-scalar who q)])
+  (define c (or compression 6))
+  (unless (and (exact-integer? c) (<= 0 c 9))
+    (raise-argument-error who "PNG compression integer 0 through 9" c))
+  (define ds (or downsample 'yuv-420))
+  (define a (or alpha 'ignore))
+  (choice who ds jpeg-downsample-values)
+  (choice who a jpeg-alpha-values)
+  (boolean who lossless?)
+  (values q c ds a lossless?))
+
 ;;;
 ;;; Colorimetry Validation
 ;;;

@@ -65,7 +65,8 @@
   (define requested (codec-query-scale who scale))
   ;; Validate/copy a detached descriptor before any native input or port I/O.
   (define template
-    (make-image-info 1 1 #:color-type color #:alpha-type alpha #:color-space space))
+    (make-image-info 1 1 #:color-type color #:alpha-type alpha
+                     #:color-space (if (eq? space 'source) #f space)))
   (values requested template))
 
 ; scanline-count : symbol? exact-integer? exact-nonnegative-integer? [#:zero? boolean?] ->

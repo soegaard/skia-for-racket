@@ -3620,14 +3620,16 @@ class R3fStreamCodecTests(unittest.TestCase):
         self.assertIn('file-backed duplicate still requires a stable backing file', text)
         self.assertIn('@racket[#:trusted? #t]', text)
 
-    def test_live_encoding_contracts_validate_inactive_options_and_integer_webp(self):
+    def test_live_encoding_contracts_match_buffered_defaults_and_format_restrictions(self):
         for name in ('image->port', 'image-write-stream!'):
-            self.assertEqual(self.option(name, '#:quality')[2], ['integer-in', '0', '100'])
-            self.assertEqual(self.option(name, '#:png-compression')[2], ['integer-in', '0', '9'])
+            self.assertEqual(self.option(name, '#:quality')[2], ['or/c', '#f', ['real-in', '0', '100']])
+            self.assertEqual(self.option(name, '#:png-compression')[2], ['or/c', '#f', ['integer-in', '0', '9']])
+            self.assertEqual(self.option(name, '#:quality')[-1], '#f')
+            self.assertEqual(self.option(name, '#:icc-profile')[-1], '#f')
         text = self.prose('live-streams')
-        self.assertIn('validate @emph{all} encoding options', text)
-        self.assertIn('rejects non-@racket[#f] options for other formats', text)
-        self.assertIn('accepts noninteger real values for WebP quality', text)
+        self.assertIn('options and defaults of @racket[image->encoded-bytes]', text)
+        self.assertIn('options for other formats raise an exception', text)
+        self.assertIn('WebP quality can be fractional', text)
 
     def test_live_input_length_seekability_and_callback_constraints_are_explicit(self):
         text = self.prose('live-streams')
@@ -3642,7 +3644,10 @@ class R3fStreamCodecTests(unittest.TestCase):
         self.assertIn('callback runs once to record its page', text)
         self.assertIn('preflight failure writes no bytes', text)
         self.assertIn('not a constant-memory authoring guarantee', text)
-        self.assertIn('There is no format argument', text)
+        self.assertIn('required format argument selects the document format', text)
+        for name in ('output->port', 'output-write-stream!'):
+            self.assertEqual(self.option(name, '#:pdfa?')[-1], '#f')
+            self.assertEqual(self.option(name, '#:encoding-quality')[-1], '#f')
         self.assertEqual(self.option('output->port', '#:policy')[2],
                          ['or/c', ['quote', 'report'], ['quote', 'error'], ['quote', 'vector-only']])
 
@@ -3653,11 +3658,12 @@ class R3fStreamCodecTests(unittest.TestCase):
         self.assertIn('exclusive', text)
         self.assertEqual(self.header('output-write-stream!')[1], 'exact-nonnegative-integer?')
 
-    def test_still_frame_count_is_not_the_animation_metadata_count(self):
+    def test_still_frame_count_and_metadata_use_selectable_frames(self):
         text = self.prose('codecs')
-        self.assertIn('one selectable frame', text)
-        self.assertIn('still image commonly reports zero', text)
-        self.assertEqual(self.header('codec-frame-info')[1], ['or/c', 'codec-frame-info?', '#f'])
+        self.assertIn('both frame counts include', text)
+        self.assertIn('one for a still image', text)
+        self.assertEqual(self.header('codec-frame-info')[1], 'codec-frame-info?')
+        self.assertEqual(self.header('encoded-image-info-frame-count')[1], 'exact-positive-integer?')
         self.assertIn('invalid index', text)
 
     def test_frame_decode_uses_fresh_storage_and_does_not_return_partial_pixels(self):
@@ -3719,7 +3725,7 @@ class R3fStreamCodecTests(unittest.TestCase):
         self.assertEqual(self.option('codec-scanline-from-bytes', '#:alpha-type')[-1],
                          ['quote', 'unpremul'])
         self.assertEqual(self.option('codec-scanline-from-bytes', '#:color-space')[-1],
-                         ['quote', 'srgb'])
+                         ['quote', 'source'])
 
     def test_incremental_destinations_are_restricted_without_port_callbacks(self):
         text = self.prose('incremental-codecs')

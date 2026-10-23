@@ -16,6 +16,7 @@
          "private/core.rkt" "private/native.rkt" "private/lifetime.rkt"
          "private/check.rkt" "private/stream-buffer.rkt" "private/stream-resource.rkt"
          "private/live-port-util.rkt" "private/live-native-lease.rkt"
+         "private/color-output-util.rkt" "private/icc-encoding.rkt"
          (prefix-in worker: "private/live-port-native.rkt")
          (only-in "private/live-port-runtime.rkt" in-port-service? active-operation-count)
          "private/picture-util.rkt" "private/codec-util.rkt"
@@ -179,16 +180,21 @@
 ;;; Encoded Image and Picture Output
 ;;;
 
-; encoding : symbol? symbol? exact-integer? exact-integer? symbol? symbol? boolean? -> (values
-;   integer? integer?)
-;   Validates format options and returns the JPEG downsampling and alpha ABI values.
-(define (encoding who format quality compression downsample alpha lossless?)
-  (unless (memq format '(png jpeg webp)) (raise-argument-error who "'png, 'jpeg or 'webp" format))
-  (quality-integer who quality)
-  (unless (and (exact-integer? compression) (<= 0 compression 9))
-    (raise-argument-error who "PNG compression integer 0 through 9" compression))
-  (boolean who lossless?)
-  (values (choice who downsample jpeg-downsample-values) (choice who alpha jpeg-alpha-values)))
+; call-with-encoding-references : symbol? image? any/c any/c any/c procedure? -> any/c
+;   Prepares converted pixels and independent native profile storage for worker-owned encoding.
+(define (call-with-encoding-references who image space profile description proc)
+  (define checked (checked-encoding-profile who profile))
+  (icc-description-bytes who checked description)
+  (call-with-owned 'image->encoded-bytes (list (raw:image-h who image)) (lambda (_) (void)))
+  (raw:call-with-output-image who image space
+    (lambda (source)
+      (with-ref (raster-reference who source)
+        (lambda (ref)
+          (define-values (icc text sentinel)
+            (make-encoder-profile-reference who checked description))
+          (dynamic-wind void
+            (lambda () (proc ref icc text sentinel (if icc (list ref icc) (list ref))))
+            (lambda () (when icc (reference-close! icc)))))))))
 
 ; raster-reference : symbol? image? -> any/c
 ;   Pins a CPU-only raster image reference without converting its pixel format or color space.
@@ -202,26 +208,33 @@
 (define (picture-reference who picture)
   (call-with-owned 'picture->bytes (list (raw:picture-h who picture)) worker:make-picture-reference))
 
-; image->port : image? output-port? (or/c 'png 'jpeg 'webp) [#:quality (integer-in 0 100)]
-;   [#:png-compression (integer-in 0 9)] [#:jpeg-downsample (or/c 'yuv-420 'yuv-422 'yuv-444)]
-;   [#:jpeg-alpha (or/c 'ignore 'blend-on-black)] [#:webp-lossless? boolean?] [#:limit
-;   exact-positive-integer?] [#:close? boolean?] [#:cancel-evt (or/c evt? #f)] ->
-;   exact-nonnegative-integer?
+; image->port : image? output-port? (or/c 'png 'jpeg 'webp)
+;   [#:quality (or/c #f (real-in 0 100))] [#:png-compression (or/c #f (integer-in 0 9))]
+;   [#:jpeg-downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444)]
+;   [#:jpeg-alpha (or/c #f 'ignore 'blend-on-black)] [#:webp-lossless? boolean?]
+;   [#:color-space (or/c color-space? #f)] [#:icc-profile (or/c bytes? #f)]
+;   [#:icc-description (or/c string? #f)] [#:limit exact-positive-integer?]
+;   [#:close? boolean?] [#:cancel-evt (or/c evt? #f)] -> exact-nonnegative-integer?
 ;   Encodes a CPU-compatible image directly to a Racket port and returns the bytes written.
-(define (image->port image out format #:quality [quality 90] #:png-compression [compression 6]
-                     #:jpeg-downsample [downsample 'yuv-420] #:jpeg-alpha [alpha 'ignore]
-                     #:webp-lossless? [lossless? #f] #:limit [limit (current-skia-byte-limit)]
+(define (image->port image out format #:quality [quality #f] #:png-compression [compression #f]
+                     #:jpeg-downsample [downsample #f] #:jpeg-alpha [alpha #f]
+                     #:webp-lossless? [lossless? #f] #:color-space [space #f]
+                     #:icc-profile [profile #f] #:icc-description [description #f]
+                     #:limit [limit (current-skia-byte-limit)]
                      #:close? [close? #f] #:cancel-evt [cancel #f])
   (define who 'image->port)
   (unless (output-port? out) (raise-argument-error who "output-port?" out))
-  (define-values (ds a) (encoding who format quality compression downsample alpha lossless?))
+  (define-values (q c ds a lossless)
+    (encoding-options who format quality compression downsample alpha lossless?))
   (options! who #f out #f #f #f close? limit cancel)
-  (with-ref (raster-reference who image)
-    (lambda (ref)
+  (call-with-encoding-references who image space profile description
+    (lambda (ref icc text sentinel refs)
       (call-with-values
        (lambda ()
-         (worker:native-encode-image ref out format quality compression ds a lossless? limit cancel
-                                     (make-finish #f out #f close? (list ref))))
+         (worker:native-encode-image
+          ref out format q c (choice who ds jpeg-downsample-values)
+          (choice who a jpeg-alpha-values) lossless icc text sentinel limit cancel
+          (make-finish #f out #f close? refs)))
        written-result))))
 
 ; picture->port : picture? output-port? [#:limit exact-positive-integer?] [#:close? boolean?]
@@ -247,10 +260,10 @@
 ;;;
 
 ; call-with-recorded-pages : symbol? any/c symbol? symbol? symbol? real? exact-positive-integer?
-;   procedure? -> any/c
+;   procedure? procedure? -> any/c
 ;   Captures authoring once, preflights retained page commands, and closes pictures after the
 ;   callback.
-(define (call-with-recorded-pages who source format policy mode dpi limit proc)
+(define (call-with-recorded-pages who source format policy mode dpi limit preflight proc)
   (unless (memq format '(pdf svg)) (raise-argument-error who "'pdf or 'svg" format))
   (define pages
     (cond [(output-page? source) (list source)]
@@ -288,8 +301,7 @@
       ;; Only our draw-picture wrapper is replayed: application authoring runs once.
       (call-with-values
        (lambda () (call-with-audit-collector format policy #t (length pages)
-                    (lambda ()
-                      (output->bytes snapshots format #:text-mode effective #:raster-dpi dpi))))
+                    (lambda () (preflight snapshots effective))))
        (lambda ignored (void)))
       (proc pictures sizes))
     (lambda () (for ([picture (in-list captured)]) (skia-close! picture)))))
@@ -309,32 +321,61 @@
 ; output->port : (or/c output-page? (cons/c output-page? (listof output-page?))) output-port? (or/c
 ;   'pdf 'svg) [#:policy (or/c 'report 'error 'vector-only)] [#:text-mode (or/c 'auto 'native
 ;   'outline)] [#:raster-dpi (real-in 1 9600)] [#:limit exact-positive-integer?] [#:close? boolean?]
+;   [#:title string?] [#:description string?] [#:id-prefix (or/c string? #f)]
+;   [#:encoding-quality (or/c (integer-in 0 101) #f)] [#:pdfa? boolean?]
 ;   [#:cancel-evt (or/c evt? #f)] -> exact-nonnegative-integer?
 ;   Exports output pages to a Racket port and returns the byte count.
 (define (output->port source out format #:policy [policy 'error] #:text-mode [mode 'auto]
+                      #:title [title ""] #:description [description ""]
+                      #:id-prefix [prefix #f] #:encoding-quality [quality #f] #:pdfa? [pdfa? #f]
                       #:raster-dpi [dpi 144] #:limit [limit (current-skia-byte-limit)]
                       #:close? [close? #f] #:cancel-evt [cancel #f])
   (define who 'output->port)
   (unless (output-port? out) (raise-argument-error who "output-port?" out))
+  (define-values (t d id q)
+    (document-output-options who format title description prefix quality pdfa?))
   (options! who #f out #f #f #f close? limit cancel)
   ;; Exact commands are preflighted before any output is published. Validation
   ;; or authoring errors do not take ownership of the destination port.
   (call-with-recorded-pages who source format policy mode dpi limit
+    (lambda (pages effective)
+      (output->bytes pages format #:title title #:description description #:id-prefix prefix
+                     #:encoding-quality quality #:pdfa? pdfa? #:text-mode effective #:raster-dpi dpi))
     (lambda (pictures sizes)
-      (call-with-page-references who pictures
-        (lambda (refs)
+      (call-with-document-references who pictures format t d
+        (lambda (refs all-refs tp dp)
           (define-values (filter finish-filter)
             (if (eq? format 'svg)
-                (make-svg-header-filter who (caar sizes) (cadar sizes))
+                (make-svg-header-filter who (caar sizes) (cadar sizes) t d id)
                 (values values void)))
           (parameterize ([worker:current-output-transform filter])
             (call-with-values
              (lambda ()
                (worker:native-write-pages refs
                  (for/list ([size (in-list sizes)]) (map (lambda (n) (scalar who n)) size))
-                 out format (scalar who dpi) limit cancel
-                 (make-finish #f out #f close? refs (lambda (okay?) (when okay? (finish-filter))))))
+                 out format (scalar who dpi) tp dp q pdfa? limit cancel
+                 (make-finish #f out #f close? all-refs
+                              (lambda (okay?) (when okay? (finish-filter))))))
              written-result)))))))
+
+; call-with-document-references : symbol? list? symbol? bytes? bytes? procedure? -> any/c
+;   Keeps page pictures and PDF metadata alive independently until live output finishes.
+(define (call-with-document-references who pictures format title description proc)
+  (call-with-page-references who pictures
+    (lambda (refs)
+      (define (text-reference bytes)
+        (call-as-atomic
+         (lambda ()
+           (make-native-reference (sk_string_new_with_copy bytes (bytes-length bytes))
+                                  sk_string_destructor))))
+      (if (eq? format 'svg)
+          (proc refs refs #f #f)
+          (with-ref (text-reference title)
+            (lambda (t)
+              (with-ref (text-reference description)
+                (lambda (d)
+                  (proc refs (append refs (list t d)) (reference-pointer t)
+                        (reference-pointer d))))))))))
 
 ;; Forward native writer callbacks into an exclusively pinned FILE/memory
 ;; WStream. No arbitrary Racket callback runs while its native write is active.
@@ -374,27 +415,32 @@
       (release-live-pin! pin)
       (unless (port-closed? out) (close-output-port out)))))
 
-; image-write-stream! : image? skia-output-stream? (or/c 'png 'jpeg 'webp) [#:quality (integer-in 0
-;   100)] [#:png-compression (integer-in 0 9)] [#:jpeg-downsample (or/c 'yuv-420 'yuv-422 'yuv-444)]
-;   [#:jpeg-alpha (or/c 'ignore 'blend-on-black)] [#:webp-lossless? boolean?] ->
-;   exact-nonnegative-integer?
+; image-write-stream! : image? skia-output-stream? (or/c 'png 'jpeg 'webp)
+;   [#:quality (or/c #f (real-in 0 100))] [#:png-compression (or/c #f (integer-in 0 9))]
+;   [#:jpeg-downsample (or/c #f 'yuv-420 'yuv-422 'yuv-444)]
+;   [#:jpeg-alpha (or/c #f 'ignore 'blend-on-black)] [#:webp-lossless? boolean?]
+;   [#:color-space (or/c color-space? #f)] [#:icc-profile (or/c bytes? #f)]
+;   [#:icc-description (or/c string? #f)] -> exact-nonnegative-integer?
 ;   Encodes a CPU-compatible image to a memory or file output stream.
 (define (image-write-stream! image stream format
-                             #:quality [quality 90] #:png-compression [compression 6]
-                             #:jpeg-downsample [downsample 'yuv-420] #:jpeg-alpha [alpha 'ignore]
-                             #:webp-lossless? [lossless? #f])
+                             #:quality [quality #f] #:png-compression [compression #f]
+                             #:jpeg-downsample [downsample #f] #:jpeg-alpha [alpha #f]
+                             #:webp-lossless? [lossless? #f] #:color-space [space #f]
+                             #:icc-profile [profile #f] #:icc-description [description #f])
   (define who 'image-write-stream!)
   (with-output who stream (lambda (_p _n) (void)))
-  (define-values (ds a) (encoding who format quality compression downsample alpha lossless?))
+  (define-values (q c ds a lossless)
+    (encoding-options who format quality compression downsample alpha lossless?))
   (live-streams-check!)
-  (with-ref (raster-reference who image)
-    (lambda (ref)
-      (native-publication who stream (list ref)
+  (call-with-encoding-references who image space profile description
+    (lambda (ref icc text sentinel refs)
+      (native-publication who stream refs
         (lambda (out limit finish)
           (call-with-values
            (lambda ()
-             (worker:native-encode-image ref out format quality compression ds a lossless?
-                                         limit #f finish))
+             (worker:native-encode-image
+              ref out format q c (choice who ds jpeg-downsample-values)
+              (choice who a jpeg-alpha-values) lossless icc text sentinel limit #f finish))
            written-result))))))
 
 ; picture-write-stream! : picture? skia-output-stream? -> exact-nonnegative-integer?
@@ -412,26 +458,45 @@
            written-result))))))
 
 ; output-write-stream! : (or/c output-page? (cons/c output-page? (listof output-page?)))
-;   skia-output-stream? [#:policy (or/c 'report 'error 'vector-only)] [#:text-mode (or/c 'auto
-;   'native 'outline)] [#:raster-dpi (real-in 1 9600)] -> exact-nonnegative-integer?
-;   Publishes one through 1024 output pages as PDF to a native output stream.
-(define (output-write-stream! source stream
+;   skia-output-stream? (or/c 'pdf 'svg) [#:policy (or/c 'report 'error 'vector-only)]
+;   [#:text-mode (or/c 'auto 'native 'outline)] [#:raster-dpi (real-in 1 9600)]
+;   [#:title string?] [#:description string?] [#:id-prefix (or/c string? #f)]
+;   [#:encoding-quality (or/c (integer-in 0 101) #f)] [#:pdfa? boolean?]
+;   -> exact-nonnegative-integer?
+;   Publishes PDF pages or a single SVG page to a native output stream.
+(define (output-write-stream! source stream format
+                              #:title [title ""] #:description [description ""]
+                              #:id-prefix [prefix #f] #:encoding-quality [quality #f]
+                              #:pdfa? [pdfa? #f]
                               #:policy [policy 'error]
                               #:text-mode [mode 'auto]
                               #:raster-dpi [dpi 144])
-  ;; Native file/memory document publication is PDF. SVG physical-root filtering
-  ;; is offered by output->port, not silently omitted for native output streams.
   (define who 'output-write-stream!)
+  (define-values (t d id q)
+    (document-output-options who format title description prefix quality pdfa?))
   (with-output who stream (lambda (_p _n) (void)))
   (live-streams-check!)
-  (call-with-recorded-pages who source 'pdf policy mode dpi (budget stream)
+  (call-with-recorded-pages who source format policy mode dpi (budget stream)
+    (lambda (pages effective)
+      (output->bytes pages format #:title title #:description description #:id-prefix prefix
+                     #:encoding-quality quality #:pdfa? pdfa? #:text-mode effective #:raster-dpi dpi))
     (lambda (pictures sizes)
-      (call-with-page-references who pictures
-        (lambda (refs)
-          (native-publication who stream refs
-            (lambda (out limit finish)
-              (call-with-values
-               (lambda () (worker:native-write-pages refs
-                 (for/list ([size (in-list sizes)]) (map (lambda (n) (scalar who n)) size))
-                 out 'pdf (scalar who dpi) limit #f finish))
-               written-result))))))))
+      (call-with-document-references who pictures format t d
+        (lambda (refs all-refs tp dp)
+          (define-values (filter finish-filter)
+            (if (eq? format 'svg)
+                (make-svg-header-filter who (caar sizes) (cadar sizes) t d id)
+                (values values void)))
+          (parameterize ([worker:current-output-transform filter])
+            (native-publication who stream all-refs
+              (lambda (out limit finish)
+                (call-with-values
+                 (lambda ()
+                   (worker:native-write-pages refs
+                     (for/list ([size (in-list sizes)]) (map (lambda (n) (scalar who n)) size))
+                     out format (scalar who dpi) tp dp q pdfa? limit #f
+                     (lambda (okay?)
+                       (with-handlers ([(lambda (_) #t) (lambda (e) (finish #f) (raise e))])
+                         (when okay? (finish-filter))
+                         (finish okay?)))))
+                 written-result)))))))))

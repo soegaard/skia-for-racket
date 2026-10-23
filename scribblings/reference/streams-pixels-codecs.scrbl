@@ -41,16 +41,17 @@ without requesting conversion to a different destination space.
   (list @racket[image-from-port] "Applied by default" "Premultiplied" "Codec's space")
   (list @racket[codec->image] "Applied by default" "Premultiplied" "Codec's space")
   (list @seclink["skia-scanline-codecs"]{Scanline decoding}
-        "Not applied" "Unpremultiplied" "sRGB")
+        "Not applied" "Unpremultiplied" "Codec's space")
   (list @seclink["skia-incremental-codecs"]{Incremental decoding}
-        "Not applied" "Unpremultiplied" "sRGB"))]
+        "Not applied" "Unpremultiplied" "Codec's space"))]
 
 Applying @tech{encoded orientation} arranges pixels for display and can exchange
 the width and height. @racket[image-from-port] and @racket[codec->image] allow
 this to be disabled; scanline and incremental output always use encoded
 coordinates. The @racket[image-frame-from-file] and @racket[image-frame-from-bytes]
 conveniences follow @racket[codec->image]. See @secref["skia-pixel-descriptions"]
-for alpha representations and the different forms of color-space arguments.
+for alpha representations and color-space descriptors. The configurable decoders
+use @racket['source] to preserve the codec's space and @racket[#f] for untagged output.
 
 The file, byte-string, and buffered-port image constructors can defer pixel
 decoding until drawing or readback. In contrast, @racket[image-from-port] and

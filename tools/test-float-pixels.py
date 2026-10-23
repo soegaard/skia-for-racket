@@ -94,9 +94,9 @@ class Sources(unittest.TestCase):
         policy=self.text('output-policy.rkt')
         self.assertIn('(float-color needs-raster needs-raster',policy)
         self.assertIn('(float-pixels needs-raster needs-raster',policy)
-    def test_old_integer_util_and_legacy_rgba_path_stay_present(self):
+    def test_integer_and_float_formats_share_rgba_input_validation(self):
         s=self.text('raster-buffers.rkt')
-        self.assertIn('prepare-raster-input',s)
+        self.assertIn('checked-rgba-input',s)
         self.assertIn('pixel-storage-input',s)
         self.assertIn('integer-storage-input',self.text('private/pixel-sample-util.rkt'))
         self.assertIn('integer-sample->bytes',self.text('private/integer-pixel-util.rkt'))

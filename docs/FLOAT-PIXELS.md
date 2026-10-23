@@ -97,7 +97,7 @@ These are supported wrapper routes, not per-device execution receipts.
 | CPU canvas, premul/opaque | Yes | Yes | Real float target; no implicit RGBA8888 staging |
 | CPU canvas, unpremul | No | No | Rejected explicitly |
 | `pixmap-color4f` / `pixmap-alphaf` | Yes | Yes | Native float query; color is unpremultiplied |
-| `pixmap-fill-color4f!` | Yes | Yes | Input is sRGB, converted to target; one checked native sample staged first |
+| `pixmap-fill-color4f!` | Yes | Yes | Input uses the pixmap's space by default; an explicit descriptor requests conversion; one checked sample staged first |
 | Existing RGBA byte accessors | Yes | Yes | Explicit eight-bit read/quantization, not raw float bytes |
 | Existing GPU buffer readback | No | No | Rejected before any raw destination address is handed out |
 | Direct strict PDF/SVG float image | No | No | Explicit integer conversion or declared raster group required |
@@ -120,18 +120,18 @@ rejects nonfinite stored values rather than disguising them as ordinary colors.
 These additions are exported by `raster-buffers.rkt` and `main.rkt`:
 
 ```racket
-(pixmap-color4f pixmap x y)                 ; color4f?, unpremultiplied
+(pixmap-color4f pixmap x y #:color-space [space 'pixmap])                 ; color4f?, unpremultiplied
 (pixmap-alphaf pixmap x y)                  ; finite alpha in [0,1]
-(pixmap-fill-color4f! pixmap color)
-(pixmap-set-color4f! pixmap x y color)
+(pixmap-fill-color4f! pixmap color #:color-space [space 'pixmap])
+(pixmap-set-color4f! pixmap x y color #:color-space [space 'pixmap])
 ```
 
-`pixmap-color4f` returns the native unpremultiplied color **in the pixmap's
-own color interpretation**; it does not transform to sRGB. By contrast, pinned
-`SkPixmap::erase(Color4f)` treats its input as unpremultiplied **sRGB**, then
-converts into the destination. Thus `pixmap-fill-color4f!` is not the inverse
-of a local-space raw sample read. Use `pixmap-set-sample!` for exact local-space
-storage, or `raster-buffer-convert` for a declared source/destination conversion.
+`pixmap-color4f`, the float setters, and their byte-color counterparts all use
+the pixmap's own color space by default. `#:color-space 'srgb`, `'linear-srgb`,
+or ICC bytes request conversion to that space on reads or from it on writes.
+`#f` means untagged; tagged/untagged conversions are rejected. Reads followed by
+writes preserve color interpretation, though storage rounding can lose precision.
+Use `pixmap-set-sample!` for stored channels without color conversion.
 
 Fills stage one native converted pixel in separate scratch storage, validate it,
 and only then copy it into the destination rows. Unsupported/nonfinite/overflowing
@@ -146,8 +146,9 @@ route stages eight-bit RGBA and now explicitly rejects float snapshots; use
 This also means encoding paths that request that legacy image-level conversion
 must receive an explicitly converted integer image. `raster-buffer-copy` copies stored data.
 `raster-buffer-convert` transforms samples; it does not merely relabel metadata.
-A conversion between tagged and untagged data still rejects ambiguity. The
-legacy RGBA constructor and its exact premultiplication behavior remain unchanged.
+A conversion between tagged and untagged data still rejects ambiguity. Both
+raster-buffer constructors use the same native conversion for RGBA input,
+including premultiplication; their existing allocation limits are unchanged.
 
 ## Paints, clears, and shaders
 

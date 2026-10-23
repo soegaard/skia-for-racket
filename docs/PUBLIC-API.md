@@ -777,13 +777,13 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
 | copy-port/streaming | stable | 0 | procedure | 2 | none | #:cancel-evt, #:close-input?, #:close-output?, #:limit |
-| image->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:jpeg-alpha, #:jpeg-downsample, #:limit, #:png-compression, #:quality, #:webp-lossless? |
+| image->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:color-space, #:icc-description, #:icc-profile, #:jpeg-alpha, #:jpeg-downsample, #:limit, #:png-compression, #:quality, #:webp-lossless? |
 | image-from-port | stable | 0 | procedure | 1 | none | #:cancel-evt, #:close?, #:length, #:limit, #:normalize-origin?, #:seekable? |
-| image-write-stream! | stable | 0 | procedure | 3 | none | #:jpeg-alpha, #:jpeg-downsample, #:png-compression, #:quality, #:webp-lossless? |
+| image-write-stream! | stable | 0 | procedure | 3 | none | #:color-space, #:icc-description, #:icc-profile, #:jpeg-alpha, #:jpeg-downsample, #:png-compression, #:quality, #:webp-lossless? |
 | live-streams-available? | stable | 0 | procedure | 0 | none | none |
 | live-streams-check! | stable | 0 | procedure | 0 | none | none |
-| output->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:limit, #:policy, #:raster-dpi, #:text-mode |
-| output-write-stream! | stable | 0 | procedure | 2 | none | #:policy, #:raster-dpi, #:text-mode |
+| output->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:description, #:encoding-quality, #:id-prefix, #:limit, #:pdfa?, #:policy, #:raster-dpi, #:text-mode, #:title |
+| output-write-stream! | stable | 0 | procedure | 3 | none | #:description, #:encoding-quality, #:id-prefix, #:pdfa?, #:policy, #:raster-dpi, #:text-mode, #:title |
 | picture->port | stable | 0 | procedure | 2 | none | #:cancel-evt, #:close?, #:limit |
 | picture-from-port | stable | 0 | procedure | 1 | none | #:cancel-evt, #:close?, #:height, #:length, #:limit, #:seekable?, #:trusted?, #:width |
 | picture-write-stream! | stable | 0 | procedure | 2 | none | none |
@@ -1096,7 +1096,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | image->jpeg-bytes | stable | 0 | procedure | 1 | none | #:alpha, #:color-space, #:downsample, #:icc-description, #:icc-profile, #:quality |
 | image->non-texture-image | stable | 0 | procedure | 1 | none | none |
 | image->png-bytes | stable | 0 | procedure | 1 | none | #:color-space, #:compression, #:icc-description, #:icc-profile |
-| image->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:jpeg-alpha, #:jpeg-downsample, #:limit, #:png-compression, #:quality, #:webp-lossless? |
+| image->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:color-space, #:icc-description, #:icc-profile, #:jpeg-alpha, #:jpeg-downsample, #:limit, #:png-compression, #:quality, #:webp-lossless? |
 | image->raster-buffer | stable | 0 | procedure | 1 | none | #:cache?, #:info, #:row-bytes, #:sampling |
 | image->raster-image | stable | 0 | procedure | 1 | none | none |
 | image->rgba-bytes | stable | 0 | procedure | 1 | none | #:color-space, #:premultiplied? |
@@ -1155,7 +1155,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | image-unique-id | stable | 0 | procedure | 1 | none | none |
 | image-valid? | stable | 0 | procedure | 1 | none | none |
 | image-width | stable | 0 | procedure | 1 | none | none |
-| image-write-stream! | stable | 0 | procedure | 3 | none | #:jpeg-alpha, #:jpeg-downsample, #:png-compression, #:quality, #:webp-lossless? |
+| image-write-stream! | stable | 0 | procedure | 3 | none | #:color-space, #:icc-description, #:icc-profile, #:jpeg-alpha, #:jpeg-downsample, #:png-compression, #:quality, #:webp-lossless? |
 | image? | stable | 0 | procedure | 1 | none | none |
 | in-path-segments | stable | 0 | procedure | 1 | none | #:force-closed?, #:mode |
 | in-region-clipped-rectangles | stable | 0 | procedure | 2 | none | none |
@@ -1420,7 +1420,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | native-package-version | stable | 0 | value | — | — | — |
 | output->bytes | stable | 0 | procedure | 2 | none | #:description, #:encoding-quality, #:id-prefix, #:pdfa?, #:raster-dpi, #:text-mode, #:title |
 | output->bytes/audit | stable | 0 | procedure | 2 | none | #:description, #:encoding-quality, #:id-prefix, #:pdfa?, #:policy, #:raster-dpi, #:text-mode, #:title |
-| output->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:limit, #:policy, #:raster-dpi, #:text-mode |
+| output->port | stable | 0 | procedure | 3 | none | #:cancel-evt, #:close?, #:description, #:encoding-quality, #:id-prefix, #:limit, #:pdfa?, #:policy, #:raster-dpi, #:text-mode, #:title |
 | output-audit-event-details | stable | 0 | procedure | 1 | none | none |
 | output-audit-event-feature | stable | 0 | procedure | 1 | none | none |
 | output-audit-event-operation | stable | 0 | procedure | 1 | none | none |
@@ -1476,7 +1476,7 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | output-stream-flush! | stable | 0 | procedure | 1 | none | none |
 | output-stream-write-bytes! | stable | 0 | procedure | 2, 3, 4 | none | none |
 | output-stream-write-port/buffered | stable | 0 | procedure | 2 | none | #:cancel-evt, #:close? |
-| output-write-stream! | stable | 0 | procedure | 2 | none | #:policy, #:raster-dpi, #:text-mode |
+| output-write-stream! | stable | 0 | procedure | 3 | none | #:description, #:encoding-quality, #:id-prefix, #:pdfa?, #:policy, #:raster-dpi, #:text-mode, #:title |
 | paint->fill-path | stable | 0 | procedure | 2 | none | #:cull, #:matrix |
 | paint-antialias? | stable | 0 | procedure | 1 | none | none |
 | paint-blend-mode-or-src-over | stable | 0 | procedure | 1 | none | none |
@@ -1627,19 +1627,19 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | pixmap->rgba-bytes | stable | 0 | procedure | 1 | none | #:premultiplied? |
 | pixmap->storage-bytes | stable | 0 | procedure | 1 | none | none |
 | pixmap-alphaf | stable | 0 | procedure | 3 | none | none |
-| pixmap-color4f | stable | 0 | procedure | 3 | none | none |
+| pixmap-color4f | stable | 0 | procedure | 3 | none | #:color-space |
 | pixmap-convert! | stable | 0 | procedure | 2 | none | none |
-| pixmap-fill! | stable | 0 | procedure | 2 | none | none |
-| pixmap-fill-color4f! | stable | 0 | procedure | 2 | none | none |
+| pixmap-fill! | stable | 0 | procedure | 2 | none | #:color-space |
+| pixmap-fill-color4f! | stable | 0 | procedure | 2 | none | #:color-space |
 | pixmap-height | stable | 0 | procedure | 1 | none | none |
 | pixmap-image-info | stable | 0 | procedure | 1 | none | none |
 | pixmap-opaque? | stable | 0 | procedure | 1 | none | none |
-| pixmap-pixel | stable | 0 | procedure | 3 | none | none |
+| pixmap-pixel | stable | 0 | procedure | 3 | none | #:color-space |
 | pixmap-row-bytes | stable | 0 | procedure | 1 | none | none |
 | pixmap-sample | stable | 0 | procedure | 3 | none | none |
 | pixmap-scale! | stable | 0 | procedure | 2 | none | #:sampling |
-| pixmap-set-color4f! | stable | 0 | procedure | 4 | none | none |
-| pixmap-set-pixel! | stable | 0 | procedure | 4 | none | none |
+| pixmap-set-color4f! | stable | 0 | procedure | 4 | none | #:color-space |
+| pixmap-set-pixel! | stable | 0 | procedure | 4 | none | #:color-space |
 | pixmap-set-sample! | stable | 0 | procedure | 4 | none | none |
 | pixmap-subset | stable | 0 | procedure | 5 | none | none |
 | pixmap-width | stable | 0 | procedure | 1 | none | none |
@@ -2179,19 +2179,19 @@ Stable export/call-boundary target for the 0.78 API. Feature-specific ownership,
 | pixmap->rgba-bytes | stable | 0 | procedure | 1 | none | #:premultiplied? |
 | pixmap->storage-bytes | stable | 0 | procedure | 1 | none | none |
 | pixmap-alphaf | stable | 0 | procedure | 3 | none | none |
-| pixmap-color4f | stable | 0 | procedure | 3 | none | none |
+| pixmap-color4f | stable | 0 | procedure | 3 | none | #:color-space |
 | pixmap-convert! | stable | 0 | procedure | 2 | none | none |
-| pixmap-fill! | stable | 0 | procedure | 2 | none | none |
-| pixmap-fill-color4f! | stable | 0 | procedure | 2 | none | none |
+| pixmap-fill! | stable | 0 | procedure | 2 | none | #:color-space |
+| pixmap-fill-color4f! | stable | 0 | procedure | 2 | none | #:color-space |
 | pixmap-height | stable | 0 | procedure | 1 | none | none |
 | pixmap-image-info | stable | 0 | procedure | 1 | none | none |
 | pixmap-opaque? | stable | 0 | procedure | 1 | none | none |
-| pixmap-pixel | stable | 0 | procedure | 3 | none | none |
+| pixmap-pixel | stable | 0 | procedure | 3 | none | #:color-space |
 | pixmap-row-bytes | stable | 0 | procedure | 1 | none | none |
 | pixmap-sample | stable | 0 | procedure | 3 | none | none |
 | pixmap-scale! | stable | 0 | procedure | 2 | none | #:sampling |
-| pixmap-set-color4f! | stable | 0 | procedure | 4 | none | none |
-| pixmap-set-pixel! | stable | 0 | procedure | 4 | none | none |
+| pixmap-set-color4f! | stable | 0 | procedure | 4 | none | #:color-space |
+| pixmap-set-pixel! | stable | 0 | procedure | 4 | none | #:color-space |
 | pixmap-set-sample! | stable | 0 | procedure | 4 | none | none |
 | pixmap-subset | stable | 0 | procedure | 5 | none | none |
 | pixmap-width | stable | 0 | procedure | 1 | none | none |

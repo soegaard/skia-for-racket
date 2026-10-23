@@ -104,7 +104,10 @@ for names, arity in (
     IO_PROCEDURES.update({name: (arity, []) for name in names.split()})
 PORT_OPTIONS = ['cancel-evt', 'close?', 'limit']
 SCAN_OPTIONS = ['alpha-type', 'color-space', 'color-type', 'scale']
-ENCODING_OPTIONS = ['jpeg-alpha', 'jpeg-downsample', 'png-compression', 'quality', 'webp-lossless?']
+ENCODING_OPTIONS = ['color-space', 'icc-description', 'icc-profile', 'jpeg-alpha',
+                    'jpeg-downsample', 'png-compression', 'quality', 'webp-lossless?']
+DOCUMENT_OPTIONS = ['description', 'encoding-quality', 'id-prefix', 'pdfa?', 'policy',
+                    'raster-dpi', 'text-mode', 'title']
 IO_PROCEDURES.update({
     'make-memory-input-stream': (2, ['limit']),
     'make-file-input-stream': (2, ['limit']),
@@ -124,9 +127,9 @@ IO_PROCEDURES.update({
     'copy-port/streaming': (4, ['cancel-evt', 'close-input?', 'close-output?', 'limit']),
     'image->port': (8, sorted([*PORT_OPTIONS, *ENCODING_OPTIONS])),
     'picture->port': (4, PORT_OPTIONS),
-    'output->port': (8, sorted([*PORT_OPTIONS, 'policy', 'raster-dpi', 'text-mode'])),
+    'output->port': (8, sorted([*PORT_OPTIONS, *DOCUMENT_OPTIONS])),
     'image-write-stream!': (8, ENCODING_OPTIONS),
-    'output-write-stream!': (4, ['policy', 'raster-dpi', 'text-mode']),
+    'output-write-stream!': (8, DOCUMENT_OPTIONS),
     'codec->image': (2, ['color-space', 'frame-index', 'normalize-origin?']),
     'image-frame-from-bytes': (6, ['color-space', 'normalize-origin?']),
     'image-frame-from-file': (6, ['color-space', 'normalize-origin?']),

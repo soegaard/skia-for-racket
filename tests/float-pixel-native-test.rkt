@@ -148,11 +148,24 @@
              (lambda (p) (pixmap-fill-color4f! p (make-color4f 0.5009765625 0.25 1 0.5)))
              #:writable? #t)
            (near (sample b) '(0.25048828125 0.125 0.5 0.5) 0.0001)))) )
-   (test-case "native eraseColor4f interprets its input as sRGB"
+   (test-case "pixel colors default to local space and support explicit conversion"
      (with-float-buffer 'rgba-f32
        (lambda (b)
          (call-with-raster-buffer-pixmap b
-           (lambda (p) (pixmap-fill-color4f! p (make-color4f 0.5 0.5 0.5))) #:writable? #t)
+           (lambda (p)
+             (pixmap-fill-color4f! p (make-color4f 0.5 0.5 0.5))
+             (near (color4f->vector (pixmap-color4f p 0 0)) '(0.5 0.5 0.5 1))
+             (near (color4f->vector (pixmap-color4f p 0 0 #:color-space 'srgb))
+                   '(0.735357 0.735357 0.735357 1) 0.001)
+             (check-equal? (pixmap-pixel p 0 0) (rgb 128 128 128))
+             (check-equal? (pixmap-pixel p 0 0 #:color-space 'srgb) (rgb 188 188 188))
+             (pixmap-set-color4f! p 0 0 (pixmap-color4f p 0 0))
+             (near (color4f->vector (pixmap-color4f p 0 0)) '(0.5 0.5 0.5 1))
+             (check-exn exn:fail? (lambda () (pixmap-color4f p 0 0 #:color-space #f)))
+             (check-exn exn:fail?
+                        (lambda () (pixmap-fill! p 'red #:color-space #f)))
+             (pixmap-fill-color4f! p (make-color4f 0.5 0.5 0.5) #:color-space 'srgb))
+           #:writable? #t)
          (near (sample b) '(0.21404114 0.21404114 0.21404114 1) 0.001))
        #:color-space 'linear-srgb))
    (test-case "opaque float fill rejects translucent colors before mutation"

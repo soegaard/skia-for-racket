@@ -1216,19 +1216,19 @@ and [PDF tests](PDF-TESTING.md) for native and visual verification.
 (codec-info codec)                     ; immutable encoded-image-info
 (codec-frame-count codec)              ; decodable frames, including 1 for still images
 (codec-repetition-count codec)         ; -1 infinite; 0 once; n additional repetitions
-(codec-frame-info codec frame-index)   ; immutable metadata, or #f for a still image
+(codec-frame-info codec frame-index)   ; immutable metadata for every valid frame
 (codec-color-space codec)              ; separately owned color-space or #f
 
 (codec->image codec
               #:frame-index [frame-index 0]
               #:normalize-origin? [normalize-origin? #t]
-              #:color-space [color-space #f])
+              #:color-space [color-space 'source])
 (image-frame-from-bytes encoded-bytes [frame-index 0]
                         #:normalize-origin? [normalize-origin? #t]
-                        #:color-space [color-space #f])
+                        #:color-space [color-space 'source])
 (image-frame-from-file path [frame-index 0]
                        #:normalize-origin? [normalize-origin? #t]
-                       #:color-space [color-space #f])
+                       #:color-space [color-space 'source])
 
 (encoded-image-info-display-width info)
 (encoded-image-info-display-height info)
@@ -1254,12 +1254,12 @@ unrecognized, unsupported, or over-limit input raises an exception.
 
 `codec-info` uses the existing `encoded-image-info` record. Its width and height
 are the **encoded** dimensions; the two display-dimension accessors account
-for orientation. Its `encoded-image-info-frame-count` preserves the native
-animation-table count, which is commonly **0 for still images**. In contrast,
-`codec-frame-count` is the number of selectable frames and is **1 for still
-images**. Frame indexes are zero-based exact integers; out-of-range indexes
-raise contract errors. For a still image with an empty animation table,
-`(codec-frame-info codec 0)` returns `#f` rather than invented animation data.
+for orientation. Both frame-count queries report selectable frames, including
+one for a still image. Frame indexes are zero-based exact integers; out-of-range
+indexes raise contract errors. A still-image frame record has duration zero,
+no required earlier frame, disposal `'keep`, blend `'src`, and the full encoded
+rectangle. Alpha comes from the image description. Its fully-received flag is
+`#f` because no per-frame receipt information is reported.
 
 Animation metadata is copied into immutable Racket values and remains valid
 after the codec is closed. `required-frame` is a preceding frame index or `#f`
@@ -1298,9 +1298,10 @@ and `image-from-file` functions retain their previous behavior. Re-encoding a
 normalized raster does not retain an EXIF instruction that would rotate it a
 second time.
 
-A `#:color-space` argument converts the decoded pixels to that color space.
-The default `#f` preserves the source color-space tag when one is available;
-it does not remove that tag or request an arbitrary reinterpretation. Decoding
+The default `#:color-space 'source` preserves the source color-space tag.
+Supply `'srgb`, `'linear-srgb`, or ICC bytes to request another space, or `#f`
+for untagged output. Live color-space resources are not accepted here; use
+`color-space->descriptor` to convert one. Decoding
 uses premultiplied RGBA8888 internally. `codec-color-space` returns a separately
 owned reference that the caller must close; it can outlive the codec. Returned
 images likewise retain their color-space tag independently of caller wrappers.
@@ -1942,10 +1943,9 @@ Encoded origins are `'top-left`, `'top-right`, `'bottom-right`, `'bottom-left`,
 `'left-top`, `'right-top`, `'right-bottom`, or `'left-bottom`. This API reports
 the encoded orientation; it does not itself normalize or rotate pixels.
 
-A subtle m119 ABI detail: `encoded-image-info-frame-count` reflects the size of
-Skia's frame-info vector. A non-animated codec can therefore report **0**, not
-1. Treat a positive value as available animation frame information rather than
-assuming that every still image has a one-frame count.
+`encoded-image-info-frame-count` counts selectable frames, including one for
+a still image. It agrees with `codec-frame-count`; metadata inspection does not
+guarantee a successful pixel decode.
 
 ### Encode images
 

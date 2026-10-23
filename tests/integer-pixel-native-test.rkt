@@ -106,10 +106,15 @@
      (for ([format (in-list '(rgba-8888 bgra-8888 rgba-1010102 alpha-8))])
        (with-skia ([b (make-raster-buffer-from-info (make-image-info 2 1 #:color-type format))])
          (check-false (raster-buffer-opaque? b)))))
-   (test-case "color writes preserve opaque alpha"
+   (test-case "color writes reject translucent input for opaque storage"
      (with-skia ([b (make-raster-buffer-from-info (make-image-info 1 1 #:alpha-type 'opaque))])
-       (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-fill! v (rgba 40 50 60 0)))
+       (define before (raster-buffer->storage-bytes b))
+       (call-with-raster-buffer-pixmap b
+         (lambda (v)
+           (check-exn exn:fail? (lambda () (pixmap-fill! v (rgba 40 50 60 0))))
+           (check-exn exn:fail? (lambda () (pixmap-set-pixel! v 0 0 (rgba 40 50 60 128)))))
          #:writable? #t)
+       (check-equal? (raster-buffer->storage-bytes b) before)
        (check-true (raster-buffer-opaque? b))))
    (test-case "malformed raw input is transactional including a late invalid alpha"
      (with-buffer 'rgba-8888
@@ -168,10 +173,16 @@
      (with-skia ([b (make-raster-buffer-from-info (make-image-info 1 1 #:alpha-type 'unpremul))])
        (raster-buffer-write-rgba! b (bytes 99 88 77 0))
        (check-equal? (raster-buffer->storage-bytes b) (bytes 99 88 77 0))))
-   (test-case "legacy premultiplication remains byte-exact"
-     (with-skia ([b (make-raster-buffer 1 1)])
-       (raster-buffer-write-rgba! b (bytes 255 127 0 128))
-       (check-equal? (raster-buffer->storage-bytes b) (bytes 128 64 0 128))))
+   (test-case "both constructors use the same RGBA conversion"
+     (with-skia ([simple (make-raster-buffer 256 1)]
+                 [explicit (make-raster-buffer-from-info (make-image-info 256 1))])
+       (define input (apply bytes-append
+                           (for/list ([alpha (in-range 256)]) (bytes 255 127 63 alpha))))
+       (raster-buffer-write-rgba! simple input)
+       (raster-buffer-write-rgba! explicit input)
+       (check-equal? (raster-buffer-image-info simple) (raster-buffer-image-info explicit))
+       (check-equal? (raster-buffer->storage-bytes simple)
+                     (raster-buffer->storage-bytes explicit))))
    (test-case "RGBA writes convert to selected integer channels"
      (for ([format (in-list '(rgba-8888 bgra-8888 rgb-888x rgb-565 rgba-1010102))])
        (with-buffer format
@@ -241,7 +252,8 @@
                        (if (eq? format 'alpha-8) '(0 0 0 255) '(255 255 255 255))))))
    (test-case "detached color-space descriptions survive source and buffer close"
      (define saved #f)
-     (with-skia ([space (make-srgb-color-space)] [b (make-raster-buffer 2 1 #:color-space space)])
+     (with-skia ([space (make-srgb-color-space)]
+                 [b (make-raster-buffer 2 1 #:color-space (color-space->descriptor space))])
        (set! saved (raster-buffer-image-info b)) (skia-close! space)
        (check-equal? (image-info-color-space saved) 'srgb)
        (call-with-raster-buffer-pixmap b (lambda (v) (pixmap-fill! v 'red)) #:writable? #t))
@@ -257,12 +269,20 @@
      (define info (make-image-info 1 1 #:color-space bytes))
      (check-exn exn:fail? (lambda () (make-raster-buffer-from-info info))))
    (test-case "tagged versus untagged conversion rejects rather than relabeling"
-     (with-skia ([src (make-raster-buffer 1 1)]
-                 [dst (make-raster-buffer-from-info (make-image-info 1 1 #:color-space 'srgb))])
-       (call-with-raster-buffer-pixmap src
-         (lambda (s) (call-with-raster-buffer-pixmap dst
-                       (lambda (d) (check-exn exn:fail? (lambda () (pixmap-convert! d s))))
-                       #:writable? #t)))))
+     (for ([create (in-list
+                   (list (lambda () (make-raster-buffer 1 1 #:color-space 'srgb))
+                         (lambda ()
+                           (make-raster-buffer-from-info
+                            (make-image-info 1 1 #:color-space 'srgb)))))])
+       (with-skia ([src (make-raster-buffer 1 1)] [dst (create)] [copy (raster-buffer-copy dst)])
+         (for ([target (in-list (list dst copy))])
+           (call-with-raster-buffer-pixmap src
+             (lambda (s)
+               (call-with-raster-buffer-pixmap target
+                 (lambda (d)
+                   (check-exn exn:fail? (lambda () (pixmap-convert! d s)))
+                   (check-exn exn:fail? (lambda () (pixmap-scale! d s))))
+                 #:writable? #t)))))))
    (test-case "sRGB to linear conversion changes samples, not just metadata"
      (with-skia ([src (make-raster-buffer-from-info (make-image-info 1 1 #:color-space 'srgb))])
        (raster-buffer-write-rgba! src (bytes 128 128 128 255))

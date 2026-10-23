@@ -36,17 +36,16 @@ features:
 @tabular[#:sep @hspace[2]
  (list
   (list @bold{Feature} @bold{Bytes or file} @bold{Port} @bold{Native stream})
-  (list "Formats" "PDF, SVG" "PDF, SVG" "PDF only")
+  (list "Formats" "PDF, SVG" "PDF, SVG" "PDF, SVG")
   (list "PDF pages" "One or more" "1–1024" "1–1024")
-  (list "SVG pages" "One" "One" "Not supported")
-  (list "Metadata and ID options" "Available" "No overrides" "No overrides")
+  (list "SVG pages" "One" "One" "One")
+  (list "Metadata and ID options" "Available" "Available" "Available")
   (list "Named destinations" "Supported" "Not supported" "Not supported")
   (list "Partial output on failure" "No" "Possible" "Possible"))]
 
-The byte-string and file interfaces accept title and description options,
-an SVG ID prefix, and PDF encoding-quality and PDF/A settings. The live
-writers accept text-mode, raster-DPI, and audit-policy options, but not those
-metadata or format-specific settings. All routes remain subject to their
+All four interfaces accept title and description options, an SVG ID prefix,
+and PDF encoding-quality and PDF/A settings. The live writers additionally
+accept an audit policy and capture the drawing once before preflight. All routes remain subject to their
 resource, dimension, and byte limits; the page counts above are not memory
 guarantees.
 

@@ -29,17 +29,17 @@ from the retained-destination problem planned for incremental decoding in 0.76c.
                           #:scale [scale 1]
                           #:color-type [color-type 'rgba-8888]
                           #:alpha-type [alpha-type 'unpremul]
-                          #:color-space [color-space 'srgb])
+                          #:color-space [color-space 'source])
 (codec-scanline-from-stream input
                            #:scale [scale 1]
                            #:color-type [color-type 'rgba-8888]
                            #:alpha-type [alpha-type 'unpremul]
-                           #:color-space [color-space 'srgb])
+                           #:color-space [color-space 'source])
 (codec-scanline-from-port/buffered in
                                   #:scale [scale 1]
                                   #:color-type [color-type 'rgba-8888]
                                   #:alpha-type [alpha-type 'unpremul]
-                                  #:color-space [color-space 'srgb]
+                                  #:color-space [color-space 'source]
                                   #:limit [limit (current-skia-byte-limit)]
                                   #:close? [close? #f]
                                   #:cancel-evt [cancel-evt #f])
@@ -73,9 +73,10 @@ are detached descriptors (`#f`, `'srgb`, `'linear-srgb`, or checked ICC bytes), 
 live resource handles. A structurally valid image description is not a promise
 that a particular native decoder supports that conversion. Unsupported modes,
 scales, and conversions fail explicitly. The native codec retains the destination
-color-space reference after successful start. Default output is sRGB RGBA8888
-with unpremultiplied alpha. `#f` requests no destination color-space conversion
-rather than implicitly labeling the pixels sRGB.
+color-space reference after successful start. Default output is RGBA8888 with
+unpremultiplied alpha and the source's color space. The default `'source`
+preserves that space; `#f` requests untagged output. Alpha-only destinations have
+no color space.
 
 Only **frame zero and full-width rows** are exposed. Horizontal native subsets
 are deliberately outside this stage; use native row skipping for vertical

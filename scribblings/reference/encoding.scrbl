@@ -33,7 +33,7 @@ The byte-string and file interfaces above produce the complete encoded result
 before returning bytes or replacing a file. The live writers in
 @secref["skia-live-streams"] send encoded bytes to a port or native stream as
 encoding proceeds. All four destinations support PNG, JPEG, and WebP, but
-their failure behavior and accepted options differ:
+their failure behavior differs:
 
 @tabular[#:sep @hspace[2]
  (list
@@ -43,17 +43,10 @@ their failure behavior and accepted options differ:
   (list "Racket port" @racket[image->port] "A written prefix can remain")
   (list "Native stream" @racket[image-write-stream!] "A written prefix can remain"))]
 
-Choose the byte-string or file interface when you need explicit color-space
-conversion or an ICC-profile override. The live writers have neither option;
-they use the image's existing color interpretation. The byte-string and file
-interfaces also accept fractional WebP quality, whereas the live writers
-require an exact integer.
-
-For @racket[image->encoded-bytes] and @racket[save-image], a non-@racket[#f]
-option belonging to another format raises an exception. The live writers
-instead validate every option, including inactive ones, then use only those
-for the selected format. Changing destinations can therefore require changes
-to the supplied options, not just to the destination argument.
+All four interfaces accept the same encoding options and defaults, including
+color-space conversion, ICC-profile overrides, and fractional WebP quality.
+A non-@racket[#f] option belonging to another format raises an exception.
+See @racket[image->encoded-bytes] for the common format-option table.
 
 Live output does not require a complete encoded byte string, but it may still
 need decoded pixel storage. It is not a promise of constant memory. Port output

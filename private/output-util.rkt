@@ -7,9 +7,28 @@
 ;; Normalizes page units, insets, text modes, labels, and raster fallback dimensions.
 ;; Provides common settings used by PDF, SVG, and raster exporters.
 
-(require "check.rkt")
+(require "check.rkt" "pdf-util.rkt" "svg-util.rkt")
 (provide output-unit-factor output-insets output-text-mode raster-output-scale
-         output-drawing-procedure output-label rasterized-geometry svg-with-point-size)
+         output-drawing-procedure output-label rasterized-geometry svg-with-point-size
+         document-output-options)
+
+; document-output-options : symbol? symbol? any/c any/c any/c any/c any/c ->
+;   (values bytes? bytes? any/c exact-integer?)
+;   Validates shared PDF/SVG options before authoring and returns encoded metadata and defaults.
+(define (document-output-options who format title description prefix quality pdfa?)
+  (unless (memq format '(pdf svg)) (raise-argument-error who "'pdf or 'svg" format))
+  (boolean who pdfa?)
+  (case format
+    [(pdf)
+     (when prefix (raise-arguments-error who "#:id-prefix is SVG-only" "given" prefix))
+     (define fields (pdf-metadata-bytes who (list title description)))
+     (values (car fields) (cadr fields) #f (pdf-encoding-quality who (or quality 101)))]
+    [(svg)
+     (when quality (raise-arguments-error who "#:encoding-quality is PDF-only" "given" quality))
+     (when pdfa? (raise-arguments-error who "#:pdfa? is PDF-only" "given" pdfa?))
+     (define id (svg-id-prefix who (or prefix "skia")))
+     (define-values (t d) (svg-metadata who title description))
+     (values t d id 101)]))
 
 ; output-label : symbol? string? -> (and/c string? immutable?)
 ;   Checks the shared 1-through-200-character limit and copies a label for reports.

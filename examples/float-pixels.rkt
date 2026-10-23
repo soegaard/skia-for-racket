@@ -19,7 +19,9 @@
   (call-with-raster-buffer-pixmap buffer
     (lambda (p)
       (printf "Stored F16 samples: ~s and ~s\n" (pixmap-sample p 0 32) (pixmap-sample p 255 32))
-      (printf "Native unpremultiplied color: ~s\n" (pixmap-color4f p 128 32))))
+      (printf "Unpremultiplied color in the buffer's space: ~s\n" (pixmap-color4f p 128 32))
+      (printf "The same color in linear sRGB: ~s\n"
+              (pixmap-color4f p 128 32 #:color-space 'linear-srgb))))
   (with-skia ([integer (raster-buffer-convert buffer (make-image-info 256 64 #:color-space 'srgb))]
               [image (raster-buffer->image integer)])
     (make-directory* "output")

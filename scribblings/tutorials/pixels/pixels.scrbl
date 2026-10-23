@@ -158,6 +158,16 @@ stored premultiplied channels. The storage-byte function always includes that
 representation and the padding. Unpremultiplying low-alpha eight-bit pixels can
 lose precision; transparent pixels do not preserve hidden RGB reliably.
 
+For individual colors, @racket[pixmap-pixel] and @racket[pixmap-color4f]
+return unpremultiplied values in the buffer's color space. Their corresponding
+setters and fills use that same space by default. Supply @racket[#:color-space 'srgb]
+when you want to read sRGB colors or write colors specified in sRGB.
+The buffer constructor accepts a color-space descriptor, for example
+@racket[(make-raster-buffer 192 128 #:color-space 'srgb)]. Omitting it creates
+untagged storage, as in this tutorial; an explicit tagged-to-untagged color
+conversion is rejected. Raw sample operations preserve the stored channels
+without interpreting them as a color in another space.
+
 @section{Map Each Pixel between Two Inks}
 
 The processor calculates a simple score from the three encoded channels, then

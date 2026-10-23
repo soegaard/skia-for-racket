@@ -52,28 +52,28 @@
 (module* dc-text-internals #f
   (provide shaper-font shaped-run-shaper))
 (module* color-internals #f
-  (provide color-space-h wrap-owned-color-space))
+  (provide color-space-h wrap-owned-color-space make-descriptor-color-space))
 (provide image-convert-color-space)
 
 ;; Native RGBA memory has exclusive canvas/pixmap borrows. The state box
 ;; protects explicit close; a scope also keeps the allocation reachable.
 (struct raster-buffer-resource
-  (handle width height row-bytes colorspace state [description #:auto #:mutable])
-  #:auto-value #f
+  (handle width height row-bytes colorspace state description layout-range)
   #:constructor-name make-raster-buffer-record)
 ;; Fields:
 ;;   handle: owned native pixel allocation. width and height: positive pixel dimensions. row-bytes:
 ;;   stride in bytes, at least the tight row size. colorspace: retained native color-space pointer
 ;;   or #f, released with the pixel allocation. state: box tracking exclusive canvas/pixmap borrows.
-;;   description: mutable image-info value or #f for the legacy RGBA layout. Borrow state prevents
-;;   closing or conflicting access while native views are live.
+;;   description: immutable image-info for every buffer. layout-range: 'pointer or 'signed32,
+;;   preserving the constructor's allocation ceiling for subsequent copies and RGBA input strides.
+;;   It never changes color interpretation or conversion. Borrow state prevents conflicting access.
 
 (module* raster-buffer-internals #f
   (provide raster-buffer-resource? make-raster-buffer-record
            raster-buffer-resource-handle raster-buffer-resource-width
            raster-buffer-resource-height raster-buffer-resource-row-bytes
            raster-buffer-resource-colorspace raster-buffer-resource-state
-           raster-buffer-resource-description set-raster-buffer-resource-description!
+           raster-buffer-resource-description raster-buffer-resource-layout-range
            make-surface-record make-image-record color-space-h
            call-with-native-temporary))
 
@@ -214,6 +214,7 @@
          racket/match
          racket/path
          racket/vector
+         (only-in (submod "../image-info.rkt" internals) copy-descriptor)
          "native.rkt" "types.rkt" "lifetime.rkt" "check.rkt" "codec-util.rkt" "pdf-util.rkt"
          "svg-util.rkt" "shader-util.rkt"
          "harfbuzz-native.rkt" "harfbuzz-types.rkt" "bidi.rkt" "line-break.rkt" "joining.rkt"
@@ -507,8 +508,8 @@
   #:constructor-name make-encoded-image-info-record)
 ;; Fields:
 ;;   width and height: encoded pixel dimensions before orientation. format, color-type, alpha-type,
-;;   and origin: codec metadata symbols. frame-count: reported number of image frames. These are
-;;   detached values and own no decoder.
+;;   and origin: codec metadata symbols. frame-count: positive number of selectable frames,
+;;   including one for a still image. This metadata does not establish successful pixel decoding.
 
 ;;;
 ;;; Font, Shaping, and Layout Records
@@ -6561,7 +6562,7 @@
                      alpha-type-values "alpha type")
           (enum-name who (sk_codec_get_origin cp)
                      encoded-origin-values "encoded origin")
-          frames))
+          (max 1 frames)))
        (lambda ()
          (when colorspace
            (sk_colorspace_unref colorspace)))))))
@@ -6611,9 +6612,9 @@
   #:constructor-name make-codec-frame-info-record
   #:omit-define-syntaxes)
 ;; Fields:
-;;   index: zero-based frame index. required-frame: prerequisite frame index or native
-;;   no-prerequisite marker. duration: display duration in milliseconds. fully-received?: complete
-;;   encoded-frame flag.
+;;   index: zero-based frame index. required-frame: earlier frame index or #f for no prerequisite.
+;;   duration: display duration in milliseconds. fully-received?: native frame receipt flag, #f
+;;   when unreported (including a still image without animation metadata).
 ;;   alpha-type and has-alpha-within-bounds?: frame alpha metadata. disposal-method and blend:
 ;;   animation compositing symbols. rect: detached frame rectangle in encoded image coordinates.
 
@@ -6725,7 +6726,7 @@
          (enum-name who (sk-image-info-color-type info) color-type-values "color type")
          (enum-name who (sk-image-info-alpha-type info) alpha-type-values "alpha type")
          (enum-name who (sk_codec_get_origin cp) encoded-origin-values "encoded origin")
-         (codec-native-frame-count who cp)))))))
+         (max 1 (codec-native-frame-count who cp))))))))
 
 ; encoded-image-info-display-width : encoded-image-info? -> exact-positive-integer?
 ;   Returns the width after applying the encoded orientation.
@@ -6745,8 +6746,7 @@
                         (encoded-image-info-origin info)))
   h)
 
-;; Unlike the legacy metadata field, this is the number of decodable frames:
-;; still images have one frame, although their animation metadata table is empty.
+;; Still images have one selectable frame even without an animation metadata table.
 
 ; codec-frame-count : codec? -> exact-positive-integer?
 ;   Returns the number of frame indices exposed by the codec.
@@ -6766,10 +6766,9 @@
         (error who "codec returned invalid repetition count ~a" count))
       count)))
 
-;; Returns #f only for the valid still-image frame with no animation metadata.
 ;; Rect is #(x y width height), always in encoded (not oriented) pixels.
 
-; codec-frame-info : codec? (integer-in 0 2147483647) -> (or/c codec-frame-info? #f)
+; codec-frame-info : codec? (integer-in 0 2147483647) -> codec-frame-info?
 ;   Returns metadata for a valid selectable frame.
 (define (codec-frame-info c index)
   (define who 'codec-frame-info)
@@ -6780,7 +6779,14 @@
    (lambda (cp)
      (define count (codec-check-frame who cp index))
      (cond
-       [(zero? count) #f]
+       [(zero? count)
+        (call-with-codec-image-info who cp
+          (lambda (info)
+            (define alpha
+              (enum-name who (sk-image-info-alpha-type info) alpha-type-values "alpha type"))
+            (make-codec-frame-info-record
+             0 #f 0 #f alpha (not (eq? alpha 'opaque)) 'keep 'src
+             (vector-immutable 0 0 (sk-image-info-width info) (sk-image-info-height info)))))]
        [else
         (define info
           (make-sk-codec-frame-info -1 0 #f 0 #f 1 0 (make-sk-irect 0 0 0 0)))
@@ -6821,83 +6827,100 @@
               who (lambda () (sk_colorspace_ref cs) cs))))))))
 
 ; codec->image : codec? [#:frame-index (integer-in 0 2147483647)] [#:normalize-origin? boolean?]
-;   [#:color-space (or/c color-space? #f)] -> image?
+;   [#:color-space (or/c 'source #f 'srgb 'linear-srgb bytes?)] -> image?
 ;   Decodes the selected zero-based frame into a new CPU image with premultiplied RGBA8888 storage.
 (define (codec->image c #:frame-index [index 0]
                        #:normalize-origin? [normalize? #t]
-                       #:color-space [cs #f])
+                       #:color-space [cs 'source])
   (define who 'codec->image)
   (define hnd (codec-h who c))
   (checked-codec-index who index)
   (boolean who normalize?)
-  (define cs-hnd (optional-color-space-h who cs))
-  (call-with-owned
-   who (if cs-hnd (list hnd cs-hnd) (list hnd))
-   (lambda (cp . colorspaces)
-     (codec-check-frame who cp index)
-     (call-with-codec-image-info
-      who cp
-      (lambda (source-info)
-        (define w (sk-image-info-width source-info))
-        (define h (sk-image-info-height source-info))
-        (define n (check-dimensions who w h))
-        ;; #f preserves the source color space; a supplied space converts during
-        ;; decode. The output copy retains the chosen native color-space tag.
-        (define target-cs
-          (if cs-hnd (car colorspaces) (sk-image-info-colorspace source-info)))
-        (define pixels (make-bytes n 0))
-        (define options (make-sk-codec-options 0 #f index -1))
-        ;; kNoFrame (-1) asks Skia to decode dependencies into this fresh buffer.
-        ;; Passing index-1 here would falsely claim the buffer already held it.
-        (define result
-          (sk_codec_get_pixels cp (make-sk-image-info target-cs w h rgba-8888 alpha-premul)
-                               pixels (* 4 w) options))
-        (unless (= result 0)
-          (error who "frame ~a decode failed: ~a (native result ~a)"
-                 index (codec-result-name result) result))
-        (define-values (ow oh output)
-          (if normalize?
-              (orient-rgba-bytes
-               who w h pixels
-               (enum-name who (sk_codec_get_origin cp) encoded-origin-values "encoded origin"))
-              (values w h pixels)))
-        ;; Both _bytes calls are synchronous and retain no Racket buffer.
-        (make-image-record
-         (new-owned who 'image
-                    (lambda ()
-                      (sk_image_new_raster_copy
-                       (make-sk-image-info target-cs ow oh rgba-8888 alpha-premul)
-                       output (* 4 ow)))
-                    sk_image_unref)
-         ow oh))))))
+  (define descriptor (if (eq? cs 'source) 'source (copy-descriptor who cs)))
+  (define space (and (not (eq? descriptor 'source))
+                     (make-descriptor-color-space who descriptor)))
+  (dynamic-wind void
+   (lambda ()
+      (define cs-hnd (and space (color-space-h who space)))
+      (call-with-owned
+       who (if cs-hnd (list hnd cs-hnd) (list hnd))
+       (lambda (cp . colorspaces)
+         (codec-check-frame who cp index)
+         (call-with-codec-image-info
+          who cp
+          (lambda (source-info)
+            (define w (sk-image-info-width source-info))
+            (define h (sk-image-info-height source-info))
+            (define n (check-dimensions who w h))
+            ;; 'source preserves the actual native profile without an ICC round trip.
+            (define target-cs
+              (cond [(eq? descriptor 'source) (sk-image-info-colorspace source-info)]
+                    [cs-hnd (car colorspaces)]
+                    [else #f]))
+            (define pixels (make-bytes n 0))
+            (define options (make-sk-codec-options 0 #f index -1))
+            ;; kNoFrame (-1) asks Skia to decode dependencies into this fresh buffer.
+            ;; Passing index-1 here would falsely claim the buffer already held it.
+            (define result
+              (sk_codec_get_pixels cp (make-sk-image-info target-cs w h rgba-8888 alpha-premul)
+                                   pixels (* 4 w) options))
+            (unless (= result 0)
+              (error who "frame ~a decode failed: ~a (native result ~a)"
+                     index (codec-result-name result) result))
+            (define-values (ow oh output)
+              (if normalize?
+                  (orient-rgba-bytes
+                   who w h pixels
+                   (enum-name who (sk_codec_get_origin cp) encoded-origin-values "encoded origin"))
+                  (values w h pixels)))
+            ;; Both _bytes calls are synchronous and retain no Racket buffer.
+            (make-image-record
+             (new-owned who 'image
+                        (lambda ()
+                          (sk_image_new_raster_copy
+                           (make-sk-image-info target-cs ow oh rgba-8888 alpha-premul)
+                           output (* 4 ow)))
+                        sk_image_unref)
+             ow oh))))))
+   (lambda () (when space (skia-close! space)))))
+
+; make-descriptor-color-space : symbol? any/c -> (or/c #f color-space?)
+;   Creates a native color space from a checked descriptor, or returns #f for untagged pixels.
+(define (make-descriptor-color-space who descriptor)
+  (define d (copy-descriptor who descriptor))
+  (case d
+    [(#f) #f]
+    [(srgb) (make-srgb-color-space)]
+    [(linear-srgb) (make-linear-srgb-color-space)]
+    [else (color-space-from-icc-bytes d)]))
 
 ; image-frame-from-bytes : bytes? [(integer-in 0 2147483647)] [#:normalize-origin? boolean?]
-;   [#:color-space (or/c color-space? #f)] -> image?
+;   [#:color-space (or/c 'source #f 'srgb 'linear-srgb bytes?)] -> image?
 ;   Constructs a temporary codec with codec-from-bytes, decodes index with codec->image, and closes
 ;   the codec.
 (define (image-frame-from-bytes bs [index 0]
                                 #:normalize-origin? [normalize? #t]
-                                #:color-space [cs #f])
+                                #:color-space [cs 'source])
   (define who 'image-frame-from-bytes)
   (checked-codec-index who index)
   (boolean who normalize?)
-  (optional-color-space-h who cs)
+  (define descriptor (if (eq? cs 'source) 'source (copy-descriptor who cs)))
   (with-skia ([c (codec-from-bytes bs)])
-    (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space cs)))
+    (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space descriptor)))
 
 ; image-frame-from-file : path-string? [(integer-in 0 2147483647)] [#:normalize-origin? boolean?]
-;   [#:color-space (or/c color-space? #f)] -> image?
+;   [#:color-space (or/c 'source #f 'srgb 'linear-srgb bytes?)] -> image?
 ;   Constructs a temporary codec with codec-from-file, decodes index with codec->image, and closes
 ;   the codec.
 (define (image-frame-from-file filename [index 0]
                               #:normalize-origin? [normalize? #t]
-                              #:color-space [cs #f])
+                              #:color-space [cs 'source])
   (define who 'image-frame-from-file)
   (checked-codec-index who index)
   (boolean who normalize?)
-  (optional-color-space-h who cs)
+  (define descriptor (if (eq? cs 'source) 'source (copy-descriptor who cs)))
   (with-skia ([c (codec-from-file filename)])
-    (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space cs)))
+    (codec->image c #:frame-index index #:normalize-origin? normalize? #:color-space descriptor)))
 
 
 ;;;
@@ -7092,24 +7115,14 @@
                               #:color-space [cs #f] #:icc-profile [icc #f]
                               #:icc-description [description #f])
   (define who 'image->encoded-bytes)
-  (unless (memq format '(png jpeg webp))
-    (raise-argument-error who "'png, 'jpeg, or 'webp" format))
-  (for ([option (in-list (list (list '#:quality quality '(jpeg webp))
-                               (list '#:png-compression png-compression '(png))
-                               (list '#:jpeg-downsample jpeg-downsample '(jpeg))
-                               (list '#:jpeg-alpha jpeg-alpha '(jpeg))
-                               (list '#:webp-lossless? webp-lossless? '(webp))))])
-    (when (and (cadr option) (not (memq format (caddr option))))
-      (raise-arguments-error who "encoding option does not apply to the selected format"
-                             "format" format "keyword" (car option) "value" (cadr option))))
+  (define-values (q compression downsample alpha lossless?)
+    (encoding-options who format quality png-compression jpeg-downsample jpeg-alpha webp-lossless?))
   (case format
-    [(png) (image->png-bytes im #:compression (or png-compression 6) #:color-space cs
+    [(png) (image->png-bytes im #:compression compression #:color-space cs
                              #:icc-profile icc #:icc-description description)]
-    [(jpeg) (image->jpeg-bytes im #:quality (or quality 90)
-                               #:downsample (or jpeg-downsample 'yuv-420)
-                               #:alpha (or jpeg-alpha 'ignore)
+    [(jpeg) (image->jpeg-bytes im #:quality q #:downsample downsample #:alpha alpha
                                #:color-space cs #:icc-profile icc #:icc-description description)]
-    [(webp) (image->webp-bytes im #:quality (or quality 90) #:lossless? webp-lossless?
+    [(webp) (image->webp-bytes im #:quality q #:lossless? lossless?
                                #:color-space cs #:icc-profile icc #:icc-description description)]))
 
 ; save-image : image? path-string? (or/c 'png 'jpeg 'webp) [#:exists (or/c 'error 'replace)]
@@ -7390,7 +7403,8 @@
 
 ;; 0.75b: private result adoption; no native pointers are exported by main.rkt.
 (module* live-stream-internals #f
-  (provide image-h picture-h make-image-record make-picture-record stream-picture-bounds)
+  (provide image-h picture-h make-image-record make-picture-record stream-picture-bounds
+           call-with-output-image)
 
   ; stream-picture-bounds : symbol? any/c -> vector?
   ;   Copies native picture cull edges into a checked immutable x/y/width/height vector.
@@ -7405,4 +7419,4 @@
 
 ;; 0.76a private typed-handle access; no public native pointer ingress.
 (module* codec-query-internals #f
-  (provide codec-h))
+  (provide codec-h call-with-codec-image-info))
