@@ -80,7 +80,12 @@ for f in ast:
             defined.add(n+'-'+k)
         if '#:constructor-name' in f:defined.add(f[f.index('#:constructor-name')+1])
 assert not set(exports)-defined, sorted(set(exports)-defined)
-api=(R/'docs/API.md').read_text();assert not [s for s in exports if s not in api]
+def require_documented(module, names, text, document):
+    missing=sorted(set(name for name in names if name not in text))
+    assert not missing, f'{document}: missing exports from {module}: {", ".join(missing)}'
+
+api=(R/'docs/API.md').read_text()
+require_documented('private/core.rkt', exports, api, 'docs/API.md')
 # The common page layer is a separate public module with local definitions.
 output_defined=set();output_exports=[]
 for f in sexps((R/'output.rkt').read_text()):
@@ -95,7 +100,7 @@ for f in sexps((R/'output.rkt').read_text()):
             output_defined.add(n+'-'+k)
         if '#:constructor-name' in f:output_defined.add(f[f.index('#:constructor-name')+1])
 assert not set(output_exports)-output_defined, sorted(set(output_exports)-output_defined)
-assert not [s for s in output_exports if s not in api]
+require_documented('output.rkt', output_exports, api, 'docs/API.md')
 # Pure matrix values and the private implementation's SAFE public exports.
 # No binding from core's path-matrix-internals submodule is exported by main.
 for module in ['pictures.rkt', 'projective-matrix.rkt', 'canvas-matrix.rkt', 'matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rkt', 'color-space.rkt', 'annotations.rkt', 'runtime-effects.rkt']:
@@ -111,7 +116,7 @@ for module in ['pictures.rkt', 'projective-matrix.rkt', 'canvas-matrix.rkt', 'ma
                 local.add(name+'-'+(field[0] if isinstance(field,list) else field))
             if '#:constructor-name' in form: local.add(form[form.index('#:constructor-name')+1])
     assert not set(public)-local, (module, sorted(set(public)-local))
-    assert not [s for s in public if s not in api], (module, public)
+    require_documented(module, public, api, 'docs/API.md')
 subprocess.run(['bash','-n',str(R/'tools/validate-path-matrix.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-filter-graphs.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-color-output.sh')],check=True)
@@ -125,7 +130,7 @@ for module in ['output-policy.rkt', 'output-audit.rkt', 'canvas-primitives.rkt',
     for form in sexps((R/module).read_text()):
         if isinstance(form,list) and form and form[0]=='provide':
             public=[x for x in form[1:] if isinstance(x,str)]
-            assert not [x for x in public if x not in api], (module, public)
+            require_documented(module, public, api, 'docs/API.md')
 subprocess.run(['bash','-n',str(R/'tools/validate-canvas-primitives.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-geometry-primitives.sh')],check=True)
 subprocess.run(['bash','-n',str(R/'tools/validate-projective-matrices.sh')],check=True)
@@ -135,21 +140,22 @@ portable_api=(R/'docs/PORTABLE-DRAWING.md').read_text()
 for form in sexps((R/'portable-drawing.rkt').read_text()):
     if isinstance(form,list) and form and form[0]=='provide':
         public=[x for x in form[1:] if isinstance(x,str)]
-        assert not [x for x in public if x not in portable_api], public
+        require_documented('portable-drawing.rkt', public, portable_api, 'docs/PORTABLE-DRAWING.md')
 subprocess.run(['bash','-n',str(R/'tools/validate-portable-drawing.sh')],check=True)
 # CPU color-filter additions keep their detailed reference in a separate guide.
 color_filter_api=(R/'docs/CPU-COLOR-FILTERS.md').read_text()
 for form in sexps((R/'color-filters.rkt').read_text()):
     if isinstance(form,list) and form and form[0]=='provide':
         public=[x for x in form[1:] if isinstance(x,str)]
-        assert not [x for x in public if x not in color_filter_api], public
+        require_documented('color-filters.rkt', public, color_filter_api, 'docs/CPU-COLOR-FILTERS.md')
 subprocess.run(['bash','-n',str(R/'tools/validate-color-filters.sh')],check=True)
 # Raster storage keeps its public ownership/borrow contract in its own guide.
 raster_buffer_api=(R/'docs/RASTER-BUFFERS.md').read_text()+(R/'docs/INTEGER-PIXELS.md').read_text()+(R/'docs/FLOAT-PIXELS.md').read_text()
 for form in sexps((R/'raster-buffers.rkt').read_text()):
     if isinstance(form,list) and form and form[0]=='provide':
         public=[x for x in form[1:] if isinstance(x,str)]
-        assert not [x for x in public if x not in raster_buffer_api], public
+        require_documented('raster-buffers.rkt', public, raster_buffer_api,
+                           'docs/RASTER-BUFFERS.md + docs/INTEGER-PIXELS.md + docs/FLOAT-PIXELS.md')
 subprocess.run(['bash','-n',str(R/'tools/validate-raster-buffers.sh')],check=True)
 # Check literal local module paths only inside require forms. Quoted .rkt
 # strings used as data (for example collection-file-path arguments) are not

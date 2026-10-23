@@ -2446,6 +2446,7 @@ script/fallback segmentation, line breaking, wrapping, or justification.
 
 ```racket
 (text-layout? value)
+(text-layout-text layout)
 (text-layout-lines layout)
 (text-layout-width layout)
 (text-layout-height layout)
@@ -2454,6 +2455,8 @@ script/fallback segmentation, line breaking, wrapping, or justification.
 
 (text-layout-line? value)
 (text-layout-line-text line)
+(text-layout-line-source-range line)
+(text-layout-line-source-map line)
 (text-layout-line-run line)
 (text-layout-line-origin-x line)
 (text-layout-line-baseline line)
@@ -2542,6 +2545,7 @@ script-specific justification as inferred scripts.
 
 ```racket
 (mixed-text-layout? value)
+(mixed-text-layout-text layout)
 (mixed-text-layout-lines layout)
 (mixed-text-layout-width layout)
 (mixed-text-layout-height layout)
@@ -2550,6 +2554,8 @@ script-specific justification as inferred scripts.
 
 (mixed-text-line? value)
 (mixed-text-line-text line)
+(mixed-text-line-source-range line)
+(mixed-text-line-source-map line)
 (mixed-text-line-runs line)
 (mixed-text-line-origin-x line)
 (mixed-text-line-baseline line)
@@ -2558,6 +2564,8 @@ script-specific justification as inferred scripts.
 
 (mixed-text-run? value)
 (mixed-text-run-text run)
+(mixed-text-run-source-range run)
+(mixed-text-run-source-map run)
 (mixed-text-run-shaped-run run)
 (mixed-text-run-origin-x run)
 (mixed-text-run-width run)

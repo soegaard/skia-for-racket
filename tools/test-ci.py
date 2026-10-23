@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -79,6 +80,28 @@ def canvas_fixture(root: Path):
                                              for order in ('gtk-first', 'skia-first')]))
     ci.write_json(root / 'validation.json', report)
     return report
+
+
+@unittest.skipUnless(sys.platform in ('darwin', 'linux'),
+                     'static installer checks require macOS or Linux')
+class StaticSourceChecks(unittest.TestCase):
+    def test_repository_static_checks(self):
+        result = subprocess.run([sys.executable, HERE / 'static-check.py'], cwd=ci.ROOT,
+                                env=ci.clean_environment(os.environ),
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_missing_api_entry_names_document_module_and_export(self):
+        read_text = Path.read_text
+        def omit_entry(path, *args, **kwargs):
+            text = read_text(path, *args, **kwargs)
+            if path == ci.ROOT / 'docs/API.md':
+                return text.replace('text-layout-line-source-map', 'omitted-source-map-entry')
+            return text
+        with patch.object(Path, 'read_text', omit_entry):
+            with self.assertRaisesRegex(AssertionError,
+                    r'docs/API\.md: missing exports from private/core\.rkt: text-layout-line-source-map'):
+                runpy.run_path(str(HERE / 'static-check.py'))
 
 
 class Matrix(unittest.TestCase):
