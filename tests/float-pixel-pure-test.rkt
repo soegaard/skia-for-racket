@@ -94,11 +94,11 @@
    (test-case "float stride and extent checks precede allocation"
      (bad (lambda () (image-info-storage-layout (finfo 'rgba-f32) #:row-bytes 20)))
      (bad (lambda () (make-raster-buffer-from-info (make-image-info 0 3 #:color-type 'rgba-f32)))))
-   (test-case "float storage is not a generalized GPU target claim"
+   (test-case "float readback formats do not imply unpremultiplied raster targets"
      (for ([f (in-vector float-pixel-formats)])
        (check-true (image-info-supports? (finfo f) 'raster-canvas))
        (check-false (image-info-supports? (finfo f 'unpremul) 'raster-canvas))
-       (check-false (image-info-supports? (finfo f) 'gpu-readback))))
+       (check-true (image-info-supports? (finfo f) 'gpu-readback))))
    (test-case "normalized F16 and other float enums remain outside scope"
      (for ([f (in-list '(rgba-f16-norm a16-float r16g16-float))])
        (bad (lambda () (make-image-info 1 1 #:color-type f)))))

@@ -228,13 +228,21 @@
 
 
 ; record-procedure-cases! : list? -> void?
-;   Records disjoint finite calling forms with optional keywords, rejecting mixed names.
+;   Records each name in a shared description, combining its disjoint calling forms.
 (define (record-procedure-cases! cases)
   (need (and (list? cases) (pair? cases)) "invalid procedure cases")
   (for ([entry (in-list cases)])
     (need (and (list? entry) (= (length entry) 2)
                (list? (car entry)) (pair? (car entry)) (symbol? (caar entry)))
           "invalid procedure case"))
+  (for ([group (in-list (group-by caar cases))])
+    (if (null? (cdr group))
+        (record! (caaar group) (procedure-shape (caar group)))
+        (record-procedure-overloads! group))))
+
+; record-procedure-overloads! : list? -> void?
+;   Combines finite calling forms for a single name without accepting overlapping arities.
+(define (record-procedure-overloads! cases)
   (define name (caaar cases))
   (define shapes
     (for/list ([entry (in-list cases)])

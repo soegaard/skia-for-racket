@@ -13432,7 +13432,7 @@
             "color-space"
           ],
           "arity_mask": "8",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-color4f",
           "phase": "0",
@@ -13452,7 +13452,7 @@
             "color-space"
           ],
           "arity_mask": "4",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-fill!",
           "phase": "0",
@@ -13463,7 +13463,7 @@
             "color-space"
           ],
           "arity_mask": "4",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-fill-color4f!",
           "phase": "0",
@@ -13501,7 +13501,7 @@
             "color-space"
           ],
           "arity_mask": "8",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-pixel",
           "phase": "0",
@@ -13541,7 +13541,7 @@
             "color-space"
           ],
           "arity_mask": "16",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-set-color4f!",
           "phase": "0",
@@ -13552,7 +13552,7 @@
             "color-space"
           ],
           "arity_mask": "16",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-set-pixel!",
           "phase": "0",
@@ -13631,7 +13631,7 @@
             "missing-outline"
           ],
           "arity_mask": "8",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "positioned-glyphs->path",
           "phase": "0",
@@ -14646,7 +14646,7 @@
             "missing-outline"
           ],
           "arity_mask": "2",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "shaped-run->path",
           "phase": "0",
@@ -14781,7 +14781,7 @@
             "missing-outline"
           ],
           "arity_mask": "28",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "simple-text-path",
           "phase": "0",
@@ -15320,7 +15320,7 @@
             "missing-outline"
           ],
           "arity_mask": "2",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "text-blob->path",
           "phase": "0",
@@ -18041,7 +18041,7 @@
             "color-space"
           ],
           "arity_mask": "8",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-color4f",
           "phase": "0",
@@ -18061,7 +18061,7 @@
             "color-space"
           ],
           "arity_mask": "4",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-fill!",
           "phase": "0",
@@ -18072,7 +18072,7 @@
             "color-space"
           ],
           "arity_mask": "4",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-fill-color4f!",
           "phase": "0",
@@ -18110,7 +18110,7 @@
             "color-space"
           ],
           "arity_mask": "8",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-pixel",
           "phase": "0",
@@ -18150,7 +18150,7 @@
             "color-space"
           ],
           "arity_mask": "16",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-set-color4f!",
           "phase": "0",
@@ -18161,7 +18161,7 @@
             "color-space"
           ],
           "arity_mask": "16",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "pixmap-set-pixel!",
           "phase": "0",
@@ -19150,7 +19150,7 @@
             "missing-outline"
           ],
           "arity_mask": "8",
-          "export_kind": "value",
+          "export_kind": "syntax",
           "kind": "procedure",
           "name": "positioned-glyphs->path",
           "phase": "0",

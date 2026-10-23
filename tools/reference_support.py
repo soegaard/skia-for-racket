@@ -296,6 +296,19 @@ def procedure_cases_shape(header):
                 cases=[case['arguments'] for case in cases])
 
 
+def procedure_group_shapes(header):
+    """Keep different names in a defproc* separate; combine overloads by name."""
+    need(isinstance(header, list) and len(header) == 1
+         and isinstance(header[0], list) and header[0], 'invalid procedure cases')
+    groups = {}
+    for case in header[0]:
+        need(isinstance(case, list) and len(case) == 2, 'invalid procedure case')
+        shape = procedure_shape(case)
+        groups.setdefault(shape['name'], []).append(case)
+    return [procedure_shape(cases[0]) if len(cases) == 1
+            else procedure_cases_shape([cases]) for cases in groups.values()]
+
+
 def constant_shape(header):
     """Read literal predicates and the reviewed immutable-symbol-vector contract.
 
@@ -373,10 +386,14 @@ def document_definitions(root: Path):
                                      line=source.count('\n', 0, position) + 1)
                         result.append(entry)
                     continue
+                if form == 'defproc*':
+                    for entry in procedure_group_shapes(header):
+                        entry.update(chapter=relative, form=form,
+                                     line=source.count('\n', 0, position) + 1)
+                        result.append(entry)
+                    continue
                 if form == 'defproc':
                     entry = procedure_shape(header)
-                elif form == 'defproc*':
-                    entry = procedure_cases_shape(header)
                 elif form == 'defthing':
                     entry = constant_shape(header)
                 elif form in ('defclass', 'definterface'):

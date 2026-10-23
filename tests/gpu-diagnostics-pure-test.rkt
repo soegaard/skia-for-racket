@@ -15,7 +15,8 @@
          "../gpu-diagnostics.rkt" (submod "../gpu-diagnostics.rkt" testing)
          "../private/gpu-diagnostic-util.rkt" "../private/graphics-data.rkt"
          "../private/gpu-gl-interface.rkt" (submod "../private/gpu-gl-interface.rkt" testing)
-         "../private/gpu-domain.rkt" "../private/gpu-context.rkt" "../private/gpu-provider.rkt")
+         "../private/gpu-domain.rkt" "../private/gpu-context.rkt" "../private/gpu-provider.rkt"
+         (submod "../private/gpu-provider.rkt" host-internals))
 (provide gpu-diagnostics-pure-tests gpu-diagnostics-pure-test-count)
 
 ;;;
@@ -57,7 +58,7 @@
 ;   Supplies a synthetic activated context for backend-specific diagnostic contracts.
 (define (with-context backend thunk)
   (define on? (box #f))
-  (define p (make-gpu-provider #:name 'diagnostic-domain #:backend backend #:key (gensym)
+  (define p (make-host-provider #:name 'diagnostic-domain #:backend backend #:key (gensym)
               #:current? (lambda () (unbox on?))
               #:call-as-current (lambda (f)
                 (dynamic-wind (lambda () (set-box! on? #t)) f (lambda () (set-box! on? #f))))))

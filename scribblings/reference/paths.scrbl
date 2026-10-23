@@ -6,7 +6,7 @@
 
 @title[#:tag "skia-paths"]{Paths}
 
-@(declare-exporting skia skia/geometry #:use-sources (skia skia/geometry))
+@(declare-exporting skia skia/geometry #:use-sources (skia/geometry skia))
 
 Use a path for a custom outline, curved boundary, or shape with holes that the
 basic drawing primitives cannot express directly. Build it with

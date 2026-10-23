@@ -216,7 +216,7 @@ For example, suppose @racket[canvas-widget] is a @racket[gpu-canvas%] whose
 render callback draws according to @racket[phase]. The following timer
 advances that phase and requests a redraw about every 16 milliseconds:
 
-@racketblock[
+@racketblock0[
 (define phase 0)
 (define animation-timer
   (new timer%
@@ -238,7 +238,7 @@ Stop the timer when the animation ends or the widget is closed. For example,
 the application's shutdown handler can perform these operations on the
 eventspace handler thread:
 
-@racketblock[
+@racketblock0[
 (send animation-timer stop)
 (send canvas-widget close)
 ]

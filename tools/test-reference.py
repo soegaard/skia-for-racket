@@ -1073,7 +1073,7 @@ class EditorialRevisionTests(unittest.TestCase):
         result = checks.check_source(ROOT, documents_only=True)
         self.assertEqual(len(result['definitions']), 1275)
         self.assertEqual(result['documented_exports'], 2000)
-        self.assertEqual(len(result['chapters']), 85)  # Root plus eighty-four chapters.
+        self.assertEqual(len(result['chapters']), 86)  # Root plus eighty-five chapters.
 
 
 class ReviewArchiveTests(unittest.TestCase):
@@ -1309,6 +1309,14 @@ class R2SignatureTests(unittest.TestCase):
     def test_calling_forms_reject_different_names(self):
         with self.assertRaisesRegex(checks.CheckError, 'same name'):
             self.cases('[([(f) void?] [(g [a any/c]) void?])]')
+
+    def test_shared_description_keeps_different_procedures_separate(self):
+        header = checks.Reader('[([(f [a any/c]) void?] [(g [b any/c]) void?] '
+                               '[(f [a any/c] [b any/c]) void?])]').read()
+        first, second = checks.procedure_group_shapes(header)
+        self.assertEqual((first['name'], first['arity_mask']), ('f', '6'))
+        self.assertEqual((second['name'], second['arity_mask']), ('g', '2'))
+        self.assertEqual(second['arguments'][0]['name'], 'b')
 
     def test_calling_forms_reject_overlapping_arities(self):
         with self.assertRaisesRegex(checks.CheckError, 'overlapping'):
@@ -1592,7 +1600,7 @@ class R2ProseTests(unittest.TestCase):
                 'exactly four entries, in corner order',
                 'even when its cell type does not use the color',
                 "independent of later changes to the caller's collections"),
-            'shaping.scrbl': ('UTF-8 byte offset into @racket[text]',
+            'shaping.scrbl': ('UTF-8 byte offsets into the string passed to @racket[shape-text]',
                              'limitations of @racket[shaped-run->path]'),
             'text-blobs.scrbl': ('malformed byte sequences are rejected',),
             'pdf-documents.scrbl': ('Metadata strings must not contain NUL',),
@@ -1744,7 +1752,7 @@ class R21SourceTests(unittest.TestCase):
     def test_format_options_table_is_shared_not_duplicated(self):
         text = (self.fixture.root / checks.REFERENCE / 'encoding.scrbl').read_text()
         self.assertEqual(text.count('@bold{Keyword} @bold{PNG} @bold{JPEG} @bold{WebP}'), 1)
-        self.assertIn('may have any value', text)
+        self.assertIn('A non-@racket[#f] option belonging to another format raises an exception', text)
         self.assertIn('follow the table in @racket[image->encoded-bytes]', text)
         for keyword in ('quality', 'png-compression', 'jpeg-downsample', 'jpeg-alpha',
                          'webp-lossless?'):
@@ -1753,7 +1761,7 @@ class R21SourceTests(unittest.TestCase):
     def test_paint_module_declaration_from_upstream_is_preserved(self):
         text = (self.fixture.root / checks.REFERENCE / 'paints.scrbl').read_text()
         self.assertIn('@defmodule[skia/geometry #:no-declare]', text)
-        self.assertIn('(for-label racket/base racket/contract skia skia/geometry)', text)
+        self.assertIn('(for-label racket/base racket/contract skia skia/geometry ', text)
 
     def test_new_color_examples_are_not_evaluated_during_the_build(self):
         text = (self.fixture.root / checks.REFERENCE / 'color-management.scrbl').read_text()
@@ -1975,7 +1983,7 @@ class PreparatorySourceTests(unittest.TestCase):
     def test_displayed_native_example_inventory_has_one_addition(self):
         count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
-        self.assertEqual(count, 317)
+        self.assertEqual(count, 319)
 
     def test_native_acceptance_contains_blend_rejection_and_clip_restoration(self):
         text = (ROOT / 'tools/reference-core-test.rkt').read_text()
@@ -2218,8 +2226,8 @@ class R3TextCoverageTests(unittest.TestCase):
 
     def test_new_chapters_have_explicit_ownership(self):
         entries = self.check()['definitions']
-        for chapter, count in (('typefaces', 48), ('fonts', 58), ('shaping', 14),
-                               ('text-blobs', 29), ('text-layout', 43)):
+        for chapter, count in (('typefaces', 48), ('fonts', 58), ('shaping', 16),
+                               ('text-blobs', 29), ('text-layout', 51)):
             with self.subTest(chapter=chapter):
                 owned = [e for e in entries
                          if e['chapter'] == f'scribblings/reference/{chapter}.scrbl']
@@ -2623,7 +2631,8 @@ class R3BlobSemanticsTests(unittest.TestCase):
         self.assertIn('not as a promised sorted, merged union', prose)
         self.assertIn('not a pixel coverage readback', prose)
         self.assertEqual(self.header('text-blob-intercepts')[1],
-                         ['and/c', ['vectorof', ['list/c', 'real?', 'real?']], 'immutable?'])
+                         ['and/c', ['vectorof', ['and/c', ['vector/c', 'real?', 'real?'],
+                                               'immutable?']], 'immutable?'])
 
     def test_text_on_path_uses_origin_distances_and_signed_normal_offsets(self):
         prose = ' '.join(self.text().split())
@@ -2970,8 +2979,8 @@ class R3dColorSemanticsTests(unittest.TestCase):
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
         manifest = json.loads((ROOT / checks.MANIFEST).read_text())
         self.assertEqual({row['file']: row['git_blob'] for row in manifest['snapshots']}, {
-            'api/public-api-headless.json': '2d6e2c100bada538743b757b444f649e709b4927',
-            'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
+            'api/public-api-headless.json': '4bf4408665bde6f86e1e41cb51f730d323da9a44',
+            'api/public-api-gui.json': '06d5fe8408b28508e90cd4ca8b8c3cc91f6feaf8'})
 
     def test_standard_space_definitions_preserve_the_legacy_section_target(self):
         old = self.text('colors')
@@ -3547,7 +3556,9 @@ class R3fStreamCodecTests(unittest.TestCase):
                    'incremental-codecs': 'codec-incremental'}
         for chapter, module in primary.items():
             text = self.text(chapter)
-            self.assertIn('for-label racket/base racket/contract skia', text)
+            imports = text.split('@title', 1)[0]
+            for name in ('for-label', 'racket/base', 'racket/contract', 'skia'):
+                self.assertRegex(imports, r'(?<![\w/-])' + re.escape(name) + r'(?![\w/-])')
             if module:
                 declaration = ('@(declare-exporting skia skia/' + module +
                                ' #:use-sources (skia/' + module + '))')
@@ -3635,7 +3646,7 @@ class R3fStreamCodecTests(unittest.TestCase):
         text = self.prose('live-streams')
         self.assertIn('Seekable input requires an explicit length', text)
         self.assertIn('relative to the starting position', text)
-        self.assertIn('Port callbacks must not re-enter live operations', text)
+        self.assertIn('port callbacks must not start another live operation', text)
         self.assertIn('No persistent port-backed image or codec is returned', text)
         self.assertEqual(self.option('image-from-port', '#:normalize-origin?')[-1], '#t')
 
@@ -3956,7 +3967,7 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_new_chapters_and_aggregate_counts_are_explicit(self):
         self.assertEqual(len(self.definitions), 1275)
         self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 2000)
-        self.assertEqual(len(self.chapters) - 1, 84)
+        self.assertEqual(len(self.chapters) - 1, 85)
         self.assertEqual(self.manifest['stage'], 'R4g')
         for chapter in ('rounded-rectangles', 'regions', 'projective-matrices',
                         'structured-drawing', 'portable-drawing', 'layers',
@@ -4002,8 +4013,8 @@ class R3gaGeometryTests(unittest.TestCase):
         text = self.text('layers.scrbl')
         for phrase in ('not a canvas @tech{clip}',
                        'Use an explicit clip to restrict drawing to an exact region.',
-                       'The clip, rather than the layer bound, excludes',
-                       'An exception does not undo drawing in the layer',
+                       'the explicit clip excludes',
+                       'the drawing completed so far is still\ndrawn onto the previous target',
                        'does not clear the target to transparent pixels'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('layer-options-flags')[1],
@@ -4073,7 +4084,7 @@ class R3gaGeometryTests(unittest.TestCase):
 
     def test_rewind_documentation_resets_fill_instead_of_inventing_preservation(self):
         text = self.text('paths.scrbl')
-        self.assertIn('Native rewind resets the fill type to winding', text)
+        self.assertIn("Removes the geometry and resets the fill rule to @racket['winding]", text)
         native = (ROOT / 'tools/reference-geometry-test.rkt').read_text()
         self.assertIn("(check-equal? (path-fill-rule path) 'winding)", native)
 
@@ -4136,8 +4147,8 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
         forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 317)
-        self.assertEqual(sum(f == 'examples' for f, _ in forms), 25)
+        self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 319)
+        self.assertEqual(sum(f == 'examples' for f, _ in forms), 26)
         text = (ROOT / 'tools/reference-native-test.rkt').read_text()
         self.assertIn('(in-range 2)', text)
         self.assertIn('run-displayed-examples', text)
@@ -4164,8 +4175,8 @@ class R3gaGeometryTests(unittest.TestCase):
     def test_new_scope_keeps_actual_pinned_inventory_hashes(self):
         expected = {row['file']: row['git_blob'] for row in self.manifest['snapshots']}
         self.assertEqual(expected, {
-            'api/public-api-headless.json': '2d6e2c100bada538743b757b444f649e709b4927',
-            'api/public-api-gui.json': 'f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22'})
+            'api/public-api-headless.json': '4bf4408665bde6f86e1e41cb51f730d323da9a44',
+            'api/public-api-gui.json': '06d5fe8408b28508e90cd4ca8b8c3cc91f6feaf8'})
 
 
 class R3gbRasterTests(unittest.TestCase):
@@ -4180,8 +4191,14 @@ class R3gbRasterTests(unittest.TestCase):
 
     def header(self, name):
         text = (ROOT / self.by_name[name]['chapter']).read_text()
-        return next(h for f, h, _ in checks.commands(text)
-                    if f == 'defproc' and h[0][0] == name)
+        for form, header, _ in checks.commands(text):
+            if form == 'defproc' and header[0][0] == name:
+                return header
+            if form == 'defproc*':
+                for case in header[0]:
+                    if case[0][0] == name:
+                        return case
+        raise LookupError(name)
 
     def test_selected_modules_have_complete_documented_exports(self):
         for path, names in GB_MODULES.items():
@@ -4203,7 +4220,7 @@ class R3gbRasterTests(unittest.TestCase):
     def test_scope_counts_and_r4_completion_are_explicit(self):
         self.assertEqual(len(self.definitions), 1275)
         self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 2000)
-        self.assertEqual(len(self.chapters) - 1, 84)
+        self.assertEqual(len(self.chapters) - 1, 85)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertNotIn('deferred_policy', self.manifest)
         self.assertIn('gpu-presenter-render!', self.by_name)
@@ -4278,8 +4295,8 @@ class R3gbRasterTests(unittest.TestCase):
     def test_raw_samples_and_srgb_color_fills_are_distinguished(self):
         text = ' '.join(self.text('raster-buffers').split())
         for phrase in ('logical RGBA channel order', 'Premultiplied zero alpha requires zero RGB',
-                       'including after storage rounding', 'unpremultiplied sRGB color',
-                       'does not convert to sRGB'):
+                       'including after storage rounding', 'supplied unpremultiplied color',
+                       "the pixmap's space by default", 'not an automatic conversion to sRGB'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('pixmap-sample')[1], ['and/c', 'vector?', 'immutable?'])
 
@@ -4327,7 +4344,8 @@ class R3gbRasterTests(unittest.TestCase):
         fields = {x[0]: x for x in header[0][1:] if x[0].startswith('#:')}
         self.assertEqual(fields['#:sampling'][2], ['or/c', ['quote', 'nearest'], ['quote', 'linear']])
         self.assertEqual(fields['#:sampling'][3], ['quote', 'nearest'])
-        self.assertIn('raw numeric samples', self.text('shaders'))
+        self.assertIn('image channels as numeric data without color-space conversion',
+                      self.text('shaders'))
 
     def test_surface_property_flags_are_requests_not_hardware_evidence(self):
         text = ' '.join(self.text('surface-properties').split())
@@ -4371,15 +4389,17 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_cache_setters_return_old_settings_and_have_process_scope(self):
         text = ' '.join(self.text('graphics').split())
-        for phrase in ('previous setting', 'not bytes freed', 'Cache limits are settings, not a hard cap',
-                       'while a live stream operation is active', 'not a hard cap'):
+        for phrase in ('Each setter returns the previous limit',
+                       'not a count of bytes freed', 'Cache limits are settings, not a hard cap',
+                       'while a @tech{live port operation} is active'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('skia-set-font-cache-count-limit!')[1],
                          ['integer-in', '0', '2147483647'])
 
-    def test_memory_report_fields_are_detached_and_bounded(self):
+    def test_memory_report_fields_are_immutable_and_bounded(self):
         text = ' '.join(self.text('graphics').split())
-        for phrase in ('UTF-8 bytes', 'omitted and counted', 'second module instance or place',
+        for phrase in ('UTF-8 bytes', 'omitted and counted',
+                       'another Racket place or a separately instantiated copy',
                        'No application callback runs'):
             self.assertIn(phrase, text)
         for name in ('memory-statistic-name', 'memory-statistic-value-name'):
@@ -4387,8 +4407,9 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_native_capability_queries_do_not_certify_acceleration(self):
         text = ' '.join(self.text('native-libraries').split())
-        for phrase in ('does not create a surface, open a window', 'flags for optional GPU symbol probing',
-                       'hardware acceleration remain false', 'they are not invoked',
+        for phrase in ('does not create a surface, open a window',
+                       'optional GPU symbols were not checked',
+                       'hardware acceleration was not tested', 'looked up but not called',
                        'not a runtime observation'):
             self.assertIn(phrase, text)
 
@@ -4440,8 +4461,8 @@ class R3gbRasterTests(unittest.TestCase):
     def test_displayed_examples_remain_opt_in_native_code(self):
         forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for f, _, _ in checks.commands(p.read_text(), recursive=True)]
-        self.assertEqual(forms.count('racketblock'), 317)
-        self.assertEqual(forms.count('examples'), 25)
+        self.assertEqual(forms.count('racketblock'), 319)
+        self.assertEqual(forms.count('examples'), 26)
         for name in ('raster-buffers', 'image-operations', 'graphics', 'output-groups'):
             self.assertNotIn('@examples', self.text(name))
 
@@ -4542,7 +4563,7 @@ class R3gb1EditorialTests(unittest.TestCase):
                 header, body = self.entry(name)
                 self.assertEqual(header[1], ['integer-in', '0', '2147483647'])
                 self.assertIn('number of font-cache entries', body)
-                self.assertIn('does not purge', body)
+                self.assertIn('Returns the current', body)
                 self.assertNotIn('byte', body.lower())
                 self.assertNotIn('unsigned size type', body)
 
@@ -4551,10 +4572,11 @@ class R3gb1EditorialTests(unittest.TestCase):
         self.assertEqual(header, [
             ['skia-set-font-cache-count-limit!', ['limit', ['integer-in', '0', '2147483647']]],
             ['integer-in', '0', '2147483647']])
-        for phrase in ('number of font-cache entries', 'previous count limit',
-                       'not the current entry count', 'loaded library globally',
-                       'restore a temporary change explicitly'):
+        for phrase in ('number of font-cache entries', 'previous count limit'):
             self.assertIn(phrase, body)
+        shared = ' '.join(self.text('graphics').split())
+        self.assertIn('all code using the loaded Skia library', shared)
+        self.assertIn('restore it explicitly after a temporary change', shared)
         self.assertNotIn('byte', body.lower())
         self.assertNotIn('unsigned size type', body)
 
@@ -4566,14 +4588,16 @@ class R3gb1EditorialTests(unittest.TestCase):
                 header, body = self.entry(name)
                 self.assertEqual(header[1], 'exact-nonnegative-integer?')
                 self.assertIn('byte', body.lower())
-                self.assertIn('unsigned size type', body)
+                self.assertNotIn('unsigned size type', body)
         for name in ('skia-set-font-cache-limit!', 'skia-set-resource-cache-limit!',
                      'skia-set-resource-cache-single-allocation-limit!'):
             with self.subTest(name=name):
                 _, body = self.entry(name)
-                self.assertIn('previous setting', body)
-                self.assertIn('bytes freed', body)
-                self.assertIn('Byte limits must fit', body)
+                self.assertIn('previous limit', body)
+        shared = ' '.join(self.text('graphics').split())
+        for phrase in ('@racket[#xffffffff] on 32-bit', '@racket[#xffffffffffffffff] on 64-bit',
+                       'Larger values raise an exception'):
+            self.assertIn(phrase, shared)
 
     def test_no_op_cache_example_is_removed_without_replacing_it(self):
         text = self.text('graphics')
@@ -4617,7 +4641,7 @@ class R4aContextTests(unittest.TestCase):
     def test_bounded_scope_counts_real_public_aliases_not_only_names(self):
         self.assertEqual(len(self.definitions), 1275)
         self.assertEqual(sum(len(d['exports']) for d in self.manifest['definitions']), 2000)
-        self.assertEqual(len(self.chapters) - 1, 84)
+        self.assertEqual(len(self.chapters) - 1, 85)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
                          '4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1')
@@ -4757,13 +4781,14 @@ class R4aContextTests(unittest.TestCase):
         self.assertEqual(self.header('gpu-drain-pending-contexts!')[1],
                          ['listof', ['and/c', 'hash?', 'immutable?']])
 
-    def test_context_information_is_detached_but_not_refreshed_native_state(self):
+    def test_context_information_requires_owner_but_does_not_refresh_native_state(self):
         self.assertEqual(self.header('gpu-context-info')[1], ['and/c', 'hash?', 'immutable?'])
         text = ' '.join(self.text('gpu-contexts').split())
-        for phrase in ('construction-time diagnostics', 'requires no active scope or owning thread',
+        for phrase in ('construction-time information', 'on the owning Racket thread',
+                       'No active GPU scope is required',
                        'does not activate the provider or refresh',
                        'not a count of every native allocation',
-                       'initial cache measurements', 'shutdown_error'):
+                       'initial cache measurements', 'shutdown_requested'):
             self.assertIn(phrase, text)
 
     def test_gpu_examples_are_native_free_until_explicitly_called(self):
@@ -4974,7 +4999,7 @@ class R4bDocumentationTests(unittest.TestCase):
         self.assertEqual(len(rows), 37)
         self.assertEqual(sum(len(d['exports']) for d in rows), 38)
         self.assertEqual(len(self.definitions), 1275)
-        self.assertEqual(len(self.chapters) - 1, 84)
+        self.assertEqual(len(self.chapters) - 1, 85)
         self.assertTrue(all(d['canonical_module'] == 'skia/gpu' for d in rows))
         self.assertTrue(all('skia' not in d['exports'] for d in rows))
 
@@ -5015,10 +5040,10 @@ class R4bDocumentationTests(unittest.TestCase):
         self.assertEqual(self.header('image-residency')[1], ['or/c', ['quote', 'cpu'],
                                                            ['quote', 'gpu']])
 
-    def test_transfers_distinguish_staged_commit_from_direct_partial_writes(self):
+    def test_pixmap_and_buffer_transfers_use_checked_staging(self):
         text = ' '.join(self.text('gpu-transfers').split())
-        for phrase in ('leaves the destination unchanged', 'can leave partial writes',
-                       'rollback is not promised', '@tech{Row padding} is initialized',
+        for phrase in ('leaves the destination unchanged', 'failed reads leave the destination unchanged',
+                       'Destination row padding is never changed', '@tech{Row padding} is initialized',
                        'This is conversion, not scaling', 'temporary GPU surface in the same context'):
             self.assertIn(phrase, text)
 
@@ -5031,7 +5056,7 @@ class R4bDocumentationTests(unittest.TestCase):
         text = ' '.join(self.text('gpu-images').split())
         self.assertIn('sixteen-byte-per-pixel', text)
         self.assertIn('must not narrow', text)
-        self.assertIn('extract the valid rectangle', text)
+        self.assertIn('Extract the source rectangle and place its upper-left corner', text)
 
     def test_flush_submit_wait_and_cache_setter_have_distinct_results(self):
         text = ' '.join(self.text('gpu-synchronization').split())
@@ -5401,8 +5426,10 @@ class R4cInteropTests(unittest.TestCase):
         self.assertNotIn('Draw it with the ordinary image operations', text)
 
     def test_safe_external_tokens_are_single_use_and_hide_raw_handles(self):
-        text = self.text('gpu-external-resources')
-        for phrase in ('single-use', 'ready to active to', 'raw_handles_exposed',
+        text = ' '.join(self.text('gpu-external-resources').split())
+        for phrase in ('Use the token once', 'begins in the ready state',
+                       'active during that operation and consumed when the operation ends',
+                       'raw_handles_exposed',
                        'borrowed Skia canvas', 'not rolled back'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('gpu-import-image')[1], 'gpu-image?')
@@ -5435,14 +5462,14 @@ class R4cInteropTests(unittest.TestCase):
     def test_gl_handoff_distinguishes_ordering_wait_and_state_restoration(self):
         text = ' '.join(self.text('gpu-gl-interop').split())
         for phrase in ('same command stream', 'does not save or restore',
-                       'eight-bit stencil', 'does not alias', 'No CPU readback'):
+                       'eight-bit stencil', 'independent pixel storage', 'No CPU readback'):
             self.assertIn(phrase, text)
         self.assertEqual(self.header('gpu-copy-gl-texture')[1], 'gpu-image?')
 
     def test_native_handoffs_are_explicitly_unsafe_and_bounded(self):
         text = self.text('gpu-native-handoffs')
         for phrase in ('explicitly unsafe', 'crash the process', '1 through 60000',
-                       'all-ones uint64', 'caller declarations', 'quarantine'):
+                       'all-ones uint64', 'The caller is responsible for that', 'quarantine'):
             self.assertIn(phrase, text)
         self.assertIn('cpointer?', str(self.header('make-metal-external-texture')))
         self.assertIn('cpointer?', str(self.header('make-d3d12-external-texture')))
@@ -5455,7 +5482,8 @@ class R4cInteropTests(unittest.TestCase):
 
     def test_diagnostics_do_not_claim_hardware_or_implicit_synchronization(self):
         text = ' '.join(self.text('gpu-diagnostics').split())
-        for phrase in ('Neither establishes that rendering is hardware accelerated', 'No flush, submission, wait, or pixel readback',
+        for phrase in ('Neither the queries nor the rendering check establish that rendering is hardware accelerated',
+                       'These queries do not draw a test image or measure rendering performance',
                        'fixed 8 by 8 pattern', 'not a general drawing API'):
             self.assertIn(phrase, text)
 
@@ -5630,7 +5658,7 @@ class R4dPresentationTests(unittest.TestCase):
         for phrase in ('Pass the executor to @racket[draw-output-group]',
                        '@racket[#:raster-executor] argument',
                        "used only when the group's @tech{output policy} selects rasterization",
-                       'one positional argument and no required keywords'):
+                       'Calls @racket[proc] with a scoped @tech{raster executor} and returns its values'):
             self.assertIn(phrase, text)
         header = self.header('call-with-gpu-raster-executor')
         proc = next(arg for arg in header[0] if isinstance(arg, list) and arg[0] == 'proc')
@@ -5687,8 +5715,8 @@ class R4dPresentationTests(unittest.TestCase):
     def test_examples_are_unchanged_by_r4d(self):
         forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
-        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 317)
-        self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
+        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 319)
+        self.assertEqual(sum(form == 'examples' for form, _ in forms), 26)
 
     def test_gpu_output_remains_in_r4d_after_r4e_completion(self):
         result = checks.check_source(ROOT, require_complete=True)
@@ -5722,7 +5750,7 @@ class R4eDcIntegrationTests(unittest.TestCase):
         self.assertEqual(result['reflected_inventory_exports'], 2000)
         self.assertEqual(result['source_verified_export_additions'], 0)
         self.assertEqual(result['deferred'], [])
-        self.assertEqual(len(result['chapters']) - 1, 84)
+        self.assertEqual(len(result['chapters']) - 1, 85)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
                          '4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1')
@@ -5731,8 +5759,8 @@ class R4eDcIntegrationTests(unittest.TestCase):
     def test_exact_r4e_module_exports_are_documented(self):
         expected_names = set(R4E_PROCEDURES) | set(R4E_VALUES) | set(R4E_PARAMETERS)
         rows = [d for d in self.manifest['definitions'] if d['name'] in expected_names]
-        self.assertEqual(len(rows), 23)
-        self.assertEqual(sum(len(d['exports']) for d in rows), 23)
+        self.assertEqual(len(rows), 24)
+        self.assertEqual(sum(len(d['exports']) for d in rows), 24)
         for path, names in R4E_MODULES.items():
             module = checks.public_module(path)
             found = {d['name'] for d in self.manifest['definitions'] if module in d['exports']}
@@ -5913,8 +5941,8 @@ class R4eDcIntegrationTests(unittest.TestCase):
     def test_examples_remain_unchanged_by_r4e(self):
         forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
-        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 317)
-        self.assertEqual(sum(form == 'examples' for form, _ in forms), 25)
+        self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 319)
+        self.assertEqual(sum(form == 'examples' for form, _ in forms), 26)
 
     def test_source_review_contains_r4e_chapters_cases_and_pinned_inventories(self):
         files = review.source_hashes(ROOT, review_inputs=True)
@@ -5944,7 +5972,7 @@ class R4fPictBridgeTests(unittest.TestCase):
         self.assertEqual(result['reflected_inventory_exports'], 2000)
         self.assertEqual(result['source_verified_export_additions'], 0)
         self.assertEqual(result['deferred'], [])
-        self.assertEqual(len(result['chapters']) - 1, 84)
+        self.assertEqual(len(result['chapters']) - 1, 85)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
                          '4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1')
@@ -6023,7 +6051,7 @@ class R4gRacketDrawBridgeTests(unittest.TestCase):
         self.assertEqual(result['reflected_inventory_exports'], 2000)
         self.assertEqual(result['source_verified_export_additions'], 0)
         self.assertEqual(result['deferred'], [])
-        self.assertEqual(len(result['chapters']) - 1, 84)
+        self.assertEqual(len(result['chapters']) - 1, 85)
         self.assertEqual(self.manifest['stage'], 'R4g')
         self.assertEqual(self.manifest['reviewed_repository_commit'],
                          '4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1')

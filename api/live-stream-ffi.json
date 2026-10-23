@@ -41,6 +41,7 @@
     "sk_picture_unref": "(_fun #:blocking? #t _pointer -> _void)",
     "sk_pixmap_destructor": "(_fun #:blocking? #t _pointer -> _void)",
     "sk_pixmap_new": "(_fun #:blocking? #t -> _pointer)",
+    "sk_pixmap_set_colorspace": "(_fun #:blocking? #t _pointer _pointer -> _void)",
     "sk_pngencoder_encode": "(_fun #:blocking? #t _pointer _pointer _pointer -> _stdbool)",
     "sk_stream_peek": "(_fun #:blocking? #t _pointer _pointer _size -> _size)",
     "sk_stream_read": "(_fun #:blocking? #t _pointer _pointer _size -> _size)",

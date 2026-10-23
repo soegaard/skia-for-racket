@@ -41,7 +41,7 @@ COLOR_PROCEDURES.update({
     'make-linear-gradient-color4f-shader': (32, ['color-space', 'matrix', 'positions', 'tile-mode']),
     'make-radial-gradient-color4f-shader': (16, ['color-space', 'matrix', 'positions', 'tile-mode']),
     'make-sweep-gradient-color4f-shader':
-        (8, ['color-space', 'end-angle', 'matrix', 'start-angle', 'positions', 'tile-mode']),
+        (8, ['color-space', 'end-angle', 'matrix', 'positions', 'start-angle', 'tile-mode']),
     'make-two-point-conical-gradient-color4f-shader':
         (128, ['color-space', 'matrix', 'positions', 'tile-mode']),
 })

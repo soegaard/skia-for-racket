@@ -344,7 +344,8 @@
         (for ([format '(rgba-8888 bgra-8888 rgba-f16 rgba-f32)])
           (define info (make-image-info 8 8 #:color-type format))
           (define tight (image-info-min-row-bytes info))
-          (define stride (+ tight 8))
+          (define padding (image-info-bytes-per-pixel info))
+          (define stride (+ tight padding))
           (with-skia ([buffer (make-raster-buffer-from-info info #:row-bytes stride)])
             (define expired #f)
             (call-with-raster-buffer-pixmap buffer
@@ -358,7 +359,7 @@
             (check-exn exn:fail? (lambda () (gpu-image-read-pixmap! im expired)))
             (for ([y (in-range 8)])
               (check-equal? (subbytes first (+ (* y stride) tight) (* (add1 y) stride))
-                            (make-bytes 8 0))))))))
+                            (make-bytes padding 0))))))))
    (test-case "half-alpha and color-space metadata survive explicit detachment"
      (call-with-gpu-context gpu
        (lambda ()

@@ -79,7 +79,7 @@
   (test-case "format-level operation support does not initialize native Skia"
     (define info (make-image-info 2 2 #:alpha-type 'unpremul))
     (check-false (image-info-supports? info 'raster-canvas))
-    (check-false (image-info-supports? info 'gpu-readback))
+    (check-true (image-info-supports? info 'gpu-readback))
     (check-true (image-info-supports? info 'storage))
     (define changed (image-info-with-dimensions info 4 5))
     (check-equal? (image-info-alpha-type changed) 'unpremul)

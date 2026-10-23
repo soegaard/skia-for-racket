@@ -17,6 +17,12 @@ SPEC.loader.exec_module(navigation)
 
 
 class NavigationParserTests(unittest.TestCase):
+    def test_pages_staging_includes_code_and_font_stylesheets(self):
+        workflow = (ROOT / '.github/workflows/pages.yml').read_text()
+        assets = workflow.split('for asset in', 1)[1].split('\n          do', 1)[0].split()
+        self.assertIn('racket.css', assets)
+        self.assertIn('manual-fonts.css', assets)
+
     def test_catalog_shortcuts_follow_subject_categories(self):
         _catalog, tutorials, categories, shortcut_ids = navigation.load_catalog()
         self.assertEqual([category['title'] for category in categories], [

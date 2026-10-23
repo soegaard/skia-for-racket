@@ -1464,7 +1464,7 @@ The following links cover the font and text interfaces.
 
 @racket[float-colors:make-two-point-conical-gradient-color4f-shader]
 
-@secref["skia-color-spaces" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
+@seclink["skia-color-spaces" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]{Color Management (legacy Color Spaces tag)}
 
 @secref["skia-color-management" #:doc '(lib "skia/scribblings/reference/reference.scrbl")]
 

@@ -351,7 +351,7 @@ The image itself is unchanged.
 
 @section[#:tag "skia-image-properties"]{Image Properties}
 
-@(declare-exporting skia skia/image-operations #:use-sources (skia skia/image-operations))
+@(declare-exporting skia skia/image-operations #:use-sources (skia/image-operations skia))
 
 Use these queries to inspect an image's pixel format, color space, or decoding
 state before choosing a pixel operation. Ordinary drawing does not require

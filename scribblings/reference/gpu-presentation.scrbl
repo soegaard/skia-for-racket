@@ -138,7 +138,7 @@ coordinates, without an automatic logical-to-pixel transform. To use logical
 window coordinates with direct Skia drawing, scale at the start of each render
 callback:
 
-@racketblock[
+@racketblock0[
 (define canvas (gpu-frame-canvas frame))
 (canvas-scale! canvas
                (gpu-frame-scale-x frame)

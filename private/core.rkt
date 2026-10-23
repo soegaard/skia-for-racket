@@ -5599,7 +5599,7 @@
          layout)
        (lambda ()
          (unless transferred?
-           (for ([choice (in-hash-values cache)] #:when choice)
+           (for ([choice (in-list (remove-duplicates (hash-values cache)))] #:when choice)
              (skia-close! (fallback-choice-shaper choice)))
            (skia-close! sh)))))))
 
@@ -5828,13 +5828,22 @@
                (call-with-skia-resource
                 tf
                 (lambda (face)
-                  (fallback-choice (typeface-family-name face)
-                                   (typeface-weight face)
-                                   (typeface-width face)
-                                   (typeface-slant face)
-                                   (call-with-skia-resource
-                                    (make-font-like base-font face)
-                                    make-shaper))))))))))
+                  ;; Character lookup can return the same native face through
+                  ;; different wrappers. Share its snapshot so adjacent Arabic
+                  ;; characters shape together, without merging distinct faces
+                  ;; merely because their family/style names happen to match.
+                  (call-with-owned 'layout-mixed-text (list (typeface-h 'layout-mixed-text face))
+                    (lambda (pointer)
+                      (hash-ref/cache!
+                       cache (cons 'typeface (cast pointer _pointer _uintptr))
+                       (lambda ()
+                         (fallback-choice (typeface-family-name face)
+                                          (typeface-weight face)
+                                          (typeface-width face)
+                                          (typeface-slant face)
+                                          (call-with-skia-resource
+                                           (make-font-like base-font face)
+                                           make-shaper))))))))))))))
 
 ; make-font-like : any/c any/c -> any
 ;   Copies the base font's rendering settings onto a newly selected fallback typeface.
@@ -6349,7 +6358,8 @@
            (+ baseline0 (* (sub1 (length lines)) line-step)
               (max 0.0 descent))))
      (mixed-text-layout sh
-                        (for/list ([choice (in-hash-values choice-cache)] #:when choice)
+                        (for/list ([choice (in-list (remove-duplicates (hash-values choice-cache)))]
+                                   #:when choice)
                           (fallback-choice-shaper choice))
                         text lines box-width height line-step))))
 

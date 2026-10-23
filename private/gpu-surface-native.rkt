@@ -234,7 +234,7 @@
 ;   wrappers on failure.
 (define (checked-backend-resource/native name args create)
   (define texture-backend
-    (case name [(gr_backendtexture_new_gl) 0] [(gr_backendtexture_new_metal) 1]
+    (case name [(gr_backendtexture_new_gl) 0] [(gr_backendtexture_new_metal) 2]
                [(gr_backendtexture_new_direct3d) 3] [else #f]))
   (define target? (eq? name 'gr_backendrendertarget_new_gl))
   (cond

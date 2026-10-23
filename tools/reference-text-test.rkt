@@ -16,7 +16,7 @@
 ;; Opt-in native CPU/HarfBuzz acceptance. No font binary is bundled.
 ;; Set SKIA_REFERENCE_TEST_FONT to a local font file to select the semantic-test face.
 ;; Displayed examples, executed by reference-native-test.rkt, use the default face.
-(require rackunit racket/file racket/list skia)
+(require rackunit racket/file racket/list racket/vector skia)
 
 
 ;;;

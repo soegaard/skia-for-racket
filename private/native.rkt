@@ -1195,6 +1195,7 @@
 
 ;; Direct storage is native-owned by the Racket wrapper. A null releaseProc
 ;; means Skia borrows it only until the scoped surface is unreferenced.
+;; The final three arguments are releaseProc, context, and surface properties.
 
 ; sk_surface_new_raster_direct : (_fun _sk-image-info-pointer _pointer _size _pointer _pointer
 ;   _pointer -> _pointer) (FFI)

@@ -69,8 +69,8 @@
     "tests/canvas-text-load-order.rkt"))
 
 ; compile-omit-paths : (listof string?)
-;   Keeps downloaded native artifacts out of Racket's source compilation traversal.
-(define compile-omit-paths '("native"))
+;   Keeps downloaded artifacts and generated output out of source compilation.
+(define compile-omit-paths '("native" "downloads" "html" "doc" "output"))
 
 ;; Manuals use Scribble plus reference targets from Racket and the GUI libraries.
 

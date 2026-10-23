@@ -59,7 +59,8 @@ def check_source(root: Path) -> dict:
         for tag in ('finished-result', 'try-it', 'next-steps', 'example-source'):
             need(text.count(f'#:tag "{tag}"') == 1, f'{slug}: missing or duplicate {tag}')
         calls = re.findall(r'^@\(([\w-]+)', text, re.M)
-        need(all(name in ('require', 'define-runtime-path', 'tutorial-figure') for name in calls),
+        need(all(name in ('require', 'define-runtime-path', 'tutorial-figure',
+                         'tutorial-navigation') for name in calls),
              f'{slug}: figure bypasses descriptive markup')
         need(not re.search(r'documentation build|real Skia renderings|not screenshots|'
                            r'hand-chosen gray|independent color constants', text),

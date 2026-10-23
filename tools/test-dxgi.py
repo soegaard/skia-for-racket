@@ -386,10 +386,12 @@ class Integration(unittest.TestCase):
         self.assertIn('test "$DXGI_RESULT" = success',text)
         self.assertIn('run: python tools/ci-d3d12.py',text); self.assertIn('run: python tools/ci-dxgi.py',text)
         self.assertNotIn('continue-on-error:',text)
-    def test_unchanged_windows_auto_and_explicit_direct3d(self):
+    def test_gui_uses_shared_platform_selection_and_explicit_direct3d(self):
         text=(HERE.parent/'gpu-gui.rkt').read_text()
-        self.assertIn("[(auto) (if (eq? (system-type 'os) 'macosx) 'metal 'opengl)]",text)
-        self.assertIn("[(opengl metal direct3d) requested]",text)
+        self.assertIn("(resolve-render-canvas-policy 'gpu backend adapter adapter-index sync-interval",text)
+        policy=(HERE.parent/'private/render-canvas-policy.rkt').read_text()
+        self.assertIn("[(and (eq? os 'windows) (eq? arch 'x86_64)) 'direct3d]",policy)
+        self.assertIn("[else backend]",policy)
         for term in ('[adapter #f]','[adapter-index #f]','[sync-interval #f]','make-d3d12-presentation-adapter'):
             self.assertIn(term,text)
     def test_pure_suite_wired(self):

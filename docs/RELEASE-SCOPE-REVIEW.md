@@ -112,3 +112,41 @@ The separate 0.78c public API baseline starts from `cc6e63c3e14a9059b326f515ee01
 ## 0.78d integration — one current execution gate
 
 The candidate coordinator starts from `705a090d287a8a2887eb2cb4f33b43961626c6e4`, accepted under the maintainer’s all-green assumption. It changes no Racket implementation, public signature snapshot or capability-family decision. Its explicit exhaustive workflow policy, checker, tests and documentation are new frozen review inputs. The 0.78b and 0.78c audit identities remain intact. Only a fresh complete **Release candidate** run can validate this candidate; the source ledger continues to report `release_ready: false`. No publication permission is implied.
+
+## Unreleased API revisions and regression repairs
+
+The source fingerprints are refreshed for the unreleased API revisions through
+`8131210` and the following regression repairs. Public names and calling forms
+remain unchanged by these repairs. The native dependency pins, minimum versions,
+capability dispositions, release policy, and resource limits also remain unchanged.
+
+Two capability descriptions already changed during the API revisions:
+`paths.remaining-convenience` no longer exposes the internal PathOps bounds query,
+and `text.blob-runs` records the originating shaper and its lifetime requirement.
+Their fingerprints and explanatory reasons now match those existing contracts;
+neither receives a different support status or release disposition.
+
+The implementation repairs correct the direct-raster surface argument order,
+the Metal backend identifier, and fallback-font snapshot sharing for connected
+text shaping. The review also includes the existing pixmap color-space binding
+in the FFI inventory and updates stale test fixtures and validation metadata to
+the current API. Package compilation now excludes ignored downloads and generated
+output, so local archived source fragments are not compiled as library modules.
+No source test, input-drift check, or execution requirement is disabled.
+
+Fresh runtime reflection corrects 17 headless snapshot entries from value exports
+to syntax-backed procedure exports, matching Racket's representation of the
+keyword procedures introduced by earlier API revisions. Every name, phase,
+procedure kind, arity, and keyword set matches the prior snapshot. The GUI
+snapshot and generated call-boundary report are unchanged. The Reference pins
+are updated to the corrected headless snapshot; the historical initial-capture
+record is preserved.
+
+The Pages packaging step also copies the code stylesheet and the embedded-font
+stylesheet required by the rendered manuals. Its workflow fingerprint is
+refreshed without changing the release graph, jobs, or acceptance requirements.
+
+This refresh records source review, not release certification. Current test and
+documentation-validation results must still be established independently, and
+macOS execution does not establish Windows or Linux acceptance. The historical
+audit identities and `release_ready: false` are preserved.

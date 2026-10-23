@@ -714,7 +714,7 @@
                     (new-owned who 'surface
                       (lambda ()
                         (sk_surface_new_raster_direct
-                         info pixels (raster-buffer-resource-row-bytes b) props #f #f))
+                         info pixels (raster-buffer-resource-row-bytes b) #f #f props))
                       sk_surface_unref))))
               (when (float-info? (buffer-format-info b)) (audit-mark-float-pixels! handle))
               (set! surface (make-surface-record handle w h '()))) #:idle? #f)

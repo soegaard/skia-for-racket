@@ -316,7 +316,7 @@
         (lambda ()
           (check-exn exn:fail?
                      (lambda () (image->port image output 'png #:quality 'unused #:close? #t)))
-          (check-exn exn:fail? (lambda () (image->port image output 'webp #:quality 90.5)))
+          (check-exn exn:fail? (lambda () (image->port image output 'jpeg #:quality 90.5)))
           (check-exn exn:fail?
                      (lambda () (image->port image output 'png #:jpeg-alpha 'unused)))
           (check-false (port-closed? output))

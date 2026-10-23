@@ -18,12 +18,13 @@ The short calling-form summaries use `racketblock0` for display only. Reserve
 `racketblock` for complete examples: the native example runner executes every
 such block in isolation, so a signature with placeholder arguments is not one.
 
-The source and runtime declaration readers support `defproc*` for one procedure
-with disjoint finite arities and optional keywords. They combine the arity
-masks and allowed keywords while preserving each form's argument metadata.
-Required keywords, rest arguments, and overlapping arities remain unsupported
-in `defproc*`. API snapshots and their coverage pins must change together when
-the calling forms change.
+The source and runtime declaration readers support `defproc*` both for
+overloaded procedures and for different procedures sharing one description.
+They keep different names separate. For multiple forms of one procedure, they
+combine disjoint finite arities and optional keywords while preserving each
+form's argument metadata. Required keywords, rest arguments, and overlapping
+arities remain unsupported when combining overloads. API snapshots and their
+coverage pins must change together when the calling forms change.
 
 ## Opt-in Racket Draw bridge
 

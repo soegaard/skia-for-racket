@@ -324,7 +324,7 @@
       (define run (shape-text shaper ""))
       (check-false (shaped-run->text-blob/on-path run path))
       (check-exn exn:fail?
-                 (lambda () (shaped-run->text-blob/on-path run path )))
+                 (lambda () (shaped-run->text-blob/on-path run path #:overflow 'unknown)))
       (check-exn exn:fail? (lambda () (draw-shaped-run/on-path #f run path paint)))
       (define before (surface->rgba-bytes surface))
       (check-true (void? (draw-shaped-run/on-path (surface-canvas surface) run path paint)))

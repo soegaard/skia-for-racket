@@ -452,9 +452,13 @@
    (test-case "layout source maps distinguish repeated text and inserted characters"
      (with-layout-fixture (f sh)
        (define input (string-copy "AVAV\r\nAV"))
-       (define width (+ 0.1 (abs (shaped-run-advance-x (shape-text sh "AV-")))))
+       ;; The fixture's AV ligature is as narrow as one glyph. Disable it so
+       ;; the whole paragraph cannot fit when the inserted-hyphen line fits.
+       (define features '("liga=0"))
+       (define width (+ 0.1 (abs (shaped-run-advance-x
+                                (shape-text sh "AV-" #:features features)))))
        (with-skia ([layout
-                    (layout-text sh input #:width width
+                    (layout-text sh input #:width width #:features features
                                  #:break-provider
                                  (lambda (paragraph language)
                                    (if (= (string-length paragraph) 4)

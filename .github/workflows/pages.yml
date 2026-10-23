@@ -58,7 +58,9 @@ jobs:
           cp scribblings/support/skia-doc-nav.js "$SITE/skia-doc-nav.js"
           for asset in \
             scribble.css \
+            racket.css \
             manual-style.css \
+            manual-fonts.css \
             manual-racket.css \
             doc-site.css \
             scribble-common.js \

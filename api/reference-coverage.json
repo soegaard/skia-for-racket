@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "3018bb2cf03799cb13362ed972f666a6786c4d1b"
+      "git_blob": "4bf4408665bde6f86e1e41cb51f730d323da9a44"
     },
     {
       "file": "api/public-api-gui.json",
@@ -10089,7 +10089,7 @@
     },
     {
       "name": "image-unique-id",
-      "chapter": "scribblings/reference/image-operations.scrbl",
+      "chapter": "scribblings/reference/images.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -10100,7 +10100,7 @@
     },
     {
       "name": "image-alpha-only?",
-      "chapter": "scribblings/reference/image-operations.scrbl",
+      "chapter": "scribblings/reference/images.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -10111,7 +10111,7 @@
     },
     {
       "name": "image-lazy-generated?",
-      "chapter": "scribblings/reference/image-operations.scrbl",
+      "chapter": "scribblings/reference/images.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -10122,7 +10122,7 @@
     },
     {
       "name": "image-texture-backed?",
-      "chapter": "scribblings/reference/image-operations.scrbl",
+      "chapter": "scribblings/reference/images.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -10133,7 +10133,7 @@
     },
     {
       "name": "image-valid?",
-      "chapter": "scribblings/reference/image-operations.scrbl",
+      "chapter": "scribblings/reference/images.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",
@@ -10144,7 +10144,7 @@
     },
     {
       "name": "image-pixels-available?",
-      "chapter": "scribblings/reference/image-operations.scrbl",
+      "chapter": "scribblings/reference/images.scrbl",
       "canonical_module": "skia",
       "exports": [
         "skia",

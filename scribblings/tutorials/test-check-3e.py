@@ -238,7 +238,7 @@ class HtmlChecks(unittest.TestCase):
 
     def test_local_target_handles_encoded_anchor(self):
         target = checker.local_target(self.page, 'other.html#x%20y')
-        self.assertEqual(target, (self.root / 'other.html', 'x y'))
+        self.assertEqual(target, ((self.root / 'other.html').resolve(), 'x y'))
         self.assertIsNone(checker.local_target(self.page, 'https://example.invalid/'))
 
 
