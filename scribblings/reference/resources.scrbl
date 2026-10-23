@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/base racket/contract skia))
+          (for-label racket/base racket/contract skia skia/gpu skia/gpu-interop))
 
 @title[#:tag "skia-resources"]{Resources and Lifetimes}
 
@@ -48,7 +48,9 @@ the caller's original @tech{shaper} and font manager can be closed independently
 Returns @racket[#t] when @racket[v] is an @tech{owned resource} accepted by the
 ordinary Skia resource protocol, and @racket[#f] otherwise. A closed resource
 still satisfies the predicate. Borrowed canvases do not.
-This predicate is not a classifier for every object in the separate GPU APIs.
+GPU surfaces and GPU images satisfy this predicate, but GPU contexts,
+presenters, and external-texture handoff tokens do not. Their cleanup
+operations are listed in @secref["skia-resource-cleanup"].
 }
 
 @defproc[(skia-closed? [v (or/c skia-resource? canvas?)]) boolean?]{
@@ -59,13 +61,40 @@ a GPU context. An open resource must still satisfy the thread and activation
 requirements of the operation that uses it.
 }
 
-@section{Explicit Release}
+@section[#:tag "skia-resource-cleanup"]{Explicit Release}
 
 Closing a resource, finishing a document, and saving a file are separate operations.
 Closing abandoned storage does not finish a document or save an output file.
 @tech{GPU contexts} and borrowed frame targets have additional activation, generation,
 thread, synchronization, and teardown requirements; the CPU rules do not replace
 those requirements.
+
+Choose the cleanup operation according to the kind of value:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Value} @bold{Cleanup} @bold{Accepted by @racket[with-skia]?})
+  (list @elem{An owned @racket[skia-resource?], including GPU surfaces and images}
+        @racket[skia-close!] "Yes")
+  (list @elem{A @tech{GPU context}} @racket[gpu-context-close!] "No")
+  (list @elem{An @tech{external GPU texture handoff}}
+        @racket[gpu-external-texture-close!] "No")
+  (list @elem{A @tech{GPU presenter}} @racket[gpu-presenter-close!] "No")
+  (list @elem{A @tech{borrowed canvas}, including a frame canvas}
+        "Do not close independently" "No"))]
+
+For a context needed only during one computation,
+@racket[call-with-new-gpu-context] obtains a new context from a creation
+callback, activates it for a drawing callback, then closes it. The drawing
+callback must still close the GPU-dependent resources it creates, typically
+with @racket[with-skia], before returning. A presenter's
+context instead belongs to the presenter and must not be closed separately.
+Close a GUI widget through its own close method; see
+@secref["skia-gui-cleanup"].
+
+These cleanup functions are not interchangeable. Follow each entry's thread,
+activation, and failure rules; ending a drawing callback or marking a wrapper
+closed does not necessarily mean that all native cleanup has completed.
 
 @defproc[(skia-close! [resource skia-resource?]) void?]{
 Releases @racket[resource]'s owned native reference. Releasing an ordinary CPU

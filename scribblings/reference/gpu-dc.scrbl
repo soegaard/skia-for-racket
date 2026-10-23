@@ -53,6 +53,13 @@ its presenter has already activated the correct GPU context, so the callback
 must not add another @racket[call-with-gpu-context] scope around this operation.
 Nested GPU-DC scopes are rejected.
 
+The DC uses the frame's logical window dimensions and automatically scales
+drawing to its physical pixel dimensions, independently for each axis. Do
+not apply the raw-canvas scaling example in
+@secref["skia-gpu-frame-geometry"] to this DC: the scaling is already in
+effect. This is also the coordinate behavior of the GUI widgets that use
+this operation.
+
 The callback must be a procedure that accepts one positional argument. Its DC becomes
 invalid on normal return, exception, or escape. Drawing takes place on a temporary
 full-color RGBA/BGRA/F16/F32 surface in the same GPU context. The @tech{color-space

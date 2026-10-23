@@ -6,16 +6,25 @@
 
 @title[#:tag "skia-gpu-native-handoffs"]{Metal and Direct3D Native Handoffs}
 
+Use these constructors when another renderer owns a Metal or Direct3D texture
+that Skia must copy or draw into. Each constructor creates an
+@tech{external GPU texture handoff} for the single-use operations in
+@secref["skia-gpu-external-resources"]. The supplied command buffer or fence
+identifies completion of the external renderer's earlier work, so Skia can
+wait before accessing the texture.
+
 The libraries documented here are explicitly unsafe. Their pointer arguments
 must already designate live native objects of the stated interface or
 Objective-C protocol on the exact device owned by the supplied @tech{GPU context}. A successful
 FFI predicate or native interface query cannot make an arbitrary, forged, or
 freed address safe. Violating these preconditions can crash the process.
 
-The constructors create @tech{external GPU texture handoff} tokens for the
-safe, single-use operations in @secref["skia-gpu-external-resources"]. They
-retain the native references needed after construction, but those references do not permit
-concurrent external and Skia access.
+The constructors acquire their own native references to the texture and its
+producer synchronization objects. They also keep the associated GPU context
+from closing while the token needs it. These references do not permit
+concurrent external and Skia access. Close the token with
+@racket[gpu-external-texture-close!] when finished; the application's own
+native references remain its responsibility.
 
 @section{Metal}
 
@@ -42,25 +51,37 @@ operation does not create a second device, queue, or context.
           [#:premultiplied? premultiplied? boolean? #t]
           [#:color-space space (or/c color-space? #f) #f])
          gpu-external-texture?]{
-Creates a single-use handoff for a live @tt{MTLTexture}. The producer command
-buffer is required, must already be committed or complete, use retained
-references, and belong to the same Metal device. Construction retains the
-texture and producer buffer and pins the context.
+Creates a single-use handoff for a live @tt{MTLTexture}.
 
-The reviewed storage is ordinary RGBA8Unorm 2D storage with one mip level,
+The required producer command buffer must already be committed or complete,
+use retained references, and belong to the same Metal device. Completion of
+that buffer must cover every prior use of the texture. Skia waits for that
+completion before copying or drawing. The wrapper verifies device identity
+and completion, but cannot check that the producer's commands cover all
+earlier uses.
+
+A producer command buffer is required even if the texture's contents were
+initialized by a CPU operation such as @tt{replaceRegion}. There is no
+separate constructor form that accepts a claim that the texture is already
+ready. An arbitrary empty command buffer is not proof that unrelated GPU
+work has finished; the same synchronization requirements still apply.
+
+Construction acquires native references to the texture and producer buffer
+and keeps the context from closing until those references can be released.
+
+The supported texture storage is RGBA8Unorm 2D storage with one mip level,
 array element, depth, and sample. It requires tracked hazards and ShaderRead
 usage; drawing additionally requires RenderTarget usage and @tech{premultiplied
 alpha}. Unsupported views, heaps, buffers, IOSurface/remote/shareable storage,
 managed or memoryless modes, nonidentity swizzles, ShaderWrite, other formats,
 arrays, mipmaps, and multisampling are rejected.
 
-The timeout is an exact value from 1 through 60000 milliseconds and applies separately
-to bounded command-buffer completion waits. It is not a wall-clock deadline for arbitrary
-native calls or the application callback. The caller promises that the producer command
-buffer covers every prior use of the texture; the wrapper verifies device identity and completion,
-not the producer's command contents. An indeterminate completion or cleanup
-failure quarantines retained references and requests context shutdown rather
-than freeing potentially in-flight storage.
+The timeout is an exact value from 1 through 60000 milliseconds and applies
+separately to each command-buffer completion wait. It is not a deadline for
+arbitrary native calls or the application callback. If completion cannot be
+established or cleanup fails, the implementation keeps the native references
+in quarantine and requests context shutdown. It does not free storage that
+the GPU might still be using.
 }
 
 @section{Direct3D 12}
@@ -97,24 +118,32 @@ reference.
           [#:premultiplied? premultiplied? boolean? #t]
           [#:color-space space (or/c color-space? #f) #f])
          gpu-external-texture?]{
-Creates a single-use handoff for a live @tt{ID3D12Resource}. The required fence
-and positive completion value identify producer completion. The all-ones uint64
+Creates a single-use handoff for a live @tt{ID3D12Resource}.
+
+The required fence and positive completion value identify when the external
+renderer has finished its earlier use of the resource. The all-ones uint64
 value is reserved as the device-loss sentinel and is rejected. Resource and
 fence must belong to the exact context device by canonical COM identity.
 
-The reviewed resource is an unshared DEFAULT-heap, single-level, single-sample
+The supported resource is an unshared DEFAULT-heap, single-level, single-sample
 RGBA8 2D texture. Only the ordinary allocation-category heap flags and
 ALLOW_RENDER_TARGET resource flag are accepted. Scoped drawing requires that
 render-target flag and premultiplied alpha.
 
-The incoming and outgoing state names are caller declarations. The pinned API
-has no general native state getter, so a plausible but false incoming declaration
-cannot be certified by this wrapper. Before Skia work, the implementation uses
-a bounded producer-fence poll and queue-side dependency. Successful return waits
-for the relevant queue work and restores the declared outgoing state. The timeout
-is per fence wait, not a deadline for arbitrary native or callback execution.
+The incoming state declares the resource's state when Skia takes access; the
+outgoing state specifies the state to leave it in afterward. The wrapper
+checks that the names are supported, but cannot verify that the resource
+really is in the declared incoming state. The caller is responsible for that
+declaration.
 
-The handoff represents one transfer. Timeouts, device loss, or indeterminate
-native cleanup retain potentially in-flight references in quarantine and request
-context shutdown rather than retrying an uncertain destructor.
+Before Skia work, the implementation waits for the producer fence with a
+timeout and also makes Skia's GPU queue depend on that fence. Successful
+return waits for the relevant queue work to finish and leaves the resource
+in the declared outgoing state. The timeout applies separately to each
+fence wait, not to arbitrary native calls or the application callback.
+
+The handoff represents one transfer. After a timeout, device loss, or native
+cleanup whose outcome is uncertain, the implementation keeps potentially
+in-use native references in quarantine and requests context shutdown. It
+does not retry a release whose outcome is unknown.
 }

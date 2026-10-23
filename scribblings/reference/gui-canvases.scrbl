@@ -2,7 +2,8 @@
 
 @(require (for-label racket/base racket/class racket/contract racket/gui/base
                      (prefix-in draw: racket/draw)
-                     skia/canvas skia/gpu skia/gpu-gui skia/gpu-canvas))
+                     skia/canvas skia/gpu skia/gpu-gui skia/gpu-canvas
+                     skia/render-canvas))
 
 @title[#:tag "skia-gui-canvases"]{GUI Canvases with Racket Drawing Contexts}
 
@@ -24,6 +25,19 @@ The @racket[skia-canvas-on-gpu%] class is the GPU counterpart of
 a Racket drawing context instead of a GPU frame to the application callback.
 Both GPU classes use Skia. To draw directly with Skia's drawing functions instead, see
 @secref["skia-gpu-widgets"].
+
+Both drawing-context interfaces use logical window coordinates and apply the
+window's logical-to-pixel scaling automatically. Do not apply the raw-frame
+scaling example from @secref["skia-gpu-frame-geometry"] to these drawing
+contexts.
+
+The initial smoothing defaults differ: @racket[skia-canvas%] uses
+@racket['unsmoothed], while @racket[skia-canvas-on-gpu%] and
+@racket[make-skia-render-canvas] use @racket['smoothed]. Pass an explicit
+@racket[smoothing] value when choosing the same setting across interfaces.
+The unified factory passes that setting to either renderer. For automatic
+GPU backend choices and Direct3D-only options, see
+@secref["skia-gui-backend-options"].
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -122,7 +136,7 @@ retaining it does not extend its lifetime.
 @defconstructor[([parent (is-a?/c area-container<%>)]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
                  [adapter (or/c #f 'hardware 'warp) #f]
-                 [adapter-index (or/c #f exact-nonnegative-integer?) #f]
+                 [adapter-index (or/c #f (integer-in 0 4294967294)) #f]
                  [sync-interval (or/c #f (integer-in 0 1)) #f]
                  [paint-callback procedure? void]
                  [on-error procedure? raise]
@@ -133,6 +147,10 @@ retaining it does not extend its lifetime.
                  [min-height exact-nonnegative-integer? 1])]{
 Creates a GPU drawing-context canvas. The paint callback receives the canvas and
 a fresh frame-scoped drawing context.
+
+The backend and Direct3D-only options follow
+@secref["skia-gui-backend-options"]. This constructor does not accept the
+@racket[style] argument supported by @racket[skia-canvas%].
 }
 
 @defmethod[#:mode override (get-dc) object?]{
@@ -168,7 +186,10 @@ Closes the same resources as @method[skia-canvas-on-gpu% close-skia].
 }
 
 @defmethod[(skia-closed?) boolean?]{
-Returns the wrapper's closed state.
+Returns whether closure of the widget has been requested. The flag becomes
+true before presenter cleanup completes and can remain true after a cleanup
+exception. It is not evidence that all native resources have been released;
+see @secref["skia-gui-cleanup"].
 }
 
 @defmethod[(get-skia-info) (and/c hash? immutable?)]{
@@ -193,14 +214,15 @@ Provides a convenience frame around one @racket[skia-canvas-on-gpu%].
                  [height exact-nonnegative-integer? 480]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
                  [adapter (or/c #f 'hardware 'warp) #f]
-                 [adapter-index (or/c #f exact-nonnegative-integer?) #f]
+                 [adapter-index (or/c #f (integer-in 0 4294967294)) #f]
                  [sync-interval (or/c #f (integer-in 0 1)) #f]
                  [paint-callback procedure? void]
                  [on-error procedure? raise]
                  [background (or/c string? (is-a?/c draw:color%)) "white"]
                  [smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed]
                  [automatic? boolean? #t])]{
-Creates a GPU drawing-context window.
+Creates a GPU drawing-context window using the same backend, smoothing, and
+callback rules as @racket[skia-canvas-on-gpu%].
 }
 
 @defmethod[(get-skia-canvas) (is-a?/c skia-canvas-on-gpu%)]{
@@ -216,3 +238,43 @@ Closes the GPU canvas before hiding the window. Window-manager close uses the
 same path.
 }
 }
+
+@section[#:tag "skia-gui-cleanup"]{Closing GUI Rendering Resources}
+
+Close a widget's rendering resources on its eventspace handler thread using
+the method for that interface:
+
+@tabular[#:sep @hspace[2]
+ (list
+  (list @bold{Interface} @bold{Close method} @bold{State query})
+  (list @racket[gpu-canvas%] @method[gpu-canvas% close-gpu]
+        @elem{@racket[gpu-presenter-state] on its presenter})
+  (list @racket[skia-canvas%] @method[skia-canvas% close-skia]
+        @method[skia-canvas% closed?])
+  (list @racket[skia-canvas-on-gpu%] @method[skia-canvas-on-gpu% close-skia]
+        @method[skia-canvas-on-gpu% skia-closed?])
+  (list @racket[skia-render-canvas<%>] @method[skia-render-canvas<%> close-skia]
+        @method[skia-render-canvas<%> closed?]))]
+
+The drawing-context canvases also provide @tt{close} as an alias for
+@tt{close-skia}. Convenience windows use @method[gpu-window% close-gpu],
+@method[skia-window-on-gpu% close-skia], or
+@method[skia-render-window% close-render], respectively, to close their child
+canvas and hide the window. Hiding a window alone does not close its rendering
+resources. Stop application-owned animation timers when closing the widget.
+
+For a GPU widget, stopping further rendering and finishing native cleanup are
+separate steps. A close during a raw GPU frame can defer cleanup until the
+frame ends; open application-owned GPU resources can make cleanup fail.
+Close those resources according to their context's rules, then retry the
+widget's close method. The GPU drawing-context widget's closed flag, also
+used by the unified GPU canvas, can already be true in this situation.
+Use @racket[gpu-presenter-state] to inspect presenter closure; the unified
+interface's @method[skia-render-canvas<%> get-render-info] additionally reports
+the outcome of its close attempt in @racket['close_status].
+
+The raster and unified interfaces reject closure during their paint
+callbacks. The raw GPU and GPU drawing-context interfaces instead use the
+presenter's deferred-cleanup rules. These differences do not permit closing
+a borrowed frame canvas or the presenter's context independently. For the
+resource-level cleanup functions, see @secref["skia-resource-cleanup"].

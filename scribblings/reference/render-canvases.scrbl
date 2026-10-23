@@ -2,17 +2,23 @@
 
 @(require (for-label racket/base racket/class racket/contract racket/gui/base
                      (prefix-in draw: racket/draw)
-                     skia/render-canvas))
+                     skia/canvas skia/render-canvas))
 
 @title[#:tag "skia-render-canvases"]{Unified Render Canvases}
 
 @defmodule[skia/render-canvas #:no-declare]
 @(declare-exporting skia/render-canvas #:use-sources (skia/render-canvas))
 
-The @racketmodname[skia/render-canvas] GUI library provides one
-callback-oriented protocol over the persistent raster canvas and frame-scoped
-GPU canvas. Renderer choice is fixed before the widget is constructed; a runtime GPU failure does not replace the object with a
-raster canvas or replay the application callback.
+Use @racketmodname[skia/render-canvas] when the same drawing-context callback
+should work with either CPU or GPU rendering. The callback receives the
+widget and a drawing context; draw in logical window coordinates, since the
+selected implementation applies the logical-to-pixel scaling. Drawing-context
+state persists on the raster renderer but starts fresh for each GPU frame.
+
+Renderer choice is fixed before the widget is constructed. A runtime GPU
+failure does not replace the object with a raster canvas or replay the
+application callback. See @secref["skia-gui-backend-options"] for the
+automatic choices and current constructor restrictions.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -37,22 +43,23 @@ eventspace handler thread. The paint callback accepts the canvas and drawing
 context, and its result values are ignored. The @racket[on-error] callback accepts one
 raised value. Neither callback may require keyword arguments.
 
-The @racket['raster] renderer always selects the CPU implementation. With a GPU renderer and
-an automatic backend, the unified policy chooses Metal on macOS, Direct3D on
-Windows x86-64, and desktop OpenGL on Unix. The @racket['auto] renderer chooses that GPU
-preference where declared, otherwise raster. These are declarative platform
-rules, not driver probes or fallback rules. Direct3D adapter/sync options are
-rejected for other backends; WARP never appears as an implicit fallback.
+The @racket['raster] renderer always selects the CPU implementation and
+requires @racket[backend] to be @racket['auto]. The @racket['gpu] renderer
+requires a GPU backend; @racket['auto] chooses according to the platform and
+backend request. These rules, including the different Windows defaults of
+this factory and the raw GPU widgets, are given in
+@secref["skia-gui-backend-options"].
 
-The raw GPU-widget API described in @secref["skia-gpu-widgets"] keeps its own
-older automatic policy: it selects Metal on macOS and OpenGL elsewhere. Thus,
-on Windows x86-64, that API selects OpenGL while this unified factory selects
-Direct3D. The @racket['auto] choice is therefore local to each constructor, not one
-package-wide backend choice.
+Only @racket[#f], @racket[0], or @racket[1] can be used successfully for
+@racket[sync-interval]. Although the initial option check accepts values up
+to @racket[4], construction raises an exception for @racket[2] through
+@racket[4]. Adapter and synchronization options other than @racket[#f]
+require Direct3D.
 
-The selector accepts synchronization intervals from 0 through 4. The current
-Direct3D GUI presenter accepts only 0 or 1, so larger selected values are rejected
-when that implementation is constructed rather than silently changed.
+The @racket[smoothing] setting is passed to either implementation. Its
+default is @racket['smoothed], including when selecting the raster renderer;
+this differs from constructing @racket[skia-canvas%] directly, as described
+in @secref["skia-gui-canvases"].
 }
 
 @section{Common Render Canvas Interface}
@@ -122,7 +129,10 @@ Closes the same resources as @method[skia-render-canvas<%> close-skia].
 }
 
 @defmethod[(closed?) boolean?]{
-Returns the underlying widget's closed state.
+Returns the underlying widget's closed flag. For the GPU renderer, this can
+be true even if native cleanup has failed and needs another close attempt.
+See @secref["skia-gui-cleanup"] for the distinction between stopping the
+widget and completing cleanup.
 }
 
 A saved raster callback DC can remain a live persistent object after callback
@@ -155,6 +165,9 @@ Provides a convenience frame containing one unified render canvas.
                  [background (or/c string? (is-a?/c draw:color%)) "white"]
                  [smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed])]{
 Creates a 640 by 480 unified render window unless another size is supplied.
+Renderer selection and option restrictions are the same as for
+@racket[make-skia-render-canvas], including the effective @racket[0] or
+@racket[1] limit on explicit synchronization intervals.
 }
 
 @defmethod[(get-render-canvas) (is-a?/c canvas%)]{

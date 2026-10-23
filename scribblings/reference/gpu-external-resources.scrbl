@@ -25,15 +25,34 @@ for its exact associated context. Metadata
 inspection and explicit token retirement require the creating thread, but not an
 active drawing scope.
 
-A token is single-use. Its normal states progress from ready to active to
-consumed. Explicitly closing an unused or consumed token retires it and starts
-backend cleanup of its native references. A validation failure before a handoff
-begins can leave the token ready; once an operation has begun, construct a new
-token for another handoff instead of retrying the old one.
+For one transfer, follow this sequence:
+
+@itemlist[#:style 'ordered
+ @item{Prepare the native texture and the producer synchronization required
+       by its backend, then create a handoff token in the associated context's
+       activation. The token begins in the ready state.}
+ @item{Use the token once with @racket[gpu-import-image] or
+       @racket[call-with-gpu-external-surface]. The token is active during
+       that operation and consumed when the operation ends.}
+ @item{Call @racket[gpu-external-texture-close!] when the token is no longer
+       needed, including when abandoning an unused token. This retires the
+       token and starts cleanup of its native references; it does not close
+       the context or an image returned by @racket[gpu-import-image].}]
+
+A validation failure before the handoff begins can leave the token ready.
+Once an operation has begun, construct a new token for another handoff rather
+than retrying the old one, even if that operation raised an exception.
+Successful completion permits reuse of the external storage according to
+the backend's synchronization rules. After a completion or cleanup failure,
+follow the backend's shutdown rules instead of assuming that storage is
+safe to reuse.
 
 An external texture token does not satisfy @racket[skia-resource?] and is not
 managed by @racket[with-skia] or @racket[skia-close!]. Use
 @racket[gpu-external-texture-close!] to retire a token that is no longer needed.
+Retire tokens and close application-owned GPU images and surfaces before
+closing their context. Native releases can remain queued until an owner-thread
+drain, as described in @secref["skia-gpu-context-shutdown"].
 
 @section{Token State and Retirement}
 
@@ -67,11 +86,12 @@ follow that context's owner-side drain and shutdown protocol.
 
 @defproc[(gpu-import-image [context gpu-context?]
                            [texture gpu-external-texture?]) gpu-image?]{
-Consumes a ready token by making an independent Skia-owned GPU image in the
-exact associated @racket[context]. The returned image does not alias the
-caller's external storage and follows the normal GPU-image lifetime rules.
+Copies the external texture into an independent Skia-owned GPU image in the
+token's exact associated @racket[context], consuming the ready token. The
+returned image has its own pixel storage and follows the normal GPU-image
+lifetime rules.
 Backend handoff synchronization and validation occur before control returns.
-There is no CPU pixel readback in the production copy path.
+There is no CPU pixel readback.
 
 The token must belong to @racket[context] and be in the ready state. If it
 belongs to another context or is active, consumed, or retired, the function
@@ -86,9 +106,9 @@ raises an exception.
 @defproc[(call-with-gpu-external-surface
           [context gpu-context?] [texture gpu-external-texture?]
           [proc (-> canvas? any)]) any]{
-Consumes a ready token by temporarily exposing its external texture as a drawing
-target. The @racket[proc] callback receives only a borrowed Skia canvas and its multiple
-values are returned. The canvas expires at callback exit. It cannot be used as
+Calls @racket[proc] with a borrowed Skia canvas for drawing into the external
+texture, consuming the ready token. The callback's multiple values are
+returned. The canvas expires at callback exit. It cannot be used as
 an independently owned surface, snapshot source, or native-resource handle.
 
 The token, context, thread, and nesting restrictions of @racket[gpu-import-image]

@@ -119,7 +119,34 @@ diagnostic snapshots. The function rejects calls from inside an active
 GPU or presentation frame. It does not drain presenters owned by other threads.
 }
 
-@section{Frame Lifetime and Geometry}
+@section[#:tag "skia-gpu-frame-geometry"]{Frame Lifetime and Geometry}
+
+A window has a logical client size, used by the GUI for layout, and a
+physical pixel size, used for its drawing target. On a high-density display,
+one logical unit can cover more than one physical pixel. The frame records
+both sizes and a separate scale factor for each axis; use the values from the
+current frame, since they can change when the window moves or resizes.
+
+The canvas returned by @racket[gpu-frame-canvas] initially uses physical-pixel
+coordinates, without an automatic logical-to-pixel transform. To use logical
+window coordinates with direct Skia drawing, scale at the start of each render
+callback:
+
+@racketblock[
+(define canvas (gpu-frame-canvas frame))
+(canvas-scale! canvas
+               (gpu-frame-scale-x frame)
+               (gpu-frame-scale-y frame))
+]
+
+Subsequent drawing uses logical coordinates until the transform changes. This
+does not change the physical dimensions reported by @racket[gpu-frame-width]
+and @racket[gpu-frame-height].
+
+The @seclink["skia-gui-canvases"]{GUI drawing-context interfaces}, the
+@seclink["skia-render-canvases"]{unified render canvases}, and
+@seclink["skia-gpu-dc"]{GPU frame drawing contexts} already apply the
+logical-to-pixel scaling. Do not apply it again to those drawing contexts.
 
 @defproc[(gpu-frame? [v any/c]) boolean?]{
 Returns whether @racket[v] is a presentation-frame wrapper. Keeping a reference
@@ -135,6 +162,9 @@ frame or later activation does not revive the old frame.
 Returns the @tech{borrowed canvas} while @racket[frame] is live on its original owner
 thread. It raises an exception after callback exit, from another Racket thread,
 or from within a future.
+
+The canvas initially uses physical-pixel coordinates; see the scaling example
+above for drawing in logical window coordinates.
 }
 
 @defproc[(gpu-frame-context [frame gpu-frame?]) gpu-context?]{
@@ -159,12 +189,14 @@ Returns the acquired target height in physical pixels.
 
 @defproc[(gpu-frame-logical-width [frame gpu-frame?])
          (and/c real? positive?)]{
-Returns the logical client width used for this acquired frame.
+Returns the GUI's logical client width used for this acquired frame, before
+the logical-to-pixel scaling described above.
 }
 
 @defproc[(gpu-frame-logical-height [frame gpu-frame?])
          (and/c real? positive?)]{
-Returns the logical client height used for this acquired frame.
+Returns the GUI's logical client height used for this acquired frame, before
+the logical-to-pixel scaling described above.
 }
 
 @defproc[(gpu-frame-scale-x [frame gpu-frame?]) (and/c real? positive?)]{

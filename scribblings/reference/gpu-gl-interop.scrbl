@@ -7,14 +7,24 @@
 @defmodule[skia/gpu-gl-interop #:no-declare]
 @(declare-exporting skia/gpu-gl-interop #:use-sources (skia/gpu-gl-interop))
 
-These operations temporarily hand the current OpenGL command stream or
-host-owned OpenGL storage across the Skia boundary. They require the exact
-active OpenGL context and its function resolver. OpenGL object names are
+Use these operations when another part of your application already issues
+OpenGL commands or owns an OpenGL framebuffer or texture. You can run those
+commands between Skia operations, let Skia draw into an external framebuffer,
+or copy an external texture into a Skia-owned image.
+
+The operations require the exact active OpenGL context associated with the
+Skia GPU context and its function resolver. OpenGL object names are
 interpreted only in that current context; equal integer names do not establish
 resource sharing between contexts.
 
 The API does not adopt external GL objects, expose Skia-owned texture names, or
 infer sharing groups. Nested external-resource handoffs are rejected.
+
+For both framebuffer drawing and texture copying, the supported texture
+storage is @tt{GL_RGBA8}. @tt{GL_SRGB8_ALPHA8} is not supported. A
+@racket[#:color-space] argument describes the interpretation of the pixel
+values; it does not make an unsupported OpenGL storage format acceptable.
+Additional restrictions are given in each entry below.
 
 @section{External OpenGL Commands}
 
@@ -42,14 +52,19 @@ code must establish the state it needs.
           [#:origin origin (or/c 'bottom-left 'top-left) 'bottom-left]
           [#:color-space space (or/c color-space? #f) #f]
           [#:wait? wait? boolean? #t]) any]{
-Temporarily wraps a host-owned framebuffer and calls @racket[proc] with an
-ordinary borrowed Skia canvas. The framebuffer and its attachments remain owned
+Calls @racket[proc] with a @tech{borrowed canvas} for drawing into a host-owned
+framebuffer. The framebuffer and its attachments remain owned
 by the host; the callback receives neither a surface nor a native pointer. The
 canvas expires when the call returns, even if an enclosing context activation
 continues. The callback's multiple values are preserved.
 
-The supported target is deliberately narrow: a nonzero complete single-sampled
-framebuffer whose sole draw output is a level-zero, nonlayered
+Framebuffer @racket[0], the window's default framebuffer, is not accepted.
+For a Skia-managed Racket GUI window, use the
+@seclink["skia-gpu-widgets"]{GPU widget interfaces}; this operation does not
+wrap an arbitrary window's default framebuffer.
+
+The target must be a nonzero complete single-sampled framebuffer whose sole
+draw output is a level-zero, nonlayered
 @tt{GL_TEXTURE_2D} with @tt{GL_RGBA8}, identity swizzle, base level zero, and no
 comparison mode. It must also have a matching single-sampled eight-bit stencil
 renderbuffer. The wrapper queries and verifies those properties; @racket[width]
@@ -72,12 +87,12 @@ returning the host storage; false requests only same-context ordered reuse.
           [#:premultiplied? premultiplied? boolean? #t]
           [#:color-space space (or/c color-space? #f) #f]
           [#:wait? wait? boolean? #t]) gpu-image?]{
-Validates and temporarily borrows the host's level-zero @tt{GL_RGBA8} 2D texture,
-then copies it on the GPU into a new Skia-owned image. The returned image does
-not alias the host texture and follows the ordinary GPU-image lifetime and
-context restrictions. No CPU readback occurs.
+Copies the host's texture on the GPU into a new Skia-owned image. The returned
+image has independent pixel storage and follows the ordinary GPU-image
+lifetime and context restrictions. No CPU readback occurs.
 
-The original texture must have identity swizzle, base level zero, and no compare
+The original must be a level-zero @tt{GL_RGBA8} 2D texture with
+identity swizzle, base level zero, and no compare
 mode. The @racket[premultiplied?] argument describes its input alpha representation;
 @racket[space] describes its color interpretation. The owned destination uses
 the regular premultiplied GPU-surface path. With the default wait, the host may
