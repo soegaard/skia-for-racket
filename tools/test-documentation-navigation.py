@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +19,65 @@ SPEC.loader.exec_module(navigation)
 
 
 class NavigationParserTests(unittest.TestCase):
+    def test_review_inputs_include_feedback_sources_and_regressions(self):
+        from reference_review import source_hashes
+        hashes = source_hashes(ROOT, review_inputs=True)
+        for name in ('scribblings/support/paragraph-feedback.rkt',
+                     'scribblings/support/paragraph-feedback.js',
+                     'scribblings/support/paragraph-feedback.css',
+                     'tools/test-documentation-navigation.py'):
+            self.assertEqual(hashes.get(name), hashlib.sha256((ROOT / name).read_bytes()).hexdigest())
+
+    def test_visits_every_guide_and_tutorial_page(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            _catalog, tutorials, _categories, _shortcuts = navigation.load_catalog()
+            directories = ['skia-reference', 'skia-guide', 'skia-tutorials'] + [
+                navigation.tutorial_directory(entry['id']) for entry in tutorials]
+            pages = [root / 'index.html'] + [
+                root / name / page for name in directories for page in ('index.html', 'chapter.html')]
+            for page in pages:
+                page.parent.mkdir(exist_ok=True)
+                page.write_text('', encoding='utf-8')
+            with patch.object(navigation, 'check_page') as check:
+                navigation.check_site(root)
+            self.assertEqual({call.args[1] for call in check.call_args_list},
+                             {page.resolve() for page in pages})
+            self.assertEqual(check.call_count, len(pages))
+
+    def test_feedback_requires_configuration_and_loadable_assets_on_each_page(self):
+        head = '''<meta name="feedback-github" content="soegaard/skia-for-racket"/>
+          <script src="paragraph-feedback.js"></script>
+          <link rel="stylesheet" href="paragraph-feedback.css"/>'''
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            page = root / 'chapter.html'
+            for asset in ('paragraph-feedback.js', 'paragraph-feedback.css'):
+                (root / asset).write_text('', encoding='utf-8')
+            page.write_text(f'<head>{head}</head><body></body>', encoding='utf-8')
+            navigation.check_feedback(root, page)
+            for invalid in (
+                head.replace('name="feedback-github"', 'name="unrelated"'),
+                head.replace('soegaard/skia-for-racket', 'another/repository'),
+                head + '<meta name="feedback-github" content="soegaard/skia-for-racket"/>',
+            ):
+                page.write_text(f'<head>{invalid}</head><body></body>', encoding='utf-8')
+                with self.assertRaisesRegex(navigation.CheckError, 'feedback configuration'):
+                    navigation.check_feedback(root, page)
+            page.write_text(f'<head></head><body>{head}</body>', encoding='utf-8')
+            with self.assertRaisesRegex(navigation.CheckError, 'feedback configuration'):
+                navigation.check_feedback(root, page)
+            for asset in ('paragraph-feedback.js', 'paragraph-feedback.css'):
+                page.write_text(f'<head>{head.replace(asset, "missing-" + asset)}</head>',
+                                encoding='utf-8')
+                with self.assertRaisesRegex(navigation.CheckError, 'feedback asset reference'):
+                    navigation.check_feedback(root, page)
+                page.write_text(f'<head>{head}</head>', encoding='utf-8')
+                (root / asset).unlink()
+                with self.assertRaisesRegex(navigation.CheckError, 'missing navigation target'):
+                    navigation.check_feedback(root, page)
+                (root / asset).write_text('', encoding='utf-8')
+
     def test_pages_staging_includes_code_and_font_stylesheets(self):
         workflow = (ROOT / '.github/workflows/pages.yml').read_text()
         assets = workflow.split('for asset in', 1)[1].split('\n          do', 1)[0].split()

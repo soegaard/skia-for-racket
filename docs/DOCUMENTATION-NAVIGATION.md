@@ -22,7 +22,19 @@ same metadata by `tools/render-documentation-landing.rkt`, using
 
 For complete-site evidence, build all installed manuals, stage the Pages tree,
 then run `tools/check-documentation-navigation.py` against that staged root.
-It checks every Reference page, the Guide and Tutorials indexes, every
-tutorial, all shortcut targets, active state, and local CSS/JavaScript assets.
+It checks every Reference, Guide, and tutorial page, all shortcut targets,
+active state, and local CSS/JavaScript assets. Each manual page must also have
+exactly one GitHub paragraph-feedback configuration and both feedback assets.
 Reference-only previews remain useful, but report their unavailable navigation
 destinations and are not complete-site navigation evidence.
+
+Paragraph feedback is configured by `scribblings/support/paragraph-feedback.rkt`.
+Its scripts and stylesheets propagate through a Scribble manual, but its
+`head-extra` metadata does not. The Reference page decorator therefore applies
+the shared feedback style to every separately rendered chapter, section, and
+index. Guide and tutorial titles apply the same style to their single-page manuals.
+
+Run `raco test scribblings/support/documentation-navigation.rkt` for a rendered
+multipage regression check and `python3 -B tools/test-documentation-navigation.py`
+for the site-checker regressions. Documentation review bundles include the feedback
+module, browser assets, and checker tests with their current source fingerprints.

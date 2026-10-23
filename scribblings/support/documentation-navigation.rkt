@@ -278,7 +278,7 @@
       (eq? 'index (style-name (part-style part)))))
 
 ; decorate-reference-section : any/c -> part?
-;   Adds one navigation band to each separately rendered Reference part.
+;   Adds navigation and paragraph feedback to each separately rendered Reference part.
 (define (decorate-reference-section document)
   (unless (part? document)
     (raise-argument-error 'include-reference-section "part?" document))
@@ -289,7 +289,7 @@
      (part-tag-prefix part)
      (part-tags part)
      (part-title-content part)
-     (part-style part)
+     (if own-page? (reference-page-style (part-style part)) (part-style part))
      (part-to-collect part)
      (if own-page?
          (cons (documentation-navigation-band 'reference)
@@ -300,8 +300,16 @@
        (walk child toc?))))
   (walk document #f))
 
+; reference-page-style : style? -> style?
+;   Adds page-local feedback metadata while preserving the title's name and other properties.
+(define (reference-page-style original)
+  ;; Script and stylesheet additions are inherited, but head-extra metadata is not.
+  ;; Do not use head-addition here: Racket 9.3's renderer treats its xexpr as a file path.
+  (skia-feedback-style #:name (style-name original)
+                       #:extra (style-properties original)))
+
 ; decorate-reference-index : any/c -> part?
-;   Adds the shared navigation band to the generated Reference index page.
+;   Adds shared navigation and paragraph feedback to the generated Reference index page.
 (define (decorate-reference-index document)
   ;; `index-section` belongs to the Reference root rather than to an included
   ;; group, so the include decorator never sees it.  Decorate its generated
@@ -312,7 +320,7 @@
    (part-tag-prefix document)
    (part-tags document)
    (part-title-content document)
-   (part-style document)
+   (reference-page-style (part-style document))
    (part-to-collect document)
    (cons (documentation-navigation-band 'reference)
          (cons (documentation-notice 'reference) (part-blocks document)))
@@ -335,8 +343,64 @@
 ;;;
 
 (module+ test
-  (require rackunit)
+  (require rackunit racket/file scribble/render
+           (prefix-in html: scribble/html-render))
   (check-not-exn (lambda () (documentation-navigation-band 'reference)))
   (check-not-exn (lambda () (tutorial-navigation-band "quick")))
   (check-exn exn:fail:contract?
-             (lambda () (documentation-navigation-band 'reference #:tutorial-id "quick"))))
+             (lambda () (documentation-navigation-band 'reference #:tutorial-id "quick")))
+
+  ; multi-render-mixin : class? -> class?
+  ;   Uses the same multipage rendering mode as the Reference.
+  (define (multi-render-mixin %)
+    (html:render-multi-mixin (html:render-mixin %)))
+
+  ; paragraph-blocks : (listof paragraph?)
+  ;   Supplies ordinary prose on each page of the regression manual.
+  (define paragraph-blocks
+    (list (para "A paragraph that should have a feedback flag.")))
+
+  ; chapter : part?
+  ;   Exercises the chapter and nested-page decoration used by the real Reference.
+  (define chapter
+    (decorate-reference-section
+     (part #f '((part "chapter")) '("Chapter") (style "chapter-style" '(toc)) '()
+           paragraph-blocks
+           (list (part #f '((part "leaf")) '("Nested page") plain '()
+                       paragraph-blocks '())))))
+  (check-equal? (style-name (part-style chapter)) "chapter-style")
+  (check-not-false (member 'toc (style-properties (part-style chapter))))
+
+  ; document : part?
+  ;   Includes the separately decorated index as well as chapter and nested pages.
+  (define document
+    (part #f '((part "top")) '("Feedback manual") (skia-feedback-style) '()
+          paragraph-blocks
+          (list chapter
+                (decorate-reference-index
+                 (part #f '((part "doc-index")) '("Index") (style 'index '()) '()
+                       paragraph-blocks '())))))
+
+  ; directory : path?
+  ;   Owns temporary HTML from the real Scribble renderer, without loading Skia.
+  (define directory (make-temporary-file "paragraph-feedback-~a" 'directory))
+  (dynamic-wind
+    void
+    (lambda ()
+      (parameterize ([current-error-port (open-output-string)])
+        ;; The synthetic manual deliberately omits the other collections linked by navigation.
+        (render (list document) '("feedback") #:dest-dir directory
+                #:render-mixin multi-render-mixin #:quiet? #t))
+      (define pages
+        (for/list ([path (in-directory directory)]
+                   #:when (regexp-match? #rx"[.]html$" (path->string path)))
+          path))
+      (check-equal? (length pages) 4)
+      (for ([page (in-list pages)])
+        (define text (file->string page))
+        (with-check-info (['page page])
+          (check-equal? (length (regexp-match* #rx"name=\"feedback-github\"" text)) 1)
+          (check-true (regexp-match? #rx"content=\"soegaard/skia-for-racket\"" text))
+          (check-true (regexp-match? #rx"src=\"paragraph-feedback[.]js\"" text))
+          (check-true (regexp-match? #rx"href=\"paragraph-feedback[.]css\"" text)))))
+    (lambda () (delete-directory/files directory))))

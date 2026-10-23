@@ -12,6 +12,12 @@ tutorial disclosure rather than defining routes.
   layout, focus treatment, and the tutorial disclosure.
 - [skia-doc-nav.js](skia-doc-nav.js) provides disclosure interactions and
   keyboard/focus behavior for the existing markup.
+- [paragraph-feedback.rkt](paragraph-feedback.rkt) supplies feedback configuration
+  for every Reference, Guide, and tutorial page, plus the shared notices. Each
+  separately rendered Reference part receives this configuration during decoration.
+- [paragraph-feedback.js](paragraph-feedback.js) and
+  [paragraph-feedback.css](paragraph-feedback.css) add paragraph flags and comment
+  forms. The site checker verifies their assets and configuration on every manual page.
 
 Tutorial titles, categories, and separate reading routes remain authoritative in
 [the tutorial catalog](../tutorials/support/catalog.json). Collection destinations

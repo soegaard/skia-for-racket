@@ -48,6 +48,9 @@ def source_hashes(root: Path, *, review_inputs: bool = False) -> dict[str, str]:
             'docs/DOCUMENTATION-NAVIGATION.md',
             'scribblings/support/documentation-catalog.rkt',
             'scribblings/support/documentation-navigation.rkt',
+            'scribblings/support/paragraph-feedback.rkt',
+            'scribblings/support/paragraph-feedback.js',
+            'scribblings/support/paragraph-feedback.css',
             'scribblings/support/skia-doc-nav.css',
             'scribblings/support/skia-doc-nav.js',
             'scribblings/tutorials/pages-index.html',
@@ -56,6 +59,7 @@ def source_hashes(root: Path, *, review_inputs: bool = False) -> dict[str, str]:
             'scribblings/tutorials/support/catalog.rkt',
             'scribblings/tutorials/support/reader.rkt',
             'tools/check-documentation-navigation.py',
+            'tools/test-documentation-navigation.py',
             'tools/render-documentation-landing.rkt',
         )
         paths.update(Path(name) for name in navigation_inputs if (root / name).is_file())

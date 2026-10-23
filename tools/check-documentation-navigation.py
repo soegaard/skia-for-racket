@@ -5,6 +5,7 @@ The checker intentionally treats collection navigation as a separate concern
 from Reference API-link coverage.  It validates every emitted manual page,
 the neutral landing page, the catalog-derived Tutorials panel, and local asset
 targets after a build or staged-site relocation.
+Every manual page must also include the paragraph-feedback configuration and assets.
 """
 from __future__ import annotations
 
@@ -182,6 +183,42 @@ def check_assets(root: Path, page: Path):
         local_target(root, page, asset)
 
 
+class FeedbackParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.in_head = False
+        self.repositories = []
+        self.assets = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == 'head':
+            self.in_head = True
+        elif self.in_head:
+            if tag == 'meta' and attrs.get('name') == 'feedback-github':
+                self.repositories.append(attrs.get('content'))
+            elif tag == 'script' and attrs.get('src'):
+                self.assets.append(attrs['src'])
+            elif tag == 'link' and attrs.get('rel') == 'stylesheet' and attrs.get('href'):
+                self.assets.append(attrs['href'])
+
+    def handle_endtag(self, tag):
+        if tag == 'head':
+            self.in_head = False
+
+
+def check_feedback(root: Path, page: Path):
+    parser = FeedbackParser()
+    parser.feed(page.read_text(encoding='utf-8'))
+    parser.close()
+    need(parser.repositories == ['soegaard/skia-for-racket'],
+         f'{page}: expected one GitHub paragraph-feedback configuration')
+    for asset in ('paragraph-feedback.js', 'paragraph-feedback.css'):
+        matches = [href for href in parser.assets if Path(urlsplit(href).path).name == asset]
+        need(len(matches) == 1, f'{page}: expected one feedback asset reference: {asset}')
+        local_target(root, page, matches[0])
+
+
 def check_page(root: Path, page: Path, *, section: str, index: bool, tutorial_id: str | None,
                categories: list[dict], shortcut_ids: list[str]):
     navigation = parse_navigation(page)
@@ -191,6 +228,8 @@ def check_page(root: Path, page: Path, *, section: str, index: bool, tutorial_id
     need(attrs.get('data-skia-doc-section') == section,
          f'{page}: expected {section!r} active section, got {attrs.get("data-skia-doc-section")!r}')
     check_assets(root, page)
+    if section != 'landing':
+        check_feedback(root, page)
 
     reference_tag, reference = nav_collection(navigation, 'skia-doc-nav__collection-link--reference')
     guide_tag, guide = nav_collection(navigation, 'skia-doc-nav__collection-link--guide')
@@ -277,22 +316,20 @@ def check_site(root: Path):
         check_page(root, page, section='reference', index=page.name == 'index.html',
                    tutorial_id=None, categories=categories, shortcut_ids=shortcut_ids)
 
-    guide_index = root / 'skia-guide' / 'index.html'
-    need(guide_index.is_file(), f'missing Guide index: {guide_index}')
-    check_page(root, guide_index, section='guide', index=True, tutorial_id=None,
-               categories=categories, shortcut_ids=shortcut_ids)
-
-    tutorial_index = root / 'skia-tutorials' / 'index.html'
-    need(tutorial_index.is_file(), f'missing Tutorials index: {tutorial_index}')
-    check_page(root, tutorial_index, section='tutorials', index=True, tutorial_id=None,
-               categories=categories, shortcut_ids=shortcut_ids)
+    for directory, section in (('skia-guide', 'guide'), ('skia-tutorials', 'tutorials')):
+        index_page = root / directory / 'index.html'
+        need(index_page.is_file(), f'missing {section} index: {index_page}')
+        for page in sorted(index_page.parent.glob('*.html')):
+            check_page(root, page, section=section, index=page == index_page, tutorial_id=None,
+                       categories=categories, shortcut_ids=shortcut_ids)
 
     for entry in tutorials:
         identifier = entry['id']
-        page = root / tutorial_directory(identifier) / 'index.html'
-        need(page.is_file(), f'missing tutorial page for {identifier}: {page}')
-        check_page(root, page, section='tutorials', index=False, tutorial_id=identifier,
-                   categories=categories, shortcut_ids=shortcut_ids)
+        index_page = root / tutorial_directory(identifier) / 'index.html'
+        need(index_page.is_file(), f'missing tutorial page for {identifier}: {index_page}')
+        for page in sorted(index_page.parent.glob('*.html')):
+            check_page(root, page, section='tutorials', index=False, tutorial_id=identifier,
+                       categories=categories, shortcut_ids=shortcut_ids)
 
     return dict(
         status='passed',

@@ -14,7 +14,10 @@
 (define-runtime-path feedback-js "paragraph-feedback.js")
 (define-runtime-path feedback-css "paragraph-feedback.css")
 
+; feedback-meta : string? (or/c string? #f) -> (or/c head-extra? #f)
+;   Adds feedback configuration to the HTML page containing this title.
 (define (feedback-meta name value)
+  ;; Multipage manuals must attach this style to each separately rendered part.
   (and value (head-extra `(meta ([name ,name] [content ,value])))))
 
 ;; feedback-style : #:github [string?] #:email [string?] #:name [style-name?]
