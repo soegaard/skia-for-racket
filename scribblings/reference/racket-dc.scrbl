@@ -10,20 +10,22 @@
 @defmodule[skia/dc #:no-declare]
 @(declare-exporting skia/dc #:use-sources (skia/dc))
 
-The @racketmodname[skia/dc] library provides a persistent CPU-raster
-implementation of Racket's @racket[draw:dc<%>] interface. Drawing uses Skia, and
-text uses the library's Skia/HarfBuzz text path. Requiring the library does not
-initialize a GUI or GPU context. Constructing a drawing context allocates a
-native Skia raster surface.
+Use @racketmodname[skia/dc] when code written for Racket's @racket[draw:dc<%>]
+interface needs a CPU pixel buffer that survives between drawing calls. It
+provides a persistent CPU-raster implementation of that interface, using Skia
+for drawing and Skia/HarfBuzz for text. No window or GPU context is needed.
+Constructing a drawing context allocates a native Skia raster surface; merely
+requiring the library does not.
 
-The implementation is a compatibility layer with explicit limits, not a claim of
-universal byte-for-byte or metric equivalence with Cairo/Pango or every
-@racket[draw:dc<%>] consumer. Use @racket[skia-dc-compatibility] for the complete
-method/arity declaration and remaining exclusions.
+For PDF or SVG output, use @racketmodname[skia/dc-output]; for a GPU target, use
+@racketmodname[skia/gpu-dc]. Those adapters supply callback-scoped DCs instead
+of a persistent context. See @secref["skia-reference-racket-integration"] for
+their lifetime and smoothing differences, and @racket[skia-dc-compatibility]
+for supported methods and restrictions.
 
 For explicit copying between standalone Draw bitmaps, colors, and paths and
 Skia values, use @racketmodname[skia/racket-draw]. It is separate from this
-DC implementation and never turns ordinary conversions into live DC adapters.
+DC implementation: copying a value does not create a drawing context.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -44,8 +46,14 @@ pixel dimensions are the ceilings of the logical dimensions multiplied by
 limits. The pixel buffer starts transparent; @racket[background] is the color used by
 @method[draw:dc<%> clear].
 
+Smoothing defaults to @racket['unsmoothed], unlike the output, GPU, and GUI DC
+adapters, which default to @racket['smoothed]. Set it explicitly when sharing
+drawing code between adapters.
+
 The context belongs to the creating thread. Futures and other threads cannot use
-it. Close it deterministically with @method[skia-dc% close].
+it. The caller must close it with @method[skia-dc% close], including when drawing
+raises an exception. The snapshot example below uses @racket[dynamic-wind] to
+ensure cleanup.
 }
 
 The inherited @racket[draw:dc<%>] operations cover drawing state, affine
@@ -126,9 +134,8 @@ loop, or GUI canvas is involved.
 }
 
 @defmethod[(get-capabilities) (and/c hash? immutable?)]{
-Returns the same wrapper declarations as @racket[skia-dc-capabilities].
-The result is not evidence that a native renderer, font, GUI, or GPU operation
-has run successfully.
+Returns the same support and limitation information as
+@racket[skia-dc-capabilities].
 }
 
 @defmethod[(draw-bitmap-section-smooth
@@ -165,20 +172,20 @@ Returns whether @racket[v] is an instance of @racket[skia-dc%].
 
 @defproc[(skia-dc-capabilities) (and/c hash? immutable?)]{
 Returns the library's declared support for raster drawing operations, including
-its limitations. It does not query native capabilities or guarantee that this
-drawing context can replace every other implementation of @racket[draw:dc<%>].
+its limitations. This describes the implementation; it does not test whether
+native drawing is available on the current system.
 }
 
 @defproc[(skia-dc-compatibility [target (or/c 'raster 'gpu 'pdf 'svg) 'raster])
          (and/c hash? immutable?)]{
-Returns the machine-readable compatibility declaration for the selected DC
-lifetime and output target. The report enumerates the complete installed
-@racket[draw:dc<%>] method set and accepted positional arities, distinguishing
-checked no-ops, supported-with-limits operations, and document operations that
-require an explicit bounded raster group.
+Returns a hash table describing support for the selected output target. It lists
+the installed @racket[draw:dc<%>] methods and the number of positional arguments
+each accepts. It distinguishes methods that validate their arguments but do
+nothing, operations with restrictions, and document operations that require an
+explicit bounded raster group.
 
-The report is a declaration rather than execution evidence. The @racket['raster]
-declaration describes the persistent @racket[skia-dc%]; @racket['gpu], @racket['pdf], and
+The @racket['raster] report describes the persistent @racket[skia-dc%];
+@racket['gpu], @racket['pdf], and
 @racket['svg] describe the callback-scoped integrations documented in
 @secref["skia-gpu-dc"] and @secref["skia-dc-output"].
 }
@@ -190,10 +197,9 @@ declaration describes the persistent @racket[skia-dc%]; @racket['gpu], @racket['
              [feature symbol?]
              [stage string?])
             #:transparent]{
-Represents an operation that is outside the explicit Skia DC compatibility
-boundary. The @racket[method] field identifies the attempted operation,
+Raised when a Skia drawing context does not support the requested operation or
+feature. The @racket[method] field identifies the attempted operation,
 @racket[feature] identifies the unsupported behavior, and @racket[stage]
-records the compatibility-boundary description used when the exception was
-raised. An unsupported exception is not a successful draw or an implicit Cairo
-fallback.
+describes where the restriction was encountered. The operation raises this
+exception instead of silently drawing nothing or switching to Cairo.
 }

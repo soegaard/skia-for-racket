@@ -10,12 +10,20 @@
 @defmodule[skia/dc-output #:no-declare]
 @(declare-exporting skia/dc-output #:use-sources (skia/dc-output))
 
-The @racketmodname[skia/dc-output] library adapts the supported Racket
-@racket[draw:dc<%>] drawing subset to Skia PDF, SVG, and CPU-raster canvases.
-The drawing callback runs once with a temporary drawing context. Its drawing commands
-are recorded and then replayed according to the selected @tech{output policy}. The drawing
-context can be used only during the callback. The bridge does not render an entire document
-to a bitmap and does not add an implicit GPU fallback.
+Use @racketmodname[skia/dc-output] to export code written for Racket's
+@racket[draw:dc<%>] interface to PDF or SVG, or to draw it onto a CPU-raster
+canvas. For a reusable CPU drawing context instead, use @racket[skia-dc%].
+
+The drawing callback runs once with a temporary DC. Its drawing commands are
+recorded and then replayed according to the selected @tech{output policy}.
+Only the supported Racket Draw methods are available, and the DC can be used
+only during the callback. The adapter closes it automatically. See
+@secref["skia-reference-racket-integration"] for lifetime and smoothing
+differences between the adapters.
+
+The bridge does not turn the entire document into a bitmap or use the GPU
+implicitly. Use @racket[draw-dc-raster-group] for a specific part of the drawing
+that should become an image in the output.
 
 @local-table-of-contents[#:style 'immediate-only]
 
@@ -122,14 +130,13 @@ bitmap path. The group cannot inspect the already emitted document backdrop;
 include every required source/backdrop pixel inside the child callback.
 }
 
-@subsection{One Callback, CPU Capture, and Page Preview}
+@subsection{A Drawing Callback for Raster and SVG Output}
 
-The callback below has vector-like surrounding geometry and one bounded raster
-group. It is first captured onto a CPU raster canvas with
-@racket[call-with-output-dc], then used to author a real
-@racket[make-dc-output-page]. The result image is a content preview only: the
-report and explicit SVG-byte inspection, not this PNG, establish that the
-raster group is represented as an image in SVG output.
+The callback below draws a frame and text around one bounded raster group.
+It is used both with @racket[call-with-output-dc] on a CPU canvas and with
+@racket[make-dc-output-page] to create a page. In SVG output, the raster group
+becomes an embedded image while the surrounding geometry remains vector
+drawing.
 
 @racketblock[
 (require racket/class
@@ -171,7 +178,7 @@ raster group is represented as an image in SVG output.
           (regexp-match? #rx#"<image" svg))))
 ]
 @reference-figure["dc-output-capture-and-page-preview.png"
-                  "Side-by-side CPU-raster results from call-with-output-dc and a make-dc-output-page preview show the same pale frame, blue vector line, and orange bounded raster badge; the preview does not itself claim PDF or SVG representation."]
+                  "Side-by-side results from call-with-output-dc and an output-page preview show the same pale frame, blue line, and orange raster badge."]
 
 The first result is one explicit raster group, and the final boolean is true
 for the inspected SVG @tt{<image} element. Callback DCs expire after each

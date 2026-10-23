@@ -5837,13 +5837,16 @@ class R4eDcIntegrationTests(unittest.TestCase):
         self.assertIn('not a bitwise XOR operation', prose)
 
     def test_output_page_margin_contract_has_exact_four_side_shape(self):
-        header = self.header('make-dc-output-page')[0]
-        margins = next(arg for arg in header
-                       if isinstance(arg, list) and arg[0] == '#:margins')
         nonnegative = ['and/c', 'real?', ['>=/c', '0']]
-        self.assertEqual(margins[2],
-                         ['or/c', nonnegative, ['list/c', nonnegative, nonnegative,
-                                                nonnegative, nonnegative]])
+        for name in ('make-output-page', 'make-dc-output-page'):
+            with self.subTest(name=name):
+                header = self.header(name)[0]
+                margins = next(arg for arg in header
+                               if isinstance(arg, list) and arg[0] == '#:margins')
+                self.assertEqual(margins[2],
+                                 ['or/c', nonnegative,
+                                  ['list/c', nonnegative, nonnegative,
+                                   nonnegative, nonnegative]])
         prose = ' '.join(self.text('dc-output').split())
         self.assertIn('left, top, right, bottom order', prose)
         self.assertIn('positive content width and height', prose)

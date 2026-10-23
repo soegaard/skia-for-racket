@@ -84,7 +84,10 @@ function raises an exception without returning a partial image.
 The @racket[image->bitmap] and @racket[surface->bitmap] functions are
 re-exported unchanged from @racketmodname[skia/bitmap]. They copy CPU Skia
 pixels into independent Racket Draw bitmaps and retain the contracts documented
-in @secref["skia-image-operations"]. They are reverse-direction pixel copies,
+in @secref["skia-racket-bitmap-conversion"]. Unlike @racket[image->pict] and
+@racket[surface->pict], they do not convert tagged source colors to sRGB. A
+non-sRGB source can therefore look different through the bitmap and pict
+bridges. They are reverse-direction pixel copies,
 not metadata-preserving inverses of @racket[bitmap->image].
 
 @racketblock[
@@ -267,10 +270,9 @@ path.
 ]
 
 @reference-figure["draw-path-roundtrip.png"
-                  "The winding rectangle after Draw to Skia to Draw conversion, rendered by a real Racket Draw bitmap DC and enlarged with nearest-neighbor sampling."]
+                  "The winding rectangle after Draw to Skia to Draw conversion, rendered by a Racket Draw bitmap DC and enlarged with nearest-neighbor sampling."]
 
-The displayed pixels come from the returned @racket[draw:dc-path%] and its returned fill style;
-they are not a redraw of the original Skia path.
+The example draws the returned @racket[draw:dc-path%] using its returned fill style.
 
 The result is @racket['(#t winding)]. Rational conics require an explicit
 approximation policy:
@@ -311,7 +313,7 @@ approximation policy:
                   "The native Skia rational conic at left and the result of rendering the returned Racket Draw path at right. The Draw result uses the explicit subdivision power 4 and is rendered through a Racket Draw bitmap DC."]
 
 The subdivision power bounds the number of generated quadratic segments; it is not an error
-tolerance. The two panels use independent rendering consumers.
+tolerance.
 
 The second example returns @racket['(#t winding)] after converting the conic to
 a bounded sequence of cubic Bézier segments.

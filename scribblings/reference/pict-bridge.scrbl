@@ -10,8 +10,9 @@
 @defmodule[skia/pict #:no-declare]
 @(declare-exporting skia/pict #:use-sources (skia/pict))
 
-The @racketmodname[skia/pict] library converts Skia images, surfaces, and
-recorded pictures to ordinary Racket pict values.
+Use @racketmodname[skia/pict] to combine Skia artwork with other Racket picts,
+for example in a diagram or a Scribble document. The library converts Skia
+images, surfaces, and recorded pictures to ordinary Racket pict values.
 The @racket[image->pict] and @racket[surface->pict] functions copy CPU pixels;
 @racket[picture->pict] draws a recorded picture into a temporary CPU surface.
 Each operation creates an independent bitmap-backed pict. Closing the source,
@@ -22,7 +23,9 @@ Skia values nor read back GPU data automatically. Unlike conversion through
 @racketmodname[file/convertible], they transfer pixels without encoding and
 decoding PNG. For a Racket @tt{bitmap%} instead of a pict, use
 @racket[image->bitmap] or @racket[surface->bitmap] from
-@racketmodname[skia/bitmap].
+@racketmodname[skia/bitmap]. Those bitmap conversions do not perform the sRGB
+color-space conversion used by this pict bridge; see
+@secref["skia-racket-bitmap-conversion"].
 
 Import @racketmodname[skia/pict] separately; it is not re-exported by
 @racketmodname[skia]. Requiring it does not load the native Skia library,
@@ -114,19 +117,16 @@ to the raster origin and clips to that viewport.
 
 @section{Pixel Transfer and Limits}
 
-The bridge reads premultiplied RGBA pixels and rearranges them to the
-premultiplied ARGB layout expected by Racket's bitmap implementation. Alpha is
-preserved; RGB hidden beneath fully transparent premultiplied pixels is not a
-stable result. No PNG encoding, temporary file, or borrowed native bitmap is
-involved.
+The pixel copy preserves alpha. RGB values hidden beneath fully transparent
+pixels are not preserved reliably because the copy uses @tech{premultiplied
+alpha}. It does not use a temporary file or share native pixel storage with the
+source.
 
 @subsection{Viewport Translation and Raster Density}
 
 The picture below is recorded in a larger coordinate system, then converted
 using a nonzero viewport. Both returned picts measure 100 by 70 logical units.
-Their raster scales differ, so this figure uses an explicitly labeled two-times
-preview to make the distinct sample densities inspectable without claiming that
-their logical sizes differ.
+The previews are enlarged twofold to show the different sampling densities.
 
 @racketblock[
 (require (prefix-in pict: pict) skia skia/pict skia/racket-draw)

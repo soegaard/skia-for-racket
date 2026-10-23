@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require "support/figures.rkt"
-          (for-label racket/class (only-in racket/draw bitmap%) skia/bitmap)
+          (for-label racket/class (only-in racket/draw bitmap%) skia/bitmap skia/pict)
           (for-label racket/base racket/contract skia skia/image-operations))
 
 @title[#:tag "skia-image-operations"]{CPU Image Operations}
@@ -281,7 +281,7 @@ image and the offset positions those pixels relative to the input image.
 Only the reported source rectangle is drawn, at its reported offset. The figure enlarges the
 actual 12 by 10 destination; its checkerboard is not stored in that destination.
 
-@section{Racket Bitmap Conversion}
+@section[#:tag "skia-racket-bitmap-conversion"]{Racket Bitmap Conversion}
 
 @defmodule[skia/bitmap #:no-declare]
 @(declare-exporting skia/bitmap #:use-sources (skia/bitmap))
@@ -296,6 +296,12 @@ Pixel access follows @racket[image->rgba-bytes] or
 The corresponding function's format and CPU-access restrictions apply. The
 copy uses eight-bit color components; extended floating-point values and
 ICC metadata are not preserved.
+
+These functions do not convert tagged source colors to sRGB. In contrast,
+@racket[image->pict] and @racket[surface->pict] convert tagged sources to sRGB
+before creating their bitmaps. A non-sRGB source can therefore look different
+through the two bridges. Use the pict bridge when you need that display
+conversion as part of creating a pict; see @secref["skia-pict-bridge"].
 
 Closing the source does not close the bitmap. The result follows Racket bitmap
 ownership, not @racket[skia-close!]. Neither conversion creates a window or

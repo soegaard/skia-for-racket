@@ -53,7 +53,13 @@ Returns @racket[#t] for an output-page description and @racket[#f] otherwise.
 @defproc[(make-output-page [width (and/c real? (>/c 0))]
                            [height (and/c real? (>/c 0))] [draw (-> canvas? any)]
                            [#:unit unit (or/c 'pt 'in 'mm 'cm 'px) 'pt]
-                           [#:margins margins (or/c real? list?) 0]
+                           [#:margins margins
+                            (or/c (and/c real? (>=/c 0))
+                                  (list/c (and/c real? (>=/c 0))
+                                          (and/c real? (>=/c 0))
+                                          (and/c real? (>=/c 0))
+                                          (and/c real? (>=/c 0))))
+                            0]
                            [#:background background (or/c color? #f) #f]
                            [#:clip? clip? boolean? #t]) output-page?]{
 Returns a page description without invoking @racket[draw] or allocating native
