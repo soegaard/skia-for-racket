@@ -47,7 +47,8 @@ def baseline(gui=True):
                 gui_required=True, gpu_required=True, pure_passed=True,
                 raster_baseline_passed=True, gpu_baseline_passed=True,
                 completed_renderers=[dict(requested_renderer=r, backend="raster" if r == "raster" else "opengl",
-                                          cases=20, captures=24, bounded_comparisons=8) for r in ("raster", "gpu", "auto")])
+                                          cases=f.report(r)["cases"], captures=24, bounded_comparisons=8)
+                                     for r in ("raster", "gpu", "auto")])
 
 
 def gui_report(request="gpu"):
@@ -91,6 +92,17 @@ class Baseline(unittest.TestCase):
         with self.assertRaises((ValueError, TypeError)): v.validate_baseline(value, FULL, "egl", gui)
     def test_both_modes(self):
         for gui in (True, False): v.validate_baseline(baseline(gui), FULL, "egl", gui)
+    def test_current_gui_suite_count(self):
+        value = baseline()
+        for row in value["completed_renderers"]:
+            self.assertEqual(row["cases"], v.gui_checks.GUI_CASES)
+        v.validate_baseline(value, FULL, "egl", True)
+    def test_missing_gui_case(self):
+        self.bad(lambda r: r["completed_renderers"][1].update(cases=v.gui_checks.GUI_CASES - 1))
+    def test_extra_gui_case(self):
+        self.bad(lambda r: r["completed_renderers"][1].update(cases=v.gui_checks.GUI_CASES + 1))
+    def test_boolean_gui_case_count(self):
+        self.bad(lambda r: r["completed_renderers"][1].update(cases=True))
     def test_failed(self): self.bad(lambda r: r.update(status="failed"))
     def test_wrong_stage(self): self.bad(lambda r: r.update(stage="0.60"))
     def test_foreign_identity(self): self.bad(lambda r: r.update(identity={}))

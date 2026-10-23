@@ -102,6 +102,13 @@ class Orchestration(unittest.TestCase):
     def test_doctor_failure(self):self.assertEqual(self.invoke('none',failure='live-stream-doctor.rkt')[0],1)
 class Sources(unittest.TestCase):
     def text(self,p):return (ROOT/p).read_text(encoding='utf-8')
+    def test_doctor_uses_format_specific_encoding_options(self):
+        source=' '.join(self.text('tools/live-stream-doctor.rkt').split())
+        for call in ("[(png) (image->port image out 'png)]",
+                     "[(jpeg) (image->port image out 'jpeg #:quality 100)]",
+                     "[(webp) (image->port image out 'webp #:quality 100 #:webp-lossless? #t)]"):
+            self.assertIn(call,source)
+        self.assertNotIn('(image->port image out encoding',source)
     def test_case_counts(self):
         for kind,n in (('pure',v.PURE_CASES),('native',v.NATIVE_CASES)):
             s=self.text(f'tests/live-stream-{kind}-test.rkt');self.assertEqual(s.count('(test-case '),n)

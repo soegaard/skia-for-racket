@@ -146,6 +146,13 @@ The Pages packaging step also copies the code stylesheet and the embedded-font
 stylesheet required by the rendered manuals. Its workflow fingerprint is
 refreshed without changing the release graph, jobs, or acceptance requirements.
 
+The macOS acceptance follow-up corrects the live-stream probe to pass encoding
+options only to their supported formats and uses the render-canvas suite's
+current case count in frame-reuse validation. The reviewed probe and regression
+test fingerprints are refreshed for these acceptance-only repairs. The existing
+image, capture, reuse, and resource-limit checks remain unchanged; no public API
+or production drawing code changes are included.
+
 This refresh records source review, not release certification. Current test and
 documentation-validation results must still be established independently, and
 macOS execution does not establish Windows or Linux acceptance. The historical

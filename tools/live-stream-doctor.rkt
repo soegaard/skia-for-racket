@@ -42,7 +42,10 @@
             (error 'doctor "callback did not run on the protected Racket service thread"))
           (set! calls (add1 calls))
           (define n (min 7 (- end start))) (write-bytes bytes collected start (+ start n)) n) void))
-      (image->port image out encoding #:quality 100 #:webp-lossless? #t)
+      (case encoding
+        [(png) (image->port image out 'png)]
+        [(jpeg) (image->port image out 'jpeg #:quality 100)]
+        [(webp) (image->port image out 'webp #:quality 100 #:webp-lossless? #t)])
       (define data (get-output-bytes collected)) (save (format "image.~a" encoding) data)
       (when (eq? encoding 'png)
         (with-skia ([again (image-from-port (open-input-bytes data) #:close? #t)])

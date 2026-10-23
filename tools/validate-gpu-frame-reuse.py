@@ -76,7 +76,8 @@ def validate_baseline(value, identity, backend, gui):
         require(type(rows) is list and len(rows) == 3, "incomplete renderer matrix")
         _, explicit_gui = base.select_backends(backend, identity)
         _, auto_gui = base.select_backends("auto", identity)
-        wanted = [dict(requested_renderer=r, backend=b, cases=20, captures=24, bounded_comparisons=8)
+        wanted = [dict(requested_renderer=r, backend=b, cases=gui_checks.GUI_CASES,
+                       captures=24, bounded_comparisons=8)
                   for r, b in (("raster", "raster"), ("gpu", explicit_gui), ("auto", auto_gui))]
         # Exact integer fields, not Python's True == 1 coercion.
         require(rows == wanted and all(type(row.get(k)) is int for row in rows
