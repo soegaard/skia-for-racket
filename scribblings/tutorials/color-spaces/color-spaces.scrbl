@@ -3,7 +3,7 @@
 @(require "../support/reader.rkt" "../support/accessible-figures.rkt")
 
 @(require racket/file racket/runtime-path "eval.rkt" "../support/source.rkt"
-          (for-label racket skia))
+          (for-label racket skia skia/bitmap skia/pict))
 @(define-runtime-path program-source "color-study.rkt")
 
 @title[#:style (tutorial-feedback-style)]{Color Spaces — Give Pixel Values Their Meaning}
@@ -70,6 +70,13 @@ meaning of supplied samples. It does not change their bytes:
 The two readbacks contain the same numbers. Their color-space tags differ.
 This is why comparing raw RGB bytes is not sufficient to compare tagged colors.
 The fourth byte is alpha, which is not sRGB-encoded.
+
+When you want a Racket bitmap or pict for display, @racket[image->bitmap] and
+@racket[image->pict] perform the tagged-image conversion to sRGB for you.
+@racket[surface->bitmap] and @racket[surface->pict] use the same rule for surfaces.
+They preserve numerical samples for untagged inputs; they cannot infer a missing
+source profile. These display copies use eight-bit components. Use the raw
+pixel-reading functions when you need the source's numerical samples instead.
 
 @section{Convert before Comparing}
 

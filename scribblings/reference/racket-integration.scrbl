@@ -36,7 +36,9 @@ Who creates a drawing context determines who closes it:
 @itemlist[
  @item{A standalone @racket[skia-dc%] belongs to its caller. Close it with
        @method[skia-dc% close] when finished, including when drawing raises an
-       exception. Use its @tt{close} method, not @racket[skia-close!].}
+       exception. Alternatively, @racket[call-with-skia-dc] constructs and closes
+       a raster DC for one callback. Use the DC's @tt{close} method, not
+       @racket[skia-close!], for manual cleanup.}
  @item{An output or GPU adapter supplies a temporary DC to a callback. The
        adapter closes it when the callback returns, raises an exception, or
        escapes. Saving the DC for later use does not extend its lifetime.}
@@ -49,10 +51,9 @@ with @racket[with-skia].
 
 @para{@bold{Smoothing and compatibility}}
 
-A standalone @racket[skia-dc%] starts with @racket['unsmoothed] drawing. The
-output, GPU, and GUI drawing contexts start with @racket['smoothed] drawing.
-Set smoothing explicitly when the same drawing code should use the same mode
-across these interfaces.
+Standalone, scoped raster, output, GPU, and GUI drawing contexts all start with
+@racket['smoothed] drawing. Select @racket['unsmoothed] or @racket['aligned]
+explicitly when the drawing needs that mode.
 
 The adapters support a documented subset of @racket[draw:dc<%>]. See
 @racket[skia-dc-compatibility] for supported methods and their restrictions;

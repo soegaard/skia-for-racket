@@ -21,7 +21,7 @@ import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
-COUNTS = {"gpu-dc-pure": 33, "gpu-dc-native": 15, "gpu-dc-gui": 10}
+COUNTS = {"gpu-dc-pure": 33, "gpu-dc-native": 16, "gpu-dc-gui": 10}
 HEADLESS = ("gpu-dc.rkt", "private/gpu-dc-scope.rkt", "private/gpu-dc-native.rkt",
             "tests/gpu-dc-pure-test.rkt", "tests/gpu-dc-native-test.rkt")
 GUI = ("gpu-canvas.rkt", "tests/gpu-dc-gui-test.rkt", "examples/skia-canvas-on-gpu.rkt")

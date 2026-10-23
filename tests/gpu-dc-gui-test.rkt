@@ -171,12 +171,13 @@
        (define-values (w h) (send dc get-size))
        (define-values (pw ph) (send dc get-pixel-size))
        (define-values (sx sy) (send dc get-device-scale))
-       (check-= (* w sx) pw 1e-6) (check-= (* h sy) ph 1e-6)
+       (define density (send dc get-backing-scale))
+       (check-= (* w density sx) pw 1e-6) (check-= (* h density sy) ph 1e-6)
        (fill dc "blue")
        ;; Explicit transfer for the oracle, not part of ordinary presentation.
        (define pixels (send dc get-rgba-bytes #:premultiplied? #t))
-       (define x (inexact->exact (floor (* 5 sx))))
-       (define y (inexact->exact (floor (* 6 sy))))
+       (define x (inexact->exact (floor (* 5 density sx))))
+       (define y (inexact->exact (floor (* 6 density sy))))
        (define p (* 4 (+ x (* pw y))))
        (check-equal? (bytes->list (subbytes pixels p (+ p 4))) '(0 0 255 255)))))
    (test-case "refresh requests another frame without permitting persistent GPU access"

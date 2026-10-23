@@ -45,6 +45,7 @@
           (lambda (c dc)
             (set! frames (add1 frames))
             (define-values (w h) (send dc get-size))
+            (define density (send dc get-backing-scale))
             (define-values (sx sy) (send dc get-device-scale))
             (send dc set-pen "black" 1 'transparent)
             (send dc set-brush "navy" 'solid)
@@ -54,8 +55,8 @@
             (send dc draw-text "Skia GPU drawing context" 32 30 #t)
             (send dc set-font (rd:make-font #:size 12 #:family 'swiss))
             (send dc draw-text
-              (format "~a — frame ~a — device scales ~a × ~a"
-                      (send c get-gpu-backend) frames sx sy) 32 76 #t)
+              (format "~a — frame ~a — pixels per unit ~a × ~a"
+                      (send c get-gpu-backend) frames (* density sx) (* density sy)) 32 76 #t)
             (send dc start-alpha 0.65)
             (send dc set-brush "firebrick" 'solid) (send dc draw-ellipse 38 140 130 110)
             (send dc set-brush "seagreen" 'solid) (send dc draw-ellipse 116 140 130 110)

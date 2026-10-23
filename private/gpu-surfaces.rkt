@@ -115,12 +115,35 @@
           'max_render_target_size (n:gr_recording_context_max_render_target_size cp)))
 
 ; make-gpu-surface : gpu-context? (integer-in 1 32768) (integer-in 1 32768) [#:background color?]
-;   [#:color-space (or/c color-space? #f)] [#:sample-count (integer-in 0 64)] [#:opaque? boolean?]
+;   [#:color-space (or/c color-space? #f 'srgb 'linear-srgb bytes?)]
+;   [#:sample-count (integer-in 0 64)] [#:opaque? boolean?]
 ;   [#:budgeted? boolean?] [#:color-type (or/c 'rgba-8888 'bgra-8888 'rgb-888x 'alpha-8 'gray-8
 ;   'rgb-565 'rgba-1010102 'rgba-f16 'rgba-f32)] [#:alpha-type (or/c 'premul 'opaque #f)]
 ;   [#:surface-properties surface-properties?] -> gpu-surface?
 ;   Creates and initializes an owned surface in context.
 (define (make-gpu-surface context width height
+                          #:background [background 'transparent]
+                          #:color-space [colorspace #f]
+                          #:sample-count [samples 0]
+                          #:opaque? [opaque? #f]
+                          #:budgeted? [budgeted? #t]
+                          #:color-type [color-type 'rgba-8888]
+                          #:alpha-type [alpha-type #f]
+                          #:surface-properties [properties (make-surface-properties)])
+  (call-with-color-space-input 'make-gpu-surface colorspace
+    (lambda (space)
+      (make-gpu-surface/color-space context width height
+        #:background background #:color-space space #:sample-count samples
+        #:opaque? opaque? #:budgeted? budgeted? #:color-type color-type
+        #:alpha-type alpha-type #:surface-properties properties))))
+
+; make-gpu-surface/color-space : gpu-context? integer? integer? [#:background color?]
+;   [#:color-space (or/c color-space? #f)] [#:sample-count (integer-in 0 64)]
+;   [#:opaque? boolean?] [#:budgeted? boolean?] [#:color-type symbol?]
+;   [#:alpha-type (or/c #f 'premul 'opaque)] [#:surface-properties surface-properties?]
+;   -> gpu-surface?
+;   Allocates a checked GPU surface while borrowing an already resolved color-space resource.
+(define (make-gpu-surface/color-space context width height
                           #:background [background 'transparent]
                           #:color-space [colorspace #f]
                           #:sample-count [samples 0]

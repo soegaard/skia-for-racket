@@ -68,6 +68,7 @@ or change module dependencies.
 | Module | Contents |
 | --- | --- |
 | [bitmap-transfer.rkt](bitmap-transfer.rkt) | Converts premultiplied RGBA storage to and from racket/draw ARGB byte order. |
+| [bitmap-display.rkt](bitmap-display.rkt) | Shares CPU-to-sRGB pixel conversion for the bitmap and pict bridges. |
 | [color-filter-types.rkt](color-filter-types.rkt) | Defines the high-contrast configuration record required by Skia. |
 | [color-filter-util.rkt](color-filter-util.rkt) | Validates color matrices, lookup tables, interpolation weights, and contrast options. |
 | [color-output-util.rkt](color-output-util.rkt) | Validates color-space matrices, chromaticities, and encoder ICC metadata. |

@@ -22,11 +22,7 @@
   (define output "dc-styles.png")
   (command-line #:args ([path "dc-styles.png"]) (set! output path))
 
-  ; dc : (is-a?/c skia-dc%)
-  ;   Owns the raster Skia drawing context used to save the style corpus.
-  (define dc (new skia-dc% [width 64] [height 64]))
-  (dynamic-wind void
-    (lambda () (style-oracle dc)
+  (call-with-skia-dc 64 64
+    (lambda (dc) (style-oracle dc)
       (call-with-output-file output (lambda (out) (write-bytes (send dc get-png-bytes) out))
-                            #:mode 'binary #:exists 'replace))
-    (lambda () (send dc close))))
+                            #:mode 'binary #:exists 'replace))))

@@ -22,8 +22,7 @@
 ; using-dc : procedure? [exact-positive-integer? exact-positive-integer? real?] -> any
 ;   Scopes a native DC and closes it even when its test callback fails.
 (define (using-dc proc [w 24] [h 20] [backing 1])
-  (define dc (new skia-dc% [width w] [height h] [backing-scale backing]))
-  (dynamic-wind void (lambda () (proc dc)) (lambda () (send dc close))))
+  (call-with-skia-dc w h proc #:backing-scale backing))
 
 ; pixel : dc<%> exact-nonnegative-integer? exact-nonnegative-integer? -> (listof byte?)
 ;   Reads a premultiplied RGBA device pixel.
@@ -50,6 +49,7 @@
 (define (compare-with-racket draw [tolerance 0])
   (define bm (rd:make-bitmap 24 20 #t))
   (define reference (new rd:bitmap-dc% [bitmap bm]))
+  (send reference set-smoothing 'smoothed)
   (send reference erase) (draw reference) (send reference set-bitmap #f)
   (define bytes (make-bytes (* 4 24 20))) (send bm get-argb-pixels 0 0 24 20 bytes #f #t)
   (define expected (argb->rgba bytes))
@@ -70,6 +70,54 @@
 (define dc-native-tests
   (test-suite
    "skia-dc persistent CPU raster native tests"
+   (test-case "scoped DC returns multiple values and independently owned snapshots"
+     (define saved #f)
+     (define-values (answer image)
+       (call-with-skia-dc 8 6
+         (lambda (dc)
+           (set! saved dc)
+           (check-equal? (send dc get-smoothing) 'smoothed)
+           (check-equal? (send dc get-backing-scale) 2.0)
+           (check-equal? (call-with-values (lambda () (send dc get-pixel-size)) list) '(16 12))
+           (send dc clear)
+           (values 'done (send dc snapshot)))
+         #:backing-scale 2 #:background "red"))
+     (check-eq? answer 'done)
+     (check-false (send saved ok?))
+     (check-exn #rx"closed" (lambda () (send saved clear)))
+     (sk:with-skia ([snapshot image])
+       (check-equal? (subbytes (sk:image->rgba-bytes snapshot) 0 4) (bytes 255 0 0 255))))
+   (test-case "scoped DC closes on raised values, exceptions, and escapes"
+     (define saved #f)
+     (define (remember dc) (set! saved dc))
+     (check-exn (lambda (v) (eq? v 'raised))
+       (lambda () (call-with-skia-dc 4 3 (lambda (dc) (remember dc) (raise 'raised)))))
+     (check-false (send saved ok?))
+     (check-exn #rx"callback failed"
+       (lambda () (call-with-skia-dc 4 3
+                    (lambda (dc) (remember dc) (error 'test "callback failed")))))
+     (check-false (send saved ok?))
+     (check-eq? (let/ec escape
+                 (call-with-skia-dc 4 3 (lambda (dc) (remember dc) (escape 'escaped))))
+               'escaped)
+     (check-false (send saved ok?)))
+   (test-case "scoped DC cannot be reentered and allows explicit smoothing"
+     (define saved #f)
+     (define resume #f)
+     (call-with-skia-dc 4 3
+       (lambda (dc)
+         (set! saved dc)
+         (check-equal? (send dc get-smoothing) 'unsmoothed)
+         (call/cc (lambda (k) (set! resume k))))
+       #:smoothing 'unsmoothed)
+     (check-exn exn:fail:contract:continuation? (lambda () (resume 'again)))
+     (check-false (send saved ok?)))
+   (test-case "scoped DC preserves the raster allocation limit"
+     (define called? #f)
+     (parameterize ([sk:current-skia-byte-limit 100])
+       (check-exn exn:fail?
+         (lambda () (call-with-skia-dc 8 6 (lambda (_) (set! called? #t))))))
+     (check-false called?))
    (test-case "real DC identity and raster snapshot"
      (using-dc (lambda (dc) (check-true (skia-dc? dc)) (check-true (is-a? dc rd:dc<%>))
                  (sk:with-skia ([im (send dc snapshot)])
@@ -211,4 +259,4 @@
 
 ; dc-native-test-count : exact-nonnegative-integer?
 ;   Records the expected test count used by external acceptance-report checks.
-(define dc-native-test-count 31)
+(define dc-native-test-count 35)

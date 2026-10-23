@@ -84,10 +84,9 @@ function raises an exception without returning a partial image.
 The @racket[image->bitmap] and @racket[surface->bitmap] functions are
 re-exported unchanged from @racketmodname[skia/bitmap]. They copy CPU Skia
 pixels into independent Racket Draw bitmaps and retain the contracts documented
-in @secref["skia-racket-bitmap-conversion"]. Unlike @racket[image->pict] and
-@racket[surface->pict], they do not convert tagged source colors to sRGB. A
-non-sRGB source can therefore look different through the bitmap and pict
-bridges. They are reverse-direction pixel copies,
+in @secref["skia-racket-bitmap-conversion"]. Like @racket[image->pict] and
+@racket[surface->pict], they convert tagged source colors to sRGB and preserve
+untagged numerical samples. They are display conversions,
 not metadata-preserving inverses of @racket[bitmap->image].
 
 @racketblock[

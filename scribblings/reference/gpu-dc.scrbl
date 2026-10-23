@@ -30,8 +30,10 @@ such as alpha groups. For an existing offscreen surface,
 @section[#:tag "skia-gpu-dc-scaling"]{Logical Size and Pixel Density}
 
 Both GPU adapters keep drawing coordinates in logical units and automatically
-scale them to the target's physical pixels. Each device scale is the physical
-dimension divided by the corresponding logical dimension. For example, a DC
+scale them to the target's physical pixels. The backing scale is the larger
+of the horizontal and vertical pixel-to-logical ratios. The device scales
+describe the remaining per-axis factors. Their product with the backing scale
+gives each axis's full pixel-to-logical ratio. For example, a DC
 with a logical size of 40 by 20 and a physical target of 80 by 60 reports:
 
 @tabular[#:sep @hspace[2]
@@ -41,17 +43,17 @@ with a logical size of 40 by 20 and a physical target of 80 by 60 reports:
         @elem{Width and height in logical drawing units})
   (list @tt{get-pixel-size} @elem{80, 60}
         @elem{Width and height in physical pixels})
-  (list @method[draw:dc<%> get-device-scale] @elem{2, 3}
-        @elem{Physical pixels per logical unit along each axis})
-  (list @method[draw:dc<%> get-backing-scale] @elem{1}
-        @elem{The backing scale reported by the DC, not its device scale}))]
+  (list @method[draw:dc<%> get-device-scale] @elem{2/3, 1}
+        @elem{Remaining horizontal and vertical scaling factors})
+  (list @method[draw:dc<%> get-backing-scale] @elem{3}
+        @elem{Pixel density sufficient for both axes}))]
 
-The reported backing scale is always 1 for these GPU DCs. Code that uses only
-@method[draw:dc<%> get-backing-scale] to choose an intermediate bitmap's
-resolution can therefore create too few pixels for a high-density GPU target.
-Use the physical size or both device scales when choosing that resolution.
-Do not also scale the DC by those factors: drawing already includes that
-scaling.
+For a uniformly scaled 2× target, the backing scale is 2 and both device scales
+are 1. Code choosing an intermediate bitmap's density can use
+@method[draw:dc<%> get-backing-scale] without undersampling either axis. To map
+a logical point to physical pixels, multiply by both the backing scale and the
+corresponding device scale. Do not also scale the DC by those factors: drawing
+already includes that scaling. The physical allocation size is unchanged.
 
 The DC's @tt{snapshot}, @tt{get-rgba-bytes}, and @tt{get-png-bytes} extensions
 copy the surface's pixels to CPU memory and wait for the transfer to finish.
@@ -81,7 +83,7 @@ GPU probe and does not initialize a GUI.
           [#:smoothing smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed]
           [#:color-type color-type
            (or/c 'rgba-8888 'bgra-8888 'rgba-f16 'rgba-f32) 'rgba-8888]
-          [#:color-space color-space color-space-descriptor? #f]
+          [#:color-space color-space (or/c #f 'srgb 'linear-srgb bytes? color-space?) #f]
           [#:sample-count sample-count (integer-in 0 64) 0]
           [#:surface-properties properties surface-properties?
            (make-surface-properties)])
@@ -113,13 +115,14 @@ The callback must be a procedure that accepts one positional argument. Its DC be
 invalid on normal return, exception, or escape. A failed callback does not copy
 the intermediate surface to the frame, and unfinished alpha groups are discarded.
 
-The color type, @tech{color-space descriptor}, sample request, and
+The color type, color space, sample request, and
 @tech{surface-properties value} configure the intermediate surface. The
-@racket[color-space] argument takes a descriptor such as @racket['srgb], not a
-live color-space resource. This differs from
-@racket[make-gpu-surface], whose @racket[#:color-space] argument takes a live
-color-space resource or @racket[#f]. See @secref["skia-surface-properties"] for
-pixel geometry and rendering flags.
+@racket[color-space] argument accepts @racket[#f], @racket['srgb],
+@racket['linear-srgb], complete ICC bytes, or an open color-space resource,
+just as @racket[make-gpu-surface] does. ICC bytes are copied. A supplied resource
+remains caller-owned and is copied to a @tech{color-space descriptor} for the
+cached configuration; closing it after the call does not invalidate the cache.
+See @secref["skia-surface-properties"] for pixel geometry and rendering flags.
 }
 
 @section{Borrowed Offscreen Surfaces}

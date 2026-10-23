@@ -22,6 +22,13 @@ baselines; policy and evidence details live in [docs/](../docs/README.md).
 The stage notes below are retained historical context; their version labels are
 not a substitute for the current manifest contents.
 
+## Chapter 13 API revision
+
+The `call-with-skia-dc` signature and Reference coverage entry were added from
+source during the Chapter 13 revision. This update is not a fresh runtime
+capture. Historical capture metadata and execution evidence remain unchanged;
+runtime validation is still required before publication.
+
 ## Inventory note: 0.75 (stage 0.75a)
 
 Native stream foundations and buffered port adapters have source anchors.

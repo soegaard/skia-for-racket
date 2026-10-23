@@ -82,12 +82,9 @@
   (command-line #:program "dc-primitives.rkt" #:args ([file "dc-primitives.png"])
                 (set! destination file))
 
-  ; dc : (is-a?/c skia-dc%)
-  ;   Owns the raster Skia drawing context used to save the example.
-  (define dc (new skia-dc% [width 460] [height 320] [backing-scale 2]))
-  (dynamic-wind void
-    (lambda ()
+  (call-with-skia-dc 460 320
+    (lambda (dc)
       (draw-dc-primitives dc)
       (call-with-output-file destination
         (lambda (out) (write-bytes (send dc get-png-bytes) out)) #:mode 'binary #:exists 'replace))
-    (lambda () (send dc close))))
+    #:backing-scale 2))

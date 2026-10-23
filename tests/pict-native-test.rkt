@@ -14,7 +14,7 @@
 
 (require rackunit rackunit/text-ui racket/class racket/list
          pict/convert (prefix-in pict: pict) (prefix-in rd: racket/draw)
-         "../main.rkt" "../pict.rkt" "../dc.rkt" "../dc-output.rkt")
+         "../main.rkt" "../pict.rkt" "../bitmap.rkt" "../dc.rkt" "../dc-output.rkt")
 
 (provide pict-native-tests)
 
@@ -94,9 +94,28 @@
                                            #:color-space linear)])
        (define expected (image->rgba-bytes image #:premultiplied? #t #:color-space srgb))
        (define actual (argb-at (image->pict image) 0 0))
+       (define bitmap-pixel (make-bytes 4))
+       (send (image->bitmap image) get-argb-pixels 0 0 1 1 bitmap-pixel #f #t)
+       (check-equal? bitmap-pixel actual)
+       (check-true (> (bytes-ref actual 1) 180))
        (check-equal? actual
                      (bytes (bytes-ref expected 3) (bytes-ref expected 0)
-                            (bytes-ref expected 1) (bytes-ref expected 2)))))
+                            (bytes-ref expected 1) (bytes-ref expected 2))))
+     (for ([tagged? '(#f #t)])
+       (with-skia ([linear (make-linear-srgb-color-space)]
+                   [surface (make-surface 1 1 #:color-space (and tagged? linear))])
+         (canvas-clear! (surface-canvas surface) (rgba 128 128 128 255))
+         (define expected (argb-at (surface->pict surface) 0 0))
+         (define bitmap (surface->bitmap surface))
+         (define actual (make-bytes 4))
+         (skia-close! surface)
+         (send bitmap get-argb-pixels 0 0 1 1 actual #f #t)
+         (check-equal? actual expected)
+         (unless tagged? (check-equal? actual (bytes 255 128 128 128)))))
+     (with-skia ([image (rgba-bytes->image 1 1 (bytes 32 64 96 128) #:premultiplied? #t)])
+       (define actual (make-bytes 4))
+       (send (image->bitmap image) get-argb-pixels 0 0 1 1 actual #f #t)
+       (check-equal? actual (bytes 128 32 64 96))))
    (test-case "picture bounds use actual ceiling ratios while logical size is invariant"
      (with-skia ([paint (make-paint #:color 'red #:antialias? #f)]
                  [picture (call-with-picture 101 71

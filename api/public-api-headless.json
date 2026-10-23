@@ -1363,6 +1363,19 @@
     {
       "exports": [
         {
+          "allowed_keywords": [
+            "background",
+            "backing-scale",
+            "smoothing"
+          ],
+          "arity_mask": "8",
+          "export_kind": "syntax",
+          "kind": "procedure",
+          "name": "call-with-skia-dc",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
           "allowed_keywords": [],
           "arity_mask": "32",
           "export_kind": "syntax",

@@ -3607,6 +3607,7 @@ The following links cover the font and text interfaces.
 @racket[dc:skia-dc-capabilities]
 @racket[dc:skia-dc-compatibility]
 @racket[dc:exn:fail:skia-dc:unsupported]
+@racket[dc:call-with-skia-dc]
 @racket[dc:struct:exn:fail:skia-dc:unsupported]
 @racket[dc:exn:fail:skia-dc:unsupported?]
 @racket[dc:exn:fail:skia-dc:unsupported-method]

@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require rackunit racket/list
-         "../main.rkt" "../gpu.rkt"
+         "../main.rkt" "../gpu.rkt" "../bitmap.rkt"
          "gpu-fixtures.rkt")
 (provide make-gpu-surface-native-tests)
 
@@ -52,8 +52,31 @@
                (check-equal? (hash-ref info 'native_backend) backend-id)
                (check-equal? (hash-ref info 'render_path) "sk_surface_new_render_target")
                (check-false (hash-has-key? info 'actual_sample_count)))))
-   (test-case "default transparent pixels are initialized"
-     (target (lambda (s c) (check-equal? (gpu-surface->rgba-bytes s) (make-bytes 256)))))
+   (test-case "transparent targets accept shared color-space inputs without taking ownership"
+     (target (lambda (s c) (check-equal? (gpu-surface->rgba-bytes s) (make-bytes 256))))
+     (call-with-gpu-context gpu
+       (lambda ()
+         (with-skia ([srgb (make-srgb-color-space)])
+           (define icc (color-space->icc-bytes srgb))
+           (for ([space (in-list (list #f 'srgb 'linear-srgb icc
+                                      (bytes->immutable-bytes icc) srgb))])
+             (with-skia ([s (make-gpu-surface gpu 2 2 #:color-space space)])
+               (check-equal? (gpu-surface->rgba-bytes s) (make-bytes 16))
+               (check-false (skia-closed? srgb))
+               (check-equal? (not (image-info-color-space (gpu-surface->image-info s)))
+                             (not space))))
+           (define copied (bytes-copy icc))
+           (with-skia ([s (make-gpu-surface gpu 2 2 #:color-space copied)])
+             (bytes-fill! copied 0)
+             (check-equal? (image-info-color-space (gpu-surface->image-info s)) 'srgb))
+           (with-skia ([s (make-gpu-surface gpu 2 2 #:color-space srgb)])
+             (skia-close! srgb)
+             (check-equal? (image-info-color-space (gpu-surface->image-info s)) 'srgb))
+           (check-exn exn:fail? (lambda () (make-gpu-surface gpu 2 2 #:color-space srgb)))
+           (check-exn exn:fail? (lambda () (make-gpu-surface gpu 2 2 #:color-space #"bad")))
+           (parameterize ([current-skia-byte-limit (sub1 (bytes-length icc))])
+             (check-exn #rx"byte-limit"
+               (lambda () (make-gpu-surface gpu 2 2 #:color-space icc))))))))
    (test-case "opaque background survives submission and readback"
      (target (lambda (s c)
                (check-equal? (gpu-surface->rgba-bytes s)
@@ -159,9 +182,11 @@
    (test-case "CPU-only entry points cannot accidentally create GPU images"
      (target
       (lambda (s c)
-        (for ([op (list surface-snapshot surface->rgba-bytes surface->png-bytes
+        (for ([op (list surface-snapshot surface->rgba-bytes surface->png-bytes surface->bitmap
                         (lambda (x) (surface-pixel x 0 0)))])
-          (check-exn #rx"GPU transfers are explicit" (lambda () (op s)))))))
+          (check-exn #rx"GPU transfers are explicit" (lambda () (op s))))
+        (with-skia ([image (gpu-surface-snapshot s)])
+          (check-exn #rx"GPU-dependent input" (lambda () (image->bitmap image)))))))
    (test-case "output groups do not silently route GPU drawing through CPU fallback"
      (target
       (lambda (s c)

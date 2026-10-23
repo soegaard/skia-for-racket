@@ -299,6 +299,7 @@ Experimental optional execution/integration API; existing backend, owner-thread 
 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
+| call-with-skia-dc | experimental | 0 | procedure | 3 | none | #:background, #:backing-scale, #:smoothing |
 | exn:fail:skia-dc:unsupported | experimental | 0 | procedure | 5 | none | none |
 | exn:fail:skia-dc:unsupported-feature | experimental | 0 | procedure | 1 | none | none |
 | exn:fail:skia-dc:unsupported-method | experimental | 0 | procedure | 1 | none | none |

@@ -41,12 +41,18 @@
                "unsupported" (current-continuation-marks)
                'draw 'native-handle "R4e"))
     (check-true (exn:fail:skia-dc:unsupported? e))
+    (check-true (exn:fail:unsupported? e))
+    (check-false (exn:fail:contract? e))
     (check-eq? (exn:fail:skia-dc:unsupported-method e) 'draw)
     (check-eq? (exn:fail:skia-dc:unsupported-feature e) 'native-handle)
     (check-equal? (exn:fail:skia-dc:unsupported-stage e) "R4e"))
 
   (test-case "plain objects are not persistent Skia DCs"
-    (check-false (skia-dc? (new object%))))
+    (check-false (skia-dc? (new object%)))
+    ;; Callback rejection must precede raster allocation.
+    (for ([proc (in-list (list #f (lambda () 'wrong-arity)
+                              (lambda (dc #:required required) required)))])
+      (check-exn exn:fail:contract? (lambda () (call-with-skia-dc 4 3 proc)))))
 
   (test-case "output command limit is guarded and parameterized"
     (define before (current-output-dc-command-limit))

@@ -70,9 +70,9 @@
     'stage "0.59" 'class "frame-scoped-skia-gpu-dc" 'storage "frame-scoped-gpu-offscreen"
     'alpha_groups "same-context isolated GPU surfaces; discard unfinished groups on scope exit"
     'lifetime "callback only; closed on every exit; never reactivated"
-    'coordinates
-      "logical drawing coordinates; independent X/Y device scales from actual target extents"
-    'backing_scale 1.0 'device_scale "pixel-width/logical-width, pixel-height/logical-height"
+    'coordinates "logical drawing coordinates; backing scale times device scale maps to pixels"
+    'backing_scale "max(pixel-width/logical-width, pixel-height/logical-height)"
+    'device_scale "per-axis pixel/logical ratio divided by backing scale"
     'presentation "GPU snapshot and GPU-to-GPU draw; no automatic CPU readback"
     'snapshot "explicit synchronous transfer to an independent CPU image"
     'native_probe_performed #f 'gui_initialized 'not-probed
@@ -180,6 +180,7 @@
       ((dc-renderer-close renderer) target)))
   (define sx (dc-frame-size-scale-x extent))
   (define sy (dc-frame-size-scale-y extent))
+  (define density (max sx sy))
   (define base% (make-skia-dc-class
                  (scale-dc-renderer renderer sx sy #:create create #:close close)))
   (define frame-dc%
@@ -192,7 +193,10 @@
         (values (dc-frame-size-logical-width extent) (dc-frame-size-logical-height extent)))
       (define/override (get-device-scale)
         (super get-device-scale)
-        (values sx sy))
+        (values (/ sx density) (/ sy density)))
+      (define/override (get-backing-scale)
+        (super get-backing-scale)
+        density)
       (define/override (get-capabilities)
         (super get-capabilities)
         (skia-gpu-dc-capabilities))

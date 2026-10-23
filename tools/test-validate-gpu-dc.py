@@ -33,7 +33,7 @@ class Summaries(unittest.TestCase):
     def test_reject_missing_marker(self):
         with self.assertRaises(ValueError): v.validate_suite(suite("gpu-dc-gui").splitlines()[0], "gpu-dc-gui")
     def test_reject_incomplete_count(self):
-        with self.assertRaises(ValueError): v.validate_suite(suite("gpu-dc-native").replace("15", "14"), "gpu-dc-native")
+        with self.assertRaises(ValueError): v.validate_suite(suite("gpu-dc-native").replace("16", "15"), "gpu-dc-native")
     def test_reject_failure(self):
         with self.assertRaises(ValueError): v.validate_suite(suite("gpu-dc-native").replace("0 failure(s)", "1 failure(s)"), "gpu-dc-native")
     def test_reject_printed_gui_check_failure(self):

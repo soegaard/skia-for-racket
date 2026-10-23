@@ -27,7 +27,7 @@
 ;;; Checked Values and Compatibility Errors
 ;;;
 
-(struct exn:fail:skia-dc:unsupported exn:fail:contract (method feature stage) #:transparent)
+(struct exn:fail:skia-dc:unsupported exn:fail:unsupported (method feature stage) #:transparent)
 ;; Fields:
 ;;   method: requested dc<%> method symbol. feature: unsupported feature description. stage: point
 ;;   at which compatibility failed. Inherited exception fields carry the diagnostic and continuation

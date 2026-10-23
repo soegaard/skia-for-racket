@@ -12,6 +12,7 @@
          (submod "core.rkt" color-internals)
          (only-in (submod "core.rkt" codec-query-internals) call-with-codec-image-info))
 (provide color-space->descriptor descriptor->color-space
+         color-space-input->descriptor call-with-color-space-input
          call-with-image-info-native borrowed-color-space->descriptor
          codec-output-info call-with-codec-output-info-native)
 
@@ -20,6 +21,31 @@
 ;   description or copied ICC bytes.
 (define (descriptor->color-space descriptor)
   (make-descriptor-color-space 'descriptor->color-space descriptor))
+
+; checked-color-space-input : symbol? any/c -> (or/c color-space? color-space-descriptor?)
+;   Checks an open caller-owned color space or copies and validates a color-space descriptor.
+(define (checked-color-space-input who value)
+  (cond
+    [(color-space? value)
+     (call-with-owned who (list (color-space-h who value)) void)
+     value]
+    [else (copy-descriptor who value)]))
+
+; color-space-input->descriptor : symbol? any/c -> color-space-descriptor?
+;   Copies a color-space input into immutable configuration data without closing the caller's
+;   resource.
+(define (color-space-input->descriptor who value)
+  (define checked (checked-color-space-input who value))
+  (if (color-space? checked) (color-space->descriptor checked) checked))
+
+; call-with-color-space-input : symbol? any/c procedure? -> any
+;   Borrows a supplied color space, or scopes a new resource made from a copied descriptor.
+(define (call-with-color-space-input who value proc)
+  (define checked (checked-color-space-input who value))
+  (cond
+    [(color-space? checked) (proc checked)]
+    [(not checked) (proc #f)]
+    [else (with-skia ([space (descriptor->color-space checked)]) (proc space))]))
 
 ; codec-output-info : symbol? cpointer? image-info? boolean? -> image-info?
 ;   Resolves a source-preserving decode request to a concrete output description.

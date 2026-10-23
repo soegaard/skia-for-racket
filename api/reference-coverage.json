@@ -5,7 +5,7 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "7af85533622e77621e398aebeed93eecb48987fe"
+      "git_blob": "3018bb2cf03799cb13362ed972f666a6786c4d1b"
     },
     {
       "file": "api/public-api-gui.json",
@@ -13070,6 +13070,16 @@
     },
     {
       "name": "skia-dc%",
+      "chapter": "scribblings/reference/racket-dc.scrbl",
+      "canonical_module": "skia/dc",
+      "exports": [
+        "skia/dc"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-skia-dc",
       "chapter": "scribblings/reference/racket-dc.scrbl",
       "canonical_module": "skia/dc",
       "exports": [

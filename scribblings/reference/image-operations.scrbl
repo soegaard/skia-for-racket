@@ -291,17 +291,17 @@ actual 12 by 10 destination; its checkerboard is not stored in that destination.
 Creates a Racket bitmap by copying the image's or surface's pixels. The bitmap
 has an alpha channel and can be edited independently of the source.
 
-Pixel access follows @racket[image->rgba-bytes] or
-@racket[surface->rgba-bytes], respectively, with @tech{premultiplied alpha}.
-The corresponding function's format and CPU-access restrictions apply. The
-copy uses eight-bit color components; extended floating-point values and
-ICC metadata are not preserved.
+Tagged source colors are converted to sRGB before the bitmap is created.
+Untagged sources keep their numerical samples, which are treated as sRGB for
+display. This is the same color behavior as @racket[image->pict] and
+@racket[surface->pict]; see @secref["skia-pict-bridge"].
 
-These functions do not convert tagged source colors to sRGB. In contrast,
-@racket[image->pict] and @racket[surface->pict] convert tagged sources to sRGB
-before creating their bitmaps. A non-sRGB source can therefore look different
-through the two bridges. Use the pict bridge when you need that display
-conversion as part of creating a pict; see @secref["skia-pict-bridge"].
+The transfer uses eight-bit components with @tech{premultiplied alpha}.
+Floating-point precision and the original ICC profile are not preserved.
+Sources must be CPU-accessible; no implicit GPU readback is performed.
+For pixel bytes without destination color-space conversion, use
+@racket[image->rgba-bytes] or @racket[surface->rgba-bytes] with their default
+color-space argument.
 
 Closing the source does not close the bitmap. The result follows Racket bitmap
 ownership, not @racket[skia-close!]. Neither conversion creates a window or

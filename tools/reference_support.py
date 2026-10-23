@@ -319,7 +319,7 @@ def structure_shapes(header):
     """Read the transparent defstruct* forms used by the Reference.
 
     Most declarations have no supertype. R4e additionally documents the
-    exn:fail:skia-dc:unsupported subtype of exn:fail:contract; its constructor
+    exn:fail:skia-dc:unsupported subtype of exn:fail:unsupported; its constructor
     includes the two inherited exception fields, while only the three new
     accessors are exported by skia/dc.
     """
@@ -330,7 +330,7 @@ def structure_shapes(header):
     if type(struct_name) is str:
         name = struct_name
     else:
-        need(struct_name == ['exn:fail:skia-dc:unsupported', 'exn:fail:contract'],
+        need(struct_name == ['exn:fail:skia-dc:unsupported', 'exn:fail:unsupported'],
              'unsupported structure name/supertype')
         name = struct_name[0]
         super_fields = [['message', 'string?'], ['continuation-marks', 'continuation-mark-set?']]

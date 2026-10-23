@@ -36,7 +36,11 @@ instance of the separately constructed persistent `skia-dc%` class.
 ```racket
 (call-with-gpu-frame-dc frame proc
                        #:background [background "white"]
-                       #:smoothing [smoothing 'smoothed])
+                       #:smoothing [smoothing 'smoothed]
+                       #:color-type [color-type 'rgba-8888]
+                       #:color-space [color-space #f]
+                       #:sample-count [samples 0]
+                       #:surface-properties [properties (make-surface-properties)])
 (call-with-gpu-surface-dc surface proc
                          #:logical-width [logical-width #f]
                          #:logical-height [logical-height #f]
@@ -54,6 +58,13 @@ The capabilities hash contains declarations, not a successful native probe.
 Importing this module does not instantiate the GUI or create a GPU context.
 Native GPU drawing code is loaded on first use.
 
+Both `call-with-gpu-frame-dc` and `make-gpu-surface` accept `#f`, `'srgb`,
+`'linear-srgb`, complete ICC bytes, or an open color-space resource through
+`#:color-space`. Mutable bytes are copied within the existing byte limit.
+Supplied resources remain caller-owned. Frame configuration stores an immutable
+descriptor rather than the caller's wrapper, so later closure cannot invalidate
+the cached configuration.
+
 ### Existing presenter frame
 
 Call `call-with-gpu-frame-dc` inside an existing presenter's render callback.
@@ -69,9 +80,10 @@ the presenter; **do not wrap the callback in another `call-with-gpu-context`**.
       (send dc draw-rectangle 20 20 160 80))))
 ```
 
-Each frame allocates an RGBA8 offscreen GPU surface in the frame's context,
+Each frame uses an offscreen GPU surface in the frame's context,
 clears it to the chosen background, draws through the DC, discards unfinished
 alpha groups and copies a GPU snapshot onto the frame canvas with `Src`.
+The surface can be reused while its dimensions and configuration match.
 The presenter owns the actual flush/submission/presentation. A failed callback
 does not copy the root to the frame, and the presenter cancels that frame.
 Closing the widget during a callback requests cancellation; native retirement
@@ -82,7 +94,7 @@ clip already installed on the borrowed frame canvas still limits that copy;
 use the ordinary unmodified frame canvas for a full-window DC frame. The
 frame's saved matrix/clip state is preserved by the final copy.
 
-This is an extra **GPU-side allocation and GPU-to-GPU draw**, not zero-copy
+This requires intermediate GPU storage and an extra **GPU-to-GPU draw**, not zero-copy
 presentation. There is no per-frame PNG conversion, automatic CPU bitmap
 bridge, hidden CPU root rendering, or performance guarantee. CPU source images
 and public `bitmap%` inputs may still need upload by Skia; this is distinct
@@ -129,15 +141,19 @@ scale-x = physical-width / logical-width
 scale-y = physical-height / logical-height
 ```
 
-`get-device-scale` returns those two values; `get-backing-scale` is **1.0**.
+`get-backing-scale` returns `max(scale-x, scale-y)`. `get-device-scale` returns
+each axis's ratio divided by that backing scale. Thus a uniformly scaled 2×
+target reports backing scale 2 and device scales 1, 1; a target with ratios
+2 and 3 reports backing scale 3 and device scales 2/3, 1. The scalar density
+is sufficient for consumers choosing an intermediate bitmap's resolution.
 Logical DC transforms, text metrics, recorded commands and region state do not
 have device scale pre-applied. The renderer maps drawing matrices and clip
 paths exactly once. Alpha children are allocated at the physical size; their
-pixels are not scaled again at merge. This convention is deliberately different
-from the raster DC's scalar `get-backing-scale` convention.
+pixels are not scaled again at merge. Neither physical allocation dimensions
+nor allocation limits are changed by this reporting convention.
 
 For a CPU-transfer pixel oracle, convert an interior logical sample using the
-corresponding X/Y device scales, then use physical row stride. Do not read raw
+backing scale times the corresponding X/Y device scale, then use physical row stride. Do not read raw
 pixel `(3,4)` to assert the color of logical point `(3,4)` on a Retina frame.
 
 ## Alpha, copy and explicit exports
@@ -215,7 +231,7 @@ python3 tools/validate-gpu-dc.py --racket "$RACKET" --require-gui
 "$RACKET" examples/skia-canvas-on-gpu.rkt
 ```
 
-The new validator requires 33 instrumented-renderer cases and 15 real GPU
+The validator requires 33 instrumented-renderer cases and 16 real GPU
 cases. `--require-gui` additionally requires 10 real-window cases; a missing
 backend/display is a failure. Offscreen native tests use EGL on Linux, Metal
 on macOS, and Direct3D on Windows. Override with `--backend egl|metal|direct3d`;

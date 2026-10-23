@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require (for-label racket/base racket/contract skia skia/gpu))
+@(require (for-label racket/base racket/contract skia skia/gpu
+                     (only-in skia/gpu-dc call-with-gpu-frame-dc)))
 
 @title[#:tag "skia-gpu-surfaces"]{GPU Surfaces}
 
@@ -35,7 +36,7 @@ satisfies the predicate. The predicate does not activate or test its context.
 @defproc[(make-gpu-surface
           [context gpu-context?] [width (integer-in 1 32768)] [height (integer-in 1 32768)]
           [#:background background color? 'transparent]
-          [#:color-space space (or/c color-space? #f) #f]
+          [#:color-space space (or/c #f 'srgb 'linear-srgb bytes? color-space?) #f]
           [#:sample-count samples (integer-in 0 64) 0]
           [#:opaque? opaque? boolean? #f] [#:budgeted? budgeted? boolean? #t]
           [#:color-type color-type
@@ -45,9 +46,15 @@ satisfies the predicate. The predicate does not activate or test its context.
           [#:surface-properties properties surface-properties? (make-surface-properties)])
          gpu-surface?]{
 Creates and initializes an owned surface in @racket[context]. The context must
-already be active. The surface keeps a reference to its context and its own
-native reference to @racket[space], when supplied. The caller may close the
-original color-space wrapper after successful construction. The surface origin is top-left.
+already be active. The surface keeps a reference to its context. Its origin is top-left.
+
+The @racket[space] argument accepts @racket[#f] for an untagged surface,
+@racket['srgb], @racket['linear-srgb], complete ICC bytes, or an open color-space
+resource. ICC bytes are copied and checked against @racket[current-skia-byte-limit].
+A supplied resource remains caller-owned. The surface keeps its own native
+color-space reference, so the caller may close the original resource after
+successful construction. These are also the color-space inputs accepted by
+@racket[call-with-gpu-frame-dc].
 
 The @racket[properties] argument supplies the surface's @tech{pixel geometry} and
 rendering flags; see @secref["skia-surface-properties"]. The default leaves pixel

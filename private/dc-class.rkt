@@ -109,7 +109,7 @@
     (class object%
       (init [(logical-width width) 640] [(logical-height height) 480]
             [(requested-backing backing-scale) 1.0]
-            [background "white"] [smoothing 'unsmoothed])
+            [background "white"] [smoothing 'smoothed])
 
       ;;;
       ;;; Owned Drawing State

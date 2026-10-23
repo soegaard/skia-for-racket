@@ -111,7 +111,7 @@ filename does not imply that it is included in the default import.
 | [bitmap.rkt](bitmap.rkt) | Copies Skia surfaces and images into Racket bitmap objects. |
 | [racket-draw.rkt](racket-draw.rkt) | Copies bitmaps, colors, and paths between Racket draw values and Skia values. |
 | [pict.rkt](pict.rkt) | Converts Skia images, surfaces, and recorded pictures into Racket pict values. |
-| [dc.rkt](dc.rkt) | Exposes the Skia-backed raster drawing-context class and its capability query. |
+| [dc.rkt](dc.rkt) | Provides persistent and callback-scoped Skia raster drawing contexts and capability queries. |
 | [dc-output.rkt](dc-output.rkt) | Supplies Skia drawing contexts to document callbacks and supports explicit raster groups and annotations. |
 | [canvas.rkt](canvas.rkt) | Presents a persistent Skia drawing context through Racket GUI canvas and window behavior. |
 | [render-canvas.rkt](render-canvas.rkt) | Selects a raster or GPU canvas implementation behind a common callback-oriented interface. |

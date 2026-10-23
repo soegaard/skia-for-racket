@@ -67,13 +67,9 @@ support libraries, but Skia drawing is not routed through Cairo or Pango.
 #lang racket/base
 (require racket/class racket/draw skia/dc)
 
-(define dc
-  (new skia-dc% [width 640] [height 400]
-       [backing-scale 2.0] [smoothing 'smoothed]))
-
-(dynamic-wind
- void
- (lambda ()
+(call-with-skia-dc
+ 640 400
+ (lambda (dc)
    (send dc clear)
    (send dc set-font (make-font #:size 20 #:family 'swiss))
    (send dc set-text-foreground "navy")
@@ -81,15 +77,22 @@ support libraries, but Skia drawing is not routed through Cairo or Pango.
    (call-with-output-file "dc-example.png"
      (lambda (out) (write-bytes (send dc get-png-bytes) out))
      #:mode 'binary #:exists 'replace))
- (lambda () (send dc close)))
+ #:backing-scale 2.0)
 ```
 
 Constructor arguments remain `[width 640]`, `[height 480]`,
-`[backing-scale 1.0]`, `[background "white"]`, and `[smoothing 'unsmoothed]`.
+`[backing-scale 1.0]`, `[background "white"]`, and `[smoothing 'smoothed]`.
 Logical dimensions are positive exact integers. Physical dimensions are
 `ceiling(logical-size * backing-scale)` and must satisfy the existing Skia
 surface allocation bounds and `current-skia-byte-limit`. The new surface is
 transparent; `background` selects the color subsequently used by `clear`.
+
+`call-with-skia-dc` accepts width, height, a one-argument callback, and
+`#:backing-scale`, `#:background`, and `#:smoothing` options. It returns the
+callback's values and closes the DC on return, exception, or escape. A saved
+callback DC or continuation cannot be used to resume drawing afterward.
+Construct `skia-dc%` directly when the context must survive between separate
+calls. All DC adapters now default to smoothed drawing.
 
 A DC belongs to its creating Racket thread; futures and other threads cannot
 operate on it. `close` is idempotent on that thread. `ok?` becomes false after
@@ -401,7 +404,7 @@ attempts to release every owned target even when an individual release fails.
 
 ## Remaining unsupported operations
 
-The exception `exn:fail:skia-dc:unsupported` extends `exn:fail:contract` and carries
+The exception `exn:fail:skia-dc:unsupported` extends `exn:fail:unsupported` and carries
 `method`, `feature`, and planned `stage`. An exception is not a successful draw.
 
 | Deferred area | Operations |
@@ -423,7 +426,7 @@ compiles the modules and executes all seven RackUnit suites:
 | Suite | Cases |
 |---|---:|
 | Foundation pure | 60 |
-| Foundation native | 31 |
+| Foundation native | 35 |
 | Text/bitmap/region pure | 36 |
 | Text/bitmap/region native | 34 |
 | Replay/locking/alpha pure | 28 |

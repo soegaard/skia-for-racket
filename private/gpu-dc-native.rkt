@@ -9,6 +9,7 @@
 
 (require (prefix-in sk: "../main.rkt") (prefix-in gpu: "../gpu.rkt")
          "dc-render.rkt" "dc-native-util.rkt" "gpu-dc-scope.rkt" "gpu-format-util.rkt"
+         (only-in "image-info-native.rkt" color-space-input->descriptor)
          (only-in (submod "gpu-presenter.rkt" adapter-internals) call-with-gpu-frame-target))
 (provide call-with-gpu-frame-dc/native call-with-gpu-surface-dc/native)
 
@@ -54,7 +55,7 @@
 ;   Renders a frame-scoped DC into a cached staging target and composites its GPU snapshot onto the
 ;   frame canvas.
 (define (call-with-gpu-frame-dc/native frame proc background smoothing
-                                      [color-type 'rgba-8888] [descriptor #f] [samples 0]
+                                      [color-type 'rgba-8888] [color-space #f] [samples 0]
                                       [properties (sk:make-surface-properties)])
   (define canvas (gpu:gpu-frame-canvas frame))
   (define context (gpu:gpu-frame-context frame))
@@ -63,6 +64,7 @@
                         (gpu:gpu-frame-logical-width frame) (gpu:gpu-frame-logical-height frame)))
   (define width (dc-frame-size-pixel-width extent))
   (define height (dc-frame-size-pixel-height extent))
+  (define descriptor (color-space-input->descriptor 'call-with-gpu-frame-dc color-space))
   (define key (gpu-staging-key 'call-with-gpu-frame-dc width height color-type descriptor samples
     properties))
   (define space (sk:descriptor->color-space (vector-ref key 2)))

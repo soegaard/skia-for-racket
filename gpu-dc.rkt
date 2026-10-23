@@ -41,7 +41,8 @@
 
 ; call-with-gpu-frame-dc : gpu-frame? (-> (is-a?/c draw:dc<%>) any) [#:background (or/c string?
 ;   (is-a?/c draw:color%))] [#:smoothing (or/c 'unsmoothed 'smoothed 'aligned)] [#:color-type (or/c
-;   'rgba-8888 'bgra-8888 'rgba-f16 'rgba-f32)] [#:color-space color-space-descriptor?]
+;   'rgba-8888 'bgra-8888 'rgba-f16 'rgba-f32)]
+;   [#:color-space (or/c color-space? #f 'srgb 'linear-srgb bytes?)]
 ;   [#:sample-count (integer-in 0 64)] [#:surface-properties surface-properties?] -> any
 ;   Calls proc with a fresh GPU drawing context for a live presenter frame and returns the
 ;   callback's values.
@@ -49,14 +50,14 @@
                                #:background [background "white"]
                                #:smoothing [smoothing 'smoothed]
                                #:color-type [color-type 'rgba-8888]
-                               #:color-space [descriptor #f]
+                               #:color-space [color-space #f]
                                #:sample-count [samples 0]
                                #:surface-properties [properties (make-surface-properties)])
   (check-callback 'call-with-gpu-frame-dc proc)
   (unless (gpu-frame? frame) (raise-argument-error 'call-with-gpu-frame-dc "gpu-frame?" frame))
   (gpu-frame-canvas frame) ; owner/expiry rejection before loading native code
   ((dynamic-require native-module 'call-with-gpu-frame-dc/native)
-   frame proc background smoothing color-type descriptor samples properties))
+   frame proc background smoothing color-type color-space samples properties))
 
 ; call-with-gpu-surface-dc : gpu-surface? (-> (is-a?/c draw:dc<%>) any) [#:logical-width (or/c #f
 ;   (and/c real? (>/c 0)))] [#:logical-height (or/c #f (and/c real? (>/c 0)))] [#:background (or/c

@@ -145,6 +145,10 @@
        (with-surface (lambda (_ctx s)
          (call-with-gpu-surface-dc s
            (lambda (dc)
+             (define density (send dc get-backing-scale))
+             (define-values (sx sy) (send dc get-device-scale))
+             (check-= (* density sx lw) pw 1e-9)
+             (check-= (* density sy lh) ph 1e-9)
              (fill dc "red" 0 0 lw lh)
              (fill dc "blue" 2 3 5 4)
              (check-equal? (call-with-values (lambda () (send dc get-pixel-size)) list) (list pw ph)))
@@ -259,6 +263,31 @@
        (check-eq? (render (lambda (f) (call-with-gpu-frame-dc f (lambda (dc) (fill dc "red")))))
                   'present-requested)
        (check-equal? (presents) 1))))
+   (test-case "frame color-space inputs are copied and do not take caller ownership"
+     (with-presenter (lambda (_ctx _surface _p _presents render _frame)
+       (sk:with-skia ([space (sk:make-srgb-color-space)])
+         (define icc (sk:color-space->icc-bytes space))
+         (for ([input (in-list (list #f 'srgb 'linear-srgb icc
+                                    (bytes->immutable-bytes icc) space))])
+           (check-eq?
+            (render (lambda (frame)
+              (call-with-gpu-frame-dc frame (lambda (dc) (fill dc "red"))
+                #:color-space input)))
+            'present-requested)
+           (check-false (sk:skia-closed? space)))
+         (define copied (bytes-copy icc))
+         (render (lambda (frame)
+           (call-with-gpu-frame-dc frame
+             (lambda (dc) (bytes-fill! copied 0) (fill dc "blue")) #:color-space copied)))
+         (sk:skia-close! space)
+         ;; Reusing the same configuration must not depend on the old wrapper or bytes.
+         (check-eq? (render (lambda (frame)
+                      (call-with-gpu-frame-dc frame void #:color-space 'srgb)))
+                    'present-requested)
+         (check-exn exn:fail? (lambda () (render (lambda (frame)
+           (call-with-gpu-frame-dc frame void #:color-space space)))))
+         (check-exn exn:fail? (lambda () (render (lambda (frame)
+           (call-with-gpu-frame-dc frame void #:color-space #"bad")))))))))
    (test-case "close requested inside a frame cancels presentation after DC cleanup"
      (with-presenter (lambda (_ctx _surface p presents render _frame)
        (define saved #f)
@@ -269,7 +298,7 @@
 
 ; gpu-dc-native-test-count : exact-nonnegative-integer?
 ;   Records the expected test count used by external acceptance-report checks.
-(define gpu-dc-native-test-count 15)
+(define gpu-dc-native-test-count 16)
 (module+ main
   (require rackunit/text-ui)
   (command-line #:once-each

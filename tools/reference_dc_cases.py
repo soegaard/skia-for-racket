@@ -1,6 +1,7 @@
 """Independent R4e public shapes for source-check fixtures; not native DC evidence."""
 
 R4E_PROCEDURES = {
+    'call-with-skia-dc': (8, ['background', 'backing-scale', 'smoothing']),
     'skia-dc?': (2, []),
     'skia-dc-capabilities': (1, []),
     'skia-dc-compatibility': (3, []),
@@ -33,7 +34,8 @@ R4E_VALUES = {
 R4E_PARAMETERS = ('current-output-dc-command-limit',)
 
 R4E_MODULES = {
-    'dc.rkt': ['skia-dc%', 'skia-dc?', 'skia-dc-capabilities', 'skia-dc-compatibility',
+    'dc.rkt': ['skia-dc%', 'skia-dc?', 'call-with-skia-dc',
+               'skia-dc-capabilities', 'skia-dc-compatibility',
                'exn:fail:skia-dc:unsupported', 'struct:exn:fail:skia-dc:unsupported',
                'exn:fail:skia-dc:unsupported?', 'exn:fail:skia-dc:unsupported-method',
                'exn:fail:skia-dc:unsupported-feature', 'exn:fail:skia-dc:unsupported-stage'],

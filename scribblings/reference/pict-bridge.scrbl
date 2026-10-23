@@ -23,8 +23,8 @@ Skia values nor read back GPU data automatically. Unlike conversion through
 @racketmodname[file/convertible], they transfer pixels without encoding and
 decoding PNG. For a Racket @tt{bitmap%} instead of a pict, use
 @racket[image->bitmap] or @racket[surface->bitmap] from
-@racketmodname[skia/bitmap]. Those bitmap conversions do not perform the sRGB
-color-space conversion used by this pict bridge; see
+@racketmodname[skia/bitmap]. Those bitmap conversions use the same sRGB
+color-space conversion as this pict bridge; see
 @secref["skia-racket-bitmap-conversion"].
 
 Import @racketmodname[skia/pict] separately; it is not re-exported by

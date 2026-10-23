@@ -30,8 +30,11 @@ zero-extent, eventspace, close and validation boundaries.
 
 ## 0.55 persistent raster drawing context
 
-Import `skia/dc` for `skia-dc%`, `skia-dc?`, `skia-dc-capabilities`, and
-`exn:fail:skia-dc:unsupported`. Geometry, text, bitmap/mask/copy and region
+Import `skia/dc` for `skia-dc%`, `call-with-skia-dc`, `skia-dc?`,
+`skia-dc-capabilities`, and `exn:fail:skia-dc:unsupported`. Use
+`call-with-skia-dc` for one drawing callback with automatic cleanup, or construct
+`skia-dc%` directly for a persistent context. Both default to smoothed drawing.
+Geometry, text, bitmap/mask/copy and region
 support are joined by direct Racket recorded-procedure/datum replay, selected
 pen/brush identity and locking, and nested `start-alpha` / `end-alpha` groups.
 The minimum stays Racket 8.18 / draw-lib 1.22. Snapshots inspect the root backing;
@@ -2268,8 +2271,11 @@ Separate module `(require skia/bitmap)`:
 (image->bitmap image)     ; bitmap% with alpha and backing scale 1
 ```
 
-Both perform pixel copies and return an independent bitmap. Premultiplied
-RGBA is reordered to premultiplied ARGB before `set-argb-pixels`. They load
+Both return an independent bitmap, converting tagged sources to sRGB and
+preserving untagged numerical samples. They use the same display color policy
+as `image->pict` and `surface->pict`. For raw samples without destination
+conversion, use the RGBA byte readers. The bitmap transfers use eight-bit
+premultiplied components and do not read GPU pixels back implicitly. They load
 `racket/draw`; importing the main drawing module alone does not. This bridge
 does not provide a Skia `dc%`, zero-copy sharing, or vector interchange.
 

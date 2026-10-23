@@ -14,6 +14,7 @@
                      skia/gpu
                      skia/gpu-egl
                      skia/gpu-racket-gl
+                     skia/dc skia/gpu-dc
                      (only-in racket/gui/base canvas%)))
 
 @(define-runtime-path scene-source "scene.rkt")
@@ -235,6 +236,25 @@ images across frames. The @racket[gpu-surface-snapshot] function can keep an
 image GPU-resident for later drawing. The lower-level
 @racket[gpu-surface->raster-image] function is available when a CPU copy is
 actually needed. The @api-link[] specifies the corresponding resource lifetimes.
+
+@subsection{Reusing Racket Draw Code}
+
+Code written for Racket's drawing-context methods can use @racket[call-with-skia-dc]
+for a scoped CPU target, @racket[call-with-gpu-surface-dc] for an existing GPU
+surface, or @racket[call-with-gpu-frame-dc] for a presenter frame. All three
+default to smoothed drawing and close their temporary DC when the callback
+exits. A GPU surface supplied by the caller remains open.
+
+GPU DCs already scale logical coordinates to the target's physical pixels.
+Their @tt{get-backing-scale} reports the larger pixel density of the two axes;
+@tt{get-device-scale} reports the remaining X/Y factors. Multiply the backing
+scale by the corresponding device scale when locating a physical pixel, but
+do not apply those scales again to drawing commands.
+
+Both @racket[make-gpu-surface] and @racket[call-with-gpu-frame-dc] accept
+@racket[#:color-space 'srgb], @racket[#:color-space 'linear-srgb], ICC bytes, an
+open color-space resource, or @racket[#f] for no color-space tag. Profile bytes
+are copied; supplying a resource does not transfer its ownership.
 
 @section[#:tag "linux-opengl-host"]{Linux: A Complete OpenGL Host Example}
 

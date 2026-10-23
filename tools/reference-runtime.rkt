@@ -266,7 +266,7 @@
   (define-values (name inherited-fields)
     (cond
       [(symbol? struct-name) (values struct-name '())]
-      [(equal? struct-name '(exn:fail:skia-dc:unsupported exn:fail:contract))
+      [(equal? struct-name '(exn:fail:skia-dc:unsupported exn:fail:unsupported))
        (values 'exn:fail:skia-dc:unsupported
                '((message string?) (continuation-marks continuation-mark-set?)))]
       [else (error 'reference-runtime "unsupported structure name/supertype: ~e" struct-name)]))

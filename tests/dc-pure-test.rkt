@@ -87,7 +87,7 @@
      (define-values (dc e) (fresh))
      (check-true (send dc ok?)) (check-false (send dc get-gl-context))
      (check-equal? (send dc cache-font-metrics-key) 0)
-     (check-equal? (send dc get-smoothing) 'unsmoothed)
+     (check-equal? (send dc get-smoothing) 'smoothed)
      (check-equal? (send dc get-alpha) 1.0)
      (check-equal? (send (send dc get-pen) get-width) 1)
      (check-false (send dc get-clipping-region)))
@@ -160,7 +160,8 @@
      (send dc draw-rectangle 1 2 3 4)
      (check-equal? (dc-draw-matrix (car (draws e))) '#(4.0 0.0 0.0 6.0 6.0 8.0)))
    (test-case "aligned complex transform uses finite effective scales"
-     (define-values (dc e) (fresh)) (send dc set-rotation 0.25)
+     (define-values (dc e) (fresh)) (send dc set-smoothing 'aligned)
+     (send dc set-rotation 0.25)
      (check-not-exn (lambda () (send dc draw-rectangle 1 2 3 4))) (check-equal? (length (draws e)) 2))
    (test-case "complex transform supported in smoothed mode"
      (define-values (dc e) (fresh)) (send dc set-smoothing 'smoothed)
@@ -174,7 +175,7 @@
    (test-case "unknown smoothing rejected without change"
      (define-values (dc e) (fresh))
      (check-exn exn:fail? (lambda () (send dc set-smoothing 'fast)))
-     (check-equal? (send dc get-smoothing) 'unsmoothed))
+     (check-equal? (send dc get-smoothing) 'smoothed))
    (test-case "invalid alpha rejected"
      (define-values (dc e) (fresh))
      (for ([a '(-1 2 +nan.0 +inf.0 #f)]) (check-exn exn:fail? (lambda () (send dc set-alpha a))))
@@ -258,11 +259,13 @@
      (check-equal? (dc-draw-commands (car (draws e)))
        '(#(move 11.0 22.0) #(cubic 13.0 24.0 15.0 26.0 17.0 28.0))))
    (test-case "rectangle outline is inset in aligned mode"
-     (define-values (dc e) (fresh)) (send dc draw-rectangle 1 2 10 12)
+     (define-values (dc e) (fresh)) (send dc set-smoothing 'aligned)
+     (send dc draw-rectangle 1 2 10 12)
      (check-equal? (car (dc-draw-commands (second (draws e)))) '#(move 1.5 2.5))
      (check-equal? (second (dc-draw-commands (second (draws e)))) '#(line 10.5 2.5)))
    (test-case "alignment scale changes snapping grid not geometry transform"
-     (define-values (dc e) (fresh)) (send dc set-alignment-scale 2)
+     (define-values (dc e) (fresh)) (send dc set-smoothing 'unsmoothed)
+     (send dc set-alignment-scale 2)
      (send dc draw-line 1.25 2.25 10.25 2.25)
      (check-equal? (dc-draw-matrix (car (draws e))) dc-identity)
      (check-equal? (car (dc-draw-commands (car (draws e)))) '#(move 1.0 2.0)))

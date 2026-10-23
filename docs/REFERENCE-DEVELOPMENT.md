@@ -120,7 +120,7 @@ subtype instead of silently routing drawing through Cairo.
 
 The source and runtime readers now support the one transparent documented
 structure subtype used by this stage: `exn:fail:skia-dc:unsupported` extends
-`exn:fail:contract`, so its public constructor includes the inherited message
+`exn:fail:unsupported`, so its public constructor includes the inherited message
 and continuation-mark fields plus method, feature, and stage. The checker also
 accepts a complete manifest without a synthetic deferred-policy entry;
 `check_source(..., require_complete=True)` can therefore establish zero remaining

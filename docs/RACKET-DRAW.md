@@ -48,6 +48,12 @@ The bridge uses direct public ARGB readback and an in-memory channel reorder;
 it never encodes PNG. It checks dimensions, scales, and conservative temporary
 buffers against `current-skia-byte-limit` before allocating bridge buffers.
 
+For reverse bitmap exports, `image->bitmap` and `surface->bitmap` convert
+tagged sources to sRGB, matching the pict bridge. Untagged numerical samples
+are copied unchanged. The result has eight-bit components and no original ICC
+profile; use the raw pixel readers when destination conversion is unwanted.
+GPU readback remains explicit.
+
 ## Colors
 
 `color%->rgba` copies byte RGB values and converts alpha with

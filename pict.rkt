@@ -18,6 +18,7 @@
 (require racket/class
          (prefix-in pict: pict)
          "private/bitmap-transfer.rkt"
+         "private/bitmap-display.rkt"
          "private/core.rkt"
          (submod "private/core.rkt" pict-internals)
          "private/pict-util.rkt")
@@ -42,20 +43,6 @@
                 (/ logical-width physical-width)
                 (/ logical-height physical-height))))
 
-; read-image-pixels : image? -> bytes?
-;   Reads premultiplied pixels, converting tagged input to sRGB and preserving untagged numeric
-;   samples.
-(define (read-image-pixels im)
-  ;; Tagged input is rendered into owned sRGB. Untagged samples have no profile
-  ;; interpretation to preserve, so their numerical RGBA values are copied.
-  (define source-space (image-color-space im))
-  (cond
-    [source-space
-     (with-skia ([source source-space]
-                 [destination (make-srgb-color-space)])
-       (image->rgba-bytes im #:premultiplied? #t #:color-space destination))]
-    [else (image->rgba-bytes im #:premultiplied? #t)]))
-
 ; image->pict/geometry : symbol? image? integer? integer? real? real? -> pict?
 ;   Creates an independent bitmap pict after enforcing explicit CPU image residency.
 (define (image->pict/geometry who im width height logical-width logical-height)
@@ -63,7 +50,7 @@
   ;; The RGBA byte vector and its ARGB copy coexist only while this call builds
   ;; the independent Racket bitmap.
   (require-cpu-image who im)
-  (bitmap->pict (rgba-premul->bitmap width height (read-image-pixels im))
+  (bitmap->pict (rgba-premul->bitmap width height (image->display-rgba-bytes im))
                 logical-width logical-height))
 
 ; image->pict : image? [#:backing-scale (and/c real? (>/c 0))] -> pict:pict?

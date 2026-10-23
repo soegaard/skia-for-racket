@@ -54,7 +54,7 @@ def png(width, height, pixels, *, channels=4, filter_type=0, compression_tail=b'
 def report(directory):
     return dict(schema=1, stage='0.57', status='passed', validation_run=directory.name,
                 storage='persistent-cpu-raster', native_package='3.119.1', native_version='119.0',
-                pure_cases=60, pure_failures=0, native_cases=31, native_failures=0,
+                pure_cases=60, pure_failures=0, native_cases=35, native_failures=0,
                 compat_pure_cases=36, compat_pure_failures=0, compat_native_cases=34, compat_native_failures=0,
                 compat_oracle="dc-compat-oracle.png", text_sample="dc-text.skia.png",
                 replay_pure_cases=28, replay_pure_failures=0, replay_native_cases=28, replay_native_failures=0,
