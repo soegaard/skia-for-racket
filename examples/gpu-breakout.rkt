@@ -419,7 +419,7 @@ SKSL
        ;; Retire resources that may retain the presenter's GPU context first.
        (for ([r (list offscreen glow fill glow-filter crt-fx bg-fx big-font small-font)] #:when r)
          (skia-close! r))
-       (send canvas close-gpu))
+       (send canvas close))
 
      (define game-canvas%
        (class gpu-canvas%

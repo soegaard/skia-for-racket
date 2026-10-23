@@ -27,6 +27,7 @@ base = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base)
 SOURCES = tuple(dict.fromkeys((*base.SOURCES,
     "render-canvas.rkt", "private/render-canvas-policy.rkt", "private/render-canvas-state.rkt",
+    "private/gpu-selection.rkt", "private/gpu-dxgi-util.rkt",
     "tests/render-canvas-pure-test.rkt", "tests/render-canvas-gui-test.rkt", "examples/render-canvas.rkt",
     "canvas.rkt", "private/canvas-backing.rkt", "tests/gpu-dc-consumer-fixtures.rkt",
     "tests/dc-consumer-fixtures.rkt", "tests/dc-style-fixtures.rkt",

@@ -37,7 +37,7 @@
         (send w show #t) (settle)
         (define p (send w get-gpu-presenter))
         (body w p (gpu-presenter-context p)))
-      (lambda () (send w close-gpu))))
+      (lambda () (send w close))))
   (define (draw p)
     ;; Nil drawable acquisition is an explicit skip; it is not allowed to
     ;; satisfy a live acceptance test. Retry briefly for window-system setup.
@@ -150,18 +150,23 @@
    (test-case "close cancels queued redraws"
      (fixture (lambda (w p context)
        (for ([i (in-range 6)]) (gpu-presenter-request-render! p))
-       (send w close-gpu) (settle)
+       (send w close) (settle)
        (check-eq? (gpu-presenter-state p) 'closed)
        (check-equal? (hash-ref (gpu-presenter-info p) 'presents_requested) 0))))
    (test-case "close during rendering cancels presentation after drawing unwinds"
      (define target #f)
      (fixture (lambda (w p context)
-       (set! target p)
+       (set! target w)
        (check-eq? (gpu-presenter-render! p) 'cancelled)
        (check-eq? (gpu-presenter-state p) 'closed)
+       (check-true (send w closed?))
+       (check-eq? (send w get-close-state) 'closed)
        (check-equal? (hash-ref (gpu-presenter-info p) 'presents_requested) 0)
        (clean p))
-       (lambda (f) (gpu-presenter-close! target))))
+       (lambda (f)
+         (send target close)
+         (check-false (send target closed?))
+         (check-eq? (send target get-close-state) 'closing))))
    (test-case "callback exception retires the target without presenting"
      (fixture (lambda (w p context)
        (check-exn #rx"callback" (lambda () (gpu-presenter-render! p)))
@@ -217,16 +222,19 @@
            (set! image
              (call-with-gpu-context context
                (lambda () (with-skia ([s (make-gpu-surface context 4 4)]) (gpu-surface-snapshot s)))))
-           (check-exn #rx"live GPU children" (lambda () (gpu-presenter-close! p)))
+           (check-exn #rx"live GPU children" (lambda () (send w close)))
            (check-eq? (gpu-presenter-state p) 'closing)
+           (check-false (send w closed?))
+           (check-eq? (send w get-close-state) 'close-failed)
            (skia-close! image) (set! image #f)
-           (gpu-presenter-close! p) (check-eq? (gpu-presenter-state p) 'closed) (clean p))
+           (send w close) (check-eq? (gpu-presenter-state p) 'closed)
+           (check-true (send w closed?)) (clean p))
          (lambda () (when image (skia-close! image)))))))
    (test-case "two windows use distinct contexts and close independently"
      (fixture (lambda (w p context)
        (fixture (lambda (w2 p2 context2)
          (check-false (eq? context context2))
-         (draw p) (draw p2) (send w close-gpu)
+         (draw p) (draw p2) (send w close)
          (check-eq? (gpu-presenter-state p) 'closed)
          (draw p2) (clean p2))))))
    (test-case "a GPU image from another window is rejected"
@@ -261,4 +269,4 @@
            (when (and (zero? callbacks) (positive? n)) (settle) (loop (sub1 n))))
          (check-true (positive? callbacks))
          (define p (send w get-gpu-presenter)) (clean p))
-       (lambda () (send w close-gpu))))))
+       (lambda () (send w close))))))

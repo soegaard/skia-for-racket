@@ -36,9 +36,10 @@ drawing-context methods, see @secref["skia-gui-canvases"] or
 requests its display. Use the presenter interface when you need its rendering
 state or more direct control over redraw requests.
 
-The interfaces differ in automatic backend selection, drawing-context
-lifetime, and cleanup. See @secref["skia-gui-backend-options"] for backend
-choices and @secref["skia-gui-cleanup"] for the close methods. Raw frame
+The interfaces share backend selection and close-method names, but differ in
+drawing-context lifetime and when cleanup can run. See
+@secref["skia-gui-backend-options"] for backend choices and
+@secref["skia-gui-cleanup"] for cleanup states. Raw frame
 canvases use physical pixels; the drawing-context interfaces apply the
 window's logical-to-pixel scaling, as explained in
 @secref["skia-gpu-frame-geometry"].

@@ -117,7 +117,9 @@ class Completion(unittest.TestCase):
             v.validate_suite(good_summary(name, n), name, n)
     def test_partial_or_wrong_completions(self):
         good = good_summary("render-canvas-gui", v.GUI_CASES)
-        for text in ("", good*2, good.replace("0 failures", "1 failures"), good.replace("20", "19"), good+"FAILURE\n", good.splitlines()[0]):
+        for text in ("", good*2, good.replace("0 failures", "1 failures"),
+                     good.replace(f"{v.GUI_CASES} cases", f"{v.GUI_CASES - 1} cases"),
+                     good+"FAILURE\n", good.splitlines()[0]):
             with self.subTest(text=text), self.assertRaises(ValueError): v.validate_suite(text, "render-canvas-gui", v.GUI_CASES)
     def test_headless_only(self):
         code, result, commands = simulate()

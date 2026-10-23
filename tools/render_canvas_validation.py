@@ -12,8 +12,8 @@ import re
 
 import gpu_dc_consumer_validation as pixels
 
-PURE_CASES = 33
-GUI_CASES = 20
+PURE_CASES = 35
+GUI_CASES = 21
 SIZES = ("small", "large")
 CAPTURES = len(pixels.SCENES) * len(pixels.MODES) * len(SIZES)
 

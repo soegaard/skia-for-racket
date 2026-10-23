@@ -44,6 +44,7 @@
                    (when canvas (send canvas refresh)))])
   (set! canvas
     (make-skia-render-canvas panel #:renderer renderer #:backend backend #:adapter adapter
+      #:style '(border)
       #:min-width 320 #:min-height 240
       #:paint-callback
       (lambda (_canvas dc)

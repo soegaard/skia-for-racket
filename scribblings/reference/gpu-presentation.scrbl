@@ -57,6 +57,12 @@ Returns a diagnostic snapshot on the presenter's owner thread. It includes the
 backend, state, target generation, acquired/presented/skipped/cancelled counts, queued
 redraw state, the last frame/error, frame-target cache information, and adapter
 diagnostics. Presentation counts are request counts, not observed screen frames.
+
+The @racket['close_state] field distinguishes cleanup progress from rendering
+state. It is @racket["open"], @racket["closing"], @racket["close-failed"], or
+@racket["closed"], with the meanings described in @secref["skia-gui-cleanup"].
+In particular, a failed cleanup can leave @racket[gpu-presenter-state] at
+@racket['closing] while this field reports @racket["close-failed"].
 }
 
 @section{Rendering and Scheduling}

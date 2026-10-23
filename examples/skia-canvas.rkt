@@ -35,7 +35,7 @@
   (define window%
     (class frame%
       (define/augment (on-close)
-        (when canvas (send canvas close-skia))
+        (when canvas (send canvas close))
         (send this show #f))
       (super-new)))
   (define window
@@ -57,7 +57,7 @@
        [callback (lambda (_button _event) (make-window))])
   (new button% [parent controls] [label "Close"]
        [callback (lambda (_button _event)
-                   (send canvas close-skia)
+                   (send canvas close)
                    (send window show #f))])
   (set! canvas
     (new skia-canvas% [parent panel] [style '(border)]

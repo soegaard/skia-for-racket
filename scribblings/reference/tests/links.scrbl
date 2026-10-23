@@ -3550,6 +3550,7 @@ The following links cover the font and text interfaces.
 @racket[gpu-interop:gpu-external-texture?]
 @racket[gpu-interop:gpu-external-texture-info]
 @racket[gpu-interop:gpu-external-texture-close!]
+@racket[gpu-interop:call-with-gpu-external-texture]
 @racket[gpu-interop:gpu-import-image]
 @racket[gpu-interop:call-with-gpu-external-surface]
 @racket[unsafe-gpu-metal:call-with-gpu-metal-device]

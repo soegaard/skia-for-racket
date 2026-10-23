@@ -25,7 +25,7 @@ Skia/HarfBuzz path. The drawing subset and limitations are the
    (define window%
      (class frame%
        (define/augment (on-close)
-         (when canvas (send canvas close-skia))
+         (when canvas (send canvas close))
          (send this show #f))
        (super-new)))
    (define window
@@ -58,7 +58,7 @@ worker does not make the worker its handler thread.
 |---|---|
 | `paint-callback` | Procedure receiving `(canvas dc)`; default does nothing |
 | `background` | `"white"`; sets the DC background used for ordinary repaint clearing |
-| `smoothing` | `'unsmoothed`; accepts the DC's supported smoothing modes |
+| `smoothing` | `'smoothed`; accepts the DC's supported smoothing modes |
 | `style` | Empty list; supported flags are `'border`, `'control-border`, `'no-focus`, `'deleted`, and `'no-autoclear` |
 | `label`, `enabled` | `#f`, `#t`; ordinary basic canvas initialization |
 | `horiz-margin`, `vert-margin` | `0`, `0`; ordinary canvas layout margins |
@@ -85,9 +85,9 @@ canvas remains an owned live object; deletion from layout is not release.
 | `(send canvas refresh-now paint-proc #:flush? flush?)` | Calls `paint-proc` with the DC instead of the ordinary two-argument callback, then presents |
 | `(send canvas on-paint)` | Runs the ordinary paint path: prepare the backing, invoke the callback, and present |
 | `(send canvas present)` | Presents the current root backing without running the paint callback |
-| `(send canvas close-skia)` | Explicitly releases the canvas's raster resources on its handler thread |
-| `(send canvas close)` | Alias for `close-skia` |
-| `(send canvas closed?)` | Reports whether explicit closure has occurred |
+| `(send canvas close)` | Explicitly releases the canvas's raster resources on its handler thread |
+| `(send canvas closed?)` | True only after rendering-resource cleanup succeeds |
+| `(send canvas get-close-state)` | `'open`, `'closing`, `'close-failed`, or `'closed` |
 | `(send canvas get-skia-info)` | Immutable stage, geometry, paint/presentation count and lifetime diagnostics |
 | `(send canvas set-canvas-background color)` | Sets both the window underlay and Skia automatic-clear background; requires a `color%` object |
 | `(send canvas get-canvas-background)` | Returns a detached copy of the configured canvas background, including its alpha |
@@ -179,13 +179,13 @@ claim. Alpha, row orientation and channel ordering have dedicated transfer tests
 
 ## Close explicitly
 
-Arrange for the owner window's `on-close` to call `close-skia`, as in the example.
+Arrange for the owner window's `on-close` to call `close`, as in the example.
 Hiding or removing a canvas can be temporary and does not imply closure. Closing
 releases backing storage and presentation resources and discards unfinished
 groups; the retained DC can no longer draw. Repeated close is harmless.
 
 Do not close the DC directly while its canvas still owns it. Release the canvas
-through `close-skia` so both rendering and presentation resources retire
+through `close` so both rendering and presentation resources retire
 together. Closing during an active paint or from another thread is rejected.
 
 ## Validation and acceptance

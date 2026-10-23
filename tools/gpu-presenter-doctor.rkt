@@ -75,7 +75,7 @@
                               (equal? (hash-ref ctx 'renderer_class "unclassified")
                                 "hardware-reported")))
              (error 'gpu-presenter-doctor "hardware-reported renderer required")))
-         (lambda () (send probe close-gpu)))
+         (lambda () (send probe close)))
        (set! failures (run-tests (make-gpu-presenter-native-tests backend make-window settle)))
        (unless (zero? failures)
          (error 'gpu-presenter-doctor "presenter native suite failed: ~a" failures))
@@ -123,12 +123,12 @@
                          'after_frame after 'io_events (reverse (unbox ledger))) frames))
                (printf "~a window ~a: ~ax~a pixels, generation ~a; submit/present requested\n"
                        backend i (gpu-frame-width f) (gpu-frame-height f) (gpu-frame-generation f)))
-             (send w close-gpu)
+             (send w close)
              (define closed (gpu-presenter-info p))
              (check-gpu-teardown! (hash-ref (hash-ref closed 'adapter) 'context))
              (set! windows (cons (hasheq 'index i 'initial_context initial 'frames (reverse frames)
                                          'closed_presenter closed) windows))))
-         (lambda () (close-gpu-contexts! hosts (lambda (w) (send w close-gpu)))))))
+         (lambda () (close-gpu-contexts! hosts (lambda (w) (send w close)))))))
     (publish "passed" #f)
     0))
 (module+ main

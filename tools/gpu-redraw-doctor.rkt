@@ -154,7 +154,7 @@
                                   'presenter presenter 'queued_requests 4 'queued_callbacks 1
                                   'queued_io (reverse (unbox queued-io))
                                   'heap_bytes (current-memory-use)) checkpoints)))
-                (send w close-gpu)
+                (send w close)
                 (define closed (gpu-presenter-info p))
                 (check-gpu-teardown! (hash-ref (hash-ref closed 'adapter) 'context))
                 (set! windows
@@ -169,7 +169,7 @@
 
                 (printf "~a: redraw cycle ~a/window ~a, ~a frames; queued redraw and cleanup verified\n"
                         backend (add1 cycle) i (hash-ref config 'frames))))
-            (lambda () (close-gpu-contexts! hosts (lambda (w) (send w close-gpu))))))))
+            (lambda () (close-gpu-contexts! hosts (lambda (w) (send w close))))))))
     (publish "passed" #f) 0))
 (module+ main
   (exit (gpu-redraw-doctor! (read-performance-options "output/redraw-0.45"))))

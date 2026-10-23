@@ -314,7 +314,7 @@ zero-sized clients defer work. Presentation transfers premultiplied pixels
 straight into a reusable toolkit bitmap and blits it, without PNG encoding.
 Skia renders the scene; the GUI toolkit displays the completed bitmap.
 
-Call `close-skia` (or `close`) explicitly on the owning eventspace handler
+Call `close` (or `close`) explicitly on the owning eventspace handler
 thread when the canvas is no longer needed. Hiding a frame does not close its
 canvas. The raster canvas has no GPU selection or silent rendering fallback.
 The next stage is **0.59: a GPU-backed canvas/DC facade with explicit frame
@@ -412,7 +412,7 @@ All required D3D12, DXGI, CPU, EGL and native-ABI gates remain in place.
 This closes the planned Ganesh feature work after validation, not every possible
 GPU API extension. The next direction is `skia-dc%`, followed by `skia-canvas%`.
 Vulkan, Graphite and a native 4.x migration are deferred. The production native
-pin and GUI `auto` behavior are unchanged. See [Metal interop](docs/GPU-METAL-INTEROP.md)
+pin is unchanged. See [Metal interop](docs/GPU-METAL-INTEROP.md)
 and [Ganesh closeout / compatibility roadmap](docs/GANESH-CLOSEOUT.md).
 
 ## Direct3D external textures
@@ -463,7 +463,7 @@ full 540 offscreen / 1,080 presentation stress frames. The presentation timing
 report accounts for real DXGI fence waits instead of applying GL's no-wait
 assumption. No pixel tolerance, workload, or existing required lane is relaxed.
 
-The native pin and GUI `auto` selection are unchanged. External Direct3D/Metal
+The native pin is unchanged. External Direct3D/Metal
 resource import, Vulkan, Graphite, hardware certification and automatic native
 migration are not added. See [backend API and parity validation](docs/GPU-BACKENDS.md).
 Configuration is not acceptance: a new 0.50 host/CI run is still required.
@@ -474,7 +474,8 @@ On Windows x64, `skia/gpu-gui` now accepts `[backend 'direct3d]` with
 `[adapter 'hardware]` (default) or explicit `[adapter 'warp]`, an optional
 hardware `[adapter-index 0]`, and `[sync-interval 1]` (0 or 1). The same
 `gpu-window%`, `gpu-canvas%`, presenter and scoped-frame API is used. `auto`
-selection is unchanged: Metal on macOS, OpenGL elsewhere. No fallback occurs.
+selects Metal on macOS, Direct3D on Windows x64, and OpenGL on Unix, as in the
+other GUI constructors. No fallback occurs.
 
 The presenter owns a two-buffer flip-discard swap chain on Ganesh's exact
 command queue. Per-buffer fences protect reuse; resize/close retire queued
@@ -634,8 +635,9 @@ a separate host gate. Earlier release-specific notes below are historical.
 `skia/gpu-gui` provides `gpu-canvas%` and `gpu-window%`. Both use the same
 `gpu-presenter?` / short-lived `gpu-frame?` API from `skia/gpu`, with ordinary
 canvas drawing, actual pixel/logical geometry, target generations, queued
-redraws and safe close/resize behavior. `auto` selects Metal on macOS and
-OpenGL elsewhere; explicit failures never silently fall back to CPU rendering.
+redraws and safe close/resize behavior. `auto` selects Metal on macOS,
+Direct3D on Windows x64, and OpenGL on Unix; failures never silently fall back
+to CPU rendering.
 
 OpenGL wraps the real host framebuffer and swaps. Metal retains the current
 CAMetalDrawable, wraps its BGRA texture, and requests presentation on the exact

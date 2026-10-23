@@ -94,9 +94,8 @@ application. It does not invent native pointers or create a second Metal device.
       (define token
         (make-metal-external-texture context texture
           #:producer-command-buffer producer))
-      (dynamic-wind void
-        (lambda () (gpu-import-image context token))
-        (lambda () (gpu-external-texture-close! token))))))
+      (call-with-gpu-external-texture token
+        (lambda (texture) (gpu-import-image context texture))))))
 ```
 
 The returned GPU image belongs to `context` and is closed with `skia-close!`,

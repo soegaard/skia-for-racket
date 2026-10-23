@@ -31,11 +31,9 @@ window's logical-to-pixel scaling automatically. Do not apply the raw-frame
 scaling example from @secref["skia-gpu-frame-geometry"] to these drawing
 contexts.
 
-The initial smoothing defaults differ: @racket[skia-canvas%] uses
-@racket['unsmoothed], while @racket[skia-canvas-on-gpu%] and
-@racket[make-skia-render-canvas] use @racket['smoothed]. Pass an explicit
-@racket[smoothing] value when choosing the same setting across interfaces.
-The unified factory passes that setting to either renderer. For automatic
+All GUI drawing-context constructors initially use @racket['smoothed]. Pass
+@racket['unsmoothed] or @racket['aligned] explicitly when needed. The unified
+factory passes the setting to either renderer. For automatic
 GPU backend choices and Direct3D-only options, see
 @secref["skia-gui-backend-options"].
 
@@ -55,7 +53,7 @@ closure belong to the eventspace handler thread.
                  [style (listof symbol?) '()]
                  [paint-callback procedure? void]
                  [background (or/c string? (is-a?/c draw:color%)) "white"]
-                 [smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'unsmoothed]
+                 [smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed]
                  [label (or/c #f string?) #f]
                  [enabled boolean? #t]
                  [vert-margin exact-nonnegative-integer? 0]
@@ -109,13 +107,13 @@ Returns lifetime, geometry, and paint/presentation diagnostics.
 Returns whether the Skia rendering resources have been closed.
 }
 
-@defmethod[(close-skia) void?]{
+@defmethod[(close) void?]{
 Closes the owned rendering and presentation resources. The method is rejected
 during an active paint or presentation operation and is otherwise idempotent.
 }
 
-@defmethod[(close) void?]{
-Closes the same resources as @method[skia-canvas% close-skia].
+@defmethod[(get-close-state) (or/c 'open 'closing 'close-failed 'closed)]{
+Returns the cleanup state described in @secref["skia-gui-cleanup"].
 }
 }
 
@@ -135,6 +133,7 @@ retaining it does not extend its lifetime.
 
 @defconstructor[([parent (is-a?/c area-container<%>)]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
+                 [style (listof symbol?) '()]
                  [adapter (or/c #f 'hardware 'warp) #f]
                  [adapter-index (or/c #f (integer-in 0 4294967294)) #f]
                  [sync-interval (or/c #f (integer-in 0 1)) #f]
@@ -149,8 +148,10 @@ Creates a GPU drawing-context canvas. The paint callback receives the canvas and
 a fresh frame-scoped drawing context.
 
 The backend and Direct3D-only options follow
-@secref["skia-gui-backend-options"]. This constructor does not accept the
-@racket[style] argument supported by @racket[skia-canvas%].
+@secref["skia-gui-backend-options"]. The @racket[style] argument accepts
+@racket['border], @racket['control-border], @racket['no-focus], and
+@racket['deleted], as in @racket[gpu-canvas%]. It does not accept the raster
+canvas's @racket['no-autoclear] flag.
 }
 
 @defmethod[#:mode override (get-dc) object?]{
@@ -176,20 +177,18 @@ Raises an unsupported-operation exception instead of redisplaying cached GPU
 pixels. Request a frame with @method[skia-canvas-on-gpu% refresh] instead.
 }
 
-@defmethod[(close-skia) void?]{
+@defmethod[(close) void?]{
 Closes the GPU canvas using @racket[gpu-presenter-close!], with the same
 owning-thread, deferred-cleanup, and cleanup-retry rules.
 }
 
-@defmethod[(close) void?]{
-Closes the same resources as @method[skia-canvas-on-gpu% close-skia].
+@defmethod[(closed?) boolean?]{
+Returns whether rendering-resource cleanup has completed successfully.
 }
 
-@defmethod[(skia-closed?) boolean?]{
-Returns whether closure of the widget has been requested. The flag becomes
-true before presenter cleanup completes and can remain true after a cleanup
-exception. It is not evidence that all native resources have been released;
-see @secref["skia-gui-cleanup"].
+@defmethod[(get-close-state) (or/c 'open 'closing 'close-failed 'closed)]{
+Returns the cleanup state, including deferred cleanup outcomes, as described
+in @secref["skia-gui-cleanup"].
 }
 
 @defmethod[(get-skia-info) (and/c hash? immutable?)]{
@@ -210,6 +209,7 @@ Returns whether @racket[v] is an instance of @racket[skia-canvas-on-gpu%].
 Provides a convenience frame around one @racket[skia-canvas-on-gpu%].
 
 @defconstructor[([label string? "Skia GPU DC"]
+                 [canvas-style (listof symbol?) '()]
                  [width exact-nonnegative-integer? 640]
                  [height exact-nonnegative-integer? 480]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
@@ -223,6 +223,7 @@ Provides a convenience frame around one @racket[skia-canvas-on-gpu%].
                  [automatic? boolean? #t])]{
 Creates a GPU drawing-context window using the same backend, smoothing, and
 callback rules as @racket[skia-canvas-on-gpu%].
+The @racket[canvas-style] argument supplies its child canvas's style flags.
 }
 
 @defmethod[(get-skia-canvas) (is-a?/c skia-canvas-on-gpu%)]{
@@ -233,45 +234,52 @@ Returns the child canvas.
 Returns the child's presenter.
 }
 
-@defmethod[(close-skia) void?]{
+@defmethod[(close) void?]{
 Closes the GPU canvas before hiding the window. Window-manager close uses the
 same path.
+}
+
+@defmethod[(closed?) boolean?]{
+Returns the child canvas's @method[skia-canvas-on-gpu% closed?] result.
+}
+
+@defmethod[(get-close-state) (or/c 'open 'closing 'close-failed 'closed)]{
+Returns the child canvas's cleanup state.
 }
 }
 
 @section[#:tag "skia-gui-cleanup"]{Closing GUI Rendering Resources}
 
-Close a widget's rendering resources on its eventspace handler thread using
-the method for that interface:
+All canvas and convenience-window interfaces provide @tt{close},
+@tt{closed?}, and @tt{get-close-state}. Call them on the widget's eventspace
+handler thread. A window's @tt{close} also hides the window, and its state
+queries report the child canvas's state. Hiding a window alone does not close
+its rendering resources. Stop application-owned animation timers when closing
+the widget.
 
-@tabular[#:sep @hspace[2]
- (list
-  (list @bold{Interface} @bold{Close method} @bold{State query})
-  (list @racket[gpu-canvas%] @method[gpu-canvas% close-gpu]
-        @elem{@racket[gpu-presenter-state] on its presenter})
-  (list @racket[skia-canvas%] @method[skia-canvas% close-skia]
-        @method[skia-canvas% closed?])
-  (list @racket[skia-canvas-on-gpu%] @method[skia-canvas-on-gpu% close-skia]
-        @method[skia-canvas-on-gpu% skia-closed?])
-  (list @racket[skia-render-canvas<%>] @method[skia-render-canvas<%> close-skia]
-        @method[skia-render-canvas<%> closed?]))]
+The cleanup states are:
 
-The drawing-context canvases also provide @tt{close} as an alias for
-@tt{close-skia}. Convenience windows use @method[gpu-window% close-gpu],
-@method[skia-window-on-gpu% close-skia], or
-@method[skia-render-window% close-render], respectively, to close their child
-canvas and hide the window. Hiding a window alone does not close its rendering
-resources. Stop application-owned animation timers when closing the widget.
+@itemlist[
+ @item{@racket['open]: closure has not begun. This is not a GPU-health check.}
+ @item{@racket['closing]: further rendering has stopped, but cleanup is
+       still in progress or deferred until an active frame ends.}
+ @item{@racket['close-failed]: a cleanup attempt raised an exception.
+       Rendering remains stopped; address the cause and retry @tt{close}.}
+ @item{@racket['closed]: cleanup completed successfully. Further
+       @tt{close} calls are harmless.}]
+
+The @tt{closed?} method returns true only for @racket['closed]. The state
+query does not activate a GPU context, initialize a presenter, or retry cleanup.
 
 For a GPU widget, stopping further rendering and finishing native cleanup are
 separate steps. A close during a raw GPU frame can defer cleanup until the
 frame ends; open application-owned GPU resources can make cleanup fail.
 Close those resources according to their context's rules, then retry the
-widget's close method. The GPU drawing-context widget's closed flag, also
-used by the unified GPU canvas, can already be true in this situation.
-Use @racket[gpu-presenter-state] to inspect presenter closure; the unified
-interface's @method[skia-render-canvas<%> get-render-info] additionally reports
-the outcome of its close attempt in @racket['close_status].
+widget's @tt{close} method. The @tt{get-close-state} result reflects both
+immediate and deferred cleanup outcomes; @tt{closed?} remains false until
+cleanup succeeds. The unified interface's
+@method[skia-render-canvas<%> get-render-info] reports the same cleanup state
+in @racket['close_status].
 
 The raster and unified interfaces reject closure during their paint
 callbacks. The raw GPU and GPU drawing-context interfaces instead use the

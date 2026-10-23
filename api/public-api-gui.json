@@ -93,6 +93,7 @@
             "paint-callback",
             "renderer",
             "smoothing",
+            "style",
             "sync-interval"
           ],
           "arity_mask": "2",

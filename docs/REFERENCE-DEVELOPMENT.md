@@ -29,11 +29,16 @@ the calling forms change.
 
 Baseline: `4dbbdcc3ab46d896ddd5f2c1de535ea2bab01cb1`
 (`Clarify Pict bridge introduction`). R4g adds an opt-in
-`skia/racket-draw` reference chapter. The Reference now has 1273 definitions,
-1998 documented export paths, and 84 conceptual chapters. The headless
+`skia/racket-draw` reference chapter. The Reference now has 1274 definitions,
+1999 documented export paths, and 84 conceptual chapters. The headless
 inventory records seven bridge exports, including the two unchanged
 `skia/bitmap` bindings re-exported from the bridge. No export paths are
 deferred.
+
+The later GUI/interop API revision adds `call-with-gpu-external-texture` and
+the unified canvas factory's `#:style` option. The checked-in API inventories
+and coverage pins were updated from source for those changes; this does not
+constitute a new runtime capture or rendered Reference validation.
 
 The chapter describes eager detached bitmap, color, and path conversions.
 Bitmap import documents explicit physical/logical density behavior, loaded-mask

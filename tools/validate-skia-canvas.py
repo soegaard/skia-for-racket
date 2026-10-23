@@ -23,8 +23,9 @@ import dc_validation as common
 ROOT = Path(__file__).resolve().parents[1]
 PURE_CASES = 38
 NATIVE_CASES = 14
-GUI_CASES = 15
+GUI_CASES = 16
 SOURCE_PATHS = tuple(dict.fromkeys((*common.SOURCE_PATHS,
+    'private/render-canvas-policy.rkt', 'private/gpu-selection.rkt', 'private/gpu-dxgi-util.rkt',
     'canvas.rkt', 'private/canvas-backing.rkt', 'private/harfbuzz-native.rkt', 'tests/canvas-dc-pure-test.rkt',
     'tests/canvas-dc-native-test.rkt', 'tests/canvas-gui-test.rkt', 'tests/canvas-text-load-order.rkt',
     'tools/validate-skia-canvas.py', 'tools/test-validate-skia-canvas.py',

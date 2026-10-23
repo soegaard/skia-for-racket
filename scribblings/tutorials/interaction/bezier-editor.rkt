@@ -135,7 +135,7 @@
   (define (close-editor)
     (unless closed?
       (when (and view (eq? renderer 'gpu))
-        (send view close-gpu))
+        (send view close))
       (set! closed? #t)
       (send window show #f)))
 

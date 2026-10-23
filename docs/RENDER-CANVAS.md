@@ -30,11 +30,12 @@ For an application-owned parent:
 
 ```racket
 (make-skia-render-canvas parent
+  #:style '(border)                ; portable canvas flags
   #:renderer 'auto                 ; 'auto, 'raster, 'gpu
   #:backend 'auto                  ; 'auto, 'opengl, 'metal, 'direct3d
   #:adapter #f                     ; #f, 'hardware, 'warp; Direct3D only
-  #:adapter-index #f               ; Direct3D hardware index, default 0
-  #:sync-interval #f               ; Direct3D 0..4, default 1
+  #:adapter-index #f               ; Direct3D index 0..4294967294, default 0
+  #:sync-interval #f               ; Direct3D 0 or 1, default 1
   #:paint-callback (lambda (canvas dc) ...)
   #:on-error raise
   #:background "white"
@@ -47,6 +48,11 @@ panel containing an inaccessible canvas. `skia-render-canvas?` recognizes this
 protocol. Focus, parentage, widget layout, and GUI events remain those of the
 underlying canvas. Construction and rendering operations belong to the owning
 eventspace's handler thread; use `queue-callback` from other threads.
+
+`#:style` accepts `border`, `control-border`, `no-focus`, and `deleted`.
+The raster renderer also accepts `no-autoclear`; GPU rendering rejects it
+because frame pixels do not persist. The window helper passes its
+`canvas-style` argument to the contained canvas.
 
 A **factory** selects the concrete superclass before constructing the widget.
 There is deliberately no new `skia-render-canvas%` with a misleading fixed
@@ -101,8 +107,9 @@ backend-unavailability evidence or as permission to retry the callback on raster
 | `set-paint-callback proc` | Replace the ordinary two-argument callback while idle. Does not implicitly draw or request a frame. |
 | `get-raster-dc` | Explicitly acquire the persistent raster DC. Rejects for GPU without readback or fallback. |
 | `present` | Raster-only presentation of cached pixels. GPU callers must request a frame instead. |
-| `close`, `close-skia` | Close through the existing implementation. Reject inside a paint callback on both renderers. Cleanup is retryable if the backend reports retained resources. |
-| `closed?` | The underlying widget's closed state; a failed GPU cleanup may already have disabled future drawing. |
+| `close` | Close through the selected implementation. Reject inside a paint callback on both renderers. Cleanup is retryable if application-owned GPU resources prevent closure. |
+| `closed?` | True only after rendering-resource cleanup succeeds. |
+| `get-close-state` | `'open`, `'closing`, `'close-failed`, or `'closed`, including deferred cleanup outcomes. |
 
 Callbacks may return zero, one, or multiple values; their values are ignored.
 Callback arguments must accept the documented positional arity without mandatory
@@ -148,11 +155,12 @@ This does not change `canvas.rkt` or the toolkit's buffering implementation.
 ## Window helper
 
 `skia-render-window%` extends `frame%`. Its init arguments are `label`, `width`,
-`height`, `renderer`, `backend`, `adapter`, `adapter-index`, `sync-interval`,
+`height`, `canvas-style`, `renderer`, `backend`, `adapter`, `adapter-index`, `sync-interval`,
 `paint-callback`, `on-error`, `background`, and `smoothing`, with the same defaults
 as the factory (640 by 480 for window size). `get-render-canvas` returns the
-factory-created canvas. `close-render` closes it and hides the frame, and is also
+factory-created canvas. `close` closes it and hides the frame, and is also
 used by `on-close`. A rejected close during painting does not hide the window.
+`closed?` and `get-close-state` report the contained canvas's cleanup state.
 
 ## Validation
 
@@ -173,7 +181,7 @@ python3 tools/validate-render-canvas.py --racket "$RACKET" --require-gpu
 "$RACKET" examples/render-canvas.rkt --renderer gpu
 ```
 
-The full validator requires 33 headless policy/state cases and 20 real-window
+The full validator requires 35 headless policy/state cases and 21 real-window
 cases per selected construction mode: raster, GPU, and auto. Each mode retains
 24 backing-pixel captures: four existing 0.60 workloads, three direct/replay
 modes, and two window sizes. Normal frames and explicit inspection frames have

@@ -11,7 +11,7 @@
 ;; and backend factories live in explicitly unsafe modules, never this API.
 (require racket/future "gpu-backends.rkt")
 (provide gpu-external-texture? gpu-external-texture-info gpu-external-texture-close!
-         gpu-import-image call-with-gpu-external-surface)
+         call-with-gpu-external-texture gpu-import-image call-with-gpu-external-surface)
 
 ;;;
 ;;; Single-Use Texture Tokens
@@ -73,6 +73,24 @@
     (set-external-texture-state! t 'retired)
     ((external-texture-retire t)))
   (void))
+
+; call-with-gpu-external-texture : gpu-external-texture? (-> gpu-external-texture? any) -> any
+;   Calls proc with a token and retires it on every exit without activating its context.
+(define (call-with-gpu-external-texture texture proc)
+  (owner! 'call-with-gpu-external-texture texture)
+  (procedure! 'call-with-gpu-external-texture proc 1)
+  (when (eq? (external-texture-state texture) 'active)
+    (error 'call-with-gpu-external-texture "external texture is in use"))
+  (define entered? #f)
+  (call-with-continuation-barrier
+   (lambda ()
+     (dynamic-wind
+      (lambda ()
+        (when entered?
+          (error 'call-with-gpu-external-texture "external texture scope has expired"))
+        (set! entered? #t))
+      (lambda () (proc texture))
+      (lambda () (gpu-external-texture-close! texture))))))
 
 ;;;
 ;;; Checked External Texture Operations

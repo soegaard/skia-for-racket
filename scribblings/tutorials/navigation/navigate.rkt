@@ -163,7 +163,7 @@
   (define (close-window)
     (unless closed?
       (end-drag!)
-      (when (and widget (eq? renderer 'gpu)) (send widget close-gpu))
+      (when (and widget (eq? renderer 'gpu)) (send widget close))
       (set! closed? #t)
       (send window show #f)))
 

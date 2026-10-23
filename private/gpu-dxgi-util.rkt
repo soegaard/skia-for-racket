@@ -12,11 +12,11 @@
          dxgi-fence-completed! dxgi-next-fence dxgi-buffer-index!
          call-with-dxgi-retirement)
 
-; dxgi-sync-interval! : exact-integer? -> exact-integer?
+; dxgi-sync-interval! : exact-integer? [#:who symbol?] -> exact-integer?
 ;   Restricts presentation synchronization to the reviewed immediate or one-refresh modes.
-(define (dxgi-sync-interval! n)
+(define (dxgi-sync-interval! n #:who [who 'gpu-canvas%])
   (unless (and (exact-integer? n) (<= 0 n 1))
-    (raise-argument-error 'gpu-canvas% "sync interval 0 or 1" n)) n)
+    (raise-argument-error who "sync interval 0 or 1" n)) n)
 
 ; dxgi-extent! : any/c any/c -> void?
 ;   Checks positive swap-chain pixel dimensions within the reviewed 16384-pixel limit.

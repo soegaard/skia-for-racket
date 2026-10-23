@@ -9,14 +9,14 @@ GPU drawing with a detached CPU image result. See the
 Import `skia/canvas` explicitly for `skia-canvas%` and `skia-canvas?`. Construct
 on the parent eventspace handler thread with `[parent ...]` and optionally
 `[paint-callback (lambda (canvas dc) ...)]`, `[background "white"]`,
-`[smoothing 'unsmoothed]`, supported style flags and ordinary basic layout
+`[smoothing 'smoothed]`, supported style flags and ordinary basic layout
 arguments. This is the GUI entry point; `skia/dc` remains GUI-free.
 
 `get-dc` returns the same persistent CPU Skia DC across paint and resize.
 `refresh` requests a coalesced repaint; `refresh-now` paints synchronously,
 optionally using a one-argument DC callback and `#:flush?` flag. `present`
 displays the current root backing without invoking the callback. Close with
-`close-skia` (or `close`) on the handler thread. `closed?` and `get-skia-info`
+`close` (or `close`) on the handler thread. `closed?` and `get-skia-info`
 report lifetime and geometry/counter diagnostics. `set-canvas-background`
 updates the toolkit underlay and Skia clear background.
 
@@ -112,8 +112,9 @@ state/diagnostic queries. A live `gpu-frame?` supplies `gpu-frame-canvas`,
 `gpu-frame-generation` and `gpu-frame-index`. Canvas/context access expires
 at callback exit; immutable geometry remains inspectable.
 
-Both GUI backends reuse ordinary drawing. `auto` selects Metal on macOS and
-OpenGL elsewhere without a failure fallback. Normal frames submit then request
+The GUI backends reuse ordinary drawing. `auto` selects Metal on macOS,
+Direct3D on Windows x64, and OpenGL on Unix without a failure fallback.
+Normal frames submit then request
 presentation with no explicit CPU readback/wait. A submission result is not a
 screen-pixel verification. See [the complete presentation contract](GPU-PRESENTATION.md)
 for widget constructors, scheduling, exceptional cleanup and owner-thread rules.

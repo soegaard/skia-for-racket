@@ -6,7 +6,8 @@ additional `adapter`, `adapter-index`, and `sync-interval` initialization
 arguments, buffer-reuse fence waits, occlusion, state transitions and required
 WARP tests, see [GPU-DXGI.md](GPU-DXGI.md). The historical no-CPU-wait statements
 below describe GL/Metal; D3D12 may wait for a reused buffer's prior fence, but
-normal frames perform no CPU pixel readback. `auto` selection is unchanged.
+normal frames perform no CPU pixel readback. All GUI constructors now share
+the automatic backend policy described below.
 
 Import `skia/gpu` for presenter/frame operations and `skia/gpu-gui` for the
 Racket GUI widgets. Import `skia` for ordinary drawing. The drawing callback
@@ -45,9 +46,10 @@ the explicit presentation validator exercises it on a GUI-capable host.
    (send window show #t)))
 ```
 
-`'auto` chooses Metal on macOS and OpenGL elsewhere. It is a selection policy,
+`'auto` chooses Metal on macOS, Direct3D on Windows x64, and OpenGL on Unix,
+using the same policy as the other GUI constructors. It is a selection policy,
 not a fallback policy: failed Metal construction does not silently become
-OpenGL or CPU drawing. An explicit backend is either `'opengl` or `'metal`.
+OpenGL or CPU drawing. An explicit backend is `'opengl`, `'metal`, or `'direct3d`.
 Metal window presentation requires 64-bit macOS. The selected backend stays
 fixed for the lifetime of the widget. To compare backends, create two widgets
 using the same callback. GPU resources remain bound to their own contexts;
@@ -66,6 +68,7 @@ A subclass of `canvas%` that can be embedded in an ordinary Racket parent.
 ```racket
 (new gpu-canvas%
      [parent parent]
+     [style '(border)]
      [backend 'auto]
      [render void]
      [on-error raise]
@@ -82,6 +85,13 @@ error handler re-raises instead of silently accepting an unavailable backend.
 The background is cleared before every drawing callback. No implicit image
 readback or CPU-rendered image panel is inserted.
 
+`style` accepts `border`, `control-border`, `no-focus`, and `deleted`.
+Backend-specific flags are supplied internally. GPU canvases reject
+`no-autoclear`: their frame pixels do not persist between callbacks.
+Adapter indices range from 0 through 4294967294; WARP requires index 0.
+The Direct3D synchronization interval is 0 or 1. Other explicit intervals
+are rejected before a native widget or convenience window is created.
+
 Create and use widgets on the creating eventspace's handler thread. A worker
 must enqueue GUI work using `queue-callback` with the appropriate
 `current-eventspace`; it must not call presenter/render methods directly.
@@ -96,7 +106,9 @@ The widget's public methods are:
 | `(send canvas get-gpu-backend)` | Returns the selected backend symbol. |
 | `(send canvas request-gpu-render)` | Coalesces a queued redraw; a closed widget ignores it. An initialization failure is not retried continuously. |
 | `(send canvas render-gpu-now)` | Calls `gpu-presenter-render!`; not legal inside another active GPU scope. |
-| `(send canvas close-gpu)` | Stops automatic scheduling and requests safe closure. Retry after retiring application GPU resources if they prevented context closure. |
+| `(send canvas close)` | Stops automatic scheduling and requests safe closure. Retry after retiring application GPU resources if they prevented context closure. |
+| `(send canvas closed?)` | True only after rendering-resource cleanup succeeds. |
+| `(send canvas get-close-state)` | `'open`, `'closing`, `'close-failed`, or `'closed`; includes deferred cleanup outcomes. |
 | `(send canvas check-gpu-geometry)` | Checks geometry/visibility and requests redraw when needed. Normally called by the automatic monitor. |
 
 With `automatic? #t`, exposure, resize, ancestor show/activation and a weak
@@ -117,14 +129,16 @@ A convenience `frame%` containing one `gpu-canvas%`:
 
 ```racket
 (new gpu-window% [label "Skia GPU"] [width 640] [height 480]
+     [canvas-style '(border)]
      [backend 'auto] [render void] [on-error raise]
      [background 'white] [automatic? #t])
 ```
 
-It supplies `get-gpu-canvas`, `get-gpu-presenter`, `request-gpu-render`, and
-`close-gpu`. Ordinary `show`, `resize`, `move`, and `iconize` remain GUI methods.
+It supplies `get-gpu-canvas`, `get-gpu-presenter`, `request-gpu-render`,
+`close`, `closed?`, and `get-close-state`. The close-state queries describe
+the contained canvas. Ordinary `show`, `resize`, `move`, and `iconize` remain GUI methods.
 Closing from the window manager requests GPU closure and hides the frame.
-`close-gpu` hides the frame even when application-owned GPU resources block
+`close` hides the frame even when application-owned GPU resources block
 final context destruction; retain the presenter or window to retry cleanup.
 Closing one window does not close another window's context.
 

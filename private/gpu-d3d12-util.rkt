@@ -7,7 +7,8 @@
 ;; Defines injectable platform and context operations and validates device requests.
 ;; Separates Direct3D driver policy from its native system calls.
 
-(require "gpu-provider.rkt" (submod "gpu-provider.rkt" host-internals) "gpu-domain.rkt")
+(require "gpu-provider.rkt" (submod "gpu-provider.rkt" host-internals) "gpu-domain.rkt"
+         "gpu-selection.rkt")
 (provide (struct-out d3d12-platform-ops) (struct-out d3d12-context-ops)
          d3d12-selection! make-d3d12-components)
 
@@ -29,17 +30,6 @@
 ;;   create, release, abandon, abandoned?, wait, and describe: procedures for the native Ganesh
 ;;   context. Operations run under the owning provider; abandon follows the backend's lost-device
 ;;   rules.
-
-; d3d12-selection! : any/c exact-nonnegative-integer? -> void?
-;   Validates adapter-selection mode and index before enumerating hardware or WARP adapters.
-(define (d3d12-selection! adapter index)
-  (unless (memq adapter '(hardware warp))
-    (raise-argument-error 'make-gpu-context "'hardware or 'warp" adapter))
-  (unless (and (exact-nonnegative-integer? index) (< index #xffffffff))
-    (raise-argument-error 'make-gpu-context "adapter index in [0, 4294967294]" index))
-  (when (and (eq? adapter 'warp) (not (zero? index)))
-    (raise-arguments-error 'make-gpu-context "WARP has no selectable adapter index" "index" index))
-  (void))
 
 ;;;
 ;;; Owned Device and Context Construction

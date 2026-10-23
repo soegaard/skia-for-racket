@@ -47,6 +47,78 @@
 ;   loading.
 (define gpu-interop-pure-tests
   (test-suite "External resource handoff contracts; no Windows/native loading"
+    (test-case "token scope returns multiple values and retires an unused token"
+      (define retired 0)
+      (define t (fixture #:retire (lambda () (set! retired (add1 retired)))))
+      (check-equal?
+       (call-with-values
+        (lambda () (call-with-gpu-external-texture t
+                     (lambda (token) (check-eq? token t) (values 1 2)))) list)
+       '(1 2))
+      (check-equal? retired 1)
+      (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "retired"))
+    (test-case "token scope closes after import without changing the returned image"
+      (define t (fixture))
+      (check-eq? (call-with-gpu-external-texture t (lambda (token) (gpu-import-image ctx token)))
+                 'image)
+      (check-exn #rx"retired" (lambda () (gpu-import-image ctx t))))
+    (test-case "token scope preserves zero values and permits idempotent manual closure"
+      (define retired 0)
+      (define t (fixture #:retire (lambda () (set! retired (add1 retired)))))
+      (check-equal?
+       (call-with-values
+        (lambda () (call-with-gpu-external-texture t
+                     (lambda (token) (gpu-external-texture-close! token) (values)))) list)
+       '())
+      (check-equal? retired 1))
+    (test-case "token scope closes after exceptions and continuation escape"
+      (for ([body (list (lambda (_) (error 'test "callback failed"))
+                       (lambda (_) (raise 'failure)))])
+        (define t (fixture))
+        (with-handlers ([(lambda (_) #t) void]) (call-with-gpu-external-texture t body))
+        (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "retired"))
+      (define t (fixture))
+      (check-eq? (let/ec escape
+                   (call-with-gpu-external-texture t (lambda (_) (escape 'escaped))))
+                 'escaped)
+      (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "retired"))
+    (test-case "token scope does not retry uncertain retirement"
+      (define retired 0)
+      (define t (fixture #:retire (lambda () (set! retired (add1 retired))
+                                    (error 'test "retirement failed"))))
+      (check-exn #rx"retirement failed"
+       (lambda () (call-with-gpu-external-texture t (lambda (_) (error 'test "body failed")))))
+      (gpu-external-texture-close! t)
+      (check-equal? retired 1))
+    (test-case "token scope rejects invalid callbacks before taking cleanup responsibility"
+      (define t (fixture))
+      (for ([proc (list #f (lambda () (void)) (lambda (t #:required key) key))])
+        (check-exn exn:fail? (lambda () (call-with-gpu-external-texture t proc))))
+      (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "ready")
+      (gpu-external-texture-close! t))
+    (test-case "token scope does not close an active handoff"
+      (define t (fixture))
+      (call-with-gpu-external-surface ctx t
+        (lambda (_) (check-exn #rx"in use"
+                     (lambda () (call-with-gpu-external-texture t void)))))
+      (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "consumed")
+      (call-with-gpu-external-texture t void))
+    (test-case "token scope rejects another owner before callback or cleanup"
+      (define t (fixture))
+      (define channel (make-channel))
+      (thread (lambda ()
+                (channel-put channel
+                  (with-handlers ([exn:fail? values])
+                    (call-with-gpu-external-texture t (lambda (_) 'unexpected))))))
+      (check-true (exn:fail? (channel-get channel)))
+      (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "ready")
+      (gpu-external-texture-close! t))
+    (test-case "saved continuations cannot reenter a retired token scope"
+      (define resume #f)
+      (define t (fixture))
+      (call-with-gpu-external-texture t
+        (lambda (_) (call/cc (lambda (k) (set! resume k) (void)))))
+      (check-exn exn:fail:contract:continuation? (lambda () (resume (void)))))
     (test-case "all named states have the reviewed native values"
       (check-equal?
         (map interop-state

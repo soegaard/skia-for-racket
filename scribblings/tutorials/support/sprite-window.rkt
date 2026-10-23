@@ -107,7 +107,7 @@
       (unless closed?
         (when ticker (send ticker stop))
         (close-sprite-texture! texture)
-        (when (and view (eq? renderer 'gpu)) (send view close-gpu))
+        (when (and view (eq? renderer 'gpu)) (send view close))
         (set! closed? #t)
         (send window show #f)))
     (define (render-error error)
@@ -217,7 +217,7 @@
     ;; If construction fails after the atlas was made, retire it on this thread.
     (with-handlers ([exn:fail? (lambda (error)
                                (close-sprite-texture! texture)
-                               (when (and view (eq? renderer 'gpu)) (send view close-gpu))
+                               (when (and view (eq? renderer 'gpu)) (send view close))
                                (when window (send window show #f))
                                (raise error))])
       (set! window (new window% [label title]

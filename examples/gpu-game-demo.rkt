@@ -254,7 +254,7 @@ SKSL
        ;; the presenter refuses to close a context with live children.
        (for ([r (list sheet-gpu sheet-cpu static-layer plasma hud-paint font)] #:when r)
          (skia-close! r))
-       (send canvas close-gpu))
+       (send canvas close))
 
      (define window
        (new (class frame%

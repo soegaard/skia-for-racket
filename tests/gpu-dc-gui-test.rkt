@@ -126,7 +126,7 @@
   (dynamic-wind void
     (lambda () (await-paint w) (proc w) (on-handler void) (check-errors w))
     (lambda ()
-      (on-handler (lambda () (send (window-canvas w) close-skia) (send (window-frame w) show #f))))))
+      (on-handler (lambda () (send (window-canvas w) close) (send (window-frame w) show #f))))))
 
 ; fill : dc<%> ... -> void?
 ;   Draws a solid test rectangle with a transparent pen, keeping stroke coverage out of pixel
@@ -223,8 +223,9 @@
          (define c (window-canvas w))
          (check-exn exn:fail? (lambda () (send c present)))
          (check-exn exn:fail? (lambda () (send c refresh-now #f #:flush? #f)))
-         (send c close-skia) (send c close-skia)
-         (check-true (send c skia-closed?))
+         (send c close) (send c close)
+         (check-true (send c closed?))
+         (check-eq? (send c get-close-state) 'closed)
          (check-exn exn:fail? (lambda () (send c refresh-now))))))))))
 
 ; gpu-dc-gui-test-count : exact-nonnegative-integer?

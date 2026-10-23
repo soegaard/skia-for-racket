@@ -29,6 +29,7 @@ video/YUV, protected resources, UAV, simultaneous access, HDR or MSAA are added.
 (gpu-external-texture? value)
 (gpu-external-texture-info handoff)
 (gpu-external-texture-close! handoff)
+(call-with-gpu-external-texture handoff proc) ; retires the token on every exit
 
 ;; In an active call-with-gpu-context for this exact context:
 (gpu-import-image context handoff) ; a new, ordinary GPU image

@@ -11,7 +11,7 @@ Xvfb display created for that subprocess. Existing CPU and EGL profiles retain
 their display-free environment and do not start Xvfb.
 
 The canvas validator requires 38 pure lifecycle cases, 14 native backing/bitmap
-transfer cases and 15 actual GUI/eventspace cases. Fresh subprocesses also
+transfer cases and 16 actual GUI/eventspace cases. Fresh subprocesses also
 verify GTK-first and Skia-first loading, with both Skia and ordinary Racket
 text rendering required in each process. The headless suites also run
 through `run-tests.rkt`; the pure suite runs before native installation. The

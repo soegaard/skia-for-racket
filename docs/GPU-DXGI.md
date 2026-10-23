@@ -47,8 +47,8 @@ not a runtime dependency of the library.
 
 The omitted values are represented by `#f` before Direct3D defaults are
 applied. Supplying these options for a different backend is an argument error.
-`auto` is deliberately **unchanged**: Metal on macOS, OpenGL elsewhere,
-including Windows. WARP is never selected automatically after a hardware
+`auto` selects Metal on macOS, Direct3D on Windows x64, and OpenGL on Unix,
+consistently across GUI constructors. WARP is never selected automatically after a hardware
 failure. `hardware` reports a hardware adapter according to DXGI flags, not
 an independent hardware/performance certification.
 

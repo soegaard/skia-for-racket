@@ -564,6 +564,7 @@ Experimental optional execution/integration API; existing backend, owner-thread 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
 | call-with-gpu-external-surface | experimental | 0 | procedure | 3 | none | none |
+| call-with-gpu-external-texture | experimental | 0 | procedure | 2 | none | none |
 | gpu-external-texture-close! | experimental | 0 | procedure | 1 | none | none |
 | gpu-external-texture-info | experimental | 0 | procedure | 1 | none | none |
 | gpu-external-texture? | experimental | 0 | procedure | 1 | none | none |
@@ -2443,7 +2444,7 @@ Experimental GUI integration: owner/eventspace and callback-scoped lifetimes rem
 
 | Export | Stability | Phase / space | Kind | Positional arguments | Required keywords | Accepted keywords |
 |---|---|---|---|---|---|---|
-| make-skia-render-canvas | experimental | 0 | procedure | 1 | none | #:adapter, #:adapter-index, #:backend, #:background, #:min-height, #:min-width, #:on-error, #:paint-callback, #:renderer, #:smoothing, #:sync-interval |
+| make-skia-render-canvas | experimental | 0 | procedure | 1 | none | #:adapter, #:adapter-index, #:backend, #:background, #:min-height, #:min-width, #:on-error, #:paint-callback, #:renderer, #:smoothing, #:style, #:sync-interval |
 | skia-render-canvas<%> | experimental | 0 | interface | — | — | — |
 | skia-render-canvas? | experimental | 0 | procedure | 1 | none | none |
 | skia-render-window% | experimental | 0 | class | — | — | — |

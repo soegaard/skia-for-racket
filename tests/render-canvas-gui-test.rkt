@@ -14,7 +14,7 @@
 ;; Required selected GUI test. No unavailable-backend skip or CPU GPU fallback.
 (require rackunit racket/class racket/list racket/cmdline racket/file json
          (prefix-in gui: racket/gui/base) (prefix-in rd: racket/draw)
-         "../render-canvas.rkt" "../gpu-dc.rkt"
+         "../render-canvas.rkt" "../gpu-dc.rkt" "../gpu-gui.rkt" "../gpu-canvas.rkt"
          "../private/render-canvas-policy.rkt" "../private/gpu-io-trace.rkt"
          "gpu-dc-consumer-fixtures.rkt")
 (provide render-canvas-gui-tests render-canvas-gui-test-count)
@@ -213,6 +213,7 @@
        (for ([dc (in-list (unbox (window-seen w)))]) (check-after dc)))))
        #:paint (lambda (c dc)
          (check-true (is-a? dc rd:dc<%>)) (check-eq? dc (send c get-dc))
+         (check-eq? (send dc get-smoothing) 'smoothed)
          (check-true (send dc ok?)) (check-equal? (skia-gpu-dc? dc) (gpu-mode?)))))
    (test-case "refresh-now invokes its one-shot callback exactly once"
      (with-window (lambda (w) (on-handler (lambda ()
@@ -236,7 +237,6 @@
                             (lambda () (send c present))
                         (lambda () (send c set-paint-callback void)))])
            (check-exn #rx"paint callback" thunk))
-         (when (gpu-mode?) (check-exn #rx"paint callback" (lambda () (send c close-gpu))))
          (send c refresh))))))))
    (test-case "synchronous callback errors propagate, unwind and recover"
      (with-window (lambda (w) (on-handler (lambda ()
@@ -318,7 +318,30 @@
          (lambda () (make-skia-render-canvas f #:renderer 'raster #:backend 'opengl)))
        (check-exn exn:fail? (lambda () (make-skia-render-canvas f #:paint-callback 42)))
        (check-exn exn:fail? (lambda () (make-skia-render-canvas f #:min-width -1)))
+       (for ([interval '(2 3 4)])
+         (check-exn exn:fail?
+          (lambda () (make-skia-render-canvas f #:backend 'direct3d #:sync-interval interval)))
+         (check-exn exn:fail?
+          (lambda () (new gpu-canvas% [parent f] [backend 'direct3d] [sync-interval interval])))
+         (check-exn exn:fail?
+          (lambda () (new skia-canvas-on-gpu% [parent f] [backend 'direct3d]
+                         [sync-interval interval]))))
+       (check-exn exn:fail?
+        (lambda () (make-skia-render-canvas f #:renderer 'gpu #:style '(no-autoclear))))
        (check-equal? (send f get-children) before))))
+   (test-case "portable styles are forwarded without initializing hidden GPU presenters"
+     (on-handler (lambda ()
+       (define f (new gui:frame% [label "Canvas style forwarding"]))
+       (define opts (request))
+       (define c
+         (make-skia-render-canvas f #:renderer (car opts) #:backend (cadr opts)
+                                  #:adapter (caddr opts) #:style '(deleted no-focus)))
+       (check-false (member c (send f get-children)))
+       (check-eq? (send c get-close-state) 'open)
+       (send f add-child c)
+       (check-not-false (member c (send f get-children)))
+       (send c close)
+       (check-true (send c closed?)))))
    (test-case "capabilities and selection records are detached and immutable"
      (with-window (lambda (w) (on-handler (lambda ()
        (define c (window-canvas w))
@@ -371,8 +394,9 @@
    (test-case "close is idempotent and does not masquerade as a usable renderer"
      (with-window (lambda (w) (on-handler (lambda ()
        (define c (window-canvas w))
-       (send c close) (send c close-skia)
+       (send c close) (send c close)
        (check-true (send c closed?))
+       (check-eq? (send c get-close-state) 'closed)
        (check-eq? (hash-ref (send c get-render-info) 'close_status) 'closed)
        (check-not-exn (lambda () (send c refresh)))
        (check-exn #rx"closed" (lambda () (send c refresh-now)))
@@ -389,6 +413,7 @@
        (on-handler (lambda ()
          (define f
            (new skia-render-window% [label "Unified window acceptance"]
+                [canvas-style '(border)]
                 [renderer (car (request))] [backend (cadr (request))] [adapter (caddr (request))]
              [on-error (lambda (e) (set-box! errors (cons e (unbox errors))) (semaphore-post ready))]
                 [paint-callback (lambda (_c _dc) (semaphore-post ready))]))
@@ -401,14 +426,16 @@
            (define c (send frame get-render-canvas))
            (check-true (skia-render-canvas? c))
            (check-eq? (send c get-renderer) (hash-ref (expected) 'renderer))
-           (send frame close-render) (send frame close-render)
-           (check-true (send c closed?)))))
-       (lambda () (on-handler (lambda () (send frame close-render))))))
+           (send frame close) (send frame close)
+           (check-true (send c closed?))
+           (check-true (send frame closed?))
+           (check-eq? (send frame get-close-state) 'closed))))
+       (lambda () (on-handler (lambda () (send frame close))))))
 ))
 
 ; render-canvas-gui-test-count : exact-nonnegative-integer?
 ;   Records the expected test count used by external acceptance-report checks.
-(define render-canvas-gui-test-count 20)
+(define render-canvas-gui-test-count 21)
 
 ;;;
 ;;; JSON Evidence Serialization

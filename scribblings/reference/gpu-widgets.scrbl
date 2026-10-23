@@ -35,20 +35,11 @@ on high-density displays.
 
 @section[#:tag "skia-gui-backend-options"]{Backend Selection and Options}
 
-Backend selection is fixed for a widget's lifetime. The automatic choice
-depends on the constructor:
-
-@itemlist[
- @item{@racket[gpu-canvas%], @racket[gpu-window%],
-       @racket[skia-canvas-on-gpu%], and @racket[skia-window-on-gpu%] select
-       Metal on macOS and OpenGL elsewhere when @racket[backend] is
-       @racket['auto].}
- @item{@racket[make-skia-render-canvas] and @racket[skia-render-window%]
-       select Metal on macOS, Direct3D on Windows x86-64, and desktop OpenGL
-       on Unix for an automatic GPU backend. With both renderer and backend
-       set to @racket['auto], other platforms select the raster renderer;
-       an explicit @racket['gpu] renderer on those platforms requires an
-       explicit supported backend.}]
+Backend selection is fixed for a widget's lifetime. All GUI constructors use
+the same automatic GPU choice: Metal on macOS, Direct3D on Windows x86-64,
+and desktop OpenGL on Unix. On other platforms there is no automatic GPU
+backend. The unified factory and window select raster there only when both
+renderer and backend are @racket['auto]; a GPU-only request raises an exception.
 
 These are platform selection rules, not driver probes or failure fallbacks.
 Explicit Direct3D presentation requires Windows x86-64; explicit Metal
@@ -63,20 +54,17 @@ one of them with another backend raises an exception. For Direct3D,
 interval @racket[1], respectively. Explicit @racket['warp] selection requires
 index @racket[0].
 
-The current interfaces have different numeric restrictions:
+All GUI constructors check the same numeric restrictions before creating
+a window or child widget:
 
 @itemlist[
- @item{The GPU widget and GPU drawing-context constructors accept adapter
-       indices from @racket[0] through @racket[4294967294]. The unified
-       constructors accept @racket[0] through @racket[2147483647]. These are
+ @item{Adapter indices range from @racket[0] through @racket[4294967294],
+       as in @racket[make-gpu-context]. These are
        numeric limits; selecting an adapter also requires that it exist.}
  @item{The Direct3D presenter accepts synchronization interval @racket[0]
        for immediate presentation or @racket[1] for presentation synchronized
        with a vertical refresh. These are requests, not frame-rate guarantees.
-       The unified constructors' initial option check accepts
-       @racket[0] through @racket[4], but @racket[2], @racket[3], and
-       @racket[4] raise an exception when the GPU widget is constructed.
-       They are not silently changed to another value.}]
+       Other explicit synchronization intervals raise an exception.}]
 
 The synchronization option does not control OpenGL or Metal presentation;
 values other than @racket[#f] are rejected for those backends, and these
@@ -90,6 +78,7 @@ Hiding or minimizing the widget suspends acquisition but does not close its
 presenter.
 
 @defconstructor[([parent (is-a?/c area-container<%>)]
+                 [style (listof symbol?) '()]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
                  [adapter (or/c #f 'hardware 'warp) #f]
                  [adapter-index (or/c #f (integer-in 0 4294967294)) #f]
@@ -113,8 +102,11 @@ The @racket[on-error] callback receives one raised value. Neither callback
 may require keyword arguments.
 
 Backend defaults and Direct3D-only options are described in
-@secref["skia-gui-backend-options"]. Unlike @racket[skia-canvas%], this
-constructor does not accept a @racket[style] argument.
+@secref["skia-gui-backend-options"]. Supported @racket[style] flags are
+@racket['border], @racket['control-border], @racket['no-focus], and
+@racket['deleted]. Backend-specific flags are managed internally.
+@racket['no-autoclear] is not accepted: GPU frames do not preserve the
+previous frame's pixels.
 }
 
 @defmethod[(get-gpu-presenter) gpu-presenter?]{
@@ -135,11 +127,20 @@ Performs an immediate presenter render. The method is rejected inside another
 active GPU or presentation scope.
 }
 
-@defmethod[(close-gpu) void?]{
+@defmethod[(close) void?]{
 Stops automatic scheduling and requests safe presenter closure. A failed close
 can be retried after application-owned GPU children retire. Stopping the
 widget does not by itself prove that native cleanup has finished; see
 @secref["skia-gui-cleanup"].
+}
+
+@defmethod[(closed?) boolean?]{
+Returns whether rendering-resource cleanup has completed successfully.
+}
+
+@defmethod[(get-close-state) (or/c 'open 'closing 'close-failed 'closed)]{
+Returns the cleanup state without initializing the presenter. It includes
+the result of deferred cleanup; see @secref["skia-gui-cleanup"].
 }
 
 @defmethod[(check-gpu-geometry) void?]{
@@ -156,6 +157,7 @@ clock or frame-rate guarantee.
 Provides a convenience frame containing one @racket[gpu-canvas%].
 
 @defconstructor[([label string? "Skia GPU"]
+                 [canvas-style (listof symbol?) '()]
                  [width exact-nonnegative-integer? 640]
                  [height exact-nonnegative-integer? 480]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
@@ -167,7 +169,8 @@ Provides a convenience frame containing one @racket[gpu-canvas%].
                  [background color? 'white]
                  [automatic? boolean? #t])]{
 Creates a GPU window using the same backend and scheduling rules as
-@racket[gpu-canvas%].
+@racket[gpu-canvas%]. The @racket[canvas-style] argument supplies the child
+canvas's style flags, not the containing frame's style.
 
 The @racket[render] callback is passed to the child @racket[gpu-canvas%]. It
 receives one @tech{GPU frame}, not the window object, and its return values
@@ -188,9 +191,17 @@ Returns the child's presenter, initializing it if necessary.
 Requests a redraw of the child canvas.
 }
 
-@defmethod[(close-gpu) void?]{
+@defmethod[(close) void?]{
 Closes the child presenter and hides the frame. Window-manager close uses the
 same path. Closing one window does not close another window's context.
+}
+
+@defmethod[(closed?) boolean?]{
+Returns the child canvas's @method[gpu-canvas% closed?] result.
+}
+
+@defmethod[(get-close-state) (or/c 'open 'closing 'close-failed 'closed)]{
+Returns the child canvas's cleanup state.
 }
 }
 
@@ -229,7 +240,7 @@ eventspace handler thread:
 
 @racketblock[
 (send animation-timer stop)
-(send canvas-widget close-gpu)
+(send canvas-widget close)
 ]
 
 For a drawing-context canvas, use its @tt{refresh} method instead of

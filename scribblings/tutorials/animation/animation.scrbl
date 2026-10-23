@@ -358,7 +358,7 @@ cleanup function:
   (unless closed?
     (when ticker (send ticker stop))
     (when (and view (eq? renderer 'gpu))
-      (send view close-gpu))
+      (send view close))
     (set! closed? #t)
     (send window show #f)))
 ]

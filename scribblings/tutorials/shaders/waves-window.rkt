@@ -101,7 +101,7 @@
   (define (close-waves)
     (unless closed?
       (when ticker (send ticker stop))
-      (when (and view (eq? renderer 'gpu)) (send view close-gpu))
+      (when (and view (eq? renderer 'gpu)) (send view close))
       (skia-close! effect)
       (set! closed? #t)
       (send window show #f)))

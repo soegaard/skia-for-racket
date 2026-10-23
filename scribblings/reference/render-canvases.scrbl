@@ -26,11 +26,12 @@ automatic choices and current constructor restrictions.
 
 @defproc[(make-skia-render-canvas
           [parent (is-a?/c area-container<%>)]
+          [#:style style (listof symbol?) '()]
           [#:renderer renderer (or/c 'auto 'raster 'gpu) 'auto]
           [#:backend backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
           [#:adapter adapter (or/c 'hardware 'warp #f) #f]
-          [#:adapter-index adapter-index (or/c #f (integer-in 0 2147483647)) #f]
-          [#:sync-interval sync-interval (or/c (integer-in 0 4) #f) #f]
+          [#:adapter-index adapter-index (or/c #f (integer-in 0 4294967294)) #f]
+          [#:sync-interval sync-interval (or/c (integer-in 0 1) #f) #f]
           [#:paint-callback paint-callback procedure? void]
           [#:on-error on-error procedure? raise]
           [#:background background (or/c string? (is-a?/c draw:color%)) "white"]
@@ -46,20 +47,19 @@ raised value. Neither callback may require keyword arguments.
 The @racket['raster] renderer always selects the CPU implementation and
 requires @racket[backend] to be @racket['auto]. The @racket['gpu] renderer
 requires a GPU backend; @racket['auto] chooses according to the platform and
-backend request. These rules, including the different Windows defaults of
-this factory and the raw GPU widgets, are given in
+backend request. All GUI constructors share the backend rules in
 @secref["skia-gui-backend-options"].
 
-Only @racket[#f], @racket[0], or @racket[1] can be used successfully for
-@racket[sync-interval]. Although the initial option check accepts values up
-to @racket[4], construction raises an exception for @racket[2] through
-@racket[4]. Adapter and synchronization options other than @racket[#f]
-require Direct3D.
+Adapter and synchronization options other than @racket[#f] require
+Direct3D. Unsupported values are rejected before creating a child widget.
 
 The @racket[smoothing] setting is passed to either implementation. Its
-default is @racket['smoothed], including when selecting the raster renderer;
-this differs from constructing @racket[skia-canvas%] directly, as described
-in @secref["skia-gui-canvases"].
+default is @racket['smoothed], as for the other GUI drawing-context interfaces.
+
+The @racket[style] argument accepts @racket['border], @racket['control-border],
+@racket['no-focus], and @racket['deleted]. The raster renderer additionally
+accepts @racket['no-autoclear]; selecting GPU rendering with that flag raises
+an exception rather than promising persistent frame pixels.
 }
 
 @section{Common Render Canvas Interface}
@@ -119,20 +119,19 @@ Presents cached pixels for the raster renderer. GPU callers must request a new
 frame instead.
 }
 
-@defmethod[(close-skia) void?]{
+@defmethod[(close) void?]{
 Closes through the selected implementation. Closure is rejected inside a paint
 callback, and backend cleanup can remain retryable after a failure.
 }
 
-@defmethod[(close) void?]{
-Closes the same resources as @method[skia-render-canvas<%> close-skia].
+@defmethod[(get-close-state) (or/c 'open 'closing 'close-failed 'closed)]{
+Returns the cleanup state described in @secref["skia-gui-cleanup"].
 }
 
 @defmethod[(closed?) boolean?]{
-Returns the underlying widget's closed flag. For the GPU renderer, this can
-be true even if native cleanup has failed and needs another close attempt.
-See @secref["skia-gui-cleanup"] for the distinction between stopping the
-widget and completing cleanup.
+Returns whether rendering-resource cleanup has completed successfully.
+It remains false after a failed cleanup attempt; see
+@secref["skia-gui-cleanup"].
 }
 
 A saved raster callback DC can remain a live persistent object after callback
@@ -153,21 +152,22 @@ Returns whether @racket[v] implements @racket[skia-render-canvas<%>].
 Provides a convenience frame containing one unified render canvas.
 
 @defconstructor[([label string? "Skia render canvas"]
+                 [canvas-style (listof symbol?) '()]
                  [width exact-nonnegative-integer? 640]
                  [height exact-nonnegative-integer? 480]
                  [renderer (or/c 'auto 'raster 'gpu) 'auto]
                  [backend (or/c 'auto 'opengl 'metal 'direct3d) 'auto]
                  [adapter (or/c #f 'hardware 'warp) #f]
-                 [adapter-index (or/c #f (integer-in 0 2147483647)) #f]
-                 [sync-interval (or/c #f (integer-in 0 4)) #f]
+                 [adapter-index (or/c #f (integer-in 0 4294967294)) #f]
+                 [sync-interval (or/c #f (integer-in 0 1)) #f]
                  [paint-callback procedure? void]
                  [on-error procedure? raise]
                  [background (or/c string? (is-a?/c draw:color%)) "white"]
                  [smoothing (or/c 'unsmoothed 'smoothed 'aligned) 'smoothed])]{
 Creates a 640 by 480 unified render window unless another size is supplied.
 Renderer selection and option restrictions are the same as for
-@racket[make-skia-render-canvas], including the effective @racket[0] or
-@racket[1] limit on explicit synchronization intervals.
+@racket[make-skia-render-canvas]. The @racket[canvas-style] argument supplies
+the child canvas's style flags.
 }
 
 @defmethod[(get-render-canvas) (is-a?/c canvas%)]{
@@ -175,8 +175,16 @@ Returns the factory-created child canvas implementing
 @racket[skia-render-canvas<%>].
 }
 
-@defmethod[(close-render) void?]{
+@defmethod[(close) void?]{
 Closes the child and hides the frame. A rejected close during painting does not
 hide the window. Window-manager close uses the same method.
+}
+
+@defmethod[(closed?) boolean?]{
+Returns the child canvas's @method[skia-render-canvas<%> closed?] result.
+}
+
+@defmethod[(get-close-state) (or/c 'open 'closing 'close-failed 'closed)]{
+Returns the child canvas's cleanup state.
 }
 }

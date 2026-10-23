@@ -15,6 +15,9 @@ internal building blocks, not a second public API: application code should norma
 - The `dc-` modules implement the `racket/draw` adapter. The `gpu-presenter` family
   supplies backend-independent frame lifetimes; GL, Metal, and Direct3D files implement
   their platform-specific operations.
+- [render-canvas-policy.rkt](render-canvas-policy.rkt) shares GUI backend and style
+  selection; [gpu-selection.rkt](gpu-selection.rkt) shares Direct3D adapter validation
+  between GUI and offscreen context constructors without loading native code.
 - [bidi.rkt](bidi.rkt), [line-break.rkt](line-break.rkt), and [joining.rkt](joining.rkt)
   are the pure text algorithms used by layout, not native rendering entry points.
 

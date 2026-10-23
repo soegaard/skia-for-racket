@@ -92,6 +92,9 @@ context instead belongs to the presenter and must not be closed separately.
 Close a GUI widget through its own close method; see
 @secref["skia-gui-cleanup"].
 
+Use @racket[call-with-gpu-external-texture] for scoped token retirement.
+It does not activate or close the context and does not manage imported images.
+
 These cleanup functions are not interchangeable. Follow each entry's thread,
 activation, and failure rules; ending a drawing callback or marking a wrapper
 closed does not necessarily mean that all native cleanup has completed.

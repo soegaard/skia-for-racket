@@ -29,7 +29,7 @@
     (class frame%
       (super-new)
       (define/augment (on-close)
-        (when canvas (send canvas close-skia)) (send this show #f))))
+        (when canvas (send canvas close)) (send this show #f))))
   (define window (new window% [label "Skia GPU DC — frame scoped"] [width 660] [height 440]))
   (define panel (new vertical-panel% [parent window]))
   (define controls (new horizontal-panel% [parent panel] [stretchable-height #f]))
@@ -38,7 +38,7 @@
   (new button% [parent controls] [label "New window"]
        [callback (lambda (_b _e) (make-window))])
   (new button% [parent controls] [label "Close"]
-       [callback (lambda (_b _e) (send canvas close-skia) (send window show #f))])
+       [callback (lambda (_b _e) (send canvas close) (send window show #f))])
   (set! canvas
     (new skia-canvas-on-gpu% [parent panel] [min-width 360] [min-height 280]
          [paint-callback

@@ -142,7 +142,7 @@
      (proc window)
      (on-handler void) (raise-callback-error! window))
    (lambda ()
-     (on-handler (lambda () (send (test-window-canvas window) close-skia)
+     (on-handler (lambda () (send (test-window-canvas window) close)
                             (send (test-window-frame window) show #f))))))
 
 ;;;
@@ -174,6 +174,14 @@
 (define canvas-gui-tests
   (test-suite
    "Required real-window Skia canvas eventspace, exposure and lifecycle tests"
+   (test-case "raster canvas defaults to smoothing and exposes uniform close state"
+     (with-window (lambda (window)
+       (on-handler (lambda ()
+         (define canvas (test-window-canvas window))
+         (check-eq? (send (send canvas get-dc) get-smoothing) 'smoothed)
+         (check-eq? (send canvas get-close-state) 'open)
+         (send canvas close)
+         (check-eq? (send canvas get-close-state) 'closed))))))
    (test-case "GUI harness propagates failed synchronous and exposure assertions to RackUnit"
      (check-exn exn:test:check?
        (lambda () (on-handler (lambda () (check-equal? 1 2)))))
@@ -356,7 +364,7 @@
            (lambda (dc)
              (check-exn exn:fail? (lambda () (send canvas refresh-now)))
              (check-exn exn:fail? (lambda () (send canvas present)))
-             (check-exn exn:fail? (lambda () (send canvas close-skia)))
+             (check-exn exn:fail? (lambda () (send canvas close)))
              (fill dc "red")))
          (check-true (send (send canvas get-dc) ok?)))))))
    (test-case "foreign-thread DC presentation and close access fail before changing the canvas"
@@ -364,7 +372,7 @@
        (define canvas (test-window-canvas window))
        (for ([thunk (list (lambda () (send canvas get-dc)) (lambda () (send canvas present))
                           (lambda () (send canvas refresh-now))
-                      (lambda () (send canvas close-skia)))])
+                      (lambda () (send canvas close)))])
          (check-exn #rx"eventspace handler" thunk))
        (on-handler
          (lambda () (check-false (send canvas closed?))
@@ -375,7 +383,7 @@
          (on-handler (lambda ()
            (define canvas (test-window-canvas window)) (define dc (send canvas get-dc))
            (define pen (rd:make-pen #:immutable? #f)) (send dc set-pen pen)
-           (send canvas refresh) (send canvas close-skia) (send canvas close-skia)
+           (send canvas refresh) (send canvas close) (send canvas close)
            (check-true (send canvas closed?)) (check-false (send dc ok?))
            (check-not-exn (lambda () (send pen set-width 3)))
            (check-exn #rx"closed" (lambda () (send canvas get-dc)))
@@ -386,7 +394,7 @@
 
 ; canvas-gui-test-count : exact-nonnegative-integer?
 ;   Records the expected test count used by external acceptance-report checks.
-(define canvas-gui-test-count 15)
+(define canvas-gui-test-count 16)
 (module+ main
   (require rackunit/text-ui)
 

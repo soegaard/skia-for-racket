@@ -18,6 +18,7 @@
          (prefix-in gui: racket/gui/base) (prefix-in rd: racket/draw)
          "gpu-gui.rkt" "gpu-dc.rkt"
          (only-in "gpu.rkt" gpu-frame-info)
+         "private/render-canvas-policy.rkt"
          (only-in "private/dc-support.rkt" dc-unsupported))
 (provide skia-canvas-on-gpu% skia-canvas-on-gpu? skia-window-on-gpu%)
 
@@ -57,7 +58,7 @@
 ;   Adapts GPU presentation frames to short-lived Skia drawing contexts for GUI paint callbacks.
 (define skia-canvas-on-gpu%
   (class gpu-canvas%
-    (init parent [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f]
+    (init parent [style '()] [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f]
           [paint-callback void] [on-error raise] [background "white"]
           [smoothing 'smoothed] [automatic? #t] [min-width 1] [min-height 1])
     (define space (gui:current-eventspace))
@@ -71,12 +72,11 @@
     (define active-dc #f)
     (define one-shot #f)
     (define synchronous? #f)
-    (define closed-value? #f)
     (define ready? #f)
     (define frame-count 0)
     (define last-frame #f)
     (super-new
-     [parent parent] [backend backend] [adapter adapter] [adapter-index adapter-index]
+     [parent parent] [style style] [backend backend] [adapter adapter] [adapter-index adapter-index]
      [sync-interval sync-interval] [automatic? automatic?] [on-error on-error]
      [background 'transparent] [min-width min-width] [min-height min-height]
      [render
@@ -92,7 +92,8 @@
           #:background background-value #:smoothing smoothing-value))])
     (define/private (live! who)
       (handler! who space)
-      (when closed-value? (error who "Skia GPU canvas is closed")))
+      (when (and ready? (not (eq? (send this get-close-state) 'open)))
+        (error who "Skia GPU canvas is closing or closed")))
     (define/override (get-dc)
       (live! 'get-dc)
       (cond [active-dc active-dc]
@@ -102,7 +103,7 @@
                     "GPU DC is available only during the paint callback; request a refresh instead")]))
     (define/override (refresh)
       (handler! 'refresh space)
-      (when (and ready? (not closed-value?)) (send this request-gpu-render))
+      (when (and ready? (eq? (send this get-close-state) 'open)) (send this request-gpu-render))
       (void))
     (define/override (refresh-now [proc #f] #:flush? [flush? #t])
       (live! 'refresh-now)
@@ -118,21 +119,11 @@
     (define/public (present)
       (live! 'present)
       (dc-unsupported 'present 'persistent-gpu-pixels "0.59: use refresh or refresh-now"))
-    (define/override (close-gpu)
-      (handler! 'close-gpu space)
-      ;; The presenter cancels an active frame and defers native destruction
-      ;; until it unwinds. The active DC is closed by its own scope cleanup.
-      (set! closed-value? #t)
-      (super close-gpu))
-    (define/public (close-skia) (send this close-gpu))
-    (define/public (close) (send this close-gpu))
-    (define/public (skia-closed?)
-      (handler! 'skia-closed? space)
-      closed-value?)
     (define/public (get-skia-info)
       (handler! 'get-skia-info space)
       (hasheq 'stage "0.59" 'storage 'gpu-offscreen 'dc_lifetime 'frame-scoped
-              'backend (send this get-gpu-backend) 'closed closed-value?
+              'backend (send this get-gpu-backend) 'closed (send this closed?)
+              'close_state (send this get-close-state)
               'painting (and active-dc #t) 'frames_started frame-count 'last_frame last-frame
               'implicit_cpu_readback #f 'visible_pixels_verified #f 'performance_measured #f))
     (set! ready? #t)))
@@ -150,17 +141,24 @@
 (define skia-window-on-gpu%
   (class gui:frame%
     (init [label "Skia GPU DC"] [width 640] [height 480]
+          [canvas-style '()]
           [backend 'auto] [adapter #f] [adapter-index #f] [sync-interval #f]
           [paint-callback void] [on-error raise] [background "white"]
           [smoothing 'smoothed] [automatic? #t])
+    (handler! 'skia-window-on-gpu% (gui:current-eventspace))
+    (resolve-render-canvas-policy 'gpu backend adapter adapter-index sync-interval
+                                  #:who 'skia-window-on-gpu%)
+    (check-canvas-style 'skia-window-on-gpu% canvas-style)
     (super-new [label label] [width width] [height height])
     (define canvas
-      (new skia-canvas-on-gpu% [parent this] [backend backend] [adapter adapter]
+      (new skia-canvas-on-gpu% [parent this] [style canvas-style] [backend backend] [adapter adapter]
            [adapter-index adapter-index] [sync-interval sync-interval]
            [paint-callback paint-callback] [on-error on-error] [background background]
            [smoothing smoothing] [automatic? automatic?]))
     (define/public (get-skia-canvas) canvas)
     (define/public (get-gpu-presenter) (send canvas get-gpu-presenter))
-    (define/public (close-skia)
-      (dynamic-wind void (lambda () (send canvas close-skia)) (lambda () (send this show #f))))
-    (define/augment (on-close) (send this close-skia))))
+    (define/public (get-close-state) (send canvas get-close-state))
+    (define/public (closed?) (send canvas closed?))
+    (define/public (close)
+      (dynamic-wind void (lambda () (send canvas close)) (lambda () (send this show #f))))
+    (define/augment (on-close) (send this close))))

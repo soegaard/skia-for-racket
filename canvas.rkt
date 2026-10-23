@@ -17,7 +17,7 @@
 (require racket/class racket/future racket/list
          (prefix-in gui: racket/gui/base)
          (prefix-in rd: racket/draw)
-         "dc.rkt" "private/canvas-backing.rkt")
+         "dc.rkt" "private/canvas-backing.rkt" "private/render-canvas-policy.rkt")
 (provide skia-canvas% skia-canvas?)
 
 ;;;
@@ -82,18 +82,14 @@
   (class gui:canvas%
     (inherit/super make-bitmap)
     (init parent [style '()] [paint-callback void]
-          [background "white"] [smoothing 'unsmoothed]
+          [background "white"] [smoothing 'smoothed]
           [label #f] [enabled #t] [vert-margin 0] [horiz-margin 0]
           [min-width 1] [min-height 1]
           [stretchable-width #t] [stretchable-height #t])
     (define space (gui:current-eventspace))
     (handler! 'skia-canvas% space)
     (callback! 'skia-canvas% paint-callback 2)
-    (unless (and (list? style)
-                 (andmap (lambda (v) (memq v '(border control-border no-focus deleted no-autoclear)))
-                         style))
-      (raise-argument-error 'skia-canvas%
-        "list of 'border, 'control-border, 'no-focus, 'deleted, or 'no-autoclear styles" style))
+    (check-canvas-style 'skia-canvas% style #:raster? #t)
     (unless (memq smoothing '(unsmoothed smoothed aligned))
       (raise-argument-error 'skia-canvas% "'unsmoothed, 'smoothed, or 'aligned" smoothing))
     (define background-value (canvas-color background))
@@ -106,6 +102,7 @@
     (define observed-geometry #f)
     (define ready? #f)
     (define closed-value? #f)
+    (define close-status 'open)
     (define painting? #f)
     (define deferred-refresh? #f)
     (define monitor #f)
@@ -283,7 +280,7 @@
     (define/public (get-skia-info)
       (handler! 'get-skia-info space)
       (hasheq 'stage "0.58" 'storage 'raster 'backend 'cpu
-              'closed closed-value? 'painting painting?
+              'closed (eq? close-status 'closed) 'close_state close-status 'painting painting?
               'geometry geometry 'dc_created (and backing #t)
               'pixel_size (and backing (not closed-value?)
                                (call-with-values
@@ -292,17 +289,23 @@
               'gpu_execution #f))
     (define/public (closed?)
       (handler! 'closed? space)
-      closed-value?)
-    (define/public (close-skia)
-      (handler! 'close-skia space)
-      (when painting? (error 'close-skia "cannot close a canvas during painting/presentation"))
-      (unless closed-value?
+      (eq? close-status 'closed))
+    (define/public (get-close-state)
+      (handler! 'get-close-state space)
+      close-status)
+    (define/public (close)
+      (handler! 'close space)
+      (when painting? (error 'close "cannot close a canvas during painting/presentation"))
+      (unless (eq? close-status 'closed)
         (set! closed-value? #t)
+        (set! close-status 'closing)
         (set! deferred-refresh? #f)
-        (when monitor (send monitor stop))
-        (when backing (send backing close)))
+        (with-handlers ([(lambda (_) #t)
+                         (lambda (e) (set! close-status 'close-failed) (raise e))])
+          (when monitor (send monitor stop))
+          (when backing (send backing close))
+          (set! close-status 'closed)))
       (void))
-    (define/public (close) (send this close-skia))
 
     (super set-canvas-background window-background)
     (set! ready? #t)

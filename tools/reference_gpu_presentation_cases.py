@@ -28,7 +28,7 @@ R4D_PROCEDURES = {
     'skia-canvas-on-gpu?': (2, []),
     'make-skia-render-canvas': (2, ['adapter', 'adapter-index', 'backend', 'background',
                                     'min-height', 'min-width', 'on-error', 'paint-callback',
-                                    'renderer', 'smoothing', 'sync-interval']),
+                                    'renderer', 'smoothing', 'style', 'sync-interval']),
     'skia-render-canvas?': (2, []),
     'make-gpu-raster-executor': (2, []),
     'call-with-gpu-raster-executor': (4, ['on-unavailable']),

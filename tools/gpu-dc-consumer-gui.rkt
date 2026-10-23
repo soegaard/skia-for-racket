@@ -113,8 +113,8 @@
                  (define cpu-layout (exercise-consumer! workload dc))
                  (retain! workload extent "cpu" (send dc get-rgba-bytes #:premultiplied? #t)
                    cpu-layout '())))))))
-      (on-handler (lambda () (send canvas close-skia) (send canvas close-skia)
-                    (ensure-consumer! (send canvas skia-closed?) "GUI canvas did not close")
+      (on-handler (lambda () (send canvas close) (send canvas close)
+                    (ensure-consumer! (send canvas closed?) "GUI canvas did not close")
                     (send frame show #f)))
       (finish-consumer-report! directory "gui" token (symbol->string backend) (reverse captures)
         (hasheq 'normal_frames (reverse frames) 'expired_dcs (length saved-dcs)
@@ -123,7 +123,7 @@
     (lambda ()
       (dynamic-wind void
         (lambda ()
-          (when canvas (on-handler (lambda () (send canvas close-skia) (send frame show #f)))))
+          (when canvas (on-handler (lambda () (send canvas close) (send frame show #f)))))
         (lambda () (custodian-shutdown-all custodian))))))
 (module+ main
 

@@ -89,11 +89,23 @@
    (test-case "adapter values and indices are checked"
      (for ([a '(unknown #t 0)])
        (check-exn exn:fail? (lambda () (select 'gpu 'direct3d 'windows #:adapter a))))
-     (for ([n '(-1 0.0 2147483648 #t)])
+     (for ([n '(-1 0.0 4294967295 #t)])
        (check-exn exn:fail? (lambda () (select 'gpu 'direct3d 'windows #:index n)))))
+   (test-case "GUI adapter indices use the full context range"
+     (for ([n '(0 2147483647 2147483648 4294967294)])
+       (check-equal? (hash-ref (select 'gpu 'direct3d 'windows #:index n) 'adapter_index) n)))
    (test-case "presentation sync interval is an exact integer in range"
-     (for ([n '(-1 5 1.0 #t)])
+     (for ([n '(-1 2 3 4 5 1.0 #t)])
        (check-exn exn:fail? (lambda () (select 'gpu 'direct3d 'windows #:sync n)))))
+   (test-case "canvas style validation distinguishes portable and raster-only flags"
+     (for ([raster? '(#f #t)])
+       (check-not-exn
+        (lambda () (check-canvas-style 'test '(border no-focus deleted) #:raster? raster?)))
+       (for ([style '(#f border (gl) (transparent) (unknown))])
+         (check-exn exn:fail?
+          (lambda () (check-canvas-style 'test style #:raster? raster?)))))
+     (check-not-exn (lambda () (check-canvas-style 'test '(no-autoclear) #:raster? #t)))
+     (check-exn exn:fail? (lambda () (check-canvas-style 'test '(no-autoclear)))))
    (test-case "GPU-only options are never ignored on raster or OpenGL"
      (for ([r '(raster gpu)])
        (check-exn exn:fail? (lambda () (select r #:adapter 'hardware)))
@@ -208,7 +220,7 @@
 
 ; render-canvas-pure-test-count : exact-nonnegative-integer?
 ;   Records the expected test count used by external acceptance-report checks.
-(define render-canvas-pure-test-count 33)
+(define render-canvas-pure-test-count 35)
 (module+ main
   (require rackunit/text-ui)
 

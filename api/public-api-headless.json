@@ -3279,6 +3279,15 @@
         },
         {
           "allowed_keywords": [],
+          "arity_mask": "4",
+          "export_kind": "value",
+          "kind": "procedure",
+          "name": "call-with-gpu-external-texture",
+          "phase": "0",
+          "required_keywords": []
+        },
+        {
+          "allowed_keywords": [],
           "arity_mask": "2",
           "export_kind": "value",
           "kind": "procedure",

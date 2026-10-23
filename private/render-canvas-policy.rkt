@@ -13,7 +13,8 @@
 ;;; Exports
 ;;;
 
-(provide resolve-render-canvas-policy render-canvas-capabilities)
+(require "gpu-selection.rkt" "gpu-dxgi-util.rkt")
+(provide resolve-render-canvas-policy render-canvas-capabilities check-canvas-style)
 
 ;;;
 ;;; Declarative Backend Selection
@@ -28,13 +29,13 @@
         [else #f]))
 
 ; resolve-render-canvas-policy : symbol? symbol? (or/c #f symbol?) (or/c #f exact-integer?) (or/c #f
-; exact-integer?) [#:os symbol? #:arch symbol?] -> hash?
+; exact-integer?) [#:os symbol? #:arch symbol? #:who symbol?] -> hash?
 ;   Validates renderer/backend/adapter choices and resolves platform defaults without enabling
 ;   runtime fallback.
 (define (resolve-render-canvas-policy renderer backend adapter adapter-index sync-interval
                                      #:os [os (system-type 'os)]
-                                     #:arch [arch (system-type 'arch)])
-  (define who 'make-skia-render-canvas)
+                                     #:arch [arch (system-type 'arch)]
+                                     #:who [who 'make-skia-render-canvas])
   (unless (memq renderer '(auto raster gpu))
     (raise-argument-error who "'auto, 'raster, or 'gpu renderer" renderer))
   (unless (memq backend '(auto opengl metal direct3d))
@@ -70,17 +71,9 @@
   (when (and (or adapter adapter-index sync-interval) (not (eq? actual-backend 'direct3d)))
     (raise-arguments-error who "adapter, adapter-index and sync-interval require Direct3D"
                            "backend" actual-backend))
-  (when (and adapter (not (memq adapter '(hardware warp))))
-    (raise-argument-error who "#f, 'hardware, or 'warp adapter" adapter))
-  (when (and adapter-index
-             (not (and (exact-nonnegative-integer? adapter-index) (<= adapter-index #x7fffffff))))
-    (raise-argument-error who "#f or a nonnegative signed-32-bit adapter index" adapter-index))
-  (when (and sync-interval
-             (not (and (exact-integer? sync-interval) (<= 0 sync-interval 4))))
-    (raise-argument-error who "#f or an exact sync interval from 0 through 4" sync-interval))
-  (when (and (eq? adapter 'warp) adapter-index (not (zero? adapter-index)))
-    (raise-arguments-error who "WARP does not select a hardware adapter index" "adapter-index"
-      adapter-index))
+  (when (eq? actual-backend 'direct3d)
+    (d3d12-selection! (or adapter 'hardware) (or adapter-index 0) #:who who)
+    (dxgi-sync-interval! (or sync-interval 1) #:who who))
   (hasheq 'requested_renderer renderer 'requested_backend backend
           'renderer actual-renderer 'backend actual-backend
           'adapter (and (eq? actual-backend 'direct3d) (or adapter 'hardware))
@@ -88,6 +81,16 @@
           'sync_interval (and (eq? actual-backend 'direct3d) (or sync-interval 1))
           'selection "declarative platform policy; not a driver probe"
           'runtime_fallback #f))
+
+; check-canvas-style : symbol? any/c [#:raster? boolean?] -> void?
+;   Checks portable widget styles, permitting pixel persistence only for raster canvases.
+(define (check-canvas-style who style #:raster? [raster? #f])
+  (define allowed
+    (if raster? '(border control-border no-focus deleted no-autoclear)
+        '(border control-border no-focus deleted)))
+  (unless (and (list? style) (andmap (lambda (flag) (memq flag allowed)) style))
+    (raise-argument-error who (format "list of canvas styles from ~s" allowed) style))
+  (void))
 
 ;;;
 ;;; Resolved Capability Description

@@ -138,7 +138,7 @@
                                   (reverse (unbox normal-ledger))) entries))
 
                 (printf "DXGI cycle ~a/window ~a: 180 stress frames, two resizes and three captures completed\n" cycle number)))
-            (lambda () (for ([w (in-list windows)]) (send w close-gpu))))
+            (lambda () (for ([w (in-list windows)]) (send w close))))
           (define results
             (for/list ([entry (in-list (reverse entries))])
               (define number (list-ref entry 0))

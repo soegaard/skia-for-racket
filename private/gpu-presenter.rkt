@@ -22,7 +22,7 @@
          gpu-frame-scale-x gpu-frame-scale-y gpu-frame-generation gpu-frame-index)
 (module* adapter-internals #f
   (provide (struct-out presentation-adapter) make-presenter presentation-metrics presentation-active?
-           call-with-gpu-frame-target))
+           call-with-gpu-frame-target presenter-close-state))
 
 ;;;
 ;;; Presenter, Adapter, and Frame State
@@ -48,7 +48,7 @@
            [presented #:mutable] [skipped #:mutable] [cancelled #:mutable]
            [last #:mutable] [error #:mutable] [requested? #:mutable] [cleanup-posted? #:mutable]
              [unregister #:mutable]
-           targets))
+           targets [close-status #:mutable]))
 ;; Fields:
 ;;   adapter: presentation-adapter. owner: creator/eventspace thread. render: mutable frame
 ;;   callback. on-error: failure callback. state: lifecycle symbol. busy? and dirty?: render/repaint
@@ -58,7 +58,8 @@
 ;;   skipped, and cancelled: outcome counters.
 ;;   last and error: latest detached frame/error reports. requested? and cleanup-posted?: shutdown
 ;;   request/scheduling flags. unregister: optional cleanup unregistration procedure. targets:
-;;   presenter-owned frame-target-cache.
+;;   presenter-owned frame-target-cache. close-status: 'open, 'closing, 'close-failed, or 'closed;
+;;   independent of rendering failures, updated by every explicit and deferred cleanup attempt.
 ;;   Only owner performs rendering or native teardown; a frame's canvas is invalidated before the
 ;;   callback scope ends.
 
@@ -156,12 +157,19 @@
 (define (gpu-presenter-context p)
   (owner! 'gpu-presenter-context p) (presentation-adapter-context (gpu-presenter-adapter p)))
 
+; presenter-close-state : gpu-presenter? -> symbol?
+;   Reports cleanup completion separately from rendering state, without native work.
+(define (presenter-close-state p)
+  (owner! 'presenter-close-state p)
+  (gpu-presenter-close-status p))
+
 ; gpu-presenter-info : gpu-presenter? -> (and/c hash? immutable?)
 ;   Returns a detached owner-thread diagnostic snapshot.
 (define (gpu-presenter-info p)
   (owner! 'gpu-presenter-info p)
   (hasheq 'backend (symbol->string (gpu-presenter-backend p))
           'state (symbol->string (gpu-presenter-state p))
+          'close_state (symbol->string (gpu-presenter-close-status p))
           'target_generation (gpu-presenter-generation p) 'frames_acquired (gpu-presenter-index p)
           'presents_requested (gpu-presenter-presented p) 'frames_skipped (gpu-presenter-skipped p)
           'frames_cancelled (gpu-presenter-cancelled p) 'redraw_queued (gpu-presenter-queued? p)
@@ -313,7 +321,7 @@
   (procedure! 'make-presenter (presentation-adapter-call-target adapter) 2)
   (procedure! 'make-presenter (presentation-adapter-post adapter) 1)
   (define p (gpu-presenter adapter (current-thread) render on-error 'ready #f #f 0 #f
-                           0 #f 0 0 0 0 #f #f #f #f #f (make-frame-target-cache)))
+                           0 #f 0 0 0 0 #f #f #f #f #f (make-frame-target-cache) 'open))
   (register-finalizer-and-custodian-shutdown
    p request-cleanup!
    #:custodian-available
@@ -375,6 +383,8 @@
     (hash-set! pending-cleanup p #t)
     (hash-remove! deferred-redraws p)
     (set-gpu-presenter-state! p 'closing)
+    (unless (eq? (gpu-presenter-close-status p) 'close-failed)
+      (set-gpu-presenter-close-status! p 'closing))
     (set-gpu-presenter-dirty?! p #f)
     (invalidate-queue! p)
     (post-cleanup! p)))
@@ -386,6 +396,7 @@
   (unless (eq? (gpu-presenter-state p) 'closed)
     (set-gpu-presenter-requested?! p #t)
     (set-gpu-presenter-state! p 'closing)
+    (set-gpu-presenter-close-status! p 'closing)
     (hash-remove! deferred-redraws p)
     (set-gpu-presenter-dirty?! p #f)
     (invalidate-queue! p)
@@ -395,6 +406,7 @@
         (begin (hash-set! pending-cleanup p #t) (post-cleanup! p))
       (with-handlers ([(lambda (_) #t)
                        (lambda (e)
+                         (set-gpu-presenter-close-status! p 'close-failed)
                          (set-gpu-presenter-error! p (error-text e))
                          (hash-set! pending-cleanup p #t) (raise e))])
         ;; Retire the staging wrapper before the adapter closes its context.
@@ -403,6 +415,7 @@
         (close-frame-target-cache! (gpu-presenter-targets p))
         ((presentation-adapter-close (gpu-presenter-adapter p)))
         (set-gpu-presenter-state! p 'closed)
+        (set-gpu-presenter-close-status! p 'closed)
         (hash-remove! pending-cleanup p)
         (define unregister (gpu-presenter-unregister p))
         (when unregister (unregister p) (set-gpu-presenter-unregister! p #f)))))

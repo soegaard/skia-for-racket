@@ -49,12 +49,46 @@ safe to reuse.
 
 An external texture token does not satisfy @racket[skia-resource?] and is not
 managed by @racket[with-skia] or @racket[skia-close!]. Use
-@racket[gpu-external-texture-close!] to retire a token that is no longer needed.
+@racket[call-with-gpu-external-texture] to retire it automatically after a
+computation, or @racket[gpu-external-texture-close!] for explicit cleanup.
 Retire tokens and close application-owned GPU images and surfaces before
 closing their context. Native releases can remain queued until an owner-thread
 drain, as described in @secref["skia-gpu-context-shutdown"].
 
 @section{Token State and Retirement}
+
+@defproc[(call-with-gpu-external-texture
+          [texture gpu-external-texture?]
+          [proc (-> gpu-external-texture? any)]) any]{
+Calls @racket[proc] with @racket[texture] and retires the token when the
+callback exits, including after an exception or escape. Returns the
+callback's values when cleanup succeeds. A cleanup exception propagates in
+place of an exception already being raised by the callback.
+
+Call this function on the token's creating thread, outside a future. An
+active handoff and a callback with the wrong arity or required keyword
+arguments are rejected before the callback runs or cleanup responsibility
+is taken. Consumed and retired tokens may be passed, but the scope does not
+make them usable for another handoff. Closing a token explicitly inside the
+callback is harmless; an uncertain native retirement is not retried.
+
+The function does not activate or close the GPU context. Operations inside
+the callback still require their normal activation and ownership rules.
+Reentry through a saved continuation is rejected. An imported image is not
+closed with the token and must be managed separately.
+
+For example, within the associated context's activation, this helper imports
+an image and retires the supplied token even if the import fails:
+
+@racketblock[
+(require skia/gpu-interop)
+
+(define (import-and-retire context token)
+  (call-with-gpu-external-texture
+   token
+   (lambda (texture) (gpu-import-image context texture))))
+]
+}
 
 @defproc[(gpu-external-texture? [v any/c]) boolean?]{
 Returns whether @racket[v] is an external-texture handoff wrapper. The predicate

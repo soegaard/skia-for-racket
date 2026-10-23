@@ -176,7 +176,8 @@ Import `skia/gpu-canvas` explicitly. It exports `skia-canvas-on-gpu%`,
 ```
 
 The backend options are inherited from the raw GPU widget: `'auto` selects
-Metal on macOS and OpenGL elsewhere; `'opengl`, `'metal` and `'direct3d` are
+Metal on macOS, Direct3D on Windows x64, and OpenGL on Unix;
+`'opengl`, `'metal` and `'direct3d` are
 explicit choices. Direct3D-only `[adapter ...]`, `[adapter-index ...]` and
 `[sync-interval ...]` are passed through unchanged. Backend unavailability is
 an error, not a reason to switch to a CPU canvas.
@@ -190,12 +191,16 @@ unpresented frame. `present` is explicitly unsupported; use refresh instead.
 Inherited `request-gpu-render`/`render-gpu-now` also remain available. `automatic?`
 controls exposure/geometry scheduling as in the raw widget, not explicit calls.
 
-`close-skia`, `close` and `close-gpu` release the widget; hiding it does not.
-`skia-closed?` and `get-skia-info` provide detached lifecycle information.
+`close` releases the widget; hiding it does not. `closed?` is true only after
+cleanup succeeds. `get-close-state` reports `open`, `closing`, `close-failed`,
+or `closed`, including deferred cleanup outcomes. `get-skia-info` includes
+the same lifecycle information.
 The convenience window exposes `get-skia-canvas`, `get-gpu-presenter` and
-`close-skia`; its close event also closes the GPU canvas. This is not the full
-raster-canvas constructor: scrolling, style lists and persistent-DC access are
-not added here. Directly replacing the inherited presenter's render callback
+`close`; its close event also closes the GPU canvas. This is not the full
+raster-canvas constructor: scrolling and persistent-DC access are not provided.
+The `style` argument accepts `border`, `control-border`, `no-focus`, and `deleted`;
+the window forwards `canvas-style` to its child. `no-autoclear` is raster-only.
+Directly replacing the inherited presenter's render callback
 bypasses this facade and is an advanced raw-presenter operation.
 
 The GL host lookup now explicitly calls the toolkit superclass `get-dc`, not

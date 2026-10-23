@@ -5,11 +5,11 @@
   "snapshots": [
     {
       "file": "api/public-api-headless.json",
-      "git_blob": "27386dc1a515c42e7aefa8f5e79e901448a06f0f"
+      "git_blob": "7af85533622e77621e398aebeed93eecb48987fe"
     },
     {
       "file": "api/public-api-gui.json",
-      "git_blob": "f408fc61a56f4c25b23e1f8ddc0502ce2ba7fe22"
+      "git_blob": "06d5fe8408b28508e90cd4ca8b8c3cc91f6feaf8"
     }
   ],
   "definitions": [
@@ -12630,6 +12630,16 @@
     },
     {
       "name": "gpu-external-texture-close!",
+      "chapter": "scribblings/reference/gpu-external-resources.scrbl",
+      "canonical_module": "skia/gpu-interop",
+      "exports": [
+        "skia/gpu-interop"
+      ],
+      "phase": "0",
+      "space": null
+    },
+    {
+      "name": "call-with-gpu-external-texture",
       "chapter": "scribblings/reference/gpu-external-resources.scrbl",
       "canonical_module": "skia/gpu-interop",
       "exports": [

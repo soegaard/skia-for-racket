@@ -26,7 +26,7 @@
     (class gui:frame%
       (super-new)
       (define/augment (on-close)
-        (when canvas (send canvas close-skia)) (send this show #f))))
+        (when canvas (send canvas close)) (send this show #f))))
   (define window (new window% [label "Skia 0.60: GPU DC consumers"] [width 720] [height 560]))
   (define panel (new gui:vertical-panel% [parent window]))
   (new gui:choice% [parent panel] [label "Consumer / execution"]

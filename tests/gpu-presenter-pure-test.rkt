@@ -224,7 +224,9 @@
 
    (test-case "close invalidates pending redraw and is idempotent"
      (with-presenter (lambda (p m log q fail)
+       (check-eq? (presenter-close-state p) 'open)
        (gpu-presenter-request-render! p) (gpu-presenter-close! p) (gpu-presenter-close! p)
+       (check-eq? (presenter-close-state p) 'closed)
        (dispatch! q) (check-equal? (event-count* log 'present) 0)
        (check-equal? (event-count* log 'close) 1))))
    (test-case "closed presenter rejects drawing and new requests"
@@ -233,11 +235,25 @@
        (check-exn exn:fail? (lambda () (gpu-presenter-render! p)))
        (check-exn exn:fail? (lambda () (gpu-presenter-request-render! p))))))
    (test-case "close during rendering is deferred until target release"
-     (define target #f)
-     (with-presenter (lambda (p m log q fail)
-       (set! target p) (check-eq? (gpu-presenter-render! p) 'cancelled)
-       (check-equal? (reverse (unbox log)) '(acquire release close)))
-       (lambda (f) (gpu-presenter-close! target))))
+     (for ([fail-close? '(#f #t)])
+       (define target #f)
+       (with-presenter (lambda (p m log q fail)
+         (set! target p)
+         (when fail-close? (set-box! fail 'close))
+         (if fail-close?
+             (begin
+               (check-exn #rx"live application children" (lambda () (gpu-presenter-render! p)))
+               (check-eq? (presenter-close-state p) 'close-failed)
+               (check-equal? (hash-ref (gpu-presenter-info p) 'close_state) "close-failed")
+               (check-equal? (reverse (unbox log)) '(acquire release))
+               (set-box! fail #f)
+               (gpu-presenter-close! p))
+             (check-eq? (gpu-presenter-render! p) 'cancelled))
+         (check-eq? (presenter-close-state p) 'closed)
+         (check-equal? (reverse (unbox log)) '(acquire release close)))
+         (lambda (f)
+           (gpu-presenter-close! target)
+           (check-eq? (presenter-close-state target) 'closing)))))
    (test-case "resize during drawing cancels rather than showing stale extent"
      (define sizes #f) (define changed? #f)
      (with-presenter (lambda (p m log q fail)
@@ -266,6 +282,7 @@
    (test-case "close blocked by children stays retryable"
      (with-presenter (lambda (p m log q fail)
        (set-box! fail 'close) (check-exn exn:fail? (lambda () (gpu-presenter-close! p)))
+       (check-eq? (presenter-close-state p) 'close-failed)
        (check-eq? (gpu-presenter-state p) 'closing)
        (set-box! fail #f) (gpu-presenter-close! p) (check-eq? (gpu-presenter-state p) 'closed))))
    (test-case "queue failure resets coalescing latch"

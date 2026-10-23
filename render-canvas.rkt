@@ -37,7 +37,7 @@
 (define skia-render-canvas<%>
   (interface () get-renderer get-backend get-render-capabilities get-render-info
                 get-dc get-raster-dc set-paint-callback refresh refresh-now
-                present close-skia close closed?))
+                present close closed? get-close-state))
 
 ; skia-render-canvas? : any/c -> boolean?
 ;   Returns whether v implements skia-render-canvas<%>.
@@ -59,15 +59,14 @@
 ;   class.
 (define (callback-canvas-class base% raster?)
   (class* base% (skia-render-canvas<%>)
-    (inherit/super closed? get-skia-info)
-    (init parent policy [paint-callback void] [on-error raise]
+    (inherit/super get-close-state get-skia-info)
+    (init parent policy [style '()] [paint-callback void] [on-error raise]
           [background "white"] [smoothing 'smoothed] [min-width 1] [min-height 1])
     (define selection policy)
     (define capabilities (render-canvas-capabilities selection))
     (define session (make-render-session paint-callback))
     (define error-proc on-error)
     (define facade-ready? #f)
-    (define close-status 'open)
     (define last-size #f)
     (define toolkit-dc-permitted? #f)
     (define/private (with-toolkit-access thunk)
@@ -83,7 +82,8 @@
     (check-render-callback 'make-skia-render-canvas error-proc 1)
     (define/private (live! who)
       (render-session-check! who session)
-      (when (super closed?) (error who "render canvas is closed")))
+      (unless (eq? (super get-close-state) 'open)
+        (error who "render canvas is closing or closed")))
     (define/private (idle! who)
       (live! who) (render-session-idle! who session))
     (define/private (deliver dc [one-shot #f])
@@ -95,10 +95,12 @@
     ;; Both superclass constructors take a two-argument paint callback. Raster
     ;; has no on-error option; its scheduled paint exceptions are routed below.
     (if raster?
-        (super-new [parent parent] [paint-callback (lambda (_canvas dc) (deliver dc))]
+        (super-new [parent parent] [style style]
+                   [paint-callback (lambda (_canvas dc) (deliver dc))]
                    [background background] [smoothing smoothing]
                    [min-width min-width] [min-height min-height])
-        (super-new [parent parent] [paint-callback (lambda (_canvas dc) (deliver dc))]
+        (super-new [parent parent] [style style]
+                   [paint-callback (lambda (_canvas dc) (deliver dc))]
                    [on-error error-proc] [background background] [smoothing smoothing]
                    [min-width min-width] [min-height min-height]
                    [backend (hash-ref selection 'backend)] [adapter (hash-ref selection 'adapter)]
@@ -115,7 +117,7 @@
       (render-session-check! 'get-render-info session)
       (hasheq 'stage "0.61" 'selection selection 'capabilities capabilities
               'callback (render-session-info session) 'last_callback_size last-size
-              'close_status close-status 'implementation (super get-skia-info)
+              'close_status (super get-close-state) 'implementation (super get-skia-info)
               'physical_display_verified #f 'performance_measured #f))
     (define/override (get-dc)
       (cond [(not facade-ready?) (super get-dc)] ; native toolkit construction
@@ -154,17 +156,9 @@
       (unless raster?
         (error 'present "cached pixel presentation is raster-only; request a GPU frame with refresh"))
       (with-toolkit-access (lambda () (super present))))
-    (define/override (close-skia)
-      (render-session-idle! 'close-skia session)
-      ;; Do not skip a retry just because the underlying GPU widget has marked
-      ;; itself closed. Retained resources can make its first close fail.
-      (set! close-status 'closing)
-      (with-handlers ([(lambda (_) #t)
-                       (lambda (e) (set! close-status 'close-failed) (raise e))])
-        (super close-skia)
-        (set! close-status 'closed))
-      (void))
-    (define/override (close) (send this close-skia))
+    (define/override (close)
+      (render-session-idle! 'close session)
+      (super close))
     (set! facade-ready? #t)))
 
 ;;;
@@ -177,31 +171,21 @@
   (delay/sync (callback-canvas-class (dynamic-require raster-module 'skia-canvas%) #t)))
 
 ; gpu-class : promise?
-;   Lazily constructs the GPU implementation with matching close and status methods.
+;   Lazily constructs the GPU implementation of the shared callback interface.
 (define gpu-class
-  (delay/sync
-    (let ([gpu% (dynamic-require gpu-module 'skia-canvas-on-gpu%)])
-      ;; Add the one query missing from the raw GPU class so the shared mixin
-      ;; can use an actual superclass method in both modes.
-      (callback-canvas-class
-       (class gpu%
-         (define/override (close-gpu)
-           (when (hash-ref (hash-ref (send this get-render-info) 'callback) 'painting)
-             (error 'close-gpu "cannot close a unified render canvas during a paint callback"))
-           (super close-gpu))
-         (define/public (closed?) (send this skia-closed?))
-         (super-new))
-       #f))))
+  (delay/sync (callback-canvas-class (dynamic-require gpu-module 'skia-canvas-on-gpu%) #f)))
 
 ; make-skia-render-canvas : (is-a?/c area-container<%>) [#:renderer (or/c 'auto 'raster 'gpu)]
 ;   [#:backend (or/c 'auto 'opengl 'metal 'direct3d)] [#:adapter (or/c 'hardware 'warp #f)]
-;   [#:adapter-index (or/c #f (integer-in 0 2147483647))] [#:sync-interval (or/c (integer-in 0 4)
-;   #f)] [#:paint-callback procedure?] [#:on-error procedure?] [#:background (or/c string? (is-a?/c
+;   [#:adapter-index (or/c #f (integer-in 0 4294967294))] [#:sync-interval (or/c (integer-in 0 1)
+;   #f)] [#:style (listof symbol?)] [#:paint-callback procedure?] [#:on-error procedure?]
+;   [#:background (or/c string? (is-a?/c
 ;   draw:color%))] [#:smoothing (or/c 'unsmoothed 'smoothed 'aligned)] [#:min-width
 ;   exact-nonnegative-integer?] [#:min-height exact-nonnegative-integer?] -> (and/c (is-a?/c
 ;   canvas%) skia-render-canvas?)
 ;   Creates a canvas implementing skia-render-canvas<%> on the current eventspace handler thread.
 (define (make-skia-render-canvas parent
+          #:style [style '()]
           #:renderer [renderer 'auto] #:backend [backend 'auto]
           #:adapter [adapter #f] #:adapter-index [adapter-index #f] #:sync-interval [sync-interval #f]
           #:paint-callback [paint-callback void] #:on-error [on-error raise]
@@ -210,6 +194,8 @@
   (handler! 'make-skia-render-canvas)
   ;; Validate selection before a child is added or an implementation loaded.
   (define policy (resolve-render-canvas-policy renderer backend adapter adapter-index sync-interval))
+  (check-canvas-style 'make-skia-render-canvas style
+                      #:raster? (eq? (hash-ref policy 'renderer) 'raster))
   (check-render-callback 'make-skia-render-canvas paint-callback 2)
   (check-render-callback 'make-skia-render-canvas on-error 1)
   (unless (memq smoothing '(unsmoothed smoothed aligned))
@@ -221,7 +207,8 @@
     (raise-argument-error
      'make-skia-render-canvas "exact-nonnegative-integer? minimum height" min-height))
   (new (force (if (eq? (hash-ref policy 'renderer) 'raster) raster-class gpu-class))
-       [parent parent] [policy policy] [paint-callback paint-callback] [on-error on-error]
+       [parent parent] [policy policy] [style style]
+       [paint-callback paint-callback] [on-error on-error]
        [background background] [smoothing smoothing] [min-width min-width] [min-height min-height]))
 
 ;;;
@@ -233,22 +220,29 @@
 (define skia-render-window%
   (class gui:frame%
     (init [label "Skia render canvas"] [width 640] [height 480]
+          [canvas-style '()]
           [renderer 'auto] [backend 'auto]
           [adapter #f] [adapter-index #f] [sync-interval #f]
           [paint-callback void] [on-error raise] [background "white"] [smoothing 'smoothed])
     (handler! 'skia-render-window%)
     ;; Reject invalid choices even before creating the frame itself.
-    (resolve-render-canvas-policy renderer backend adapter adapter-index sync-interval)
+    (define policy
+      (resolve-render-canvas-policy renderer backend adapter adapter-index sync-interval
+                                    #:who 'skia-render-window%))
+    (check-canvas-style 'skia-render-window% canvas-style
+                        #:raster? (eq? (hash-ref policy 'renderer) 'raster))
     (check-render-callback 'skia-render-window% paint-callback 2)
     (check-render-callback 'skia-render-window% on-error 1)
     (super-new [label label] [width width] [height height])
     (define canvas
-      (make-skia-render-canvas this #:renderer renderer #:backend backend
+      (make-skia-render-canvas this #:style canvas-style #:renderer renderer #:backend backend
         #:adapter adapter #:adapter-index adapter-index #:sync-interval sync-interval
         #:paint-callback paint-callback #:on-error on-error
         #:background background #:smoothing smoothing))
     (define/public (get-render-canvas) canvas)
-    (define/public (close-render)
+    (define/public (get-close-state) (send canvas get-close-state))
+    (define/public (closed?) (send canvas closed?))
+    (define/public (close)
       ;; A rejected close (e.g. from its paint callback) must not hide the frame.
-      (send canvas close-skia) (send this show #f))
-    (define/augment (on-close) (send this close-render))))
+      (send canvas close) (send this show #f))
+    (define/augment (on-close) (send this close))))

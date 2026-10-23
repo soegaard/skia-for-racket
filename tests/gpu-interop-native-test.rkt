@@ -79,7 +79,9 @@
     (test-case "owned image outlives the producer reference"
       (using (lambda (f)
         (define t (interop-handoff c f)) (drop-fixture-texture f)
-        (with-skia ([im (gpu-import-image c t)])
+        (with-skia ([im (call-with-gpu-external-texture t
+                         (lambda (texture) (gpu-import-image c texture)))])
+          (check-equal? (hash-ref (gpu-external-texture-info t) 'handoff_state) "retired")
           (check-true (hash-ref (gpu-image-info im) 'texture_backed))
           (check-equal? (pixels im) (interop-pattern 37 29))))))
     (test-case "copied pixels do not alias later external writes"
