@@ -183,6 +183,7 @@ tutorial programs.
 | [ci-import-smoke.rkt](ci-import-smoke.rkt) | Loads the package's supported module entry points in a controlled smoke-test process. CI uses this probe to catch missing installed files and accidental eager native or GUI imports. |
 | [ci-package-smoke.rkt](ci-package-smoke.rkt) | Checks the installed package's rendering path and native-library identity. |
 | [copy-tutorial-examples.rkt](copy-tutorial-examples.rkt) | Copies cataloged complete tutorial programs into a selected destination or lists the planned files. |
+| [gc-trace.rkt](gc-trace.rkt) | Opt-in conversion of individual Racket GC logs into timestamped records for correlation with GUI/presenter stalls; never changes collection policy. |
 | [gpu-dc-consumer-common.rkt](gpu-dc-consumer-common.rkt) | Records consumer I/O, writes captures, and assembles common JSON report fields. Native and GUI consumer probes share these checks to enforce explicit readback and presentation. |
 | [gpu-dc-consumer-gui.rkt](gpu-dc-consumer-gui.rkt) | Runs pict, plot, and recorded workloads through real window paint callbacks. |
 | [gpu-dc-consumer-native.rkt](gpu-dc-consumer-native.rkt) | Runs consumer workloads on GPU surfaces and presenter frames, saving comparison captures. |

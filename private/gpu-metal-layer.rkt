@@ -10,11 +10,44 @@
 ;; macOS GUI-only native adapter. Dynamically loaded by skia/gpu-gui, never by
 ;; CPU/offscreen imports. Raw objects remain private and creator-thread checked.
 (require ffi/unsafe "gpu-native-scope.rkt" "gpu-metal-handles.rkt" "gpu-provider.rkt"
+         "gpu-presenter-timing.rkt" "gpu-cocoa-trace.rkt"
          (submod "gpu-presenter.rkt" adapter-internals))
 (provide make-metal-layer-host
          metal-layer-measure metal-layer-acquire! metal-layer-present! metal-layer-release!
          metal-layer-finish! metal-layer-close! metal-layer-info metal-drawable-texture
            metal-drawable-info)
+
+;;;
+;;; Layer Update Experiments
+;;;
+
+; current-metal-skip-unchanged-layer-setters : (parameter/c boolean?)
+;   Enables a private experiment, independently of timing, only when explicitly requested.
+(define current-metal-skip-unchanged-layer-setters
+  (make-parameter (equal? (getenv "SKIA_METAL_SKIP_UNCHANGED_LAYER_SETTERS") "1")))
+
+; current-metal-skip-empty-layer-transactions : (parameter/c boolean?)
+;   Also omits an empty update transaction when the unchanged-setter experiment is enabled.
+(define current-metal-skip-empty-layer-transactions
+  (make-parameter (equal? (getenv "SKIA_METAL_SKIP_EMPTY_LAYER_TRANSACTIONS") "1")))
+
+; metal-layer-setter-needed? : (-> boolean?) -> boolean?
+;   Keeps the default setter path without extra reads; the experiment checks current native values.
+(define (metal-layer-setter-needed? unchanged?)
+  (or (not (current-metal-skip-unchanged-layer-setters)) (not (unchanged?))))
+
+; call-with-metal-layer-update : (-> boolean?) (-> any) -> any
+;   Skips a whole unchanged update only with both opt-ins; other modes do no preflight reads.
+(define (call-with-metal-layer-update unchanged? update)
+  (if (and (current-metal-skip-unchanged-layer-setters)
+           (current-metal-skip-empty-layer-transactions)
+           (unchanged?))
+      (void)
+      (update)))
+
+(module+ test-support
+  (provide current-metal-skip-unchanged-layer-setters current-metal-skip-empty-layer-transactions
+           metal-layer-setter-needed? call-with-metal-layer-update))
 
 ;;;
 ;;; Layer Host and Drawable Records
@@ -89,6 +122,7 @@
   (define release-space (get-ffi-obj "CGColorSpaceRelease" cg (_fun _pointer -> _void)))
   (define srgb (get-ffi-obj "kCGColorSpaceSRGB" cg _pointer))
   (define scope (make-gpu-native-scope push pop))
+  (define cocoa-trace #f)
   (define (get p name) (ptr0 p (sel name)))
   (define (act p name) (void0 p (sel name)))
   (define (put p name arg) (ptr1 p (sel name) arg))
@@ -96,6 +130,9 @@
   (define (rect-get p name)
     (define s (sel name))
     ((cast (method-imp (obj-cls p) s) _pointer (_fun _pointer _pointer -> _ca-rect)) p s))
+  (define (size-get p name)
+    (define s (sel name))
+    ((cast (method-imp (obj-cls p) s) _pointer (_fun _pointer _pointer -> _ca-size)) p s))
   (define (backing-rect p rectangle)
     (define s (sel "convertRectToBacking:"))
     ((cast (method-imp (obj-cls p) s) _pointer (_fun _pointer _pointer _ca-rect -> _ca-rect)) p s
@@ -107,7 +144,45 @@
   (define (without-animation thunk)
     (dynamic-wind (lambda () (act transaction "begin"))
       (lambda () (bool1 transaction (sel "setDisableActions:") 1) (thunk))
-      (lambda () (act transaction "commit"))))
+      (lambda ()
+        (with-metal-presenter-timing 'metal-layer-commit (act transaction "commit")))))
+  (define (observe-state h phase [metrics #f] [drawable #f])
+    (record-metal-presenter-state!
+     (metal-layer-host-identity h) phase
+     (lambda ()
+       ;; All getters run in the existing owner-thread native scope. No retained native objects
+       ;; enter a log record, and no observation changes visibility, geometry, or frame decisions.
+       (define layer (metal-layer-host-layer h))
+       (define window (get view "window"))
+       (define (rectangle p name)
+         (define r (rect-get p name))
+         (list (ca-rect-x r) (ca-rect-y r) (ca-rect-width r) (ca-rect-height r)))
+       (define size (size-get layer "drawableSize"))
+       (define occlusion (and window (uint0 window (sel "occlusionState"))))
+       (hasheq 'frame (rectangle layer "frame")
+               'skip_unchanged_setters (current-metal-skip-unchanged-layer-setters)
+               'skip_empty_transactions (current-metal-skip-empty-layer-transactions)
+               'bounds (rectangle layer "bounds")
+               'view_bounds (rectangle view "bounds")
+               'contents_scale (double0 layer (sel "contentsScale"))
+               'drawable_size (list (ca-size-width size) (ca-size-height size))
+               'requested_drawable_size
+               (and metrics (list (hash-ref metrics 'pixel_width)
+                                  (hash-ref metrics 'pixel_height)))
+               'window_backing_scale (and window (double0 window (sel "backingScaleFactor")))
+               'window_present (and window #t)
+               'window_occlusion_state occlusion
+               'occlusion_visible (and occlusion (bitwise-bit-set? occlusion 1))
+               'window_visible (and window (not (zero? (bool0 window (sel "isVisible")))))
+               'window_minimized (and window (not (zero? (bool0 window (sel "isMiniaturized")))))
+               'window_key (and window (not (zero? (bool0 window (sel "isKeyWindow")))))
+               'view_hidden (not (zero? (bool0 view (sel "isHiddenOrHasHiddenAncestor"))))
+               'live_drawables (metal-layer-host-live h)
+               'presents_requested (metal-layer-host-presents h)
+               'drawable_id (and drawable (uint0 drawable (sel "drawableID")))
+               'display_sync_enabled (not (zero? (bool0 layer (sel "displaySyncEnabled"))))
+               'presents_with_transaction
+               (not (zero? (bool0 layer (sel "presentsWithTransaction"))))))))
   (define (measure h)
     (define bounds (rect-get view "bounds"))
     (define pixels (backing-rect view bounds))
@@ -120,24 +195,67 @@
      (max 0 (inexact->exact (round (ca-rect-width pixels))))
      (max 0 (inexact->exact (round (ca-rect-height pixels))))
      (ca-rect-width bounds) (ca-rect-height bounds) #:visible? (and visible? #t)))
-  (define (resize h m)
+  (define (frame-matches? layer bounds)
+    (define frame (rect-get layer "frame"))
+    (and (= (ca-rect-x frame) (ca-rect-x bounds))
+         (= (ca-rect-y frame) (ca-rect-y bounds))
+         (= (ca-rect-width frame) (ca-rect-width bounds))
+         (= (ca-rect-height frame) (ca-rect-height bounds))))
+  (define (size-matches? layer m)
+    (define size (size-get layer "drawableSize"))
+    (and (= (ca-size-width size) (hash-ref m 'pixel_width))
+         (= (ca-size-height size) (hash-ref m 'pixel_height))))
+  (define (layer-unchanged? h m)
+    ;; Preflight runs in the existing atomic owner-thread scope, before opening a transaction.
+    (define layer (metal-layer-host-layer h))
+    (define bounds (rect-get view "bounds"))
+    (define window (get view "window"))
+    (define scale (if window (double0 window (sel "backingScaleFactor")) 1.0))
+    (and (frame-matches? layer bounds)
+         (= (double0 layer (sel "contentsScale")) scale)
+         (size-matches? layer m)))
+  (define (resize-in-transaction h m)
     (without-animation
      (lambda ()
        (define layer (metal-layer-host-layer h))
        (define bounds (rect-get view "bounds"))
-       (rect1 layer (sel "setFrame:") bounds)
+       ;; Compare the model properties, not cached requests, so actual changes still take effect.
+       (when (metal-layer-setter-needed? (lambda () (frame-matches? layer bounds)))
+         (with-metal-presenter-timing 'metal-layer-frame
+           (rect1 layer (sel "setFrame:") bounds)))
        (define window (get view "window"))
        (define scale (if window (double0 window (sel "backingScaleFactor")) 1.0))
-       (double1 layer (sel "setContentsScale:") scale)
-       (size1 layer (sel "setDrawableSize:")
-              (make-ca-size (exact->inexact (hash-ref m 'pixel_width))
-                            (exact->inexact (hash-ref m 'pixel_height)))))))
+       (when (metal-layer-setter-needed?
+              (lambda () (= (double0 layer (sel "contentsScale")) scale)))
+         (with-metal-presenter-timing 'metal-layer-scale
+           (double1 layer (sel "setContentsScale:") scale)))
+       (when (metal-layer-setter-needed? (lambda () (size-matches? layer m)))
+         (with-metal-presenter-timing 'metal-layer-drawable-size
+           (size1 layer (sel "setDrawableSize:")
+                  (make-ca-size (exact->inexact (hash-ref m 'pixel_width))
+                                (exact->inexact (hash-ref m 'pixel_height)))))))))
+  (define (resize h m)
+    (call-with-metal-layer-update (lambda () (layer-unchanged? h m))
+                                 (lambda () (resize-in-transaction h m))))
   (define (acquire h m)
-    (resize h m)
+    (observe-state h 'before-update m)
+    (with-metal-presenter-timing 'metal-layer-updates (resize h m))
+    (observe-state h 'after-update m)
     (define layer (metal-layer-host-layer h))
     ;; nextDrawable can block for drawable-pool backpressure. This is not an
     ;; explicit GPU-completion wait, nor a promise of nonblocking acquisition.
-    (define drawable (get layer "nextDrawable"))
+    (define (next-drawable)
+      (with-metal-presenter-timing 'metal-next-drawable (get layer "nextDrawable")))
+    (define drawable
+      (if cocoa-trace
+          (dynamic-wind
+            (lambda ()
+              (record-cocoa-presenter-trace! cocoa-trace 'before-next-drawable (get view "window")))
+            next-drawable
+            (lambda ()
+              (record-cocoa-presenter-trace! cocoa-trace 'after-next-drawable (get view "window"))))
+          (next-drawable)))
+    (observe-state h 'after-acquire m drawable)
     (and drawable
          (let ()
            (get drawable "retain")
@@ -189,7 +307,8 @@
     (when p
       (set-metal-drawable-pointer! token #f)
       (set-metal-layer-host-live! h (sub1 (metal-layer-host-live h)))
-      (act p "release")))
+      (act p "release")
+      (observe-state h 'after-release)))
   (define (finish h)
     (define command (metal-layer-host-last-buffer h))
     (when command
@@ -205,6 +324,7 @@
     (unless (zero? (metal-layer-host-live h)) (error 'gpu-presenter
       "live Metal drawable during layer teardown"))
     (finish h)
+    (close-cocoa-presenter-trace! cocoa-trace)
     (define p (metal-layer-host-layer h))
     (when p
       (set-metal-layer-host-layer! h #f)
@@ -250,6 +370,7 @@
                             'acquire acquire
                                   'present present 'release release 'finish finish 'close close) 0 0
                                     #f))
+              (set! cocoa-trace (make-cocoa-presenter-trace (metal-layer-host-identity h)))
               (set! ok? #t) h)
             (lambda ()
               (unless ok?
@@ -275,23 +396,26 @@
 
 ; metal-layer-measure : metal-layer-host? -> any
 ;   Copies the layer's current drawable and logical extents into detached presentation metrics.
-(define (metal-layer-measure h) (layer-call 'gpu-presenter h 'measure))
+(define (metal-layer-measure h)
+  (with-metal-presenter-timing 'metal-measure (layer-call 'gpu-presenter h 'measure)))
 
 ; metal-layer-acquire! : metal-layer-host? any/c -> any
 ;   Acquires and tracks one retained drawable lease for the measured frame configuration.
-(define (metal-layer-acquire! h m) (layer-call 'gpu-presenter h 'acquire m))
+(define (metal-layer-acquire! h m)
+  (with-metal-presenter-timing 'metal-acquire (layer-call 'gpu-presenter h 'acquire m)))
 
 ; metal-layer-present! : metal-layer-host? metal-drawable? -> any
 ;   Queues presentation of a live drawable once and updates submission bookkeeping.
 (define (metal-layer-present! h token)
   (unless (eq? h (metal-drawable-host token)) (error 'gpu-presenter "foreign Metal drawable"))
-  (layer-call 'gpu-presenter h 'present token))
+  (with-metal-presenter-timing 'metal-present (layer-call 'gpu-presenter h 'present token)))
 
 ; metal-layer-release! : metal-layer-host? metal-drawable? -> any
 ;   Releases the retained drawable and invalidates its borrowed texture access.
 (define (metal-layer-release! h token)
   (unless (eq? h (metal-drawable-host token)) (error 'gpu-presenter "foreign Metal drawable"))
-  (layer-call 'gpu-presenter h 'release token))
+  (with-metal-presenter-timing 'metal-release-drawable
+    (layer-call 'gpu-presenter h 'release token)))
 
 ; metal-layer-finish! : metal-layer-host? -> any
 ;   Completes outstanding layer submission work before resources can be retired.

@@ -113,7 +113,7 @@ def fixture(directory: Path, selection='warp', index=0):
                   adapter_index=False if selection == 'warp' else index,
                   visible_pixels_verified=False, hardware_acceleration_verified=False, performance_measured=False,
                   window_created=True, presentation_submission_verified=True,
-                  test_counts=dict(presenter=28, presenter_failures=0), cycles=cycles)
+                  test_counts=dict(presenter=29, presenter_failures=0), cycles=cycles)
     (directory / 'dxgi.diagnostic.json').write_text(json.dumps(result), encoding='utf-8')
     return result
 
@@ -130,7 +130,7 @@ class Inspector(unittest.TestCase):
         with self.assertRaises((ValueError, KeyError, TypeError)): d.inspect(self.directory)
     def test_valid(self):
         r = d.inspect(self.directory)
-        self.assertEqual((r['native_presenter_cases'], r['contexts'], r['stress_frames'], r['captures']), (28, 6, 1080, 18))
+        self.assertEqual((r['native_presenter_cases'], r['contexts'], r['stress_frames'], r['captures']), (29, 6, 1080, 18))
         self.assertTrue(r['back_buffer_pixels_verified']); self.assertFalse(r['visible_pixels_verified'])
     def test_hardware_is_separate(self):
         fixture(self.directory, 'hardware', 2)

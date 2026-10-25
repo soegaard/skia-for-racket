@@ -18,7 +18,7 @@ WINDOWS = 2
 CAPTURES = 3
 STRESS_FRAMES = 180
 NORMAL_FRAMES = STRESS_FRAMES + CAPTURES
-NATIVE_CASES = 28
+NATIVE_CASES = 29
 SIZES = dict(swap_desc=48, rect=16, texture_info=40, transition=32,
              heap_properties=20, resource_desc=56, copy_location=48, range=16)
 

@@ -340,11 +340,11 @@ class HookTests(unittest.TestCase):
 
 class IntegrationTests(unittest.TestCase):
     """These require the complete applied checkout/installed sources; never skip."""
-    def test_native_suite_counts_unchanged(self):
+    def test_native_suite_counts_match_current_coverage(self):
         import re
         for name,count in [('gpu-surface-native-test.rkt',33),('gpu-image-native-test.rkt',42),
                            ('gpu-output-native-test.rkt',42),('gpu-cache-native-test.rkt',20),
-                           ('gpu-presenter-native-test.rkt',28)]:
+                           ('gpu-presenter-native-test.rkt',29)]:
             self.assertEqual(len(re.findall(r'\(test-case\s', (ROOT/'tests'/name).read_text())),count)
     def test_pure_tests_wired(self):
         source=(ROOT/'run-tests.rkt').read_text()

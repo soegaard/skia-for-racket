@@ -15,7 +15,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-NATIVE_TEST_CASES = 28
+NATIVE_TEST_CASES = 29
 BACKENDS = {'opengl': 0, 'metal': 2}
 MAX_REPORT_BYTES = 8 * 1024 * 1024
 

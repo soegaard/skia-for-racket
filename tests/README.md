@@ -189,8 +189,8 @@ an independent native probe.
 | [gpu-output-native-test.rkt](gpu-output-native-test.rkt) | bounded GPU document fallbacks with unchanged representation policies. |
 | [gpu-output-pure-test.rkt](gpu-output-pure-test.rkt) | gPU document execution: pure protocol, lazy ownership and scoped audit. |
 | [gpu-performance-pure-test.rkt](gpu-performance-pure-test.rkt) | Checks GPU timing, frame reuse, and deferred-release measurements. |
-| [gpu-presenter-native-test.rkt](gpu-presenter-native-test.rkt) | live shared presenter/frame API (submission, not visible-pixel certification). |
-| [gpu-presenter-pure-test.rkt](gpu-presenter-pure-test.rkt) | presentation lifecycle and scheduling with synthetic adapters. |
+| [gpu-presenter-native-test.rkt](gpu-presenter-native-test.rkt) | Live shared presenter/frame API, including geometry/occlusion and Cocoa run-loop observations, setter/transaction experiments, resize, and unchanged submission and cleanup; not visible-pixel certification. |
+| [gpu-presenter-pure-test.rkt](gpu-presenter-pure-test.rkt) | Presentation lifecycle and scheduling with synthetic adapters; timing/state, Cocoa observer, GC collector, and layer-update gates, diagnostic-read failures, cleanup, and preserved results and escapes. |
 | [gpu-pure-test.rkt](gpu-pure-test.rkt) | gPU foundation: pure mock-provider, ownership, lifecycle, and ABI tests. |
 | [gpu-render-native-test.rkt](gpu-render-native-test.rkt) | one-shot GPU render on the explicitly selected backend. |
 | [gpu-render-pure-test.rkt](gpu-render-pure-test.rkt) | one-shot GPU render: arguments and lifetime worker. |

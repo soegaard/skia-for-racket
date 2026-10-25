@@ -209,7 +209,7 @@ scratch home is removed. They include individual diagnostics/reviews, PNGs,
 PDFs/SVGs, timing CSVs, the aggregate and failure records. No native libraries
 or compiled payloads are included in this source delivery.
 
-The 0.49 DXGI SDK/COM tests, shared 28-case presenter suite and 18 actual
+The 0.49 DXGI SDK/COM tests, shared presenter suite (now 29 cases) and 18 actual
 swap-chain captures remain independently required. The new timing pass is
 not a replacement for those checks and does not certify physical screen
 pixels. The legacy GL construction/window probes, GL/Metal comparison

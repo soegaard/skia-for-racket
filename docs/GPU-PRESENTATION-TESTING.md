@@ -21,19 +21,61 @@ suite on OpenGL and, on macOS, Metal. `GPU_MODE=required` is the default.
 submission, cleanup and inspection failures still fail. `off` skips live GPU
 work explicitly and cannot establish a presentation pass.
 
-The ordinary test runner includes 53 presenter pure source cases. They test
+The ordinary test runner includes 72 presenter pure source cases. They test
 frame expiry, zero/hidden extents, resize/scale generations, queued redraw
 coalescing, callback escapes/exceptions, cleanup deferral across ordinary GPU
 scopes and other windows, GC/custodian requests, same-queue borrowed registry,
-and safe exceptional cleanup/quarantine. They use mock adapters, not a GUI.
+and safe exceptional cleanup/quarantine. Timing cases also check opt-in and
+receiver gates, GUI-event compatibility, nested spans, return values, exceptions,
+escapes, continuation reentry, atomic native-scope cleanup, and idempotent span
+completion. They use mock adapters, not a GUI.
+State-observation checks cover opt-in/receiver gates, copied prefab records, and
+diagnostic read failures without affecting rendering control flow.
+The independent setter experiment checks that the default path does not read
+comparison values, and that opting in rechecks current values on every call,
+skips equal values, applies changed values, and propagates comparison failures.
+The empty-transaction gate checks all four combinations of the two experiment
+switches: only both enabled may run preflight or skip an unchanged update.
+Changed values still run the update, and preflight failures propagate.
 
-The separate live suite contains 28 source cases per selected backend. It
+The separate live suite contains 29 source cases per selected backend. It
 checks real widget/context creation, ordinary canvas drawing, target geometry,
 borrowed frame/canvas expiration, resize, hidden and minimized windows,
 callback-time resize and close, wrong-thread/nested access, redrawing,
 unbalanced saves, application-child close guards, and independent windows.
 Source-case counts are checked against the doctor and inspector constants;
 counts alone do not establish that RackUnit was run.
+
+The normal-frame case runs with timing disabled and enabled, and with the
+two layer-update experiments in all four switch combinations. Metal must emit
+the documented phase sequence only when enabled, while the I/O sequence remains
+flush, submit, present with no readback or added completion wait. Other backends
+must emit no Metal timing events. All runs still check clean target retirement.
+The same case checks native geometry/occlusion observations, stable before/after
+setter values, and zero local drawable leases after release. State observation
+does not change the flush/submit/present sequence or add a completion wait.
+In the setter-only experiment, stable frames must omit all three setter spans
+while still committing the transaction. With both switches enabled, stable
+frames must also omit the commit. The resize case runs in all four combinations
+and must still call the frame/drawable-size setters, commit, acquire correctly
+sized targets, and advance the target generation.
+See [timing usage and interpretation](GPU-PRESENTATION.md#opt-in-metal-presenter-timing).
+The [recorded windowed-stall findings](METAL-PRESENTER-TIMING-FINDINGS.md)
+are a separate performance investigation, not timing thresholds for these tests.
+
+Cocoa tracing has independent opt-in/receiver gates. Pure cases check that the
+default path never installs an observer, snapshots read fresh values, cleanup
+is idempotent, and unavailable private state produces an error rather than a
+false flag. The live case runs tracing off and on, requires paired acquisition
+observations and run-loop progress between frames, and preserves the exact
+submission sequence and clean ownership. It does not force event progress
+during drawable acquisition or certify a cause for stalls.
+
+The GC collector tests cover its default-off gate, mode/timestamp/memory fields,
+exclusion of duplicate `GC:major` messages, future trailing fields, and explicit
+errors for unsupported payloads. One headless test requests a collection to
+check the actual runtime payload and timestamps. The collector itself never
+requests collections and is not part of the rendering path.
 
 The presentation doctor then keeps two windows alive with distinct contexts,
 renders three different framebuffer sizes in each, closes the first and

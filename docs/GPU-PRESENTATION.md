@@ -288,6 +288,273 @@ The source's pinned native reference contract is unchanged: Ganesh retains
 both Metal device and queue. The new registry stores borrowed pointers, not
 additional native ownership, and removes entries before context destruction.
 
+## Opt-in Metal presenter timing
+
+The [windowed-stall investigation](METAL-PRESENTER-TIMING-FINDINGS.md) records
+why these probes were added, the quiet-desktop comparison, and the limits of
+the conclusions. Desktop compositor workload can delay drawable availability
+after the application's GPU work has completed; a long `nextDrawable` call is
+not by itself evidence of slow drawing or a leaked drawable.
+
+Use timing when a Metal window stalls before or after its drawing callback. Set
+`SKIA_METAL_PRESENTER_TIMING=1` before starting Racket, and attach a debug log
+receiver for the topic `skia-metal-presenter`. Both are required: without the
+opt-in or an interested receiver, the timing points read no clocks and produce
+no events. The environment setting is read when the timing module loads.
+No public drawing API or game-loop changes are needed.
+
+The existing Racket GUI event-tracing approach can collect these spans alongside
+GUI callbacks. Each log message has prefab data with this layout:
+
+```racket
+(struct gui-event (start end name) #:prefab)
+(define receiver
+  (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+```
+
+Keep the receiver alive while capturing, and drain it from a separate Racket
+thread into a bounded buffer. Save the buffer after the capture, not from the
+render callback. A receiver accepting all debug topics also works. Existing
+collectors that recognize `gui-event` need no new data type; collectors that
+filter topics must include `skia-metal-presenter`. If a collector labels every
+non-game topic as `racket-gui`, identify these events by their `metal-` names.
+
+Each span produces one completed event, including on an exception or escape;
+there is no separate start event. `start` is epoch milliseconds, compatible
+with GUI event timestamps. `end` is `start` plus elapsed monotonic milliseconds,
+so `end - start` is the duration even if the wall clock changes during the call.
+Clock changes can still affect alignment between independently started spans.
+The event records time spent, not whether the operation succeeded. A blocked
+call produces its event only when it returns or unwinds.
+
+| Phase | What is timed |
+| --- | --- |
+| `metal-measure` | Reading view geometry and visibility, including native-scope entry/exit. May occur several times per frame. |
+| `metal-context-entry` | Entering the GPU context, including its checks and pending resource cleanup, before acquisition begins. |
+| `metal-layer-updates` | Updating the layer for the measured frame, including the Core Animation transaction. |
+| `metal-layer-frame`, `metal-layer-scale`, `metal-layer-drawable-size` | The individual frame, contents-scale, and drawable-size setters. |
+| `metal-layer-commit` | Committing the Core Animation transaction. Also appears during layer setup and teardown. |
+| `metal-next-drawable` | The `nextDrawable` call, including time waiting for an available drawable. A null result is timed too. |
+| `metal-acquire` | The complete acquisition, including layer updates, `nextDrawable`, validation, and native-scope entry/exit. |
+| `metal-wrap-target` | Creating the Skia target wrapper and frame canvas. |
+| `metal-clear` | Clearing the target before the drawing callback. |
+| `metal-receive` | The common frame receiver: the drawing callback, subsequent checks, and submission/presentation when accepted. This is not drawing-callback time alone. |
+| `metal-flush-submit` | Skia flush and submission; not completion of GPU execution. |
+| `metal-present` | Queuing the same-queue presentation command buffer, not waiting for display. |
+| `metal-retire-target`, `metal-release-drawable` | Retiring the Skia wrapper and backend descriptor, then releasing the local drawable reference. The latter is part of the former. |
+| `metal-cancelled-frame-sync` | The existing exceptional-path completion wait for an unpresented frame. |
+| `metal-target` | The complete adapter target call, including context entry, acquisition, drawing, presentation, cleanup, and context exit. It excludes earlier handler dispatch and geometry measurement. |
+
+Spans are nested and logged in completion order. Do not add parent and child
+durations together. Compare `metal-layer-updates` with `metal-next-drawable`
+first, then use the smaller phases to locate other delays. These are CPU-side
+elapsed times, including blocking, GC, or scheduling pauses where permitted;
+they do not measure GPU execution or prove the cause of drawable backpressure.
+Several windows can emit the same names, so correlate with the enclosing GUI
+callback or capture one window at a time.
+
+For a quick textual check without a trace collector:
+
+```sh
+SKIA_METAL_PRESENTER_TIMING=1 \
+PLTSTDERR='error debug@skia-metal-presenter' \
+racket examples/gpu-presenters.rkt --backend metal
+```
+
+Messages show the phase and elapsed milliseconds. Console logging and trace
+collection add overhead; use buffered capture for performance comparisons and
+compare equivalent runs with timing disabled. Instrumentation adds no GPU
+waits, readbacks, retries, or changes to layer updates, drawable acquisition,
+frame scheduling, cancellation, or the application's simulation.
+
+### Individual garbage collections
+
+To compare GC pauses with presenter stalls, set `SKIA_GC_TRACE=1` before loading
+the developer helper `tools/gc-trace.rkt`. This is a collector opt-in, not a
+rendering option: the helper is not loaded by the library and does not request
+collections, change GC policy, or change frame scheduling. Enabling the flag
+alone does not create a capture.
+
+`make-gc-trace-receiver` creates a receiver for debug topic `GC` when enabled,
+or returns `#f` when disabled. A collector with an existing all-debug receiver
+can use that receiver instead. Pass each message to `gc-log-message->record`
+and buffer any returned record alongside the presenter spans. The helper reads
+the environment once on module loading; `gc-trace-enabled?` reports that setting.
+
+Each JSON-compatible `gc` record includes:
+
+- `mode`: `minor`, `major`, or `incremental`;
+- `start` and `end`: the runtime's epoch-millisecond collection timestamps;
+- `cpu_start`, `cpu_end`, `cpu_ms`, and `wall_ms`: processor timestamps and the
+  CPU/elapsed durations, in milliseconds;
+- `pre_bytes`, `post_bytes`, their `*_admin_bytes` counterparts, and `code_bytes`:
+  memory before/after collection, including overhead in the admin values;
+- `received_at`: when the collector processed the message, which can be later
+  than the collection if a native call delayed Racket threads.
+
+The helper uses Racket's documented `gc-info` payload, not its message text.
+It ignores `GC:major`, which would count a major collection a second time, and
+accepts additional trailing payload fields. An unsupported `GC` payload produces
+a `gc-error` record; do not interpret those errors as an absence of collections.
+The memory values describe the reporting Racket place, not total process/GPU
+memory. Capture one application place for unambiguous correlation.
+
+Compare interval overlap using `start`/`end`, never `received_at`. GC timestamps
+may have millisecond resolution, so a very small apparent gap or overlap is not
+conclusive. Distinguish collections inside a stall from those immediately before
+or after it; correlation alone does not establish the cause of drawable waits.
+Keep startup/restart collections separate from steady gameplay statistics.
+Report dropped records and retain enough post-sample capture time to drain logs
+that were delayed by a stall. Buffering itself allocates memory and can affect
+GC frequency; do not log to disk or print individual events during the sample.
+
+### Layer geometry and occlusion observations
+
+To distinguish setter calls from actual geometry changes, keep the same opt-in
+and attach a second debug receiver for `skia-metal-presenter-state`:
+
+```racket
+(struct metal-presenter-state (time host phase fields) #:prefab)
+(define state-receiver
+  (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-state))
+```
+
+The receiver gets snapshots at `before-update`, `after-update`, `after-acquire`,
+and `after-release`. `time` is epoch milliseconds at the start of the observation;
+`host` identifies the layer without exposing a native pointer. These records are
+separate from `gui-event` spans, so existing span-only collectors ignore them.
+Without an interested state receiver, the additional native getters do not run.
+
+The immutable `fields` hash contains:
+
+- `frame`, `bounds`, and `view_bounds`: `(x y width height)` in logical units;
+- `contents_scale` and `window_backing_scale`: scale factors;
+- `drawable_size` and `requested_drawable_size`: `(width height)` in pixels;
+- `window_present`, `window_visible`, `window_minimized`, `window_key`,
+  `view_hidden`, the raw `window_occlusion_state` bitmask, and `occlusion_visible`;
+- `live_drawables`, `presents_requested`, and the `drawable_id` after acquisition;
+- `skip_unchanged_setters` and `skip_empty_transactions`: the two experiment switches;
+- `display_sync_enabled` and `presents_with_transaction`;
+- `observation_ms`: time spent reading the snapshot, excluding log emission.
+
+Window-dependent fields are `#f` when no window is attached. Requested size is
+`#f` after release; drawable ID is `#f` outside acquisition or for a null result.
+The after-acquisition observation precedes registering the local drawable lease.
+If a diagnostic read raises an ordinary exception, the record instead contains
+`observation_error` and its duration; rendering errors are not suppressed.
+
+Compare each before/after pair, and successive frames, to identify real changes.
+By default, all original setters still run even when their values match. Occlusion is only
+observed: it does not skip frames or change visibility policy. A visible occlusion
+bit means some of the window is visible, not that the entire canvas is unobscured;
+the before/after snapshots cannot exclude a transition during a blocking call.
+The snapshots describe model-layer properties, not compositor completion. Stable
+geometry alone does not prove that redundant setters have no deferred cost.
+
+Buffer both topics and correlate their timestamps with Metal System Trace before
+attributing stalls to the compositor. Observations add CPU work but no GPU waits,
+readbacks, layer changes, drawable references, or changes to the simulation.
+
+### Experiment: skip unchanged layer setters
+
+To test whether repeated setter calls contribute to drawable stalls, set
+`SKIA_METAL_SKIP_UNCHANGED_LAYER_SETTERS=1` before starting Racket. This private
+experiment is off by default and independent of timing and log receivers. Its
+environment setting is read when the Metal layer module loads; it is not a
+public rendering option or an established performance improvement.
+
+When enabled, the adapter compares the layer's current model `frame`,
+`contentsScale`, and `drawableSize` with the requested values immediately before
+each corresponding setter. It skips only an equal value, using exact numeric
+comparison without a tolerance or cached requests. Changed values still use the
+original setters in the original order. With the experiment disabled, all three
+setters run as before, without these extra comparison reads.
+
+With only this switch enabled, the Core Animation transaction still begins and
+commits, even when all three setters are skipped. This isolates setter omission
+from transaction omission.
+Layer creation, drawable acquisition and ownership, submission, presentation,
+frame scheduling, and the application's simulation are unchanged.
+
+For a matched timing capture, use both environment settings and the same log
+receivers. A skipped setter produces no `metal-layer-frame`, `metal-layer-scale`,
+or `metal-layer-drawable-size` span; the enclosing `metal-layer-updates` and
+`metal-layer-commit` spans remain. State records include `skip_unchanged_setters`
+so a capture identifies which mode ran. Compare equivalent steady-size runs,
+and also check resizing: unchanged values should skip setters, not prevent a
+new size or scale from taking effect. One faster run alone does not establish
+that setter omission fixes a compositor stall.
+
+### Experiment: also skip empty layer transactions
+
+To extend the setter experiment, also set
+`SKIA_METAL_SKIP_EMPTY_LAYER_TRANSACTIONS=1` before starting Racket. Both this
+switch and `SKIA_METAL_SKIP_UNCHANGED_LAYER_SETTERS=1` are required; the new
+switch alone has no effect. It is default-off, read on module loading, and
+independent of timing and log receivers.
+
+With both switches enabled, the adapter first compares the current layer frame,
+contents scale, and drawable size with the requested values in the existing
+owner-thread native scope. If all match, it returns without beginning a Core
+Animation transaction, disabling actions, calling setters, or committing. If
+any value differs, the existing transaction and selective setters still run.
+Default and setter-only modes do not perform this extra preflight.
+
+An unchanged frame therefore has no setter or `metal-layer-commit` spans, while
+`metal-layer-updates` still measures the preflight. State observations report
+both switches. Layer-creation and teardown transactions remain, as do update
+transactions for real size or scale changes. This does not suppress transactions
+created by Racket, AppKit, or other application code, or change presentation's
+`presentsWithTransaction` setting.
+
+Compare this mode with the setter-only capture to test the effect of omitting
+empty update transactions. Drawable acquisition, ownership, GPU submission,
+presentation, frame scheduling, and the game's simulation remain unchanged.
+
+### Opt-in Racket flush and Cocoa run-loop tracing
+
+Set `SKIA_METAL_COCOA_TRACE=1` before creating a Metal presenter and subscribe to
+the debug topic `skia-metal-presenter-cocoa`. This switch is default-off and
+independent of timing and both layer-update experiments. It is read on module
+loading; the receiver must exist when the presenter is created. Without both
+opt-in and a receiver, no observer is installed and no private GUI state is read.
+
+The topic carries prefab records
+`(metal-presenter-cocoa-state time host phase fields)`. The phases are
+`before-next-drawable` and `after-next-drawable`; the latter also runs when
+acquisition raises. Sampling is outside the `metal-next-drawable` timing span.
+Fields include:
+
+- `flush_suspended` and `flush_suspended_for_window`: Racket's current global
+  flush suspension and whether it belongs to this presenter's window;
+- `racket_sleeping`, `racket_events_suspended`, and `racket_run_loop_exited`:
+  Racket's private Cocoa event-pump flags, not measures of OS thread activity.
+  The last flag remembers a run-loop exit during Racket's current or latest
+  native sleep attempt; `#t` is not itself an error or evidence of a stall;
+- `run_loop_events` and separate entry, before-timers, before-sources,
+  before-waiting, after-waiting, and exit counters: passive observations of the
+  main Core Foundation run loop in common modes;
+- `run_loop_last_activity`, `run_loop_last_age_ms`, `racket_version`, and
+  `observation_ms`: the latest observed phase, its age, runtime version, and
+  snapshot cost. An absent last activity is `#f` until an event is observed.
+
+Counters are cumulative per presenter. Equal counters before and after a long
+acquisition show no observed run-loop progress during that call; they do not
+prove that lack of progress caused the wait. These are Core Foundation phases,
+not counts of Racket polling calls or proof of a Core Animation commit. Likewise,
+the flush flag covers Racket's own suspension mechanism, not every transaction
+that AppKit or application code might have opened.
+
+Private Racket bindings may change across versions. Installation or observation
+failures are reported as `installation_error` or `observation_error`, not as an
+unsuspended state. `run_loop_callback_error` reports an observer failure. No
+native pointers enter records. The observer is removed on presenter close.
+This diagnostic does not edit Racket, replace its callbacks, flush transactions,
+pump events, add wakeups, or change GPU work or frame scheduling. Observation
+still costs CPU time, so compare equivalent runs without it before drawing
+performance conclusions. `observation_ms` measures snapshot cost, not the
+separate cost of the native run-loop callbacks.
+
 ## Cleanup, failures, and scope
 
 Retire application-created images, paints, pictures and surfaces that retain

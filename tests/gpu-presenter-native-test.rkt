@@ -14,7 +14,10 @@
 ;; Run by the presenter doctor on its eventspace handler. Window creation and
 ;; event pumping are injected so this module does not initialize racket/gui.
 (require rackunit racket/class racket/list
-         "../main.rkt" "../gpu.rkt" "../private/gpu-io-trace.rkt" "gpu-fixtures.rkt")
+         "../main.rkt" "../gpu.rkt" "../private/gpu-io-trace.rkt" "gpu-fixtures.rkt"
+         (submod "../private/gpu-presenter-timing.rkt" test-support)
+         (submod "../private/gpu-cocoa-trace.rkt" test-support)
+         (submod "../private/gpu-metal-layer.rkt" test-support))
 (provide make-gpu-presenter-native-tests gpu-presenter-native-test-count)
 
 ;;;
@@ -23,7 +26,7 @@
 
 ; gpu-presenter-native-test-count : exact-nonnegative-integer?
 ;   Records the expected test count used by external acceptance-report checks.
-(define gpu-presenter-native-test-count 28)
+(define gpu-presenter-native-test-count 29)
 
 ; make-gpu-presenter-native-tests : symbol? procedure? procedure? -> test-suite?
 ;   Builds the parameterized suite for live shared presenter/frame API (submission, not
@@ -107,11 +110,26 @@
      (fixture (lambda (w p context)
        (for ([i (in-range 6)]) (draw p) (clean p)))))
    (test-case "resize advances target generation"
-     (fixture (lambda (w p context)
-       (draw p)
-       (define before (hash-ref (gpu-presenter-info p) 'target_generation))
-       (send w resize 520 390) (settle) (draw p)
-       (check-true (> (hash-ref (gpu-presenter-info p) 'target_generation) before)))))
+     (for* ([skip? '(#f #t)] [empty? '(#f #t)])
+       (parameterize ([current-metal-skip-unchanged-layer-setters skip?]
+                      [current-metal-skip-empty-layer-transactions empty?]
+                      [current-metal-presenter-timing-enabled #t])
+         (fixture (lambda (w p context)
+           (draw p)
+           (define before (hash-ref (gpu-presenter-info p) 'target_generation))
+           (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+           (send w resize 520 390) (settle) (draw p)
+           (check-true (> (hash-ref (gpu-presenter-info p) 'target_generation) before))
+           (define phases
+             (let loop ([names '()])
+               (define message (sync/timeout 0 receiver))
+               (if message
+                   (loop (cons (vector-ref (struct->vector (vector-ref message 2)) 3) names))
+                   names)))
+           (when (eq? backend 'metal)
+             (for ([phase '(metal-layer-frame metal-layer-drawable-size metal-layer-commit)])
+               (check-not-false (memq phase phases) (symbol->string phase))))
+           (clean p))))))
    (test-case "stable extent keeps generation while frame index advances"
      (fixture (lambda (w p context)
        (draw p) (define before (gpu-presenter-info p)) (draw p)
@@ -174,13 +192,134 @@
        (check-eq? (gpu-presenter-state p) 'ready) (clean p))
        (lambda (f) (error 'callback "deliberate"))))
    (test-case "normal frames have submit then present and no CPU transfers"
-     (fixture (lambda (w p context)
-       (define ledger (box '()))
-       (parameterize ([current-gpu-io-ledger ledger]) (draw p))
-       (define events (reverse (unbox ledger)))
-       (check-equal? (map (lambda (e) (hash-ref e 'kind)) events)
-                     '("flush" "submit" "present-request"))
-       (for ([e (in-list events)]) (check-false (hash-ref e 'wait_requested #f))))))
+     (fixture
+      (lambda (w p context)
+        (for* ([skip? '(#f #t)] [empty? '(#f #t)] [timing? '(#f #t)])
+          (parameterize ([current-logger (make-logger #f #f)]
+                         [current-metal-presenter-timing-enabled timing?]
+                         [current-metal-skip-unchanged-layer-setters skip?]
+                         [current-metal-skip-empty-layer-transactions empty?])
+            (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+            (define state-receiver
+              (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-state))
+            (define ledger (box '()))
+            (parameterize ([current-gpu-io-ledger ledger]) (draw p))
+            (define events (reverse (unbox ledger)))
+            (check-equal? (map (lambda (e) (hash-ref e 'kind)) events)
+                          '("flush" "submit" "present-request"))
+            (for ([e (in-list events)]) (check-false (hash-ref e 'wait_requested #f)))
+            (define phases
+              (let loop ([names '()])
+                (define message (sync/timeout 0 receiver))
+                (cond
+                  [message
+                   (check-eq? (vector-ref message 3) 'skia-metal-presenter)
+                   (define event (vector-ref message 2))
+                   (check-eq? (prefab-struct-key event) 'gui-event)
+                   (define fields (struct->vector event))
+                   (check-true (<= (vector-ref fields 1) (vector-ref fields 2)))
+                   (loop (cons (vector-ref fields 3) names))]
+                  [else (reverse names)])))
+            (if (and timing? (eq? backend 'metal))
+                (let ()
+                  ;; draw can retry a null drawable. Check the final, submitted target's phases;
+                  ;; preceding skipped attempts may have their own acquisition and target spans.
+                  (define frame-phases
+                    (let loop ([remaining phases] [current '()] [last-target '()])
+                      (cond
+                        [(null? remaining) last-target]
+                        [else
+                         (define next (cons (car remaining) current))
+                         (if (eq? (car remaining) 'metal-target)
+                             (loop (cdr remaining) '() (reverse next))
+                             (loop (cdr remaining) next last-target))])))
+                  (for ([phase '(metal-measure metal-context-entry
+                                 metal-layer-updates metal-next-drawable metal-acquire
+                                 metal-wrap-target metal-clear metal-flush-submit metal-present
+                                 metal-receive metal-release-drawable metal-retire-target
+                                 metal-target)])
+                    (check-not-false (memq phase frame-phases) (symbol->string phase)))
+                  (if (and skip? empty?)
+                      (check-false (memq 'metal-layer-commit frame-phases))
+                      (check-not-false (memq 'metal-layer-commit frame-phases)))
+                  (for ([phase '(metal-layer-frame metal-layer-scale metal-layer-drawable-size)])
+                    (if skip?
+                        (check-false (memq phase frame-phases) (symbol->string phase))
+                        (check-not-false (memq phase frame-phases) (symbol->string phase))))
+                  (define ordered
+                    '(metal-layer-updates metal-next-drawable metal-acquire metal-wrap-target
+                      metal-clear metal-flush-submit metal-present metal-receive
+                      metal-release-drawable metal-retire-target metal-target))
+                  (check-equal? (filter (lambda (name) (memq name ordered)) frame-phases) ordered)
+                  (check-equal? (count (lambda (name) (eq? name 'metal-context-entry)) frame-phases) 1))
+                (check-equal? phases '()))
+            (define states
+              (let loop ([records '()])
+                (define message (sync/timeout 0 state-receiver))
+                (if message
+                    (loop (cons (struct->vector (vector-ref message 2)) records))
+                    (reverse records))))
+            (if (and timing? (eq? backend 'metal))
+                (let ()
+                  (check-true (pair? states))
+                  (for ([state (in-list states)])
+                    (define fields (vector-ref state 4))
+                    (check-false (hash-ref fields 'observation_error #f))
+                    (check-equal? (hash-ref fields 'skip_unchanged_setters) skip?)
+                    (check-equal? (hash-ref fields 'skip_empty_transactions) empty?)
+                    (check-true (string? (vector-ref state 2)))
+                    (check-true (exact-nonnegative-integer?
+                                 (hash-ref fields 'window_occlusion_state)))
+                    (check-true (boolean? (hash-ref fields 'occlusion_visible)))
+                    (check-equal? (length (hash-ref fields 'frame)) 4)
+                    (check-equal? (length (hash-ref fields 'drawable_size)) 2)
+                    (when (eq? (vector-ref state 3) 'after-release)
+                      (check-equal? (hash-ref fields 'live_drawables) 0)))
+                  (define before (vector-ref (car states) 4))
+                  (define after (vector-ref (cadr states) 4))
+                  (check-eq? (vector-ref (car states) 3) 'before-update)
+                  (check-eq? (vector-ref (cadr states) 3) 'after-update)
+                  ;; The preceding disabled frame already configured the stable test window.
+                  (for ([key '(frame contents_scale drawable_size)])
+                    (check-equal? (hash-ref before key) (hash-ref after key))))
+                (check-equal? states '()))
+            (clean p))))))
+   (test-case "passive Cocoa tracing observes progress without changing submission"
+     (for ([enabled? '(#f #t)])
+       (parameterize ([current-logger (make-logger #f #f)]
+                      [current-metal-cocoa-trace-enabled enabled?])
+         (define receiver
+           (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-cocoa))
+         (fixture
+          (lambda (w p context)
+            (define ledger (box '()))
+            (parameterize ([current-gpu-io-ledger ledger])
+              (draw p) (settle) (draw p))
+            (check-equal? (map (lambda (e) (hash-ref e 'kind)) (reverse (unbox ledger)))
+                          '("flush" "submit" "present-request" "flush" "submit" "present-request"))
+            (define records
+              (let loop ([records '()])
+                (define message (sync/timeout 0 receiver))
+                (if message
+                    (loop (cons (struct->vector (vector-ref message 2)) records))
+                    (reverse records))))
+            (cond
+              [(and enabled? (eq? backend 'metal))
+               (check-true (>= (length records) 4))
+               (for ([r (in-list records)] [i (in-naturals)])
+                 (check-eq? (vector-ref r 3)
+                            (if (even? i) 'before-next-drawable 'after-next-drawable))
+                 (define fields (vector-ref r 4))
+                 (for ([key '(installation_error observation_error run_loop_callback_error)])
+                   (check-false (hash-ref fields key #f)))
+                 (for ([key '(flush_suspended flush_suspended_for_window racket_sleeping
+                                             racket_events_suspended racket_run_loop_exited)])
+                   (check-true (boolean? (hash-ref fields key))))
+                 (check-true (exact-nonnegative-integer? (hash-ref fields 'run_loop_events))))
+               (check-true (> (hash-ref (vector-ref (last records) 4) 'run_loop_events)
+                              (hash-ref (vector-ref (car records) 4) 'run_loop_events)))]
+              [else (check-equal? records '())])
+            (clean p))))))
    (test-case "redraw bursts coalesce into one submitted frame"
      (fixture (lambda (w p context)
        (for ([i (in-range 20)]) (gpu-presenter-request-render! p))

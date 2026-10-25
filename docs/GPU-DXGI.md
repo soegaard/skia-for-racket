@@ -164,7 +164,7 @@ active in Release builds. Racket's structure-size report is compared with the
 SDK report. Non-Windows C mirrors are explicitly labelled as mirrors and cannot
 satisfy the required Windows identity/SDK gate.
 
-The runtime doctor executes all **28 shared presenter native cases**, including
+The runtime doctor executes all **29 shared presenter native cases**, including
 hidden/minimized resume, resize during yield, callback errors, unbalanced saves,
 frame expiration, foreign-context rejection, queued redraw and close behavior.
 It then runs **three cycles of two coexisting windows**, each with three distinct

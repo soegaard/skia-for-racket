@@ -2437,8 +2437,8 @@ Existing CAMetalLayer presenter wraps drawable textures with explicit lifetime i
 **Backend declaration:** Metal presentation on macOS only; existing scoped CAMetalLayer presenter. No OpenGL/Direct3D equivalent is claimed by this row.
 
 **Public source anchors:** `gpu-gui.rkt:gpu-canvas%`.
-**Implementation:** [private/gpu-presenter-metal.rkt](../private/gpu-presenter-metal.rkt).
-**Test sources, not execution receipts:** [tests/gpu-dc-gui-test.rkt](../tests/gpu-dc-gui-test.rkt).
+**Implementation:** [private/gpu-presenter-metal.rkt](../private/gpu-presenter-metal.rkt), [private/gpu-metal-layer.rkt](../private/gpu-metal-layer.rkt), [private/gpu-presenter-timing.rkt](../private/gpu-presenter-timing.rkt).
+**Test sources, not execution receipts:** [tests/gpu-dc-gui-test.rkt](../tests/gpu-dc-gui-test.rkt), [tests/gpu-presenter-pure-test.rkt](../tests/gpu-presenter-pure-test.rkt), [tests/gpu-presenter-native-test.rkt](../tests/gpu-presenter-native-test.rkt).
 
 | C entry point | Binding declaration |
 |---|---|

@@ -177,6 +177,8 @@ or change module dependencies.
 | [gpu-presenter-d3d12.rkt](gpu-presenter-d3d12.rkt) | Builds the presentation adapter around DXGI swap-chain targets. |
 | [gpu-presenter-gl.rkt](gpu-presenter-gl.rkt) | Builds a presentation adapter for GL-backed window contexts. |
 | [gpu-presenter-metal.rkt](gpu-presenter-metal.rkt) | Builds the presentation adapter around CAMetalLayer drawable leases. |
+| [gpu-presenter-timing.rkt](gpu-presenter-timing.rkt) | Records opt-in Metal presenter phase timings and layer geometry/occlusion observations on separate logger topics, without changing GPU work or frame scheduling. |
+| [gpu-cocoa-trace.rkt](gpu-cocoa-trace.rkt) | Reads Racket's flush state and passively observes Cocoa run-loop progress around Metal drawable acquisition; default-off, with no event pumping or installed-Racket changes. |
 | [gpu-window.rkt](gpu-window.rkt) | Creates window-backed GPU presenters and coordinates GUI cleanup. |
 | [render-canvas-policy.rkt](render-canvas-policy.rkt) | Resolves requested rendering backends and reports supported capabilities. |
 | [render-canvas-state.rkt](render-canvas-state.rkt) | Tracks callback delivery, active drawing contexts, and session ownership. |
@@ -244,7 +246,7 @@ or change module dependencies.
 | [gpu-metal-interop-policy.rkt](gpu-metal-interop-policy.rkt) | Validates supported texture shapes, formats, and synchronization outcomes. |
 | [gpu-metal-interop-session.rkt](gpu-metal-interop-session.rkt) | Retains shared textures and coordinates producer completion with Skia work. |
 | [gpu-metal-interop-system.rkt](gpu-metal-interop-system.rkt) | Queries Metal texture properties and command-buffer status through Objective-C. |
-| [gpu-metal-layer.rkt](gpu-metal-layer.rkt) | Manages CAMetalLayer hosts, drawable leases, and presentation. |
+| [gpu-metal-layer.rkt](gpu-metal-layer.rkt) | Manages CAMetalLayer hosts, drawable leases, and presentation; includes default-off experiments that skip unchanged geometry setters and empty update transactions. |
 | [gpu-metal-probe.rkt](gpu-metal-probe.rkt) | Checks whether native Metal support can be loaded. |
 | [gpu-metal-system.rkt](gpu-metal-system.rkt) | Loads Objective-C Metal services and retains device and queue handles. |
 | [gpu-metal-util.rkt](gpu-metal-util.rkt) | Defines injectable Metal platform and context operations and validates options. |

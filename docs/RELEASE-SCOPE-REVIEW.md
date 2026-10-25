@@ -157,3 +157,84 @@ This refresh records source review, not release certification. Current test and
 documentation-validation results must still be established independently, and
 macOS execution does not establish Windows or Linux acceptance. The historical
 audit identities and `release_ready: false` are preserved.
+
+## Opt-in Metal presenter timing
+
+The Metal layer and presenter source fingerprints now include optional CPU-side
+timing spans. `SKIA_METAL_PRESENTER_TIMING=1` plus an interested debug receiver
+enables compatible GUI log events for context entry, layer setters and transaction
+commit, `nextDrawable`, target wrapping, submission, and retirement. Disabled
+timing reads no clocks and emits no events. The existing native operations,
+ordering, ownership, waits, acquisition policy, scheduling, public API, and
+resource limits remain unchanged; no application or game simulation is modified.
+
+The presenter tests cover timing gates and result/error/escape preservation, and
+the live normal-frame case now exercises timing both off and on while retaining
+its exact submission, no-readback/no-added-wait, and cleanup checks. This review
+does not identify the cause of any game's stutter or claim GPU execution timing.
+Capability decisions and historical release certification remain unchanged.
+
+The same opt-in now supports a separate `skia-metal-presenter-state` topic for
+copied layer geometry, scale, drawable size, window occlusion, and local drawable
+lease counts. Observations bracket the existing layer updates and acquisition;
+they also follow lease release. All setters still run in their original order,
+and no observation controls visibility, acquisition, or presentation. Disabled
+or unsubscribed observations perform no native reads. Pure and native tests
+cover these gates, the record fields, failed diagnostic reads, stable geometry,
+and zero local leases after release. These are diagnostic capabilities, not a
+rendering-policy change or evidence of compositor completion.
+
+An independent, default-off `SKIA_METAL_SKIP_UNCHANGED_LAYER_SETTERS=1`
+experiment compares current native geometry immediately before each frame,
+contents-scale, and drawable-size setter, omitting only equal values. The
+default path performs no new comparison reads and still calls every setter.
+Without the second experiment below, the transaction remains in both modes.
+Acquisition, submission, resource
+ownership, scheduling, public API, and limits are unchanged. Pure tests check
+the gate and fresh comparisons; native tests exercise both modes for stable
+frames and real resize, with the same submission and cleanup assertions.
+This records the experiment's scope, not a proven performance improvement.
+
+The additional, default-off `SKIA_METAL_SKIP_EMPTY_LAYER_TRANSACTIONS=1`
+experiment takes effect only with the unchanged-setter switch. It adds a
+current-native-value preflight; when all three values match, it omits the
+presenter's update transaction entirely. Actual changes still take the existing
+transaction path, including disabled actions and ordered setters. Neither
+default nor setter-only mode performs the preflight. Creation, teardown,
+drawable ownership, scheduling, GPU work, public API, and limits remain
+unchanged. Pure tests cover all switch combinations and preflight errors;
+native tests cover stable frames and actual resizing, including the required
+setter/commit events, submission order, and clean retirement in each mode.
+
+The independent, default-off `SKIA_METAL_COCOA_TRACE=1` diagnostic reads live
+Racket flush-suspension/event-pump flags and observes main Core Foundation
+run-loop phases around drawable acquisition. It requires a receiver at presenter
+creation and uses a separate copied-state topic. It does not modify installed
+Racket modules, replace callbacks, add wakeups, pump events, flush transactions,
+or alter frame/GPU policy. Private-state failures are explicit diagnostic errors.
+Pure tests cover gating, live snapshots, cleanup, and failed installation/reads;
+the live suite adds an off/on case checking actual run-loop progress, paired
+snapshots, unchanged submission, and clean resource ownership. Test counts and
+the presentation inspector are updated; public API, limits, and release
+certification remain unchanged.
+
+The independent developer helper `tools/gc-trace.rkt` adds default-off
+`SKIA_GC_TRACE=1` collection of individual Racket GC records. It is not imported
+by rendering modules, requests no collections, and leaves application/simulation
+code untouched. It preserves payload wall/CPU times and memory fields, excludes
+duplicate major-topic records, and makes unsupported payloads explicit.
+Five source cases cover the gate, payload conversion, duplicate filtering,
+forward-compatible fields/error reporting, and an actual runtime GC event.
+No public API, limits, native ownership, or release certification changes.
+
+The previously stale `run-tests.rkt` fingerprint is also reconciled with the
+already-committed Bad Apple test registration from `7f537a9`. That runner is
+not edited by this timing change; its additional suites remain enabled.
+
+The [timing investigation](METAL-PRESENTER-TIMING-FINDINGS.md) records the
+observed compositor delays and the quiet-desktop comparison separately from
+test and release certification. The long drawable waits did not recur in the
+verified quiet capture. No individual application was isolated, and window
+count alone was not established as the cause. Both layer-update experiments
+remain default-off; no rendering policy, pacing, thread, ownership, resource
+limit, or game-simulation change is adopted from these measurements.

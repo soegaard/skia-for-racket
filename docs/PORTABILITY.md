@@ -39,7 +39,7 @@ reproduction, retained artifacts, synchronization accounting and scope limits.
 
 0.49 adds `Required DXGI presentation / D3D12 WARP` on `windows-2022`.
 It runs the complete isolated Windows CPU/package path, Windows SDK and Racket
-layout checks, the 28 shared presenter cases and actual swap-chain readback,
+layout checks, the shared presenter cases (now 29) and actual swap-chain readback,
 rotation, resize and stress tests. The `dxgi` job is an additional dependency
 of `CI required`; it does not replace the offscreen `d3d12` job.
 

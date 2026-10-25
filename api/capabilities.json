@@ -5085,7 +5085,9 @@
       "execution_evidence": "not-asserted; test-source references and baseline CI evidence are separate",
       "id": "surfaces.native-view",
       "implementation_files": [
-        "private/gpu-presenter-metal.rkt"
+        "private/gpu-presenter-metal.rkt",
+        "private/gpu-metal-layer.rkt",
+        "private/gpu-presenter-timing.rkt"
       ],
       "limitations": "Existing CAMetalLayer presenter wraps drawable textures with explicit lifetime instead of using convenience constructors.",
       "managed_sources": [
@@ -5105,7 +5107,9 @@
       ],
       "status": "racket-equivalent",
       "test_sources": [
-        "tests/gpu-dc-gui-test.rkt"
+        "tests/gpu-dc-gui-test.rkt",
+        "tests/gpu-presenter-pure-test.rkt",
+        "tests/gpu-presenter-native-test.rkt"
       ],
       "title": "Native Metal-layer/view convenience constructors",
       "unbound_declarations": [

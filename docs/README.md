@@ -93,6 +93,7 @@ Backend, ownership, synchronization, presentation, cache, and transfer contracts
 - [GPU-PERFORMANCE.md](GPU-PERFORMANCE.md): GPU measurements and release stress — 0.45.
 - [GPU-PRESENTATION-TESTING.md](GPU-PRESENTATION-TESTING.md): Unified presentation validation.
 - [GPU-PRESENTATION.md](GPU-PRESENTATION.md): GPU window presentation.
+- [METAL-PRESENTER-TIMING-FINDINGS.md](METAL-PRESENTER-TIMING-FINDINGS.md): Windowed drawable waits, ownership checks, and the quiet-desktop comparison.
 - [GPU-RENDER.md](GPU-RENDER.md): Render one image on the GPU.
 - [GPU-TESTING.md](GPU-TESTING.md): GPU foundation validation.
 

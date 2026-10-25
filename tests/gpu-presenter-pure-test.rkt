@@ -12,12 +12,25 @@
 ;;; Imports and Exports
 ;;;
 
-(require rackunit racket/list
+(require rackunit racket/list ffi/unsafe/atomic
          "../private/gpu-presenter.rkt"
          (submod "../private/gpu-presenter.rkt" adapter-internals)
          "../private/gpu-metal-handles.rkt" "../private/gpu-presentation-cleanup.rkt"
+         "../private/gpu-presenter-timing.rkt"
+         "../tools/gc-trace.rkt"
+         (submod "../tools/gc-trace.rkt" test-support)
+         "../private/gpu-cocoa-trace.rkt"
+         (submod "../private/gpu-cocoa-trace.rkt" test-support)
+         "../private/gpu-native-scope.rkt"
+         (submod "../private/gpu-presenter-timing.rkt" test-support)
+         (submod "../private/gpu-metal-layer.rkt" test-support)
          "../private/gpu-domain.rkt" "gpu-fixtures.rkt")
 (provide gpu-presenter-pure-tests)
+
+(struct gui-event (start end name) #:prefab)
+;; Fields:
+;;   start/end: epoch milliseconds. name: phase symbol. This independent declaration verifies
+;;   compatibility with existing Racket GUI trace consumers, without importing the producer's type.
 
 ;;;
 ;;; Fixtures and Assertions
@@ -87,6 +100,310 @@
 (define gpu-presenter-pure-tests
   (test-suite
    "Presentation lifecycle and scheduling with synthetic adapters"
+
+   ;;;
+   ;;; Optional Metal Diagnostics
+   ;;;
+
+   (test-case "GC collection and parsing require explicit opt-in"
+     (parameterize ([current-gc-trace-enabled #f])
+       (check-false (gc-trace-enabled?))
+       (check-false (make-gc-trace-receiver))
+       (check-false (gc-log-message->record (vector 'debug "GC" 'invalid 'GC)))))
+
+   (test-case "GC records preserve payload times, CPU time, and memory for each mode"
+     (parameterize ([current-gc-trace-enabled #t])
+       (for ([mode '(minor major incremental)])
+         (define payload (make-prefab-struct 'gc-info mode 1000 2000 100 700 1800 50 54 10 16))
+         (define record (gc-log-message->record (vector 'debug "not parsed" payload 'GC)))
+         (check-equal? (hash-ref record 'mode) (symbol->string mode))
+         (for ([key '(pre_bytes pre_admin_bytes code_bytes post_bytes post_admin_bytes
+                               cpu_start cpu_end cpu_ms start end wall_ms)]
+               [expected '(1000 2000 100 700 1800 50 54 4 10 16 6)])
+           (check-equal? (hash-ref record key) expected))
+         ;; An old payload is still dated by its own clock, not by delayed log delivery.
+         (check-true (> (hash-ref record 'received_at) (hash-ref record 'end))))))
+
+   (test-case "GC receiver and parser exclude duplicate major and unrelated messages"
+     (parameterize ([current-gc-trace-enabled #t] [current-logger (make-logger #f #f)])
+       (define receiver (make-gc-trace-receiver))
+       (define payload (make-prefab-struct 'gc-info 'major 1000 2000 100 700 1800 50 54 10 16))
+       (for ([topic '(GC GC:major other)])
+         (log-message (current-logger) 'debug topic "collection" payload #f))
+       (check-equal? (hash-ref (gc-log-message->record (sync/timeout 0 receiver)) 'type) "gc")
+       (check-false (sync/timeout 0 receiver))
+       (for ([topic '(GC:major other #f)])
+         (check-false (gc-log-message->record (vector 'debug "collection" payload topic))))))
+
+   (test-case "GC records accept future trailing fields and report unsupported payloads"
+     (parameterize ([current-gc-trace-enabled #t])
+       (define payload
+         (make-prefab-struct 'gc-info 'minor 1000 2000 100 700 1800 50 54 10 16 'future))
+       (check-equal? (hash-ref (gc-log-message->record (vector 'debug "" payload 'GC)) 'type)
+                     "gc")
+       (for ([bad (list #f 'invalid (make-prefab-struct 'gc-info 'minor)
+                        (make-prefab-struct 'gc-info 'minor 1 2 3 4 5 54 50 10 16))])
+         (check-equal? (hash-ref (gc-log-message->record (vector 'debug "" bad 'GC)) 'type)
+                       "gc-error"))))
+
+   (test-case "GC tracing reads an actual runtime collection without a GUI or presenter"
+     (parameterize ([current-gc-trace-enabled #t])
+       (define receiver (make-gc-trace-receiver))
+       (define before (current-inexact-milliseconds))
+       ;; Only this test requests a collection. The collector never requests or schedules one.
+       (collect-garbage 'major)
+       (define after (current-inexact-milliseconds))
+       (define record
+         (let loop ()
+           (define message (sync/timeout 5 receiver))
+           (unless message (error 'gc-test "runtime did not report the requested collection"))
+           (define value (gc-log-message->record message))
+           (if (equal? (hash-ref value 'mode #f) "major") value (loop))))
+       ;; GC timestamps can be rounded to whole milliseconds by the runtime.
+       (check-true (<= (- before 1) (hash-ref record 'start) (hash-ref record 'end) (+ after 1)))
+       (check-true (>= (hash-ref record 'cpu_ms) 0))
+       (check-true (>= (hash-ref record 'wall_ms) 0))))
+
+   (test-case "Cocoa tracing needs opt-in and a receiver before installing anything"
+     (define (unexpected) (error 'install "must not install"))
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-cocoa-trace-enabled #t])
+       (check-false (make-cocoa-presenter-trace "test" unexpected)))
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-cocoa-trace-enabled #f])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-cocoa))
+       (check-false (make-cocoa-presenter-trace "test" unexpected))
+       (check-false (sync/timeout 0 receiver)))
+     (record-cocoa-presenter-trace! #f 'before #f)
+     (close-cocoa-presenter-trace! #f))
+
+   (test-case "Cocoa tracing copies live state and closes its observer exactly once"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-cocoa-trace-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-cocoa))
+       (define reads 0)
+       (define closes 0)
+       (define trace
+         (make-cocoa-presenter-trace "test"
+           (lambda ()
+             (values (lambda (window)
+                       (check-eq? window 'window)
+                       (set! reads (add1 reads))
+                       (hasheq 'run_loop_events reads))
+                     (lambda () (set! closes (add1 closes)))))))
+       (for ([phase '(before-next-drawable after-next-drawable)] [n '(1 2)])
+         (record-cocoa-presenter-trace! trace phase 'window)
+         (define datum (vector-ref (sync/timeout 0 receiver) 2))
+         (check-eq? (prefab-struct-key datum) 'metal-presenter-cocoa-state)
+         (define v (struct->vector datum))
+         (check-equal? (vector-ref v 2) "test")
+         (check-eq? (vector-ref v 3) phase)
+         (check-equal? (hash-ref (vector-ref v 4) 'run_loop_events) n)
+         (check-true (>= (hash-ref (vector-ref v 4) 'observation_ms) 0)))
+       (parameterize ([current-metal-cocoa-trace-enabled #f])
+         (close-cocoa-presenter-trace! trace))
+       (close-cocoa-presenter-trace! trace)
+       (record-cocoa-presenter-trace! trace 'after-close 'window)
+       (check-equal? reads 2)
+       (check-equal? closes 1)
+       (check-false (sync/timeout 0 receiver))))
+
+   (test-case "Cocoa installation and read failures are diagnostic errors, not false state"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-cocoa-trace-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-cocoa))
+       (for ([install (list (lambda () (error 'install "unsupported"))
+                            (lambda () (values (lambda (w) (error 'read "missing")) void)))]
+             [key '(installation_error observation_error)])
+         (define trace (make-cocoa-presenter-trace "test" install))
+         (record-cocoa-presenter-trace! trace 'before-next-drawable #f)
+         (define fields (vector-ref (struct->vector (vector-ref (sync/timeout 0 receiver) 2)) 4))
+         (check-true (string? (hash-ref fields key)))
+         (check-false (hash-has-key? fields 'flush_suspended))
+         (close-cocoa-presenter-trace! trace))))
+
+   (test-case "empty layer transactions are skipped only with both opt-ins and equal values"
+     (for* ([setters? '(#f #t)] [transactions? '(#f #t)]
+            #:unless (and setters? transactions?))
+       (parameterize ([current-metal-skip-unchanged-layer-setters setters?]
+                      [current-metal-skip-empty-layer-transactions transactions?])
+         (check-equal? (call-with-metal-layer-update
+                        (lambda () (error 'preflight "must not run"))
+                        (lambda () 'updated)) 'updated)))
+     (parameterize ([current-metal-skip-unchanged-layer-setters #t]
+                    [current-metal-skip-empty-layer-transactions #t])
+       (define updates 0)
+       (define reads 0)
+       (define same? #t)
+       (define (unchanged?) (set! reads (add1 reads)) same?)
+       (define (update) (set! updates (add1 updates)) 'updated)
+       (check-true (void? (call-with-metal-layer-update unchanged? update)))
+       (check-equal? updates 0)
+       (set! same? #f)
+       (check-equal? (call-with-metal-layer-update unchanged? update) 'updated)
+       (check-equal? updates 1)
+       (set! same? #t)
+       (check-true (void? (call-with-metal-layer-update unchanged? update)))
+       (check-equal? updates 1)
+       (check-equal? reads 3)
+       (check-exn #rx"preflight failure"
+                  (lambda () (call-with-metal-layer-update
+                               (lambda () (error "preflight failure")) update)))
+       (check-equal? updates 1)))
+
+   (test-case "layer setter experiment checks current values only when explicitly enabled"
+     (parameterize ([current-metal-skip-unchanged-layer-setters #f])
+       (check-true (metal-layer-setter-needed? (lambda () (error 'read "must not run")))))
+     (parameterize ([current-metal-skip-unchanged-layer-setters #t])
+       (define reads 0)
+       (define same? #t)
+       (define (unchanged?) (set! reads (add1 reads)) same?)
+       (check-false (metal-layer-setter-needed? unchanged?))
+       (set! same? #f)
+       (check-true (metal-layer-setter-needed? unchanged?))
+       (set! same? #t)
+       (check-false (metal-layer-setter-needed? unchanged?))
+       (check-equal? reads 3)
+       (check-exn #rx"read failure"
+                  (lambda () (metal-layer-setter-needed? (lambda () (error "read failure")))))))
+
+   (test-case "disabled timing preserves results and emits nothing even with a receiver"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #f])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+       (check-false (start-metal-presenter-timing 'disabled))
+       (check-equal? (call-with-values
+                     (lambda () (with-metal-presenter-timing 'disabled (values 1 2))) list)
+                     '(1 2))
+       (define states (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-state))
+       (record-metal-presenter-state! "test" 'disabled
+                                     (lambda () (error 'observer "must not run")))
+       (check-false (sync/timeout 0 states))
+       (check-false (sync/timeout 0 receiver))))
+   (test-case "enabled timing does not start without a matching debug receiver"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'info 'skia-metal-presenter))
+       (check-false (start-metal-presenter-timing 'ignored))
+       (check-equal? (with-metal-presenter-timing 'ignored 'result) 'result)
+       (record-metal-presenter-state! "test" 'ignored
+                                     (lambda () (error 'observer "must not run")))
+       (check-false (sync/timeout 0 receiver))))
+   (test-case "timing uses compatible GUI events and preserves multiple and zero values"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+       (define before (current-inexact-milliseconds))
+       (check-equal? (call-with-values
+                     (lambda () (with-metal-presenter-timing 'phase (values 'a 'b))) list)
+                     '(a b))
+       (define message (sync/timeout 0 receiver))
+       (check-eq? (vector-ref message 0) 'debug)
+       (check-eq? (vector-ref message 3) 'skia-metal-presenter)
+       (define event (vector-ref message 2))
+       (check-true (gui-event? event))
+       (check-eq? (gui-event-name event) 'phase)
+       (check-true (<= before (gui-event-start event) (gui-event-end event)))
+       (check-equal? (call-with-values
+                     (lambda () (with-metal-presenter-timing 'zero (values))) list) '())
+       (check-eq? (gui-event-name (vector-ref (sync/timeout 0 receiver) 2)) 'zero)
+       (define states (make-log-receiver (current-logger) 'debug 'skia-metal-presenter-state))
+       (record-metal-presenter-state! "test" 'before-update
+                                     (lambda () (hasheq 'frame '(0.0 0.0 100.0 80.0))))
+       (define state (vector-ref (sync/timeout 0 states) 2))
+       (check-eq? (prefab-struct-key state) 'metal-presenter-state)
+       (define fields (struct->vector state))
+       (check-true (<= before (vector-ref fields 1)))
+       (check-equal? (vector-ref fields 2) "test")
+       (check-eq? (vector-ref fields 3) 'before-update)
+       (check-equal? (hash-ref (vector-ref fields 4) 'frame) '(0.0 0.0 100.0 80.0))
+       (check-true (>= (hash-ref (vector-ref fields 4) 'observation_ms) 0))
+       (check-false (sync/timeout 0 receiver))
+       (record-metal-presenter-state! "test" 'failed-read
+                                     (lambda () (error 'observer "diagnostic failure")))
+       (define failed (struct->vector (vector-ref (sync/timeout 0 states) 2)))
+       (check-regexp-match #rx"diagnostic failure"
+                           (hash-ref (vector-ref failed 4) 'observation_error))))
+   (test-case "timing records nested spans in completion order"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+       (with-metal-presenter-timing 'outer (with-metal-presenter-timing 'inner (void)))
+       (define inner (vector-ref (sync/timeout 0 receiver) 2))
+       (define outer (vector-ref (sync/timeout 0 receiver) 2))
+       (check-equal? (list (gui-event-name inner) (gui-event-name outer)) '(inner outer))
+       (check-true (<= (gui-event-start outer) (gui-event-start inner)))
+       (check-false (sync/timeout 0 receiver))))
+   (test-case "timing preserves raised values and does not swallow failures"
+     (for ([enabled? '(#f #t)])
+       (parameterize ([current-logger (make-logger #f #f)]
+                      [current-metal-presenter-timing-enabled enabled?])
+         (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+         (define failure (exn:fail "deliberate" (current-continuation-marks)))
+         (for ([raised (list failure 'non-exception)])
+           (check-eq? (with-handlers ([(lambda (_) #t) values])
+                        (with-metal-presenter-timing 'failure (raise raised))) raised)
+           (define message (sync/timeout 0 receiver))
+           (if enabled?
+               (check-eq? (gui-event-name (vector-ref message 2)) 'failure)
+               (check-false message))))))
+   (test-case "timing records escapes without changing cleanup order"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+       (define cleaned? #f)
+       (check-eq? (let/ec escape
+                    (with-metal-presenter-timing 'escape
+                      (dynamic-wind void (lambda () (escape 'escaped))
+                                    (lambda () (set! cleaned? #t))))) 'escaped)
+       (check-true cleaned?)
+       (check-eq? (gui-event-name (vector-ref (sync/timeout 0 receiver) 2)) 'escape)))
+   (test-case "an explicit timing boundary and its cleanup emit only one event"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+       (define span (start-metal-presenter-timing 'context-entry))
+       (finish-metal-presenter-timing! span)
+       (finish-metal-presenter-timing! span)
+       (finish-metal-presenter-timing! #f)
+       (check-eq? (gui-event-name (vector-ref (sync/timeout 0 receiver) 2)) 'context-entry)
+       (check-false (sync/timeout 0 receiver))))
+   (test-case "timing starts a fresh span on continuation reentry"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+       (define tag (make-continuation-prompt-tag))
+       (define saved #f)
+       (check-eq?
+        (call-with-continuation-prompt
+         (lambda ()
+           (with-metal-presenter-timing 'reentry
+             (call-with-current-continuation (lambda (k) (set! saved k) 'first) tag))) tag)
+        'first)
+       (check-eq? (gui-event-name (vector-ref (sync/timeout 0 receiver) 2)) 'reentry)
+       (check-eq? (call-with-continuation-prompt (lambda () (saved 'again)) tag) 'again)
+       (check-eq? (gui-event-name (vector-ref (sync/timeout 0 receiver) 2)) 'reentry)
+       (check-false (sync/timeout 0 receiver))))
+   (test-case "timing inside a native scope preserves atomicity and pool cleanup"
+     (parameterize ([current-logger (make-logger #f #f)]
+                    [current-metal-presenter-timing-enabled #t])
+       (define receiver (make-log-receiver (current-logger) 'debug 'skia-metal-presenter))
+       (define actions '())
+       (define scope
+         (make-gpu-native-scope
+          (lambda () (set! actions (cons 'enter actions)) 'pool)
+          (lambda (pool) (check-eq? pool 'pool) (set! actions (cons 'leave actions)))))
+       (parameterize ([current-gpu-native-scope scope])
+         (check-exn #rx"native-failure"
+          (lambda ()
+            (call-with-gpu-native-scope
+             (lambda ()
+               (with-metal-presenter-timing 'native
+                 (check-true (in-atomic-mode?))
+                 (set! actions (cons 'body actions))
+                 (error 'native-failure "deliberate")))))))
+       (check-equal? (reverse actions) '(enter body leave))
+       (check-eq? (gui-event-name (vector-ref (sync/timeout 0 receiver) 2)) 'native)))
 
    ;;;
    ;;; Geometry and Drawable Availability
