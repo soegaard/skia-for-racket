@@ -1,6 +1,11 @@
 {
   "schema": 1,
   "basis": "Official release pages; runtime archives are independent of native asset pins",
+  "execution_profile": {
+    "schema": 1,
+    "machine_independent": true,
+    "upstream_commit": "23cacfcedaead1021dff6bf97ae4a5852af2acfc"
+  },
   "natipkg": {
     "8.18": {
       "url": "https://download.racket-lang.org/releases/8.18/installers/racket-8.18-x86_64-linux-natipkg-buster-pkg-build-cs.sh",

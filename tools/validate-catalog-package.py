@@ -25,7 +25,8 @@ import tempfile
 import zipfile
 from native_packages import ROOT, need, json_bytes, sha256, write_zip
 from catalog_snapshot import inventory
-from catalog_execution import RUNTIME_ENVIRONMENTS, relocatable_runtime
+from catalog_execution import (RUNTIME_ENVIRONMENTS, preserved_package_files,
+                               racket_command, relocatable_runtime, runtime_profile)
 
 
 def network_evidence():
@@ -72,6 +73,7 @@ class Validator:
                      archive.with_suffix('.zip.CHECKSUM').read_text() == identity['sha1'],
                      'execution candidate archive differs from staging identity')
         self.report = dict(schema=1, status='running', commands=[], checks={},
+                           runtime_profile=runtime_profile(self.runtime / 'bin/racket'),
                            catalog_candidate_validated=False, publication_performed=False,
                            runtime_source=str(self.runtime), catalog=str(self.catalog))
         self.report['checks']['staged_dependency_snapshot_verified'] = snapshot_verified
@@ -113,7 +115,7 @@ class Validator:
 
     def run(self, environment, *arguments, timeout=900, failure=False, extra_env=None):
         executable, env, _ = environment
-        command = [str(executable), *map(str, arguments)]
+        command = [*racket_command(executable), *map(str, arguments)]
         start = time.monotonic()
         number = len(self.report['commands']) + 1
         log = self.root / f'{number:03}.log'
@@ -353,7 +355,7 @@ class Validator:
                  'Linux qualification must run unprivileged so read-only source permissions are enforced')
         self.report['network_denial'] = network_evidence()
         first = self.environment('source installation')
-        identity = json.loads(self.run(first, '-e', "(begin (require json) (write-json (hasheq 'version (version) 'target (path->string (system-library-subpath #f)) 'vm (symbol->string (system-type 'vm)) 'bits (system-type 'word))))"))
+        identity = json.loads(self.run(first, '-e', "(begin (require json) (write-json (hasheq 'version (version) 'target (path->string (system-library-subpath #f)) 'vm (symbol->string (system-type 'vm)) 'bits (system-type 'word) 'compile_target_machine (let ([m (current-compile-target-machine)]) (and m (symbol->string m))))))"))
         need(identity['version'] in ('8.18', '9.3') and identity['vm'] == 'chez-scheme' and identity['bits'] == 64,
              'qualification requires exact released 64-bit CS Racket 8.18 or 9.3')
         self.report['identity'] = identity
@@ -451,8 +453,7 @@ class Validator:
                 directory = Path(self.run(first, '-e', f'(begin (require pkg/lib) (display (pkg-directory "{name}")))'))
                 original_directories[name] = directory
                 # Payload may be moved in binary forms; at this point it is a source install.
-                expected[name] = {str(p.relative_to(directory)):sha256(p.read_bytes()) for p in directory.rglob('*')
-                                  if p.is_file() and not p.is_symlink() and p.name != 'info.rkt' and p.suffix not in ('.zo', '.dep')}
+                expected[name] = preserved_package_files(directory)
             for form in ('source', 'built', 'binary-lib'):
                 artifacts = self.root / 'rebuilt' / form
                 artifacts.mkdir(parents=True)

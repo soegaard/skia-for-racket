@@ -21,6 +21,7 @@ import zipfile
 
 from native_packages import ROOT, need, sha256, read_json, json_bytes, write_zip, zip_index
 from catalog_snapshot import inventory
+from catalog_execution import racket_command, runtime_profile
 
 
 def module(name):
@@ -59,10 +60,11 @@ def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base
     output.mkdir(parents=True)
     output = output.resolve()
     racket = str(Path(shutil.which(racket) or racket).resolve())
+    prefix = racket_command(Path(racket))
     lock = ROOT / 'packaging/native-assets.json'
     need(Path(racket).is_file(), 'selected Racket executable is absent')
-    identity = json.loads(subprocess.check_output([racket, '-e',
-        '(begin (require json) (write-json (hasheq \'version (version) \'os (symbol->string (system-type \'os)) \'target (path->string (system-library-subpath #f)))))'], text=True))
+    identity = json.loads(subprocess.check_output([*prefix, '-e',
+        '(begin (require json) (write-json (hasheq \'version (version) \'os (symbol->string (system-type \'os)) \'target (path->string (system-library-subpath #f)) \'compile_target_machine (let ([m (current-compile-target-machine)]) (and m (symbol->string m))))))'], text=True, encoding='utf-8'))
     need(identity['version'] in ('8.18', '9.3'), 'candidate qualification requires released Racket 8.18 or 9.3')
     if cache is None:
         cache = output / 'inputs'
@@ -86,14 +88,17 @@ def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base
         rows.append(dict(name=name, archive=str(archive), metadata_directory=str(folder), sha1=receipt['sha1']))
     request = output / 'catalog-request.json'
     request.write_bytes(json_bytes(rows))
-    subprocess.run([racket, str(ROOT / 'tools/write-staging-catalog.rkt'), str(request), str(output / 'catalog')], check=True)
+    with (output / 'catalog-metadata.log').open('wb') as log:
+        subprocess.run([*prefix, str(ROOT / 'tools/write-staging-catalog.rkt'), str(request), str(output / 'catalog')],
+                       stdout=log, stderr=subprocess.STDOUT, check=True)
     report = dict(schema=1, identity=identity, source=source, artifacts=native,
+                  runtime_profile=runtime_profile(Path(racket)),
                   catalog=str(output / 'catalog'), lock_sha256=sha256(lock.read_bytes()),
                   catalog_candidate_validated=False, publication_performed=False)
     (output / 'staging-receipt.json').write_bytes(json_bytes(report))
     if snapshot:
         target = output / 'snapshot'
-        command = [racket, '-l', 'raco', 'pkg', 'catalog-archive', '--include', 'skia', '--include-deps',
+        command = [*prefix, '-l', 'raco', 'pkg', 'catalog-archive', '--include', 'skia', '--include-deps',
                    '--include-deps-platform', identity['os'], identity['target'], '--relative',
                    '--version', identity['version'], str(target), str(output / 'catalog'),
                    str(base_catalog or ('https://download.racket-lang.org/releases/' + identity['version'] + '/catalog/'))]
@@ -110,7 +115,7 @@ def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base
             shutil.copyfile(archive.with_suffix('.zip.CHECKSUM'), destination.with_suffix('.zip.CHECKSUM'))
             need(destination.read_bytes() == archive.read_bytes(), 'snapshot changed candidate archive bytes')
             candidates[row['name']] = dict(sha1=row['sha1'], sha256=sha256(destination.read_bytes()), size=destination.stat().st_size)
-        subprocess.run([racket, str(ROOT / 'tools/overlay-candidate-catalog.rkt'), str(output / 'catalog'), str(target / 'catalog')], check=True)
+        subprocess.run([*prefix, str(ROOT / 'tools/overlay-candidate-catalog.rkt'), str(output / 'catalog'), str(target / 'catalog')], check=True)
         report['snapshot_catalog'] = str(target / 'catalog')
         report['snapshot_candidates_preserved'] = True
         report['snapshot_candidates'] = candidates

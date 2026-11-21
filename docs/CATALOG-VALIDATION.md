@@ -1,12 +1,89 @@
 # Catalog candidate validation — 0.79
 
-Status: GitHub CI, Acceptance, API inventory and all four macOS catalog lanes
-passed at `487ff148`; Windows and Linux catalog checks need corrected reruns.
+Status: GitHub CI, Acceptance and API inventory passed at `d75b82d4`; seven
+catalog execution lanes passed. Windows rebuilding and the complete natipkg
+service profile need corrected reruns.
 **The publication candidate remains unqualified**. No publication action has
 been performed. Native pins
 remain SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2, native generation/revision 1/1.0.
 Source/API collection remains `skia`. The final matrix and maintainer
 redistribution approval remain required even when individual local checks pass.
+
+## Second GitHub push
+
+The maintainer pushed `d75b82d4a3599aa299a79fd093bc2622c0f92352`.
+[CI](https://github.com/soegaard/skia-for-racket/actions/runs/44940434255) (12 jobs),
+[Acceptance](https://github.com/soegaard/skia-for-racket/actions/runs/44940434311) (52)
+and [API inventory](https://github.com/soegaard/skia-for-racket/actions/runs/44940434318)
+(2) passed. [Catalog packaging](https://github.com/soegaard/skia-for-racket/actions/runs/44940434237)
+passed its asset job and seven execution lanes; three lanes failed.
+
+All retained staging receipts identify the same clean source ZIP SHA-256
+`665fe01fc6e3e45d65afe1f7af8f82df7e85c245a9cb95e6569239a3029ae5fb`
+and identical native/font ZIPs. All ten downloaded evidence artifact ZIPs were
+checked against GitHub's sizes/SHA-256 values before bounded extraction under
+ignored `output/catalog/github-second-run-20261121/`.
+
+| Catalog target | CS | Commands | DrDr | Observed result |
+| --- | --- | --- | --- | --- |
+| macOS ARM64 | 8.18 | 83 | 72.758 s | All selected checks passed |
+| macOS ARM64 | 9.3 | 83 | 141.526 s | All selected checks passed |
+| macOS Intel | 8.18 | 83 | 87.972 s | All selected checks passed |
+| macOS Intel | 9.3 | 83 | 82.985 s | All selected checks passed |
+| Ordinary Linux x64 | 8.18 | 84 | 43.434 s | All selected checks passed, UID 1001 |
+| Ordinary Linux x64 | 9.3 | 84 | 46.718 s | All selected checks passed, UID 1001 |
+| Actual natipkg x64 | 9.3 | 85 | 75.066 s | All selected checks passed, UID 1001; service bootstrap/profile review below |
+| Windows x64 | 8.18 | 56 | 68.985 s | Failed during source archive payload comparison |
+| Windows x64 | 9.3 | 56 | 71.422 s | Failed during source archive payload comparison |
+| Actual natipkg x64 | 8.18 | Not started | Not run | Catalog preparation failed |
+
+The Windows lanes passed full documentation setup, actual rendering/shaping,
+negative loader cases, update/rollback, scope/removal, foreign data, DrDr,
+read-only source and the example copier. Rebuilding exposed a harness error:
+it indexed ZIP members with Windows backslashes, such as
+`licenses\BUILD-EVIDENCE.json`. Expected members now use POSIX separators while
+preserving the complete nested directories. A cross-platform regression uses
+real file reads with Windows-style relative paths and duplicate notice basenames;
+no file is flattened or omitted from the preservation check.
+
+### Natipkg runtime assumption corrected
+
+The untouched official 8.18 installer reports the actual natipkg target, but
+plain `require net/url` fails with `compile: unable to generate foreign function
+statically: (_fun -> _ulong)`. The same failure reproduced without Skia in a
+fresh network-disabled Debian container using the exact installer SHA-256.
+Identity and `setup/getinfo` probes passed. Source-only loading passed, while
+ordinary native compilation and `-MCR` before bootstrap still failed.
+
+The [upstream Docker example](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/examples/docker/build.rkt)
+requires compile-any settings consistent with the selected installer. Its
+[runtime installation](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/private/install-step.rkt)
+and [startup configuration](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/private/vm.rkt)
+include `raco setup --recompile-only` with `-MCR` and a private `zo:` cache.
+The earlier assumption that the target subpath alone established the complete
+service configuration was incomplete. The 9.3 result remains genuine functional
+evidence, but both natipkg versions must be rerun with the full service profile.
+
+The preparer now performs that upstream bootstrap in an isolated home, checks
+an actual `net/url` import, and only then records a ready runtime profile. All
+subsequent Racket commands preserve its startup flags and relocated cache.
+Evidence checks require the profile and actual machine-independent compile target.
+No Racket source, installer hash, native pin or supported target was changed.
+Package installation still builds all registered manuals and runs all existing
+qualification checks. The bootstrap is not a package documentation shortcut.
+
+Local QEMU diagnosis reached standard-library recompilation but the full
+bootstrap exceeded its 360-second diagnostic bound. After Racket's setup
+initialization, `net/url` and the actual catalog writer passed under `-MCR`.
+Detailed failed/partial diagnostic commands are retained in
+`output/catalog/github-second-run-20261121/probe-options.json`. These results do
+not qualify the full bootstrap, native Linux timing or package installation.
+The candidate uses the complete supported upstream command, and fresh native
+GitHub execution remains required.
+
+Preparation errors now retain a failed JSON receipt and bounded metadata log;
+they cannot turn a failed job into a pass or substitute for installed execution
+evidence. The native approval flags and `catalog_candidate_validated` remain false.
 
 ## First GitHub push
 

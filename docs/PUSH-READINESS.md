@@ -1,6 +1,6 @@
 # GitHub CI test branch
 
-The test branch is `codex/catalog-ci`. The maintainer pushed `487ff148`;
+The test branch is `codex/catalog-ci`. The maintainer pushed `487ff148` and `d75b82d4`;
 the implementation agent does not push, publish packages or dispatch deployments.
 The follow-up fixes below require another maintainer push and fresh CI results.
 
@@ -15,11 +15,11 @@ branch filter explicitly includes this branch, with regression-scope selection
 kept in agreement. All ten catalog platform/version lanes remain enabled:
 released Racket CS 8.18 and 9.3 on macOS ARM64/Intel, Windows x64, ordinary Linux
 x64 and actual Linux natipkg. The first push passed CI, Acceptance, API inventory
-and all four macOS catalog lanes. Windows, ordinary Linux and natipkg catalog
-lanes failed; their exact results are recorded in
-[catalog validation](CATALOG-VALIDATION.md#first-github-push).
+and all four macOS catalog lanes. At `d75b82d4`, both ordinary Linux lanes and
+natipkg 9.3 also passed; Windows reached rebuilding and natipkg 8.18 stopped
+during catalog preparation. See the [second run](CATALOG-VALIDATION.md#second-github-push).
 
-The follow-up makes Racket command output explicitly UTF-8, installs ordinary
+That commit makes Racket command output explicitly UTF-8, installs ordinary
 Linux Racket into a self-contained directory instead of copying `/usr`, rejects
 system prefixes before runtime copying, and uses a generated Latin fixture for
 the fallback regression instead of assuming a system CJK font. Natipkg acquisition
@@ -27,8 +27,16 @@ can try a locked official mirror after transport failure, verifies the same
 existing SHA-256 before executing either installer, and retains acquisition
 failure receipts. No native pin, font package or public API changed.
 
-These local corrections do not turn the first attempt's failed lanes into passes.
-Inspect fresh results at the new pushed commit.
+The next follow-up preserves nested ZIP member names on Windows, retains bounded
+preparation-failure evidence and prepares the machine-independent pkg-build
+runtime using the upstream bootstrap and `-MCR` startup profile. Both natipkg
+versions must run again under that complete profile. The new runtime marker is
+written only after successful bootstrap and a real `net/url` import check.
+Normal package installation still runs with documentation enabled; the runtime
+bootstrap does not replace package setup or any release gate.
+
+These corrections do not turn earlier failed lanes into passes. Inspect fresh
+results at the new pushed commit. No Racket package server submission occurred.
 
 ## Artifact and publication behavior
 

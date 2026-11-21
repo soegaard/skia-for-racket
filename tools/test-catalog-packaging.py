@@ -12,13 +12,16 @@ import tempfile
 import unittest
 import urllib.error
 import urllib.request
-from pathlib import Path
+import zipfile
+from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest.mock import patch
 import catalog_release as c
 import catalog_asset_evidence as asset_evidence
 import native_packages as n
-from catalog_execution import RUNTIME_ENVIRONMENTS, relocatable_runtime, windows_network_programs
+from catalog_execution import (PKG_BUILD_PROFILE, PROFILE_FILE, RUNTIME_ENVIRONMENTS,
+                               preserved_package_files, racket_command,
+                               relocatable_runtime, windows_network_programs)
 
 SHA = 'a'*64
 COMMIT = 'b'*40
@@ -94,6 +97,8 @@ class Evidence(unittest.TestCase):
     def test_natipkg_requires_derived_configuration_and_support_provenance(self):
         report, stage = fixtures()
         report['identity']['target']='x86_64-linux-natipkg'
+        report['identity']['compile_target_machine']=False
+        report['runtime_profile']=stage['runtime_profile']=copy.deepcopy(PKG_BUILD_PROFILE)
         with self.assertRaises(ValueError): self.verify(report,stage)
         for group in [report['smoke'], *report['rebuilt_smoke'].values()]:
             for smoke in group:
@@ -108,6 +113,14 @@ class Evidence(unittest.TestCase):
         for uid in (0, None, '1001', True):
             report, stage = fixtures(); report['execution_uid'] = uid
             with self.subTest(uid=uid), self.assertRaisesRegex(ValueError, 'unprivileged execution UID'):
+                self.verify(report, stage)
+    def test_natipkg_plain_or_unobserved_compilation_mode_is_not_service_evidence(self):
+        for profile, machine in ((None, False), (PKG_BUILD_PROFILE, 'ta6le'),
+                                 (dict(PKG_BUILD_PROFILE, upstream_commit='0'*40), False)):
+            report, stage = fixtures()
+            report['identity'].update(target='x86_64-linux-natipkg', compile_target_machine=machine)
+            report['runtime_profile']=stage['runtime_profile']=profile
+            with self.subTest(profile=profile,machine=machine), self.assertRaisesRegex(ValueError, 'machine-independent execution profile'):
                 self.verify(report, stage)
     def test_partial_review_cannot_approve_this_checkout(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -178,6 +191,80 @@ class WindowsNetworkCoverage(unittest.TestCase):
 
 
 class CatalogRuntime(unittest.TestCase):
+    def test_pkg_build_profile_uses_upstream_flags_and_a_relocatable_cache(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'Racket runtime æ'
+            (root / 'etc').mkdir(parents=True)
+            executable = root / 'bin/racket'
+            self.assertEqual(racket_command(executable), [str(executable)])
+            (root / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+            self.assertEqual(racket_command(executable),
+                             [str(executable), '-MCR', str(root / 'zo') + os.pathsep])
+            moved = root.with_name('copied Racket runtime æ')
+            shutil.copytree(root, moved)
+            self.assertEqual(racket_command(moved / 'bin/racket')[-1], str(moved / 'zo') + os.pathsep)
+
+    def test_unknown_runtime_profile_cannot_inject_flags_or_silently_fall_back(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'etc').mkdir()
+            profile = dict(PKG_BUILD_PROFILE, arguments=['--no-docs'])
+            (root / PROFILE_FILE).write_bytes(n.json_bytes(profile))
+            with self.assertRaisesRegex(ValueError, 'unreviewed catalog runtime execution profile'):
+                racket_command(root / 'bin/racket')
+
+    def test_staging_failure_retains_bounded_cause_without_native_archives(self):
+        runner = tool('run-catalog-ci')
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runtime = root / 'runtime'
+            (runtime / 'bin').mkdir(parents=True)
+            executable = runtime / 'bin/racket'
+            executable.write_bytes(b'fixture, never executed')
+            (runtime / 'collects/racket').mkdir(parents=True)
+            (runtime / 'collects/racket/base.rkt').write_bytes(b'#lang racket/base\n')
+            output = root / 'ci'
+            def fail_staging(*args, **kwargs):
+                stage = output / 'staged'
+                stage.mkdir()
+                (stage / 'catalog-metadata.log').write_bytes(b'compile: fixture failure\n')
+                (stage / 'native.zip').write_bytes(b'never upload this payload')
+                raise ValueError('fixture metadata failed')
+            with patch.object(runner, 'load', return_value=SimpleNamespace(stage=fail_staging)):
+                with self.assertRaisesRegex(ValueError, 'fixture metadata failed'):
+                    runner.execute(str(executable), output, runtime)
+            evidence = output / 'evidence'
+            report = n.read_json(evidence / 'preparation-failure.json')
+            self.assertEqual(report['status'], 'failed-preparation')
+            self.assertFalse(report['catalog_candidate_validated'])
+            self.assertEqual((evidence / 'catalog-metadata.log').read_bytes(), b'compile: fixture failure\n')
+            self.assertFalse(any(path.suffix == '.zip' for path in evidence.iterdir()))
+
+    def test_windows_relative_files_are_checked_with_full_zip_member_names(self):
+        class WindowsRelativePath(type(Path())):
+            def relative_to(self, *args, **kwargs):
+                return PureWindowsPath(super().relative_to(*args, **kwargs))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            package = WindowsRelativePath(root / 'package')
+            members = {'skia-native-1/library.dll': b'fixture library, never loaded',
+                       'licenses/skia/LICENSE.txt': b'Skia notice',
+                       'licenses/harfbuzz/LICENSE.txt': b'HarfBuzz notice',
+                       'licenses/BUILD-EVIDENCE.json': b'{"fixture":true}'}
+            for name, data in {**members, 'info.rkt':b'#lang info\n',
+                               'compiled/metadata.zo':b'bytecode', 'compiled/metadata.dep':b'dependencies'}.items():
+                path = package / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+            expected = preserved_package_files(package)
+            self.assertEqual(set(expected), set(members))
+            archive = root / 'rebuilt.zip'
+            n.write_zip(archive, members)
+            with zipfile.ZipFile(archive) as rebuilt:
+                for name, digest in expected.items():
+                    self.assertEqual(hashlib.sha256(rebuilt.read(name)).hexdigest(), digest)
+
     def test_linux_root_is_rejected_before_any_installation(self):
         validator = tool('validate-catalog-package')
         instance = object.__new__(validator.Validator)
@@ -244,7 +331,7 @@ class RuntimeAcquisition(unittest.TestCase):
         pin = dict(url='https://primary.example/runtime.sh', mirrors=['https://mirror.example/runtime.sh'],
                    sha256=hashlib.sha256(data).hexdigest())
         lock = root / 'runtimes.json'
-        lock.write_bytes(n.json_bytes(dict(natipkg={'9.3':pin})))
+        lock.write_bytes(n.json_bytes(dict(natipkg={'9.3':pin}, execution_profile=PKG_BUILD_PROFILE)))
         return module, data, pin, lock
 
     def test_transport_failure_uses_only_a_locked_mirror_before_installing(self):
@@ -253,13 +340,21 @@ class RuntimeAcquisition(unittest.TestCase):
             module, data, pin, lock = self.fixture(root)
             with patch.object(module.urllib.request, 'build_opener') as make_opener, \
                  patch.object(module.subprocess, 'run') as install:
+                def installed_runtime(command, **kwargs):
+                    if command[0] == 'sh':
+                        (root / 'runtime/etc').mkdir(parents=True)
+                    return SimpleNamespace(returncode=0)
+                install.side_effect = installed_runtime
                 make_opener.return_value.open.side_effect = [
                     urllib.error.HTTPError(pin['url'], 403, 'Forbidden', None, None),
                     self.Response(data, pin['mirrors'][0])]
                 report = module.prepare('9.3', root / 'runtime', lock_path=lock)
                 self.assertEqual([call.args[0] for call in make_opener.return_value.open.call_args_list],
                                  [pin['url'], *pin['mirrors']])
-                install.assert_called_once()
+                self.assertEqual(install.call_count, 3)
+                self.assertEqual(install.call_args_list[1].args[0][-4:], ['-l-', 'raco', 'setup', '--recompile-only'])
+                self.assertIn('-MCR', install.call_args_list[2].args[0])
+                self.assertTrue(Path(install.call_args_list[1].kwargs['env']['PLTADDONDIR']).is_absolute())
             self.assertEqual(report['status'], 'installed')
             self.assertEqual(report['sha256'], pin['sha256'])
             self.assertEqual(report['selected_url'], pin['mirrors'][0])
@@ -280,6 +375,26 @@ class RuntimeAcquisition(unittest.TestCase):
                 self.assertEqual(make_opener.return_value.open.call_count, 1)
             self.assertEqual(n.read_json(root / 'runtime.acquisition.json')['status'], 'failed')
             self.assertFalse((root / 'runtime').exists())
+
+    def test_failed_bootstrap_never_publishes_a_ready_runtime_profile(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            module, data, pin, lock = self.fixture(root)
+            def run(command, **kwargs):
+                if command[0] == 'sh':
+                    (root / 'runtime/etc').mkdir(parents=True)
+                    return SimpleNamespace(returncode=0)
+                kwargs['stdout'].write(b'fixture bootstrap failed\n')
+                raise module.subprocess.CalledProcessError(1, command)
+            with patch.object(module.urllib.request, 'build_opener') as make_opener, \
+                 patch.object(module.subprocess, 'run', side_effect=run):
+                make_opener.return_value.open.return_value = self.Response(data, pin['url'])
+                with self.assertRaises(module.subprocess.CalledProcessError):
+                    module.prepare('9.3', root / 'runtime', lock_path=lock)
+            self.assertFalse((root / 'runtime' / PROFILE_FILE).exists())
+            receipt = n.read_json(root / 'runtime.acquisition.json')
+            self.assertEqual(receipt['status'], 'failed')
+            self.assertIn('fixture bootstrap failed', receipt['bootstrap.log_tail'])
 
     def test_oversized_bytes_fail_before_installing(self):
         with tempfile.TemporaryDirectory() as temporary:

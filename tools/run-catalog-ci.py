@@ -36,7 +36,28 @@ def execute(racket, output, runtime=None, docker_image=None):
     output.mkdir(parents=True)
     output = output.resolve()
     stage = output / 'staged'
-    staged = load('stage-native-catalog').stage(str(selected), stage, snapshot=True)
+    try:
+        staged = load('stage-native-catalog').stage(str(selected), stage, snapshot=True)
+    except Exception as error:
+        # A preparation failure must remain a failed job and retain its cause,
+        # even though no installed-package execution receipt exists yet.
+        evidence = output / 'evidence'
+        evidence.mkdir()
+        (evidence / 'preparation-failure.json').write_bytes(json_bytes(dict(
+            schema=1, status='failed-preparation', error=str(error),
+            runtime=str(runtime), catalog_candidate_validated=False)))
+        for path in (stage / 'catalog-metadata.log', stage / 'dependency-staging.log',
+                     runtime.with_suffix('.acquisition.json')):
+            if path.is_file() and not path.is_symlink():
+                limit = 4 * 1024 * 1024
+                size = path.stat().st_size
+                with path.open('rb') as stream:
+                    stream.seek(max(0, size - limit))
+                    (evidence / path.name).write_bytes(stream.read(limit))
+                if size > limit:
+                    (evidence / (path.name + '.truncated.json')).write_bytes(json_bytes(dict(
+                        original_bytes=size, retained_tail_bytes=limit)))
+        raise
     fixture_build = output / 'fixture-build'
     architecture = (['-DCMAKE_OSX_ARCHITECTURES=' + ('arm64' if staged['identity']['target'].startswith('aarch64-') else 'x86_64')]
                     if sys.platform == 'darwin' else [])

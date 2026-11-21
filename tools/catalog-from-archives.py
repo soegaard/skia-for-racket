@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import zipfile
 from native_packages import ROOT, need, zip_index, bounded_member, json_bytes
+from catalog_execution import racket_command
 
 
 def create(racket, artifacts, output):
@@ -28,7 +29,7 @@ def create(racket, artifacts, output):
     need(rows, 'no candidate archives')
     request = output / 'request.json'
     request.write_bytes(json_bytes(rows))
-    subprocess.run([str(racket), str(ROOT / 'tools/write-staging-catalog.rkt'), str(request), str(output / 'catalog')], check=True)
+    subprocess.run([*racket_command(Path(racket)), str(ROOT / 'tools/write-staging-catalog.rkt'), str(request), str(output / 'catalog')], check=True)
     return output / 'catalog'
 
 

@@ -5,6 +5,7 @@ import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import zipfile
+from catalog_execution import PKG_BUILD_PROFILE
 from native_packages import validate_distribution_lock
 from release_graph import need, json_data
 
@@ -78,6 +79,11 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
             path = path_type(native['absolute_path'])
             need(path.is_absolute() and path.parent == path_type(native['managed_directory']), 'catalog library escaped its generation')
         if identity['target'] == 'x86_64-linux-natipkg':
+            need(report.get('runtime_profile') == PKG_BUILD_PROFILE and
+                 staging.get('runtime_profile') == PKG_BUILD_PROFILE and
+                 identity.get('compile_target_machine', 'missing') is False and
+                 staging['identity'].get('compile_target_machine', 'missing') is False,
+                 'natipkg qualification omitted the pkg-build machine-independent execution profile')
             configuration = smoke['skia'].get('fontconfig') or {}
             need(configuration.get('origin') == 'managed-cache' and
                  configuration.get('template_sha256') == smoke['skia']['loader']['manifest']['support_configuration']['sha256'] and

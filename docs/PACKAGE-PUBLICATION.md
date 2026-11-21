@@ -51,6 +51,25 @@ or size failures stop instead of trying another mirror. The adjacent
 Successful lanes retain it with their bounded evidence; acquisition failures
 retain the failed receipt and remain failed jobs.
 
+The pkg-build installers contain machine-independent bytecode. The upstream
+[Docker example](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/examples/docker/build.rkt)
+requires a matching compile-any configuration. Its
+[installation step](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/private/install-step.rkt)
+runs `raco setup --recompile-only` using the
+[`-MCR` startup flags](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/private/vm.rkt)
+and a per-runtime `zo:` cache. The runtime preparer follows that full bootstrap,
+then checks `net/url` before recording a ready execution profile. Every staging,
+validation and rebuilt-catalog subprocess uses that profile after runtime copies
+relocate. Unknown profile data is rejected. The validators record the actual
+compile target and require machine-independent mode for natipkg evidence.
+
+This prepares Racket's service runtime; it does not patch Racket sources or
+change any installer/native-library hash. Skia's subsequent ordinary dependency
+installation, all registered manuals and the complete execution/rebuild checks
+remain mandatory with networking denied. A failed bootstrap remains a failed
+job; its receipt includes a bounded log tail. Preparation failures also retain
+bounded catalog metadata logs, without uploading candidate archives.
+
 ```sh
 python3 tools/prepare-native-packages.py --lock packaging/native-assets.json \
   --cache output/catalog/verified-inputs
