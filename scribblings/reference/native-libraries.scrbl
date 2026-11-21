@@ -25,7 +25,13 @@ that it uses hardware acceleration.
 The loaded Racket modules select the Skia library on first native use. CPU and
 GPU operations then use that same library. Set @envvar{RACKET_SKIA_LIBRARY}
 before first use to select an explicit library file. Otherwise, the search tries
-the packaged platform library, then the system library search. Library selection
+one generation-qualified Racket-managed directory containing both pinned
+libraries. A selected incomplete or corrupt generation fails with its managed
+path; it never borrows a library from another scope or from the host. Explicit
+overrides retain precedence independently for each library. Developer checkouts
+can still use the explicit native installers and their local native directory;
+bare system search is available only outside a registered package installation.
+Library selection
 and compatibility-check results are cached; changing an environment variable
 afterward does not switch the selected library.
 
@@ -35,10 +41,21 @@ afterward does not switch the selected library.
 
 @(declare-exporting skia)
 
-The native installer supplies SkiaSharp 3.119.1 libraries based on Skia m119.
+The native dependency supplies SkiaSharp 3.119.1 libraries based on Skia m119.
 Use @racket[skia-native-version] to inspect the loaded library's milestone and
 increment. That value does not report the SkiaSharp package version or establish
 which drawing operations a document writer supports.
+
+The intended catalog command is @commandline{raco pkg install --auto skia}.
+The proposed 0.79 names are unpublished candidates; maintainers must use the
+disposable catalog described in the repository publication runbook until
+qualification and separate publication approval. Ordinary setup builds the
+manuals and needs no manual native-install command. Automatic qualification
+targets are 64-bit Racket CS 8.18/9.3 on macOS ARM64/x86-64, Windows x86-64 and
+glibc Linux x86-64, including the real @tt{natipkg} target. Ordinary Linux needs
+OS fontconfig and a default Latin font; natipkg declares Racket's native and
+FreeFont support. This target list does not claim that the complete execution
+matrix has passed. Imports perform no native load, font probing or download.
 
 @defproc[(skia-check!)
           void?]{

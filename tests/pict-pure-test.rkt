@@ -30,6 +30,10 @@
 (define pict-pure-tests
   (test-suite
    "skia/pict pure validation and explicit-transfer boundaries"
+   (test-case "native inexact picture extents yield exact raster pixel counts"
+     (check-equal? (call-with-values
+                    (lambda () (checked-picture-pict-geometry 'pict '#(0 0 9.0 7.0) 1)) list)
+                   '(9 7 9.0 7.0)))
    (test-case "backing scales and bridge scratch buffers are checked before native work"
      (check-exn exn:fail:contract? (lambda () (checked-backing-scale 'pict 0)))
      (check-exn exn:fail:contract? (lambda () (checked-backing-scale 'pict +nan.0)))

@@ -13,18 +13,35 @@
 ;;; Imports and Exports
 ;;;
 
-(require ffi/unsafe "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
+(require ffi/unsafe json racket/file racket/runtime-path setup/getinfo
+         "../main.rkt" "../private/types.rkt" "../private/harfbuzz-types.rkt"
+         "../private/native-loader.rkt" "../private/harfbuzz-native.rkt"
+         "../private/native-package-paths.rkt"
          "../private/bidi.rkt" "../private/unicode-conformance.rkt"
          "codec-doctor.rkt" "pdf-doctor.rkt" "svg-doctor.rkt" "output-doctor.rkt"
          "path-matrix-doctor.rkt" "filter-graph-doctor.rkt" "color-output-doctor.rkt"
   "annotation-doctor.rkt" "runtime-doctor.rkt" "output-audit-doctor.rkt" "canvas-doctor.rkt"
   "geometry-doctor.rkt" "projective-doctor.rkt" "picture-doctor.rkt")
 
+(define-runtime-path package-root "..")
+(define (print-native-provenance label report)
+  (printf "~a origin: ~a; request: ~a\n" label (hash-ref report 'origin) (hash-ref report 'library_request))
+  (define path (hash-ref report 'absolute_path))
+  (printf "~a absolute path: ~a\n" label (or path "unresolved system search request"))
+  (when path (printf "~a installed SHA-256: ~a\n" label (native-file-sha256 path)))
+  (when (hash-ref report 'manifest_sha256)
+    (printf "~a managed generation: ~a; manifest SHA-256: ~a\n"
+            label (hash-ref report 'native_generation) (hash-ref report 'manifest_sha256))))
+
 ;;;
 ;;; Installation and Feature Checks
 ;;;
 
 (module+ main
+  (printf "Source package: ~a\n" ((get-info/full package-root) 'version))
+  (define identity (build-path package-root "private" "source-identity.json"))
+  (when (file-exists? identity)
+    (printf "Source provenance: ~s\n" (call-with-input-file identity read-json)))
   (printf "Racket: ~a; VM: ~a; platform: ~a/~a\n"
           (version) (system-type 'vm) (system-type 'os) (system-type 'arch))
   (printf "Pinned native package: SkiaSharp ~a\n" native-package-version)
@@ -52,11 +69,11 @@
   (geometry-doctor!)
   (projective-doctor!)
   (picture-doctor!)
-  (printf "Native library: ~a\n" (skia-native-library-path))
+  (print-native-provenance "Skia" (hash-ref (native-library-report) 'loader))
   (printf "Native ABI version: ~a\n" (skia-native-version))
   (harfbuzz-check!)
   (printf "HarfBuzzSharp native package: ~a\n" harfbuzz-package-version)
-  (printf "HarfBuzz library: ~a\n" (harfbuzz-native-library-path))
+  (print-native-provenance "HarfBuzz" (harfbuzz-library-report))
   (printf "HarfBuzz version: ~a\n" (harfbuzz-native-version))
 
   ;;;

@@ -1,10 +1,10 @@
-# Release candidate matrix — 0.78d
+# Release candidate matrix — 0.79
 
 Generated from the reviewed local reusable-workflow graph. Not a run receipt.
 
-Integration baseline: `705a090d287a8a2887eb2cb4f33b43961626c6e4`. Package version: **0.78**.
+Integration baseline: `e944213d0fac4b02ef81bb35beb1e26729aca8f7`. Package version: **0.79**.
 
-**66 required jobs; 73 required evidence artifacts.**
+**77 required jobs; 84 required evidence artifacts.**
 
 All jobs must finish successfully in one attempt of the Release candidate workflow.
 The in-progress `Release candidate required` verifier is the sole exception to the job list below.
@@ -77,6 +77,17 @@ The in-progress `Release candidate required` verifier is the sole exception to t
 | CI / Required EGL surfaceless / llvmpipe | ubuntu-24.04 | `.github/workflows/ci.yml` | 1 |
 | CI / Required raster Skia canvas / Linux Xvfb | ubuntu-24.04 | `.github/workflows/ci.yml` | 1 |
 | CI / Source and CI contracts | ubuntu-24.04 | `.github/workflows/ci.yml` | 1 |
+| Catalog packaging / Catalog immutable artifact set | ubuntu-24.04 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog linux-x64 / Racket 9.3 | ubuntu-24.04 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog linux-x64-minimum / Racket 8.18 | ubuntu-24.04 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog macos-arm64 / Racket 9.3 | macos-15 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog macos-arm64-minimum / Racket 8.18 | macos-15 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog macos-x64 / Racket 9.3 | macos-15-intel | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog macos-x64-minimum / Racket 8.18 | macos-15-intel | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog natipkg / Racket 8.18 | ubuntu-24.04 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog natipkg / Racket 9.3 | ubuntu-24.04 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog windows-x64 / Racket 9.3 | windows-2022 | `.github/workflows/catalog-package.yml` | 1 |
+| Catalog packaging / Catalog windows-x64-minimum / Racket 8.18 | windows-2022 | `.github/workflows/catalog-package.yml` | 1 |
 
 ## Evidence boundary
 

@@ -20,6 +20,7 @@ import sys
 import tempfile
 import time
 import zipfile
+import importlib.util
 
 from ci_matrix import load_matrix
 from native_abi import catalog as native_abi_catalog, default_version
@@ -34,6 +35,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
+    'test-native-packages.py', 'test-catalog-packaging.py',
     'test-release-scope.py', 'test-small-gaps.py', 'test-public-api.py', 'test-release-candidate.py',
     'test-gpu-diagnostics.py',
     'test-gpu-context-controls.py',
@@ -137,9 +139,9 @@ def make_source_archive(root: Path, destination: Path) -> dict:
     with zipfile.ZipFile(destination, 'w', compression=zipfile.ZIP_STORED) as archive:
         for name in names:
             parts = Path(name).parts
-            require(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads') for p in parts),
+            require(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in parts),
                     'generated/developer files must not enter the source package')
-            require(not name.endswith(('.nupkg', '.so', '.dylib', '.dll', '.exe', '.pyc')),
+            require(not name.lower().endswith(('.nupkg', '.so', '.dylib', '.dll', '.exe', '.pyc', '.zo', '.ttf', '.otf', '.ttc')),
                     'native/compiled binary must not enter the clean source package')
             data = (root / name).read_bytes()
             info = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
@@ -160,12 +162,23 @@ def verify_install(root: Path, installed: Path, home: Path, archive: Path) -> No
         require(path.is_file() and sha256(path) == sha256(root / name), 'installed source differs: ' + name)
 
 
-def install_commands(installed: Path, racket: str, os_name: str) -> list[list[str]]:
+def install_commands(installed: Path, racket: str, os_name: str, archives: Path | None = None) -> list[list[str]]:
+    locked = json.loads((ROOT / 'packaging/native-assets.json').read_text()) if archives else None
+    target = {'windows':'win32', 'macosx':'macos', 'unix':'linux'}[os_name]
+    pair = {r['kind']: archives / n for n,r in locked['archives'].items() if r['target'] == target} if locked else {}
     if os_name == 'windows':
         return [[sys.executable, str(installed / 'tools/install-native-windows.py'),
-                 '--root', str(installed), '--racket', racket]]
-    return [['bash', str(installed / ('tools/' + name))]
-            for name in ('install-native.sh', 'install-harfbuzz.sh')]
+                 '--root', str(installed), '--racket', racket,
+                 *([item for kind in ('skia', 'harfbuzz') for item in ('--' + kind + '-archive', str(pair[kind]))] if archives else [])]]
+    return [['bash', str(installed / ('tools/' + name)), *(['--archive', str(pair[kind])] if archives else [])]
+            for name,kind in (('install-native.sh','skia'), ('install-harfbuzz.sh','harfbuzz'))]
+
+
+def stage_catalog(racket: str, output: Path) -> dict:
+    spec = importlib.util.spec_from_file_location('stage_native_catalog', ROOT / 'tools/stage-native-catalog.py')
+    staging = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(staging)
+    return staging.stage(racket, output)
 
 
 def verify_native_smoke(smoke: dict, installed: Path) -> list[dict]:
@@ -351,6 +364,11 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
         archive = temporary / 'skia source.zip'
         report['source_archive'] = make_source_archive(root, archive)
         raco = [racket, '-l', 'raco', '--']
+        staged = temporary / 'candidate catalog'
+        catalog = stage_catalog(racket, staged)
+        report['candidate_native_artifacts'] = catalog['artifacts']
+        runner.run([*raco, 'pkg', 'config', '--set', 'catalogs', staged / 'catalog',
+                    'https://download.racket-lang.org/releases/' + identity['version'] + '/catalog/'], cwd=away)
         runner.run([*raco, 'pkg', 'install', '--scope', 'user', '--auto', '--batch', '--no-cache', '--no-setup',
                     '--name', 'skia-for-racket', archive], cwd=away)
         found = runner.run([racket, '-e', '(require json) (write-json (path->string (collection-path "skia")))'], cwd=away)
@@ -368,8 +386,14 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                     'import-only smoke did not establish GUI-free imports')
             runner.run([racket, installed / 'run-tests.rkt', '--pure'], cwd=away, env=import_env)
             report['checks']['imports_and_pure_without_natives'] = True
-            for command in install_commands(installed, racket, identity['os']):
+            for command in install_commands(installed, racket, identity['os'], staged / 'inputs'):
                 runner.run(command, cwd=away)
+            # This lane deliberately regresses the developer installer route.
+            # Managed-package behavior is required independently by Catalog packaging.
+            rid = {'windows':'win-x64','macosx':'osx','unix':'linux-x64'}[identity['os']]
+            extension = {'windows':'.dll','macosx':'.dylib','unix':'.so'}[identity['os']]
+            env['RACKET_SKIA_LIBRARY'] = str(installed / 'native' / rid / ('libSkiaSharp' + extension))
+            env['RACKET_HARFBUZZ_LIBRARY'] = str(installed / 'native' / rid / ('libHarfBuzzSharp' + extension))
             report['checks']['fresh_native_install'] = True
             runner.run([*raco, 'setup', '--jobs', '2', '--no-docs', '--check-pkg-deps',
                         '--pkgs', 'skia-for-racket'], cwd=away)

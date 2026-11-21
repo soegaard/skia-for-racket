@@ -184,11 +184,11 @@ class Sources(unittest.TestCase):
         self.assertIn("'test-codec-queries.py'",self.text('tools/ci.py'))
     def test_no_automatic_workflow_added(self):
         auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
-        self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml'})
+        self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml','catalog-package.yml'})
         self.assertIn('test "$CODEC_QUERIES_RESULT" = success',self.text('.github/workflows/acceptance.yml'))
     def test_query_docs_and_numeric_version(self):
         for name in ('codec-scaled-dimensions','codec-supported-subset'):self.assertIn(name,self.text('docs/CODEC-QUERIES.md'))
-        self.assertIn('(define version "0.78")',self.text('info.rkt'))
+        self.assertIn('(define version "0.79")',self.text('info.rkt'))
     def test_split_visible(self):
         s=self.text('plans/skia-for-racket-gap-reduction-roadmap.md')
         for stage in ('0.76a','0.76b','0.76c'):self.assertIn('## '+stage,s)

@@ -8,12 +8,32 @@ It preserves the 0.77c GPU diagnostics and retained GL interfaces, the owned-EGL
 CI probe correction, and the deliberate review-ledger update. No GPU driver,
 callback provider, ownership guard, or native dependency is replaced.
 
-The numeric library package version is **0.78** and the inventory/review stage
+The historical numeric library package version was **0.78** and the inventory/review stage
 is **0.78b**. The pinned comparison stays SkiaSharp 3.119.1 / m119; the minimums
 stay Racket 8.18 and draw-lib 1.22. The capability-family denominator and public
 module set are unchanged. Only `colors.xyz-ops` and `surfaces.null` receive new
 capability decisions. See [the generated counts and decision map](RELEASE-SCOPE.md)
 rather than treating binding counts as a feature-parity percentage.
+
+## 0.79 packaging integration review
+
+The current source package is 0.79. All 140 capability decisions and the frozen
+0.78c public API snapshots remain unchanged. Packaging adds private lazy pair
+discovery, isolated data packages, complete pinned component/font notices,
+catalog staging, ordinary full-doc setup and bounded installed tests. A small
+existing picture/pict rounding bug was exposed by the required catalog bridge
+test and fixed without an API or graphics-feature addition.
+
+Current-package version assertions/fixtures were deliberately advanced to
+0.79; the historical API-policy version, Racket 8.18 / draw-lib 1.22 minimums,
+native pair and all existing release evidence checks are retained. The release
+graph adds eleven Catalog packaging jobs/artifacts and preserves the existing
+sixty-six jobs. Its fourth gate compares exact source/native/font archives and
+rejects pending redistribution review. The new packaging implementation,
+notices, tests and runbook are added to the frozen source input set; this is a
+source review, not substitute execution evidence. See
+[CATALOG-VALIDATION.md](CATALOG-VALIDATION.md) for local results and unresolved
+external qualification. No old capability or API capture is regenerated.
 
 ## The two resolved decisions
 
@@ -76,7 +96,8 @@ backend, or source-to-runtime evidence promotion is hidden in this review.
 per family together with exact source/checker/policy hashes. The verifier still
 checks complete production-source discovery, all binding registries, public
 anchors, catalogue classification, and deterministic generated reports. Changed
-source, test, policy, or checker inputs require deliberate review; updating
+source, test, policy, or checker inputs require deliberate review. Updating
+the input ledger never supplies missing execution evidence.
 
 The 0.78b installer accepts only the exact, clean starting commit above. It
 validates the old inventory and review, applies narrowly scoped changes in a

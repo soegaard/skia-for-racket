@@ -7,6 +7,7 @@ not a new independent pixel test or an authorization to publish a 1.0 release.
 from __future__ import annotations
 import datetime as dt
 import hashlib
+import io
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -71,7 +72,7 @@ def source_contracts(root):
     need(scope['in_scope_gaps_closed'] is True and scope['release_ready'] is False, 'release-scope closure required')
     public = public_api.source_contracts(root)
     need(public['api_signatures_verified'] is False, 'source checks must not invent signature execution')
-    need('(define version "0.78")' in relative(root, 'info.rkt').read_text(encoding='utf-8'), 'package version changed')
+    need('(define version "0.79")' in relative(root, 'info.rkt').read_text(encoding='utf-8'), 'package version changed')
     return expected
 
 
@@ -233,7 +234,7 @@ class GitHubReader:
         parsed = urllib.parse.urlsplit(url)
         need(parsed.scheme == 'https' and parsed.port in (None, 443) and not parsed.username and not parsed.password,
              'unsafe retrieval URL')
-        headers = {'User-Agent': 'skia-for-racket-release-validator/0.78d'}
+        headers = {'User-Agent': 'skia-for-racket-release-validator/0.79'}
         if authorized:
             need(url.startswith(self.base + '/') and parsed.hostname == 'api.github.com', 'refusing token to foreign host')
             headers.update({'Authorization': 'Bearer ' + self.token, 'Accept': 'application/vnd.github+json',
@@ -313,8 +314,8 @@ def source_archive(root, destination):
     with zipfile.ZipFile(destination, 'x', compression=zipfile.ZIP_STORED) as archive:
         for name in names:
             parts = PurePosixPath(name).parts
-            need(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads') for p in parts), 'generated source archive member')
-            need(not name.endswith(('.dll', '.so', '.dylib', '.exe', '.pyc', '.nupkg')), 'native/binary source archive member')
+            need(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in parts), 'generated source archive member')
+            need(not name.lower().endswith(('.dll', '.so', '.dylib', '.exe', '.pyc', '.nupkg', '.zo', '.ttf', '.otf', '.ttc')), 'native/binary source archive member')
             file = relative(root, name)
             data = file.read_bytes()
             entry = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
@@ -324,6 +325,35 @@ def source_archive(root, destination):
     with zipfile.ZipFile(destination) as archive:
         need(archive.namelist() == names and archive.testzip() is None, 'source archive roundtrip failed')
     return {'file': destination.name, 'sha256': digest(destination), 'bytes': destination.stat().st_size, 'files': len(names)}
+
+
+def retain_catalog_source(root, directory, destination, *, attempt, commit):
+    """Retain exactly the source ZIP exercised by every catalog lane, without rebuilding."""
+    from native_packages import zip_index
+    index = read_json(directory / 'artifact-index.json')
+    record = index['catalog-assets-' + str(attempt)]
+    with zipfile.ZipFile(directory / record['file']) as outer:
+        need(outer.getinfo('skia.zip').file_size <= MAX_ARTIFACT, 'oversized candidate source ZIP')
+        data = outer.read('skia.zip')
+        checksum = outer.read('skia.zip.CHECKSUM')
+    need(checksum == hashlib.sha1(data).hexdigest().encode('ascii'), 'candidate source Racket checksum differs')
+    names = source_files(root)
+    generated = 'private/source-identity.json'
+    need(generated not in names, 'generated source identity must not be tracked')
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        entries = zip_index(archive)
+        need(set(entries) == set(names) | {generated}, 'catalog source member set differs from committed source')
+        for name in names:
+            parts = PurePosixPath(name).parts
+            need(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in parts), 'generated candidate source member')
+            need(not name.lower().endswith(('.dll','.so','.dylib','.exe','.pyc','.nupkg','.zo','.ttf','.otf','.ttc')), 'native/font/binary candidate source member')
+            need(archive.read(name) == relative(root,name).read_bytes(), 'catalog source bytes differ: ' + name)
+        identity = json_data(archive.read(generated).decode('utf-8'))
+        need(identity == dict(schema=1, source_commit_observed=commit, source_worktree_clean=True), 'catalog source identity differs')
+    need(not destination.exists(), 'source ZIP destination exists')
+    destination.write_bytes(data)
+    destination.with_suffix('.zip.CHECKSUM').write_bytes(checksum)
+    return dict(file=destination.name, sha256=hashlib.sha256(data).hexdigest(), sha1=checksum.decode(), bytes=len(data), files=len(names)+1)
 
 
 def github_identity(env, source):

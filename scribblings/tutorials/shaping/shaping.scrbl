@@ -256,7 +256,8 @@ font, rather than silently using an unrelated default face:
 
 (define arabic-sample "مرحبا بالعالم")
 (define arabic-face
-  (require-script-face font-manager #\م arabic-sample "ar"))
+  (typeface-from-file
+   (build-path (collection-path "skia-fonts-1") "fonts" "NotoSansArabic-Regular.ttf")))
 
 (define arabic-font
   (make-font arabic-face #:size 54))
@@ -267,6 +268,8 @@ font, rather than silently using an unrelated default face:
 
 The font manager result can vary by platform. The shaping API does not require
 a particular family name; it requires a font that can represent the run.
+The executable figures load the declared @tt{skia-fonts-1} Noto files directly
+so their Arabic and Hebrew coverage does not depend on extra system fonts.
 
 @section{Shape Right-to-Left Text}
 
@@ -360,7 +363,8 @@ First select a suitable face and create a shaper:
 @shaping-racketblock+eval[
 (define hebrew-sample "שלום עולם")
 (define hebrew-face
-  (require-script-face font-manager #\ש hebrew-sample "he"))
+  (typeface-from-file
+   (build-path (collection-path "skia-fonts-1") "fonts" "NotoSansHebrew-Regular.ttf")))
 
 (define hebrew-font
   (make-font hebrew-face #:size 50))

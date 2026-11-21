@@ -11,15 +11,16 @@ import json
 from pathlib import Path
 import re
 
-STAGE = '0.78d'
-BASELINE = '705a090d287a8a2887eb2cb4f33b43961626c6e4'
+STAGE = '0.79'
+BASELINE = 'e944213d0fac4b02ef81bb35beb1e26729aca8f7'
 WORKFLOW = '.github/workflows/release-candidate.yml'
 POLICY = 'api/release-candidate-policy.json'
 REPORT = 'docs/RELEASE-CANDIDATE-MATRIX.md'
 GATE = 'Release candidate required'
 ROOT_JOBS = {'ci': './.github/workflows/ci.yml',
              'acceptance': './.github/workflows/acceptance.yml',
-             'inventory': './.github/workflows/api-inventory.yml'}
+             'inventory': './.github/workflows/api-inventory.yml',
+             'catalog': './.github/workflows/catalog-package.yml'}
 MANUAL_WORKFLOWS = {'.github/workflows/pages.yml'}
 MAX_BYTES = 16 * 1024 * 1024
 MAX_JOBS = 512
@@ -203,7 +204,7 @@ def build_policy(root: Path) -> dict:
     root_data = read(WORKFLOW)
     need(root_data.get('name') == 'Release candidate', 'wrong release workflow name')
     need(set(root_data.get('on', {})) == {'workflow_dispatch'}, 'release workflow must be manual-only')
-    need(set(root_data['jobs']) == set(ROOT_JOBS) | {'required'}, 'release root must include exactly all three gates')
+    need(set(root_data['jobs']) == set(ROOT_JOBS) | {'required'}, 'release root must include all four required gates')
     for key, target in ROOT_JOBS.items():
         need(root_data['jobs'][key].get('uses') == target, 'incorrect release dependency: ' + key)
     need(root_data['jobs']['acceptance'].get('with') == {'regressions': 'full'}, 'release needs full acceptance')
@@ -319,7 +320,7 @@ def build_policy(root: Path) -> dict:
     # Validate selector semantics by freezing the existing, independently tested selector.
     for file in ('tools/validation_regressions.py', 'tools/ci_matrix.py'):
         hashes[file] = digest(relative(root, file))
-    return {'schema': 1, 'stage': STAGE, 'baseline_commit': BASELINE, 'package_version': '0.78',
+    return {'schema': 1, 'stage': STAGE, 'baseline_commit': BASELINE, 'package_version': '0.79',
             'workflow': WORKFLOW, 'self_job': GATE, 'needs': sorted(ROOT_JOBS),
             'workflow_sources': dict(sorted(hashes.items())), 'jobs': sorted(jobs, key=lambda j: j['name']),
             'artifact_names': sorted(artifacts), 'evidence_basis': 'same-run-attempt-job-step-and-artifact-evidence',
@@ -327,9 +328,9 @@ def build_policy(root: Path) -> dict:
 
 
 def generated_report(policy):
-    lines = ['# Release candidate matrix — 0.78d', '',
+    lines = ['# Release candidate matrix — 0.79', '',
              'Generated from the reviewed local reusable-workflow graph. Not a run receipt.', '',
-             f"Integration baseline: `{policy['baseline_commit']}`. Package version: **0.78**.", '',
+             f"Integration baseline: `{policy['baseline_commit']}`. Package version: **0.79**.", '',
              f"**{len(policy['jobs'])} required jobs; {len(policy['artifact_names'])} required evidence artifacts.**", '',
              'All jobs must finish successfully in one attempt of the Release candidate workflow.',
              'The in-progress `Release candidate required` verifier is the sole exception to the job list below.', '',

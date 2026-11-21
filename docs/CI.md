@@ -1,5 +1,22 @@
 # GitHub Actions CI
 
+## Catalog packaging — 0.79
+
+Catalog packaging is a fourth automatic read-only workflow and a required
+child of the manually dispatched release candidate. It adds ten catalog
+platform/version lanes and one reproducible native/font/source artifact set.
+Ordinary dependency installation builds all registered manuals with networking
+denied after staging; DrDr, rendering/shaping, loader failures, scope/update/
+removal and source/built/binary-lib reinstalls remain mandatory. No `--no-docs`
+or native installer is used in this lane. See [the runbook](PACKAGE-PUBLICATION.md)
+and [actual local results/external gaps](CATALOG-VALIDATION.md).
+
+The central CI developer route also stages the unpublished native/font package
+names before installation. It retains fresh explicit installers and their
+source-tree containment check, with explicit local-library overrides. All
+Acceptance/API installer downloads verify the same locked archive hashes.
+Existing full CPU/GPU/GUI gates and historical API snapshots remain required.
+
 ## Required raster canvas GUI gate — 0.58
 
 The new `canvas` job runs `tools/ci.py --profile canvas --id canvas-linux-x64`
@@ -91,11 +108,12 @@ and raster canvas;
 
 Automatic stage acceptance is grouped under `.github/workflows/acceptance.yml`
 instead of giving every historical stage its own push/pull-request run. A normal
-push to `main`, a `v*` tag push, or a pull request therefore creates three
-top-level workflows: `CI`, `API inventory`, and `Acceptance`. The stage-specific
+push to `main`, a `v*` tag push, or a pull request creates those existing
+top-level workflows plus `Catalog packaging`: `CI`, `API inventory`, `Acceptance`,
+and `Catalog packaging`. The stage-specific
 workflow files remain individually dispatchable and reusable: they expose
 `workflow_call` plus `workflow_dispatch`, while the `Acceptance` workflow calls
-all fourteen and publishes `Acceptance required`. No stage-specific acceptance
+all seventeen and publishes `Acceptance required`. No stage-specific acceptance
 workflow has its own `push` or `pull_request` trigger.
 
 This changes orchestration only. The called workflows keep their existing

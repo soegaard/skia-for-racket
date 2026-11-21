@@ -8,7 +8,8 @@
 ;; Centralizes lazy native loading for the core and optional API modules.
 
 (require ffi/unsafe racket/promise racket/runtime-path racket/path
-         "native-platform.rkt" "native-abi.rkt")
+         (only-in setup/dirs get-share-search-dirs)
+         "native-platform.rkt" "native-abi.rkt" "native-package-paths.rkt" "native-fontconfig.rkt")
 (provide native-package-version native-platform native-filename native-library
          native-library-report native-library-profile native-symbol-inventory)
 
@@ -27,7 +28,43 @@
 ; native-filename : -> string?
 ;   Returns the platform-specific SkiaSharp shared-library filename.
 (define (native-filename) (native-library-name 'skia (system-type 'os)))
-(struct selection (library requested milestone increment profile) #:transparent)
+(struct selection (library requested milestone increment profile request support) #:transparent)
+(struct support-selection (library path configuration) #:transparent)
+
+(define (configure-natipkg-fontconfig request)
+  ;; Fontconfig reads the native process environment, including inside Scribble
+  ;; evaluators whose Racket environment-variable objects are private copies.
+  (define native-getenv (get-ffi-obj "getenv" #f (_fun _bytes -> _bytes)))
+  (define native-setenv (get-ffi-obj "setenv" #f (_fun _bytes _bytes _int -> _int)))
+  (define (preexisting value)
+    (hasheq 'origin "native-environment" 'configuration_request (bytes->string/utf-8 value #\uFFFD)))
+  (define existing (native-getenv #"FONTCONFIG_FILE\0"))
+  (define existing-path (native-getenv #"FONTCONFIG_PATH\0"))
+  (define existing-sysroot (native-getenv #"FONTCONFIG_SYSROOT\0"))
+  (cond
+    [existing (preexisting existing)]
+    [(or existing-path existing-sysroot)
+     (hasheq 'origin "native-environment" 'configuration_request #f
+             'fontconfig_path (and existing-path (bytes->string/utf-8 existing-path #\uFFFD))
+             'fontconfig_sysroot (and existing-sysroot (bytes->string/utf-8 existing-sysroot #\uFFFD)))]
+    [else
+     (define fonts
+       (for/first ([directory (in-list (get-share-search-dirs))]
+                   #:when (for/and ([name '("FreeSans.ttf" "FreeSerif.ttf" "FreeMono.ttf")])
+                            (file-exists? (build-path directory "fonts" name))))
+         (build-path directory "fonts")))
+     (define prepared
+       (prepare-managed-fontconfig (managed-fontconfig-template request)
+                                   (if fonts (list fonts) '())
+                                   (build-path (find-system-path 'addon-dir) "font-cache")))
+     (define target (string->path (hash-ref prepared 'materialized_path)))
+     (unless (zero? (native-setenv #"FONTCONFIG_FILE\0" (bytes-append (path->bytes target) #"\0") 0))
+       (error 'skia "could not select managed natipkg fontconfig configuration: ~a" target))
+     (define chosen (native-getenv #"FONTCONFIG_FILE\0"))
+     (unless chosen (error 'skia "native fontconfig environment did not retain its configuration"))
+     (if (bytes=? chosen (path->bytes target))
+         (hash-set prepared 'configuration_request (path->string target))
+         (preexisting chosen))]))
 ;; Fields:
 ;;   library: selected ffi-lib handle. requested: complete path or library-name string used for
 ;;   selection. milestone and increment: exact nonnegative values reported by native bootstrap
@@ -44,38 +81,23 @@
 ;   unsupported ABI versions before use.
 (define selected-library
   (delay/sync
-    (define override (getenv "RACKET_SKIA_LIBRARY"))
-    (define platform (native-platform))
-    (define candidates
-      (cond [override (list (path->complete-path override))]
-            [platform (list (build-path native-root platform (native-filename)) "libSkiaSharp")]
-            [else (error 'skia
-                         "unsupported automatic library selection for ~a/~a; set RACKET_SKIA_LIBRARY"
-                         (system-type 'os) (system-type 'arch))]))
-    (define failures '())
-    (define found
-      (for/or ([candidate (in-list candidates)])
-        (with-handlers ([exn:fail?
-                         (lambda (e)
-                           ;; Preserve a typed rejection for explicit candidates.
-                           ;; Missing files/bootstrap symbols are NOT ABI rejection.
-                           (when (and override (exn:fail:native-abi? e)) (raise e))
-                           (set! failures (cons (exn-message e) failures))
-                           #f)])
-          (define library (ffi-lib candidate))
-          (define milestone ((get-ffi-obj "sk_version_get_milestone" library (_fun -> _int))))
-          (define increment ((get-ffi-obj "sk_version_get_increment" library (_fun -> _int))))
-          (define profile (native-abi-require! milestone increment (ctype-sizeof _pointer)))
-          (selection library candidate milestone increment profile))))
-    (unless found
-      (error 'skia
-             (string-append "could not load a compatible libSkiaSharp\n"
-                            "  run: bash tools/install-native.sh\n"
-                            "  Windows x64: powershell -File tools/install-native-windows.ps1\n"
-                            "  or set RACKET_SKIA_LIBRARY to the full library filename\n"
-                            "  native package: ~a\n  loader errors: ~a")
-             native-package-version (reverse failures)))
-    found))
+    (define request (native-library-request 'skia native-root))
+    (define candidate (native-request-filename request))
+    (with-handlers ([exn:fail?
+                     (lambda (e)
+                       (when (exn:fail:native-abi? e) (raise e))
+                       (error 'skia
+                              "could not load selected ~a library ~a (SkiaSharp ~a): ~a. Managed packages: reinstall the native dependency and run raco setup. Developer builds: tools/install-native.sh or RACKET_SKIA_LIBRARY"
+                              (native-request-origin request) candidate native-package-version (exn-message e)))])
+      (define support-path (managed-support-path request))
+      (define support (and support-path (ffi-lib support-path)))
+      (define configuration (and support (configure-natipkg-fontconfig request)))
+      (define library (ffi-lib candidate))
+      (define milestone ((get-ffi-obj "sk_version_get_milestone" library (_fun -> _int))))
+      (define increment ((get-ffi-obj "sk_version_get_increment" library (_fun -> _int))))
+      (define profile (native-abi-require! milestone increment (ctype-sizeof _pointer)))
+      (selection library candidate milestone increment profile request
+                 (and support (support-selection support support-path configuration))))))
 
 ;; Preserve the private CPU registry's pair interface, without reopening a path.
 
@@ -102,6 +124,13 @@
   (define selected (force selected-library))
   (define requested (selection-requested selected))
   (hasheq 'schema 1 'default_package_version native-package-version
+          'loader (native-request-report (selection-request selected))
+          'support_library (and (selection-support selected)
+                                (path->string (support-selection-path (selection-support selected))))
+          'support_library_sha256 (and (selection-support selected)
+                                      (native-file-sha256 (support-selection-path (selection-support selected))))
+          'fontconfig (and (selection-support selected)
+                           (support-selection-configuration (selection-support selected)))
           'library_request (if (path? requested) (path->string requested) requested)
           'milestone (selection-milestone selected) 'increment (selection-increment selected)
           'native_version (format "~a.~a" (selection-milestone selected)

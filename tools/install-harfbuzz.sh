@@ -2,8 +2,8 @@
 # Downloads the pinned HarfBuzzSharp native library; does not execute it.
 # Compatible with macOS's system Bash 3.2. No sudo, dotnet, or compiler needed.
 set -euo pipefail
-VERSION=8.3.1.2
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VERSION="$(tr -d '\r\n' < "$ROOT/private/harfbuzz-default-version.txt")"
 ARCHIVE=""
 usage() {
   printf '%s\n' 'Usage: bash tools/install-harfbuzz.sh [--archive /path/to/package.nupkg]' \
@@ -50,6 +50,15 @@ else
   curl --fail --location --proto '=https' --proto-redir '=https' \
     --retry 3 --connect-timeout 30 --max-time 600 \
     --output "$WORK/package.nupkg" "$URL"
+fi
+if [ -f "$ROOT/packaging/native-inputs.sha256" ]; then
+  EXPECTED_HASH="$(awk -v name="$PACKAGE.$VERSION.nupkg" '$2 == name {print $1; count++} END {if (count != 1) exit 1}' "$ROOT/packaging/native-inputs.sha256")"
+  if command -v shasum >/dev/null; then
+    ACTUAL_HASH="$(shasum -a 256 "$WORK/package.nupkg" | awk '{print $1}')"
+  else
+    ACTUAL_HASH="$(sha256sum "$WORK/package.nupkg" | awk '{print $1}')"
+  fi
+  [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ] || { echo 'Archive SHA-256 differs from the reviewed native lock.' >&2; exit 1; }
 fi
 unzip -tqq "$WORK/package.nupkg"
 unzip -p "$WORK/package.nupkg" '*.nuspec' > "$WORK/package.nuspec"

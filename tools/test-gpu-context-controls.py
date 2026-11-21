@@ -202,6 +202,6 @@ class Sources(unittest.TestCase):
         if not (ROOT/'.github/workflows/acceptance.yml').is_file():self.skipTest('requires complete installed source checkout')
         self.assertIn('test "$GPU_CONTEXT_CONTROLS_RESULT" = success',self.text('.github/workflows/acceptance.yml'))
         auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
-        self.assertEqual(auto,{'ci.yml','api-inventory.yml','acceptance.yml'})
+        self.assertEqual(auto,{'ci.yml','api-inventory.yml','acceptance.yml','catalog-package.yml'})
 
 if __name__=='__main__':unittest.main(verbosity=2)

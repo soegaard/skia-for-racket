@@ -1,0 +1,119 @@
+name: Catalog packaging
+
+"on":
+  pull_request:
+  push:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  assets:
+    name: Catalog immutable artifact set
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@8889db76ff6cdc86df8aa09fdd1729cd090b7144
+        with:
+          version: '9.3'
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Build and reproduce the exact unpublished data packages
+        run: |
+          python tools/test-native-packages.py
+          python tools/stage-native-catalog.py --racket racket --output output/catalog-assets
+          python tools/build-native-packages.py --lock packaging/native-assets.json --inputs output/catalog-assets/inputs --output output/catalog-repro --local-candidate
+          python tools/compare-native-artifacts.py output/catalog-assets/artifacts output/catalog-repro
+      - name: Keep one bounded candidate archive set
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: catalog-assets-${{ github.run_attempt }}
+          path: output/catalog-assets/artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+  catalog:
+    name: Catalog ${{ matrix.id }} / Racket ${{ matrix.racket }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {id: linux-x64-minimum, runner: ubuntu-24.04, architecture: x64, racket: '8.18'}
+          - {id: linux-x64, runner: ubuntu-24.04, architecture: x64, racket: '9.3'}
+          - {id: macos-arm64-minimum, runner: macos-15, architecture: arm64, racket: '8.18'}
+          - {id: macos-arm64, runner: macos-15, architecture: arm64, racket: '9.3'}
+          - {id: macos-x64-minimum, runner: macos-15-intel, architecture: x64, racket: '8.18'}
+          - {id: macos-x64, runner: macos-15-intel, architecture: x64, racket: '9.3'}
+          - {id: windows-x64-minimum, runner: windows-2022, architecture: x64, racket: '8.18'}
+          - {id: windows-x64, runner: windows-2022, architecture: x64, racket: '9.3'}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: Bogdanp/setup-racket@8889db76ff6cdc86df8aa09fdd1729cd090b7144
+        with:
+          version: ${{ matrix.racket }}
+          architecture: ${{ matrix.architecture }}
+          distribution: full
+          variant: CS
+      - name: Install declared ordinary Linux baseline
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake build-essential fontconfig fonts-dejavu-core libglib2.0-0t64 libcairo2 libpango-1.0-0 libpangocairo-1.0-0
+      - name: Validate locked inputs and generator rejection cases
+        run: python tools/test-native-packages.py
+      - name: Stage exact unpublished archives and execute offline
+        run: python tools/run-catalog-ci.py --racket racket --output output/catalog-ci
+      - name: Keep bounded catalog evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: catalog-${{ matrix.id }}-${{ github.run_attempt }}
+          path: output/catalog-ci/evidence/
+          if-no-files-found: error
+          retention-days: 30
+
+  natipkg:
+    name: Catalog natipkg / Racket ${{ matrix.racket }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        racket: ['8.18', '9.3']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Acquire exact real pkg-build runtime
+        run: python tools/prepare-natipkg-runtime.py --version ${{ matrix.racket }} --output output/catalog-runtime
+      - name: Build clean natipkg execution image
+        run: docker build --platform linux/amd64 -t skia-catalog-natipkg -f packaging/prototypes/linux-audit.Dockerfile .
+      - name: Stage exact archives and qualify natipkg without network or OS fontconfig
+        run: python tools/run-catalog-ci.py --racket output/catalog-runtime/bin/racket --natipkg-runtime output/catalog-runtime --docker-image skia-catalog-natipkg --output output/catalog-ci
+      - name: Keep bounded natipkg evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: catalog-natipkg-${{ matrix.racket }}-${{ github.run_attempt }}
+          path: output/catalog-ci/evidence/
+          if-no-files-found: error
+          retention-days: 30

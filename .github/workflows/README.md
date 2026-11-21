@@ -11,6 +11,7 @@ and evidence rules are documented in [CI](../../docs/CI.md).
 | [ci.yml](ci.yml) | Central source regressions, isolated package installation, CPU checks, and EGL matrix. Runs on pull requests, main pushes, version tags, or explicit invocation. |
 | [acceptance.yml](acceptance.yml) | Acceptance artifacts and selected validation profiles; complements, rather than replaces, the central CI gate. |
 | [api-inventory.yml](api-inventory.yml) | Checks reviewed native/API inventory and source consistency on pushes, pull requests, or manual dispatch. |
+| [catalog-package.yml](catalog-package.yml) | Exact unpublished native/font/source artifacts, dependency-driven manual builds, OS network denial, DrDr and rebuilt-package qualification on the required platform/version matrix. |
 | [release-candidate.yml](release-candidate.yml) | Explicitly dispatched release-candidate matrix and evidence collection. |
 | [pages.yml](pages.yml) | Manually builds registered Scribble manuals, collects the static site, and deploys GitHub Pages. |
 

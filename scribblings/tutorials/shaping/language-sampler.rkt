@@ -91,12 +91,14 @@
 ; arabic-face : typeface?
 ;   Retains the arabic face used by the specimen's fonts.
 (define arabic-face
-  (require-script-face font-manager #\م arabic-sample "ar"))
+  (typeface-from-file
+   (build-path (collection-path "skia-fonts-1") "fonts" "NotoSansArabic-Regular.ttf")))
 
 ; hebrew-face : typeface?
 ;   Retains the hebrew face used by the specimen's fonts.
 (define hebrew-face
-  (require-script-face font-manager #\ש hebrew-sample "he"))
+  (typeface-from-file
+   (build-path (collection-path "skia-fonts-1") "fonts" "NotoSansHebrew-Regular.ttf")))
 
 ; latin-font : font?
 ;   Selects the latin font used by the scene.

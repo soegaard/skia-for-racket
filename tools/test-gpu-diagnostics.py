@@ -281,12 +281,12 @@ class RepositorySources(unittest.TestCase):
         self.assertEqual(len(calls),2)
         for call in calls:self.assertIn('--regressions none',call)
         auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
-        self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml'})
+        self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml','catalog-package.yml'})
     def test_public_docs_and_global_scope_preserved(self):
         s=(ROOT/'docs/GPU-DIAGNOSTICS.md').read_text()
         for name in ('gpu-memory-statistics','gpu-gl-interface-info','gpu-gl-has-extension?','#:gl-interface'):self.assertIn(name,s)
         self.assertIn('process-global-skia-caches',(ROOT/'private/graphics-data.rkt').read_text())
         self.assertIn('gpu-context-skia-resources',(ROOT/'private/graphics-data.rkt').read_text())
-        self.assertIn('(define version "0.78")',(ROOT/'info.rkt').read_text())
+        self.assertIn('(define version "0.79")',(ROOT/'info.rkt').read_text())
 
 if __name__=='__main__':unittest.main(verbosity=2)

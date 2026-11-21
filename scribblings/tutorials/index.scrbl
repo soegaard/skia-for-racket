@@ -127,10 +127,16 @@ model for a playable game. The game does not require the editor or pixel lessons
 
 @section[#:tag "running-examples"]{Running the Examples}
 
-Install Skia and its native libraries before running the drawing programs. The
+The intended catalog command is @command-text["raco pkg install --auto skia"].
+The 0.79 package names are unpublished candidates; use the repository's
+disposable staging catalog until qualification and separate publication
+approval. The native and declared font data packages are dependencies, and
+ordinary setup builds the manuals without a manual native-install script. The
 repository's @hyperlink["https://github.com/soegaard/skia-for-racket#readme"]{installation
-instructions} describe the supported platforms and native-library setup. Shaped
-text also needs HarfBuzz and suitable system fonts. Each lesson identifies extra
+instructions} describe qualification targets and the developer checkout route.
+Shaped text uses the declared HarfBuzz library; script-specific figures select
+declared Noto fonts. Other system-font examples use the platform default font
+baseline. Each lesson identifies extra
 requirements such as a graphical session or a platform-specific GPU backend.
 
 @subsection{From an Installed Package}

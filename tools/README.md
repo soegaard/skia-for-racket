@@ -17,6 +17,42 @@ inspectors, and native ABI probes. It is not the public drawing API.
 | [validate-release-scope.py](validate-release-scope.py), [release_scope.py](release_scope.py), [release_graph.py](release_graph.py) | Validate release scope and its dependency/evidence graph. |
 | [install-native.sh](install-native.sh), [install-native-windows.py](install-native-windows.py), [install-native-windows.ps1](install-native-windows.ps1), [install-harfbuzz.sh](install-harfbuzz.sh) | Explicit native dependency installation, distinct from read-only checks. |
 
+## Catalog packaging
+
+[The audit](../docs/PACKAGE-PUBLICATION-AUDIT.md),
+[validation record](../docs/CATALOG-VALIDATION.md) and component review record
+remaining external execution and redistribution decisions. These tools produce
+unpublished candidates; successful assembly does not approve publication:
+
+- [audit-native-inputs.py](audit-native-inputs.py) observes pinned NuGet inputs;
+  [prepare-native-packages.py](prepare-native-packages.py) verifies an input cache.
+- [native_packages.py](native_packages.py) supplies bounded archive/native
+  inspection; [test-native-packages.py](test-native-packages.py) checks rejection
+  cases and reproducible archive/checksum behavior.
+- [build-native-packages.py](build-native-packages.py) assembles data-only
+  paired native and licensed font data packages offline, with exact Racket
+  SHA-1 companions and SHA-256 receipts. Release assembly refuses pending review.
+- [stage-native-catalog.py](stage-native-catalog.py) stages exact source/data
+  archives and the full platform documentation dependency closure.
+- [validate-catalog-package.py](validate-catalog-package.py) performs isolated
+  offline install/docs/DrDr/native/lifecycle/rebuilt-form checks;
+  [run-catalog-ci.py](run-catalog-ci.py) supplies OS network denial on fresh CI runners.
+- [catalog-smoke.rkt](catalog-smoke.rkt) reports actual managed paths, hashes,
+  ABI/artifact/source identities, pixels and shaping in both text load orders.
+- [catalog_release.py](catalog_release.py) and
+  [test-catalog-packaging.py](test-catalog-packaging.py) reject incomplete or
+  mismatched catalog evidence without weakening existing release gates.
+- [prototype-native-lifecycle.py](prototype-native-lifecycle.py) tests copied,
+  disposable Racket installations, stripping, moved payloads and removal.
+- [probe-native-platforms.rkt](probe-native-platforms.rkt) checks Racket platform
+  matching; [probe-managed-pair.rkt](probe-managed-pair.rkt) renders/shapes through
+  explicit managed-path overrides, not automatic discovery.
+- [probe-linux-native-packages.py](probe-linux-native-packages.py) records
+  ordinary and actual natipkg behavior in an offline disposable container.
+
+See [the publication runbook](../docs/PACKAGE-PUBLICATION.md) for commands,
+limitations, remaining stages and the separate publication-approval boundary.
+
 ## External example preparation
 
 [prepare-bad-apple.py](prepare-bad-apple.py) downloads or verifies the pinned third-party Bad

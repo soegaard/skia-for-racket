@@ -1,6 +1,6 @@
 name: Release candidate
 
-# Deliberately opt-in: normal pushes retain the existing three workflows.
+# Deliberately opt-in: existing execution gates plus catalog packaging are required.
 # Select the exact candidate ref when dispatching. No checkout of workflow_run
 # artifacts, pull_request_target, secrets inheritance, publication or write token.
 "on":
@@ -25,10 +25,13 @@ jobs:
   inventory:
     name: API inventory
     uses: ./.github/workflows/api-inventory.yml
+  catalog:
+    name: Catalog packaging
+    uses: ./.github/workflows/catalog-package.yml
   required:
     name: Release candidate required
     if: always()
-    needs: [ci, acceptance, inventory]
+    needs: [ci, acceptance, inventory, catalog]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:

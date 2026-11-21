@@ -56,6 +56,15 @@ else
     --retry 3 --connect-timeout 30 --max-time 600 \
     --output "$WORK/package.nupkg" "$URL"
 fi
+if [ -f "$ROOT/packaging/native-inputs.sha256" ]; then
+  EXPECTED_HASH="$(awk -v name="$PACKAGE.$VERSION.nupkg" '$2 == name {print $1; count++} END {if (count != 1) exit 1}' "$ROOT/packaging/native-inputs.sha256")"
+  if command -v shasum >/dev/null; then
+    ACTUAL_HASH="$(shasum -a 256 "$WORK/package.nupkg" | awk '{print $1}')"
+  else
+    ACTUAL_HASH="$(sha256sum "$WORK/package.nupkg" | awk '{print $1}')"
+  fi
+  [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ] || { echo 'Archive SHA-256 differs from the reviewed native lock.' >&2; exit 1; }
+fi
 unzip -tqq "$WORK/package.nupkg"
 # Validate package identity/version even in offline mode. Extract fixed members
 # only; never unpack archive paths onto the filesystem.

@@ -2,8 +2,9 @@
 """Install pinned Windows x64 Skia/HarfBuzz assets without executing their code.
 
 Network authenticity relies on HTTPS/NuGet, as in the existing Unix installers.
-Recorded SHA-256 values are provenance, not independent authenticity proof.
-An optional expected SHA-256 can authenticate a separately obtained archive.
+Default downloads are checked against the reviewed input lock when present.
+An explicit expected SHA-256 can authenticate a separately obtained archive;
+recording a digest alone is not independent authenticity proof.
 """
 from __future__ import annotations
 import argparse
@@ -20,11 +21,11 @@ import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
 
-from native_abi import default_version
+from native_abi import default_version, harfbuzz_default_version
 
 PACKAGES = {
     'skia': ('skiasharp.nativeassets.win32', default_version(), 'libSkiaSharp.dll'),
-    'harfbuzz': ('harfbuzzsharp.nativeassets.win32', '8.3.1.2', 'libHarfBuzzSharp.dll'),
+    'harfbuzz': ('harfbuzzsharp.nativeassets.win32', harfbuzz_default_version(), 'libHarfBuzzSharp.dll'),
 }
 MAX_ARCHIVE = 180 * 1024 * 1024
 MAX_DLL = 100 * 1024 * 1024
@@ -116,7 +117,12 @@ def main() -> None:
     prepared = []
     for kind in selected:
         data, source = read_source(kind, getattr(args, kind + '_archive'))
-        dll, manifest, record = validate_archive(data, kind, getattr(args, kind + '_sha256'))
+        expected = getattr(args, kind + '_sha256')
+        lock_path = args.root / 'packaging/native-assets.json'
+        if expected is None and lock_path.is_file():
+            package, version, _ = PACKAGES[kind]
+            expected = json.loads(lock_path.read_text())['archives'][f'{package}.{version}.nupkg']['sha256']
+        dll, manifest, record = validate_archive(data, kind, expected)
         record['source'] = source
         prepared.append((kind, data, dll, manifest, record))
     destination = native / 'win-x64'

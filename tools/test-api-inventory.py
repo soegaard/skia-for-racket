@@ -61,7 +61,7 @@ def synthetic_tree(root: Path):
     shutil.copyfile(ROOT / "private/live-port-native.rkt", root / "private/live-port-native.rkt")
     shutil.copyfile(ROOT / "api/live-stream-ffi.json", root / "api/live-stream-ffi.json")
     (root / "private/native-default-version.txt").write_text("3.119.1\n")
-    (root / "info.rkt").write_text('#lang info\n(define version "0.78")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
+    (root / "info.rkt").write_text('#lang info\n(define version "0.79")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
     inv.check_report(root, CATALOG, write=True)
     (root / "tools").mkdir(exist_ok=True)
 

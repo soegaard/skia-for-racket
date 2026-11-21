@@ -66,5 +66,6 @@ def source_contracts(root: Path) -> dict:
     need("'test-small-gaps.py'" in ci, "source CI must run the 0.78b contracts")
     example = (root / "examples/small-gaps.rkt").read_text(encoding="utf-8")
     need('"../main.rkt"' in example and "private/" not in example, "example must use public APIs")
-    need('"0.78"' in (root / "info.rkt").read_text(encoding="utf-8"), "wrong package version")
+    # The current package advances independently of the frozen 0.78b decisions.
+    need('"0.79"' in (root / "info.rkt").read_text(encoding="utf-8"), "wrong package version")
     return summary

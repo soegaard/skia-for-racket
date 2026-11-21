@@ -1,21 +1,22 @@
-# Release candidate validation — 0.78d
+# Release candidate validation — 0.79
 
-Package version: **0.78**. Integration baseline:
-`705a090d287a8a2887eb2cb4f33b43961626c6e4` (Fix public API fixture reflection).
-The maintainer's all-green assumption accepts that starting point only. It is
-not a receipt for the newly assembled release candidate.
+Package version: **0.79**. Implementation baseline:
+`e944213d0fac4b02ef81bb35beb1e26729aca8f7`. Existing 0.78d execution gates and
+the 0.78c API snapshots are retained. This baseline is not a receipt for the
+new catalog candidate; its exact platform and redistribution gaps are recorded
+in [CATALOG-VALIDATION.md](CATALOG-VALIDATION.md).
 
 ## One authoritative candidate decision
 
 Run the **Release candidate** workflow manually at the exact candidate ref.
-It calls the existing CI, Acceptance, and API inventory workflows from that
+It calls CI, Acceptance, API inventory, and Catalog packaging workflows from that
 same commit. Acceptance receives `regressions: full`. No workflow is fetched
 from a moving branch and no earlier independent green run can substitute for
-this run's work. Normal push and pull-request workflows continue unchanged in
-scope; release validation does not add a fourth automatic full matrix.
+this run's work. Catalog packaging is an additional automatic read-only matrix;
+the existing CPU/GPU/GUI/feature gates retain their full scope.
 
 The final **Release candidate required** job runs even after a dependency fails.
-It verifies the caller's three `needs` results, then independently retrieves the
+It verifies all four caller `needs` results, then independently retrieves the
 current attempt's complete GitHub job list with pagination. A frozen policy
 expands every local reusable workflow, matrix row, authored step and artifact.
 Missing, additional, duplicate, incomplete, failed, cancelled or skipped jobs
@@ -27,6 +28,14 @@ in [RELEASE-CANDIDATE-MATRIX.md](RELEASE-CANDIDATE-MATRIX.md). The checker recom
 the graph and rejects drift. There is no `--write` or auto-approval option.
 Introducing a workflow or unsupported expression fails for explicit review.
 The graph checks **all** workflow files, not just a hand-selected feature list.
+
+Catalog packaging adds both released Racket versions on macOS ARM64/x86-64,
+Windows x86-64, ordinary Linux x86-64 and real natipkg. A separate reproducibility
+job retains one native/font/source archive set. Per-lane artifacts contain
+bounded receipts/logs, not duplicate runtime/doc/native trees. The aggregator
+requires complete offline install/docs/DrDr/rebuilt-package evidence, compares
+exact archive digests across lanes and refuses pending redistribution review.
+See [the packaging runbook](PACKAGE-PUBLICATION.md).
 
 ## Required execution and limits
 
@@ -68,8 +77,9 @@ Downloads, decompression and pagination have hard limits. Missing metadata,
 network errors, digest mismatches, unsafe ZIPs and truncated pages fail the gate;
 there is no successful fallback to the `needs` summary alone.
 
-After the evidence passes, the gate creates `skia-for-racket-source.zip` from the
-modes. It records the commit, source-manifest digest, policy digest, archive
+After the evidence passes, the gate retains the exact qualified `skia.zip`
+from the immutable catalog asset set and verifies every member against the
+committed source plus its generated source-identity receipt. It records the commit, source-manifest digest, policy digest, archive
 digest, job/step evidence, artifact metadata and individually verified evidence
 ZIPs. It rechecks the committed source before and after packaging. The native
 libraries, compiled code, local caches and generated outputs are excluded.
@@ -131,8 +141,8 @@ manifest together. Preserve the API snapshots unless a separately reviewed API
 change actually requires replacing them.
 
 The source/capability audit retains its 0.78b identity; the public API contract
-retains its 0.78c identity. This separate 0.78d execution gate combines their
-current validations without inventing new capability-family dispositions.
+retains its 0.78c identity. The 0.79 execution gate extends the retained 0.78d
+checks without inventing new capability-family or graphics/API claims.
 
 ## Reference contracts
 

@@ -53,10 +53,12 @@ The Racket source in this project is released under the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/LICENSE"]{MIT License}.
 That license does not relicense upstream Skia, SkiaSharp native packages,
 HarfBuzz, Unicode data, or other third-party components. The source
-distribution contains no native library or font files; the explicit native
-installer downloads pinned SkiaSharp native-assets packages separately. Those
-packages include upstream Skia and other third-party components under their
-own licenses. See the repository's
+distribution contains no native library or font files. The 0.79 catalog
+candidate declares separate native data packages containing both pinned
+libraries and a licensed Noto font data package. Those packages include upstream
+Skia and other third-party components under their own licenses. The developer
+installer remains available for checkouts. Candidate names remain unpublished
+until qualification and maintainer approval. See the repository's
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/NOTICE.md"]{third-party notice}
 before redistributing a bundle that includes native binaries or derived data.
 

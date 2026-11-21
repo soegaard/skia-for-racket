@@ -27,6 +27,8 @@ These files define compatibility boundaries, inventory evidence, release scope, 
 - [CI-REGRESSION-SCOPE.md](CI-REGRESSION-SCOPE.md): Global regression scope and feature acceptance.
 - [CI.md](CI.md): GitHub Actions CI.
 - [GLOBAL-CACHES.md](GLOBAL-CACHES.md): Global caches and memory statistics — 0.77a.
+- [PACKAGE-PUBLICATION-AUDIT.md](PACKAGE-PUBLICATION-AUDIT.md): Catalog packaging Stage A findings, prototype results and unresolved gates.
+- [PACKAGE-PUBLICATION.md](PACKAGE-PUBLICATION.md): Local packaging reproduction and the publication runbook; no approved candidate yet.
 - [PORTABILITY.md](PORTABILITY.md): Portability and evidence.
 - [PUBLIC-API.md](PUBLIC-API.md): Public API baseline — 0.78c.
 - [RELEASE-CANDIDATE-MATRIX.md](RELEASE-CANDIDATE-MATRIX.md): Release candidate matrix — 0.78d.

@@ -288,7 +288,7 @@ class Sources(unittest.TestCase):
         self.assertIn('codec-incremental stream-input stream-output',self.text('private/lifetime.rkt'))
     def test_three_automatic_workflows(self):
         auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
-        self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml'})
+        self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml','catalog-package.yml'})
         s=self.text('.github/workflows/codec-queries.yml')
         self.assertEqual(s.count('validate-codec-incremental.py --regressions none'),2)
         self.assertIn('codec-incremental-windows',s)
@@ -297,7 +297,7 @@ class Sources(unittest.TestCase):
         doc=self.text('docs/CODEC-INCREMENTAL.md')
         for name in inv.source_exports(ROOT,'codec-incremental.rkt'):self.assertIn(name,doc)
     def test_version_and_scope(self):
-        self.assertIn('(define version "0.78")',self.text('info.rkt'))
+        self.assertIn('(define version "0.79")',self.text('info.rkt'))
         self.assertIn('## 0.76c',self.text('plans/skia-for-racket-gap-reduction-roadmap.md'))
 
 

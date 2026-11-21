@@ -160,6 +160,13 @@ class Packaging(unittest.TestCase):
     def test_native_binary_not_packaged(self):
         (self.root / 'leaked.dll').write_bytes(b'not executable'); git(self.root, 'add', 'leaked.dll')
         with self.assertRaises(ValueError): ci.make_source_archive(self.root, self.root.parent / 'source.zip')
+    def test_font_and_bytecode_leaks_are_not_source(self):
+        for suffix in ('TTF', 'otf', 'ttc', 'zo', 'DLL'):
+            with self.subTest(suffix=suffix):
+                path = self.root / ('leaked.' + suffix)
+                path.write_bytes(b'not source'); git(self.root, 'add', path.name)
+                with self.assertRaises(ValueError): ci.make_source_archive(self.root, self.root.parent / ('source-' + suffix + '.zip'))
+                git(self.root, 'rm', '-f', path.name)
     def test_windows_uses_existing_installer_and_exact_racket(self):
         commands = ci.install_commands(Path('installed'), '/selected Racket/racket.exe', 'windows')
         self.assertEqual(len(commands), 1); self.assertIn('install-native-windows.py', commands[0][1])
@@ -341,7 +348,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         acceptance = (workflows / 'acceptance.yml').read_text()
         auto = {p.name for p in workflows.glob('*.yml')
                 if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
-        self.assertEqual(auto, {'acceptance.yml', 'api-inventory.yml', 'ci.yml'})
+        self.assertEqual(auto, {'acceptance.yml', 'api-inventory.yml', 'ci.yml', 'catalog-package.yml'})
         self.assertIn('name: Acceptance required\n    if: always()', acceptance)
         self.assertIn('contents: read', acceptance)
         self.assertNotIn('pull_request_target:', acceptance)
@@ -368,10 +375,13 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (HERE.parent / 'info.rkt').read_text()
-        self.assertIn('(define version "0.78")', text)
+        self.assertIn('(define version "0.79")', text)
         self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")\n'
                       '               "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"\n'
-                      '               "scribble-lib" "racket-index"))', text)
+                      '               "scribble-lib" "racket-index"', text)
+        for name in ('skia-fonts-1', 'skia-native-macos-1', 'skia-native-win32-x86_64-1', 'skia-native-x86_64-linux-1'):
+            self.assertIn('("' + name + '" #:version "1.0"', text)
+        self.assertIn('"pict-doc"', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):
         with tempfile.TemporaryDirectory() as t:
@@ -502,7 +512,7 @@ class Orchestration(unittest.TestCase):
                         canvas_fixture(Path(a[a.index('--output') + 1]))
                     return ''
             fake = Fake(); fake.output = output
-            with patch.object(ci.shutil, 'which', return_value=str(temp / 'selected Racket/racket')), patch.object(ci.sys, 'platform', 'linux'):
+            with patch.object(ci.shutil, 'which', return_value=str(temp / 'selected Racket/racket')), patch.object(ci.sys, 'platform', 'linux'), patch.object(ci, 'stage_catalog', return_value={'artifacts': {'mocked':True}}):
                 error = None
                 try: ci.package_checks(fake, root, row, profile, report)
                 except (RuntimeError, ValueError) as exc: error = str(exc)

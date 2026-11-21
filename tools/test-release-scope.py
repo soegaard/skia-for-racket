@@ -335,13 +335,13 @@ class RepositoryIntegration(unittest.TestCase):
         run=(ROOT/'run-tests.rkt').read_text(encoding='utf-8')
         self.assertIn('(run-tests release-scope-pure-tests)',run)
         self.assertIn('"tests/release-scope-pure-test.rkt"',run)
-    def test_required_ci_and_no_new_automatic_workflow(self):
+    def test_required_ci_and_reviewed_catalog_workflow(self):
         ci=(ROOT/'tools/ci.py').read_text(encoding='utf-8');self.assertIn("'test-release-scope.py'",ci)
         workflow=(ROOT/'.github/workflows/api-inventory.yml').read_text(encoding='utf-8')
         self.assertIn('python tools/validate-release-scope.py --require-no-open-gaps --racket',workflow)
         self.assertIn('output/release-scope-ci/',workflow)
         self.assertNotIn('continue-on-error:',workflow)
         auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
-        self.assertEqual(auto,{'ci.yml','api-inventory.yml','acceptance.yml'})
+        self.assertEqual(auto,{'ci.yml','api-inventory.yml','acceptance.yml','catalog-package.yml'})
 
 if __name__=='__main__':unittest.main(verbosity=2)

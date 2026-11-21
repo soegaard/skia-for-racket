@@ -218,7 +218,7 @@ class Sources(unittest.TestCase):
     """Require real integrated files. The bundle verifier runs other classes only."""
     def source(self,name):return (ROOT/name).read_text(encoding='utf-8')
     def test_version_and_registration(self):
-        self.assertIn('(define version "0.78")',self.source('info.rkt'))
+        self.assertIn('(define version "0.79")',self.source('info.rkt'))
         self.assertIn("'test-advanced-canvases.py'",self.source('tools/ci.py'))
         self.assertIn('advanced-canvas-native-tests-file',self.source('run-tests.rkt'))
     def test_actual_suite_counts(self):
@@ -267,7 +267,7 @@ class Sources(unittest.TestCase):
         paths=ROOT/'.github/workflows'
         automatic={p.name for p in paths.glob('*.yml')
                    if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
-        self.assertEqual(automatic,{'ci.yml','api-inventory.yml','acceptance.yml'})
+        self.assertEqual(automatic,{'ci.yml','api-inventory.yml','acceptance.yml','catalog-package.yml'})
         child=self.source('.github/workflows/advanced-canvases.yml')
         for value in ('workflow_call:','workflow_dispatch:','--backend egl','--backend direct3d',
                       '--adapter warp','--require-renderers'):

@@ -1,11 +1,17 @@
 # Native library location
 
-This directory is the installation destination for optional native dependencies,
+This directory is the legacy developer installation destination,
 not a Racket source module. The loaders in [private/](../private/README.md) locate
 these libraries; installers and ABI probes live in [tools/](../tools/README.md).
 This README is the directory's tracked source documentation. Platform-specific
 library directories are populated by installation rather than maintained as
 source code.
+
+Ordinary catalog installs use the separate, generation-qualified
+`skia-native-1` directory managed by Racket, containing both libraries and its
+manifest. Managed data takes precedence over files here. Set both explicit
+native-library overrides when testing developer builds. A selected broken
+managed pair does not fall back here or to host libraries.
 
 This directory intentionally contains no binary in the source distribution.
 Run `bash tools/install-native.sh` from the package root. The installer writes:
@@ -13,6 +19,9 @@ Run `bash tools/install-native.sh` from the package root. The installer writes:
 - macOS: `native/osx/libSkiaSharp.dylib`
 - Linux x86-64: `native/linux-x64/libSkiaSharp.so`
 - Linux ARM64: `native/linux-arm64/libSkiaSharp.so`
+
+The ARM64 developer installer route is retained from earlier releases; it is
+not a qualified automatic catalog target. See the publication validation report.
 
 Alternatively set `RACKET_SKIA_LIBRARY` to an absolute native-library filename.
 The library must match the pinned SkiaSharp 3.119.1 ABI, not just be named Skia.

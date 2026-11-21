@@ -1,0 +1,1077 @@
+{
+  "archives": {
+    "harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg": {
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "ELF64",
+        "needed": [
+          "libpthread.so.0",
+          "libm.so.6",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "required_symbol_versions": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3"
+        ],
+        "rpath_runpath": []
+      },
+      "kind": "harfbuzz",
+      "library_filename": "libHarfBuzzSharp.so",
+      "library_member": "runtimes/linux-x64/native/libHarfBuzzSharp.so",
+      "members": {
+        "HarfBuzzSharp.NativeAssets.Linux.nuspec": {
+          "sha256": "37746523bede78b4d1bb41ca488d42a5a94dc24a35d230334ab7127cfc2c1369",
+          "size": 1502
+        },
+        "LICENSE.txt": {
+          "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938",
+          "size": 1129
+        },
+        "THIRD-PARTY-NOTICES.txt": {
+          "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+          "size": 139775
+        },
+        "runtimes/linux-x64/native/libHarfBuzzSharp.so": {
+          "sha256": "c952458933ea7f1ce66ade61fa32e708df7dfb2ab8bae77ed5ec06f49223a75c",
+          "size": 2471408
+        }
+      },
+      "metadata": {
+        "id": "HarfBuzzSharp.NativeAssets.Linux",
+        "license": "MIT",
+        "repository": {
+          "branch": "release/3.119.1",
+          "commit": "cc78b5933d23e6383db5d246e70db915770d55d6",
+          "type": "git",
+          "url": "https://go.microsoft.com/fwlink/?linkid=868515"
+        },
+        "version": "8.3.1.2"
+      },
+      "nuspec": "HarfBuzzSharp.NativeAssets.Linux.nuspec",
+      "package": "harfbuzzsharp.nativeassets.linux",
+      "sha256": "ac853418f917cd44062996ed56194306f7712081020893bf61d8c42525966d5f",
+      "size": 10890194,
+      "target": "linux",
+      "url": "https://api.nuget.org/v3-flatcontainer/harfbuzzsharp.nativeassets.linux/8.3.1.2/harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg",
+      "version": "8.3.1.2"
+    },
+    "harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg": {
+      "inspection": {
+        "architectures": [
+          "aarch64",
+          "x86_64"
+        ],
+        "format": "Mach-O universal",
+        "slices": [
+          {
+            "architecture": "x86_64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libHarfBuzzSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              }
+            ],
+            "minimum_os": [
+              "10.13.0"
+            ]
+          },
+          {
+            "architecture": "aarch64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libHarfBuzzSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              }
+            ],
+            "minimum_os": [
+              "11.0.0"
+            ]
+          }
+        ]
+      },
+      "kind": "harfbuzz",
+      "library_filename": "libHarfBuzzSharp.dylib",
+      "library_member": "runtimes/osx/native/libHarfBuzzSharp.dylib",
+      "members": {
+        "HarfBuzzSharp.NativeAssets.macOS.nuspec": {
+          "sha256": "3b8de32b64c2013ae5ad50ffe9141b00a524f88cf0cff3d56ae70263b6d8bde6",
+          "size": 1554
+        },
+        "LICENSE.txt": {
+          "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938",
+          "size": 1129
+        },
+        "THIRD-PARTY-NOTICES.txt": {
+          "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+          "size": 139775
+        },
+        "runtimes/osx/native/libHarfBuzzSharp.dylib": {
+          "sha256": "dfaf1adb2772c788bec97f82b282c4e75ba92dfe3a1ffe0cb5449e4158f2c528",
+          "size": 2922800
+        }
+      },
+      "metadata": {
+        "id": "HarfBuzzSharp.NativeAssets.macOS",
+        "license": "MIT",
+        "repository": {
+          "branch": "release/3.119.1",
+          "commit": "cc78b5933d23e6383db5d246e70db915770d55d6",
+          "type": "git",
+          "url": "https://go.microsoft.com/fwlink/?linkid=868515"
+        },
+        "version": "8.3.1.2"
+      },
+      "nuspec": "HarfBuzzSharp.NativeAssets.macOS.nuspec",
+      "package": "harfbuzzsharp.nativeassets.macos",
+      "sha256": "306a73e811f7b37540c54e90da11ebc07a6cfa7f68766a6776c5a2ce00180664",
+      "size": 1358311,
+      "target": "macos",
+      "url": "https://api.nuget.org/v3-flatcontainer/harfbuzzsharp.nativeassets.macos/8.3.1.2/harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg",
+      "version": "8.3.1.2"
+    },
+    "harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg": {
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "PE32+",
+        "imports": [
+          "KERNEL32.dll"
+        ]
+      },
+      "kind": "harfbuzz",
+      "library_filename": "libHarfBuzzSharp.dll",
+      "library_member": "runtimes/win-x64/native/libHarfBuzzSharp.dll",
+      "members": {
+        "HarfBuzzSharp.NativeAssets.Win32.nuspec": {
+          "sha256": "384fc52150c1456a9073b6c5870180e4830a3ea83cb66363fa614a548a006618",
+          "size": 1622
+        },
+        "LICENSE.txt": {
+          "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938",
+          "size": 1129
+        },
+        "THIRD-PARTY-NOTICES.txt": {
+          "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+          "size": 139775
+        },
+        "runtimes/win-x64/native/libHarfBuzzSharp.dll": {
+          "sha256": "9b9b8b3de63088f3cf67fc87207f98f663e6e9b2f33a68158507e864a9eba6a6",
+          "size": 1804848
+        }
+      },
+      "metadata": {
+        "id": "HarfBuzzSharp.NativeAssets.Win32",
+        "license": "MIT",
+        "repository": {
+          "branch": "release/3.119.1",
+          "commit": "cc78b5933d23e6383db5d246e70db915770d55d6",
+          "type": "git",
+          "url": "https://go.microsoft.com/fwlink/?linkid=868515"
+        },
+        "version": "8.3.1.2"
+      },
+      "nuspec": "HarfBuzzSharp.NativeAssets.Win32.nuspec",
+      "package": "harfbuzzsharp.nativeassets.win32",
+      "sha256": "117b14db26273a911dce8ae92a3112bb40400ece9ac4d8a43e9cf8efe97fb6db",
+      "size": 2502610,
+      "target": "win32",
+      "url": "https://api.nuget.org/v3-flatcontainer/harfbuzzsharp.nativeassets.win32/8.3.1.2/harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg",
+      "version": "8.3.1.2"
+    },
+    "skiasharp.nativeassets.linux.3.119.1.nupkg": {
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "ELF64",
+        "needed": [
+          "libpthread.so.0",
+          "libfontconfig.so.1",
+          "libdl.so.2",
+          "libm.so.6",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "required_symbol_versions": [
+          "GLIBC_2.14",
+          "GLIBC_2.16",
+          "GLIBC_2.17",
+          "GLIBC_2.2.5",
+          "GLIBC_2.27",
+          "GLIBC_2.3",
+          "GLIBC_2.3.2",
+          "GLIBC_2.7"
+        ],
+        "rpath_runpath": []
+      },
+      "kind": "skia",
+      "library_filename": "libSkiaSharp.so",
+      "library_member": "runtimes/linux-x64/native/libSkiaSharp.so",
+      "members": {
+        "LICENSE.txt": {
+          "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938",
+          "size": 1129
+        },
+        "SkiaSharp.NativeAssets.Linux.nuspec": {
+          "sha256": "b617cc6ff6ae170fa77ea8e09c2400d4d32d8c7c2579e542ec057451b36f907e",
+          "size": 1616
+        },
+        "THIRD-PARTY-NOTICES.txt": {
+          "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+          "size": 139775
+        },
+        "runtimes/linux-x64/native/libSkiaSharp.so": {
+          "sha256": "60d85e06fe74c61db577c2a58311b1567d2b9cba137510d22795bffdc7766e8a",
+          "size": 9030712
+        }
+      },
+      "metadata": {
+        "id": "SkiaSharp.NativeAssets.Linux",
+        "license": "MIT",
+        "repository": {
+          "branch": "release/3.119.1",
+          "commit": "cc78b5933d23e6383db5d246e70db915770d55d6",
+          "type": "git",
+          "url": "https://go.microsoft.com/fwlink/?linkid=868515"
+        },
+        "version": "3.119.1"
+      },
+      "nuspec": "SkiaSharp.NativeAssets.Linux.nuspec",
+      "package": "skiasharp.nativeassets.linux",
+      "sha256": "4d363a6f114f936ec964a79f8af6fe37f9347930064e5983472851bd9e068e67",
+      "size": 40412553,
+      "target": "linux",
+      "url": "https://api.nuget.org/v3-flatcontainer/skiasharp.nativeassets.linux/3.119.1/skiasharp.nativeassets.linux.3.119.1.nupkg",
+      "version": "3.119.1"
+    },
+    "skiasharp.nativeassets.macos.3.119.1.nupkg": {
+      "inspection": {
+        "architectures": [
+          "aarch64",
+          "x86_64"
+        ],
+        "format": "Mach-O universal",
+        "slices": [
+          {
+            "architecture": "x86_64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libSkiaSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libobjc.A.dylib"
+              }
+            ],
+            "minimum_os": [
+              "10.13.0"
+            ]
+          },
+          {
+            "architecture": "aarch64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libSkiaSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libobjc.A.dylib"
+              }
+            ],
+            "minimum_os": [
+              "11.0.0"
+            ]
+          }
+        ]
+      },
+      "kind": "skia",
+      "library_filename": "libSkiaSharp.dylib",
+      "library_member": "runtimes/osx/native/libSkiaSharp.dylib",
+      "members": {
+        "LICENSE.txt": {
+          "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938",
+          "size": 1129
+        },
+        "SkiaSharp.NativeAssets.macOS.nuspec": {
+          "sha256": "cc83ef19f4d603d284b6c6abcdb9cb990274b49a13d7b306688321fc49fac70b",
+          "size": 1668
+        },
+        "THIRD-PARTY-NOTICES.txt": {
+          "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+          "size": 139775
+        },
+        "runtimes/osx/native/libSkiaSharp.dylib": {
+          "sha256": "47afd8ebe1f9612916d32ff71140ac4531f2154aa75973c8e9ef047e7ed7a64e",
+          "size": 15383440
+        }
+      },
+      "metadata": {
+        "id": "SkiaSharp.NativeAssets.macOS",
+        "license": "MIT",
+        "repository": {
+          "branch": "release/3.119.1",
+          "commit": "cc78b5933d23e6383db5d246e70db915770d55d6",
+          "type": "git",
+          "url": "https://go.microsoft.com/fwlink/?linkid=868515"
+        },
+        "version": "3.119.1"
+      },
+      "nuspec": "SkiaSharp.NativeAssets.macOS.nuspec",
+      "package": "skiasharp.nativeassets.macos",
+      "sha256": "d1024670ef753162d2790a44e19367fca515a0745cacf7836ca925c42541d34a",
+      "size": 7099396,
+      "target": "macos",
+      "url": "https://api.nuget.org/v3-flatcontainer/skiasharp.nativeassets.macos/3.119.1/skiasharp.nativeassets.macos.3.119.1.nupkg",
+      "version": "3.119.1"
+    },
+    "skiasharp.nativeassets.win32.3.119.1.nupkg": {
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "PE32+",
+        "imports": [
+          "ole32.dll",
+          "FONTSUB.dll",
+          "USER32.dll",
+          "d3d12.dll",
+          "D3DCOMPILER_47.dll",
+          "KERNEL32.dll"
+        ]
+      },
+      "kind": "skia",
+      "library_filename": "libSkiaSharp.dll",
+      "library_member": "runtimes/win-x64/native/libSkiaSharp.dll",
+      "members": {
+        "LICENSE.txt": {
+          "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938",
+          "size": 1129
+        },
+        "SkiaSharp.NativeAssets.Win32.nuspec": {
+          "sha256": "14765af3c1798ddcb4f39bcee51e7cd649c1284c8e8a62061481552b2d150956",
+          "size": 1736
+        },
+        "THIRD-PARTY-NOTICES.txt": {
+          "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+          "size": 139775
+        },
+        "runtimes/win-x64/native/libSkiaSharp.dll": {
+          "sha256": "de22ab3e7b83644614efb55da18ef0965c3976ba4df99017f1025fbdb1893ff1",
+          "size": 11391008
+        }
+      },
+      "metadata": {
+        "id": "SkiaSharp.NativeAssets.Win32",
+        "license": "MIT",
+        "repository": {
+          "branch": "release/3.119.1",
+          "commit": "cc78b5933d23e6383db5d246e70db915770d55d6",
+          "type": "git",
+          "url": "https://go.microsoft.com/fwlink/?linkid=868515"
+        },
+        "version": "3.119.1"
+      },
+      "nuspec": "SkiaSharp.NativeAssets.Win32.nuspec",
+      "package": "skiasharp.nativeassets.win32",
+      "sha256": "c923e49fc4ab4a13aa862842df7109e0726df5d7ac0c8482e20008e054018b65",
+      "size": 13364090,
+      "target": "win32",
+      "url": "https://api.nuget.org/v3-flatcontainer/skiasharp.nativeassets.win32/3.119.1/skiasharp.nativeassets.win32.3.119.1.nupkg",
+      "version": "3.119.1"
+    }
+  },
+  "baselines": {
+    "linux": "glibc >= 2.27 and OS fontconfig for ordinary Linux; natipkg uses declared draw native/TTF dependencies",
+    "macos_aarch64": "load-command minimum 11.0",
+    "macos_x86_64": "load-command minimum 10.13; external execution pending",
+    "windows_x86_64": "system DLL imports include d3d12.dll and D3DCOMPILER_47.dll; clean-machine execution pending"
+  },
+  "component_inventory": [
+    {
+      "applicability": "Build scripts select native GL/Metal/D3D, not ANGLE; legacy combined notice retained",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "BSD-3-Clause",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "ANGLE"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "LicenseRef-Adobe-DNG-SDK",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "DNG SDK"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "MIT-Modern-Variant",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "HarfBuzz"
+    },
+    {
+      "applicability": "Explicit skia_use_icu=false in all three platform build recipes",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "ICU",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "ICU"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "MIT",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "SPIR-V Headers"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "Apache-2.0",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "SPIR-V Tools"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "BSD-3-Clause",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "etc1"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "MIT",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "expat"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "FTL",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "freetype"
+    },
+    {
+      "applicability": "Current pinned GIF/LZW implementation is Wuffs; legacy Mozilla GIF notice retained",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "gif"
+    },
+    {
+      "applicability": "Skia tool/viewer dependency, not SkiaSharp/skottie library target",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "MIT",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "imgui"
+    },
+    {
+      "applicability": "Legacy tools notice; current skottie uses Skia skjson",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "MIT",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "jsoncpp"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "IJG AND BSD-3-Clause AND Zlib",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "libjpeg-turbo"
+    },
+    {
+      "applicability": "Skia tool/debug server dependency, not SkiaSharp/skottie library target",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "LGPL-2.1-or-later OR eCos-2.0",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "libmicrohttpd"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "libpng-2.0",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "libpng"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "BSD-3-Clause",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "libwebp"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "Apache-2.0",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "piex"
+    },
+    {
+      "applicability": "Legacy tool/windowing notice, not the selected library targets",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "Zlib",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "sdl"
+    },
+    {
+      "applicability": "Explicit skia_use_sfntly=false in all platform build recipes",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "Apache-2.0",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "sfntly"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "BSD-3-Clause",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "skia"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "license_id": "Zlib",
+      "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
+      "name": "zlib"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "Pinned Skia BUILD.gn GIF/LZW dependency and image-decoder strings in all three binaries",
+      "license_id": "Apache-2.0",
+      "name": "Wuffs",
+      "notice": "wuffs"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "Pinned Linux/Windows build enables Vulkan; retain conservative notices",
+      "license_id": "MIT",
+      "name": "VulkanMemoryAllocator",
+      "notice": "vma"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "Pinned Windows build enables D3D12",
+      "license_id": "MIT",
+      "name": "D3D12MemoryAllocator",
+      "notice": "d3d12allocator"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "Pinned Skia GPU shader dependencies",
+      "license_id": "Apache-2.0",
+      "name": "SPIRV-Cross",
+      "notice": "spirv-cross"
+    },
+    {
+      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "basis": "Linux build recipe uses -static-libstdc++ and -static-libgcc; exact compiler build provenance needs upstream/maintainer sign-off",
+      "license_id": "GPL-3.0-or-later WITH GCC-exception-3.1",
+      "name": "GCC runtime",
+      "notice": "gcc-runtime",
+      "review_gap": "NuGet has no exact compiler/runtime build attestation; maintainer redistribution review must confirm upstream runtime exception obligations"
+    }
+  ],
+  "configurations": {
+    "linux-fontconfig": {
+      "filename": "fontconfig/fonts.conf.in",
+      "license": "MIT",
+      "path": "packaging/fontconfig/fonts.conf.in",
+      "purpose": "Materialized absolute declared font/cache paths and m119 default family for real natipkg; no library transformation",
+      "sha256": "8237ac365b3021126d0fa0f7a25c551c4b19b44b6387f281dcd9114d31b813c5",
+      "size": 966
+    }
+  },
+  "directory": "skia-native-1",
+  "font_package": {
+    "collection": "skia-fonts-1",
+    "files": [
+      {
+        "filename": "NotoSans-Regular.ttf",
+        "git_blob_sha1": "d55220958aa51eeeb85048d746eabe43d2cd9f14",
+        "license": "OFL-1.1",
+        "names": {
+          "0": [
+            "Copyright 2015-2021 Google LLC. All Rights Reserved."
+          ],
+          "1": [
+            "Noto Sans"
+          ],
+          "13": [
+            "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+          ],
+          "14": [
+            "http://scripts.sil.org/OFL"
+          ],
+          "5": [
+            "Version 2.008; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D latn -f none -a qsq -X \"\""
+          ]
+        },
+        "notice": "noto-ofl",
+        "sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+        "size": 569208,
+        "source_commit": "ffebf8c1ee449e544955a7e813c54f9b73848eac",
+        "url": "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+      },
+      {
+        "filename": "NotoSansArabic-Regular.ttf",
+        "git_blob_sha1": "ce21d4f5ac8765b51b9eedb1bb5c0069ee8115a4",
+        "license": "OFL-1.1",
+        "names": {
+          "0": [
+            "Copyright 2015-2021 Google LLC. All Rights Reserved."
+          ],
+          "1": [
+            "Noto Sans Arabic"
+          ],
+          "13": [
+            "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+          ],
+          "14": [
+            "http://scripts.sil.org/OFL"
+          ],
+          "5": [
+            "Version 2.009; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D arab -f none -a qsq -X \"\""
+          ]
+        },
+        "notice": "noto-ofl",
+        "sha256": "ceea25b464a656dc3b26849bab9356740401af62aedf1bfa8b7f0d9b75925b1b",
+        "size": 240456,
+        "source_commit": "ffebf8c1ee449e544955a7e813c54f9b73848eac",
+        "url": "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf"
+      },
+      {
+        "filename": "NotoSansHebrew-Regular.ttf",
+        "git_blob_sha1": "5b43c56fa688b0ff9302a82cbebb1dae1201cf7f",
+        "license": "OFL-1.1",
+        "names": {
+          "0": [
+            "Copyright 2019 Google Inc. All Rights Reserved."
+          ],
+          "1": [
+            "Noto Sans Hebrew"
+          ],
+          "13": [
+            "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+          ],
+          "14": [
+            "http://scripts.sil.org/OFL"
+          ],
+          "5": [
+            "Version 3.000; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D hebr -f none -a qsq -X \"\""
+          ]
+        },
+        "notice": "noto-ofl",
+        "sha256": "a7fa16fffb27bedb060a0866267c29e9859aeb9c21cc33f5b3aaf6eb062eca85",
+        "size": 26900,
+        "source_commit": "ffebf8c1ee449e544955a7e813c54f9b73848eac",
+        "url": "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Regular.ttf"
+      },
+      {
+        "filename": "NotoSansCJKjp-Regular.otf",
+        "git_blob_sha1": "f56224957fb13a81b4c14bac34f2f058a017f9fb",
+        "license": "OFL-1.1",
+        "names": {
+          "0": [
+            "© 2014-2021 Adobe (http://www.adobe.com/)."
+          ],
+          "1": [
+            "Noto Sans CJK JP"
+          ],
+          "13": [
+            "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+          ],
+          "14": [
+            "http://scripts.sil.org/OFL"
+          ],
+          "5": [
+            "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603"
+          ]
+        },
+        "notice": "cjk-ofl",
+        "sha256": "68a3fc98800b2a27b371f2fb79991daf3633bd89309d4ffaa6946fd587f375b5",
+        "size": 16467736,
+        "source_commit": "f8d157532fbfaeda587e826d4cd5b21a49186f7c",
+        "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf"
+      }
+    ],
+    "name": "skia-fonts-1",
+    "purpose": "Declared Latin/Arabic/Hebrew/CJK input for executable manuals and catalog validation; no system-font API replacement",
+    "version": "1.0"
+  },
+  "generation": 1,
+  "native_license": {
+    "linux": "(MIT AND BSD-3-Clause AND Apache-2.0 AND MIT-Modern-Variant AND libpng-2.0 AND Zlib AND IJG AND LicenseRef-Adobe-DNG-SDK AND FTL AND (GPL-3.0-or-later WITH GCC-exception-3.1))",
+    "macos": "(MIT AND BSD-3-Clause AND Apache-2.0 AND MIT-Modern-Variant AND libpng-2.0 AND Zlib AND IJG AND LicenseRef-Adobe-DNG-SDK)",
+    "win32": "(MIT AND BSD-3-Clause AND Apache-2.0 AND MIT-Modern-Variant AND libpng-2.0 AND Zlib AND IJG AND LicenseRef-Adobe-DNG-SDK)"
+  },
+  "native_package_version": "1.0",
+  "proposed_source_version": "0.79",
+  "qualification": {
+    "catalog_candidate_validated": false,
+    "linux": "not-run",
+    "linux_natipkg": "not-run",
+    "macos_aarch64": "not-run",
+    "macos_x86_64": "not-run",
+    "win32": "not-run"
+  },
+  "review": {
+    "authenticity_basis": "HTTPS NuGet archives checked against package ID/version and repository commit; exact source revisions inspected via GitHub/Gitiles. No claim of NuGet signature verification.",
+    "component_license_mapping_complete": false,
+    "date": "2026-11-20",
+    "redistribution_approved": false,
+    "reviewer": "Codex implementation audit; maintainer redistribution sign-off remains required",
+    "status": "technical-review",
+    "technical_component_inventory_complete": true,
+    "transitive_resolution_qualified": false
+  },
+  "schema": 1,
+  "supplemental_notices": {
+    "cjk-ofl": {
+      "license": "OFL-1.1",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/cjk-ofl.txt",
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "size": 4301,
+      "source": "https://github.com/notofonts/noto-cjk/blob/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/LICENSE"
+    },
+    "d3d12allocator": {
+      "license": "MIT",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/d3d12allocator.txt",
+      "sha256": "e078ee4f8c5ed0673f4d93b5318557eb8b4e0d7dbccef2ab45c763c7693f0f37",
+      "size": 1099,
+      "source": "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/blob/169895d529dfce00390a20e69c2f516066fe7a3b/LICENSE.txt"
+    },
+    "dng-LICENSE": {
+      "license": "LicenseRef-Adobe-DNG-SDK",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/dng-LICENSE.txt",
+      "sha256": "012e875468ac2f9a2070ee25a950588afa2735b4b2d961f491e3d72c8f572306",
+      "size": 5240,
+      "source": "https://android.googlesource.com/platform/external/dng_sdk/+/c8d0c9b1d16bfda56f15165d39e0ffa360a11123/LICENSE?format=TEXT"
+    },
+    "dng-LICENSE.source_code": {
+      "license": "LicenseRef-Adobe-DNG-SDK",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/dng-LICENSE.source_code.txt",
+      "sha256": "0c993758dd78dbb15ce6aae8aee79639b428d8ebeca6d416019939dc90fdc08f",
+      "size": 5157,
+      "source": "https://android.googlesource.com/platform/external/dng_sdk/+/c8d0c9b1d16bfda56f15165d39e0ffa360a11123/LICENSE.source_code?format=TEXT"
+    },
+    "dng-LICENSE.technology": {
+      "license": "LicenseRef-Adobe-DNG-SDK",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/dng-LICENSE.technology.txt",
+      "sha256": "4731d85e841e1d8b5dbf7e0ba07e0b524c012f9371db3508551f996cb40c8fe6",
+      "size": 82,
+      "source": "https://android.googlesource.com/platform/external/dng_sdk/+/c8d0c9b1d16bfda56f15165d39e0ffa360a11123/LICENSE.technology?format=TEXT"
+    },
+    "dng-NOTICE": {
+      "license": "LicenseRef-Adobe-DNG-SDK",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/dng-NOTICE.txt",
+      "sha256": "b60660d2a5a3ee1a49366400e7e9b01c1872356d6f08942f095d356a44deb5f6",
+      "size": 5422,
+      "source": "https://android.googlesource.com/platform/external/dng_sdk/+/c8d0c9b1d16bfda56f15165d39e0ffa360a11123/NOTICE?format=TEXT"
+    },
+    "dng-PATENTS": {
+      "license": "LicenseRef-Adobe-DNG-SDK",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/dng-PATENTS.txt",
+      "sha256": "bd958835863f42d8479457503a7ed716424d35b6e76ef76db06b72b109696ec4",
+      "size": 3496,
+      "source": "https://android.googlesource.com/platform/external/dng_sdk/+/c8d0c9b1d16bfda56f15165d39e0ffa360a11123/PATENTS?format=TEXT"
+    },
+    "expat": {
+      "license": "MIT",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/expat.txt",
+      "sha256": "122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534",
+      "size": 1144,
+      "source": "https://github.com/libexpat/libexpat/blob/2691aff4304a6d7e053199c205620136481b9dd1/expat/COPYING"
+    },
+    "freetype": {
+      "license": "FTL",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/freetype.txt",
+      "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
+      "size": 6743,
+      "source": "https://github.com/freetype/freetype/blob/83af801b552111e37d9466a887e1783a0fb5f196/docs/FTL.TXT"
+    },
+    "gcc-gpl3": {
+      "license": "GPL-3.0-or-later",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/gcc-gpl3.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "size": 35147,
+      "source": "https://github.com/gcc-mirror/gcc/blob/releases/gcc-12.2.0/COPYING3"
+    },
+    "gcc-runtime": {
+      "license": "GCC-exception-3.1",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/gcc-runtime.txt",
+      "sha256": "28e85c5aa4af9b4f1dfe6b4817aa3eefb3eaaee7fd735045016f29ccf50276a1",
+      "size": 3323,
+      "source": "https://github.com/gcc-mirror/gcc/blob/releases/gcc-12.2.0/COPYING.RUNTIME"
+    },
+    "harfbuzz": {
+      "license": "MIT-Modern-Variant",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/harfbuzz.txt",
+      "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
+      "size": 1971,
+      "source": "https://github.com/harfbuzz/harfbuzz/blob/2b3631a866b3077d9d675caa4ec9010b342b5a7c/COPYING"
+    },
+    "libjpeg-ijg": {
+      "license": "IJG",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/libjpeg-ijg.txt",
+      "sha256": "4b7b9f8c03bb8d60270dfd12684e70ab21e4abfd27e73905cd1a7c4cae6f5cdb",
+      "size": 12732,
+      "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo.git/+/927aabfcd26897abb9776ecf2a6c38ea5bb52ab6/README.ijg?format=TEXT"
+    },
+    "libjpeg-license": {
+      "license": "BSD-3-Clause AND IJG AND Zlib",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/libjpeg-license.txt",
+      "sha256": "60c756742db3ad1913304e8b13f0e86e22e51adb50cc0b3333c163f7e45ceec1",
+      "size": 5213,
+      "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo.git/+/927aabfcd26897abb9776ecf2a6c38ea5bb52ab6/LICENSE.md?format=TEXT"
+    },
+    "libwebp": {
+      "license": "BSD-3-Clause",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/libwebp.txt",
+      "sha256": "e293d1dddc9785200b1f58a4f5293543cf8566d9e0b8a3c02fad955035b19f42",
+      "size": 1495,
+      "source": "https://github.com/webmproject/libwebp/blob/ca332209cb5567c9b249c86788cb2dbf8847e760/COPYING"
+    },
+    "noto-ofl": {
+      "license": "OFL-1.1",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/noto-ofl.txt",
+      "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb",
+      "size": 4377,
+      "source": "https://github.com/notofonts/noto-fonts/blob/ffebf8c1ee449e544955a7e813c54f9b73848eac/LICENSE"
+    },
+    "piex-license": {
+      "license": "Apache-2.0",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/piex-license.txt",
+      "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "size": 11357,
+      "source": "https://android.googlesource.com/platform/external/piex.git/+/bb217acdca1cc0c16b704669dd6f91a1b509c406/LICENSE?format=TEXT"
+    },
+    "png-license": {
+      "license": "libpng-2.0",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/png-license.txt",
+      "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e",
+      "size": 5345,
+      "source": "https://skia.googlesource.com/third_party/libpng.git/+/f5e92d76973a7a53f517579bc95d61483bf108c0/LICENSE?format=TEXT"
+    },
+    "skia": {
+      "license": "BSD-3-Clause",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/skia.txt",
+      "sha256": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd",
+      "size": 1507,
+      "source": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/LICENSE"
+    },
+    "spirv-cross": {
+      "license": "Apache-2.0",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/spirv-cross.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "size": 11358,
+      "source": "https://github.com/KhronosGroup/SPIRV-Cross/blob/6e1fb9b09efadee38748e0fd0e6210d329087e89/LICENSE"
+    },
+    "spirv-headers": {
+      "license": "MIT",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/spirv-headers.txt",
+      "sha256": "9b243f6f0bf44e295ff411a0f7b7642d1d0dff7cdc42507e9f7206f439e51b5a",
+      "size": 1309,
+      "source": "https://github.com/KhronosGroup/SPIRV-Headers/blob/79743b899fde5c954897b2694291002626358fac/LICENSE"
+    },
+    "spirv-tools": {
+      "license": "Apache-2.0",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/spirv-tools.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "size": 11358,
+      "source": "https://github.com/KhronosGroup/SPIRV-Tools/blob/1bc0e6f59abc3c9cd75f93baef47e9612a448045/LICENSE"
+    },
+    "vma": {
+      "license": "MIT",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/vma.txt",
+      "sha256": "8d70e4cf2a9941f6454da71cd60e38484dd3e34810c824760d550e982af6d97a",
+      "size": 1099,
+      "source": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/blob/c788c52156f3ef7bc7ab769cb03c110a53ac8fcb/LICENSE.txt"
+    },
+    "wuffs": {
+      "license": "Apache-2.0",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/wuffs.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "size": 11358,
+      "source": "https://github.com/google/wuffs-mirror-release-c/blob/e3f919ccfe3ef542cfc983a82146070258fb57f8/LICENSE"
+    },
+    "zlib-license": {
+      "license": "Zlib",
+      "normalization": "UTF-8 license text as shipped; upstream NuGet notices are retained verbatim separately",
+      "path": "packaging/licenses/zlib-license.txt",
+      "sha256": "e1cfcc55c325b3f78cf55df9664abaa066e2271dffe8213347d9fccdfbac8f2c",
+      "size": 910,
+      "source": "https://chromium.googlesource.com/chromium/src/third_party/zlib/+/e432200a7931de1b0b1b50201aac8a46d9380cb2/LICENSE?format=TEXT"
+    }
+  },
+  "support_dependencies": {
+    "linux": [
+      {
+        "name": "draw-x86_64-linux-natipkg-3",
+        "platform": "\"x86_64-linux-natipkg\""
+      },
+      {
+        "name": "draw-ttf-x86_64-linux-natipkg",
+        "platform": "\"x86_64-linux-natipkg\""
+      }
+    ],
+    "macos": [],
+    "win32": []
+  },
+  "supported_interpreters": {
+    "minimum_racket": "8.18",
+    "pointer_bits": 64,
+    "vm": "chez-scheme"
+  },
+  "targets": {
+    "linux": {
+      "package": "skia-native-x86_64-linux-1",
+      "rid": "linux-x64",
+      "selector": "#rx\"^x86_64-linux(-natipkg)?$\"",
+      "suffix": ".so"
+    },
+    "macos": {
+      "package": "skia-native-macos-1",
+      "rid": "osx",
+      "selector": "#rx\"^(aarch64|x86_64)-macosx$\"",
+      "suffix": ".dylib"
+    },
+    "win32": {
+      "package": "skia-native-win32-x86_64-1",
+      "rid": "win-x64",
+      "selector": "\"win32\\\\x86_64\"",
+      "suffix": ".dll"
+    }
+  },
+  "transformations": [],
+  "upstream_versions": {
+    "harfbuzz": "8.3.1.2",
+    "skia": "3.119.1"
+  }
+}

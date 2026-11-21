@@ -51,6 +51,13 @@ def default_version(root: Path = ROOT) -> str:
     return value
 
 
+def harfbuzz_default_version(root: Path = ROOT) -> str:
+    value = (root / 'private/harfbuzz-default-version.txt').read_text(encoding='utf-8').strip()
+    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+', value):
+        raise ValueError('invalid default HarfBuzz package version')
+    return value
+
+
 def profile_for(data: dict, milestone: int, increment: int, pointer_bytes: int) -> dict | None:
     if any(type(x) is not int for x in (milestone, increment, pointer_bytes)):
         raise ValueError('native ABI identity fields must be integers')

@@ -1,4 +1,25 @@
-# Racket Skia — 0.75
+# Racket Skia — 0.79 candidate
+
+The catalog installation being prepared is:
+
+```sh
+raco pkg install --auto skia
+```
+
+It declares platform native data and licensed tutorial/test fonts as package
+dependencies. Both CPU rendering and HarfBuzz shaping use those managed assets;
+no native-install script or runtime download is part of package setup.
+**These package names are unpublished candidates.** Use the disposable staging
+catalog in the [publication runbook](docs/PACKAGE-PUBLICATION.md) until the
+candidate is qualified and separately approved for publication. See the exact
+[local results and external gaps](docs/CATALOG-VALIDATION.md).
+
+Automatic targets are 64-bit Racket CS 8.18 or released 9.3 on macOS ARM64 and
+x86-64, Windows x86-64, and glibc Linux x86-64 (ordinary and real `natipkg`).
+These are qualification targets, not a claim of completed execution on every
+platform. Ordinary Linux needs OS fontconfig and a default Latin font (CI uses
+`fonts-dejavu-core`); natipkg declares Racket's draw
+native and TTF support. Linux ARM64, musl, and 32-bit have no automatic package.
 
 ## Source directory guide
 
@@ -1069,15 +1090,15 @@ copies pixels into a Racket `bitmap%`.
 The unsafe ABI layer is private. Public resource wrappers do not expose raw
 pointers. The source distribution contains no native binary or font files.
 
-## Quick start on macOS
+## Developer checkout on macOS
 
 From the extracted directory:
 
 ```sh
-cd racket-skia-0.19.0-20260925
+cd /path/to/skia-for-racket
 
-RACKET="/Applications/Racket v9.3.0.2/bin/racket"
-RACO="/Applications/Racket v9.3.0.2/bin/raco"
+RACKET="/absolute/path/to/released/racket"
+RACO="/absolute/path/to/released/raco"
 
 bash tools/install-native.sh &&
 bash tools/install-harfbuzz.sh &&
@@ -1123,7 +1144,7 @@ supplies the alpha-method default implementations overridden by `skia-dc%`;
 8.17 has the methods but not these defaults. 0.55 implements alpha-group
 rendering. Package installation resolves the declared dependencies.
 
-### Linux
+### Linux developer checkout
 
 With Racket on `PATH`, use the same commands with `racket` and `raco` instead of
 the macOS paths. The installer selects x86-64 or ARM64 from the host architecture
@@ -1132,6 +1153,9 @@ This is required by the library's public default-font-manager and system-font
 matching APIs. Install a working fontconfig runtime and system fonts before the
 native probe. The installer targets glibc Linux, not Alpine/musl, Windows, or
 cross-compilation.
+This developer route does not qualify Linux ARM64 for automatic catalog
+installation. The catalog candidate targets x86-64 only; its natipkg dependency
+route is described in the publication runbook.
 
 ### Testing without a native library
 
@@ -1152,8 +1176,14 @@ racket tools/doctor.rkt
 
 The override is a **filename**, not a directory, and must match the pinned
 3.119.1 ABI. It takes precedence over every other location; an invalid override
-does not silently load another library. Otherwise the loader tries the local
-`native/<platform>/` directory, then the system library search path.
+does not silently load another library. Otherwise both loaders select one
+generation-qualified `skia-native-1` directory in Racket's library search order.
+A selected incomplete, corrupt or unloadable managed pair is an error. Only
+when no managed pair exists may the legacy `native/<platform>/` directory be
+selected, followed by the old system-search route for an unregistered checkout.
+An installed package with missing declared native data fails clearly.
+Managed packages take precedence over developer files; set both explicit
+library overrides when intentionally testing a local pair.
 
 The loader checks native milestone 119 and resolves every required symbol
 before allocating objects. This is an early error check, not a proof that an
@@ -1184,23 +1214,19 @@ filename.
 
 ## Install as a Racket package
 
-Installation is optional for the examples, which use relative module paths.
-From this directory, after choosing the Racket executables:
+After the candidate has been published with separate approval, use
+`raco pkg install --auto skia`. For pre-publication testing, configure only a
+disposable environment with the exact staging catalog described in the runbook.
+The single public collection remains:
 
 ```sh
-"$RACO" pkg install --auto --name racket-skia "$PWD"
-```
-
-The collection can then be imported with:
-
-```racket
 (require skia)
 ```
 
-The package is not published to a Racket catalog by this source distribution.
-Package installation does not automatically download native code; run the
-installer explicitly. Do not remove a linked source directory while the
-package remains installed.
+The source ZIP contains no native libraries or font binaries. The package
+manager obtains the separately checksummed declared data packages during
+installation. Importing `skia` performs no native load or download. Keep a
+linked development source directory available while its package is installed.
 
 ## First drawing
 

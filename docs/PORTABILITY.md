@@ -1,5 +1,17 @@
 # Portability and evidence
 
+## Catalog candidate — 0.79
+
+Automatic native data targets are macOS ARM64/x86-64, Windows x86-64 and glibc
+Linux x86-64 including actual natipkg, on 64-bit Racket CS 8.18 and released 9.3.
+This is the qualification matrix, not an assertion that all new lanes have
+passed. See [exact local results and external gaps](CATALOG-VALIDATION.md).
+Managed libraries share an isolated generation-qualified Racket library
+directory. Linux natipkg explicitly declares and initializes Racket's
+fontconfig/TTF support. Ordinary Linux requires OS fontconfig; the observed
+GLIBC 2.27 symbol floor is not a universal old-distribution qualification.
+Linux ARM64, musl, 32-bit and other new targets are not advertised.
+
 ## Current minimum and DC validation — 0.54
 
 Racket 8.18 and draw-lib 1.22 are now the minimums. Racket 8.17 introduced the
@@ -80,7 +92,7 @@ and inspection of its retained artifacts.
 | macOS ARM64 CPU | `macos-15` | 9.3 | Same CPU/package checks, native ARM64 interpreter identity |
 | macOS Intel CPU | `macos-15-intel` | 9.3 | Same CPU/package checks, native x86-64 interpreter identity |
 | Windows x64 CPU | `windows-2022` | 9.3 | Same CPU/package checks, fresh PE/DLL validation, MSVC C ABI mirrors |
-| Declared minimum Racket | `ubuntu-24.04` | 8.7 | The full CPU/package checks, not merely syntax compilation |
+| Declared minimum Racket | `ubuntu-24.04` | 8.18 | The full CPU/package checks, not merely syntax compilation |
 | Linux EGL surfaceless | `ubuntu-24.04` | 9.3 | Complete required headless sequence, no binding surface, Mesa llvmpipe |
 | Linux EGL pbuffer | `ubuntu-24.04` | 9.3 | Same sequence with an explicit EGL pbuffer; still no window/display server |
 

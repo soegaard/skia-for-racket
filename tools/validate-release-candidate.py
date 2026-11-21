@@ -13,6 +13,7 @@ import traceback
 import uuid
 
 import release_candidate as rc
+import catalog_release
 from release_graph import STAGE, BASELINE, POLICY, json_text, need, relative
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,9 +50,13 @@ def main(argv=None, *, root=ROOT):
             rc.write_json(directory / 'source.json', source)
             rc.write_json(directory / 'policy.json', policy)
             result.update(rc.collect(root, directory, policy, source))
+            result.update(catalog_release.verify(root, directory, commit=source['commit'],
+                                                  attempt=result['identity']['attempt']))
             need(rc.clean_source(root) == source, 'source changed during evidence collection')
             need(rc.digest(relative(root, POLICY)) == before, 'policy changed during validation')
-            package = rc.source_archive(root, directory / 'skia-for-racket-source.zip')
+            package = rc.retain_catalog_source(root, directory, directory / 'skia.zip',
+                                               attempt=result['identity']['attempt'], commit=source['commit'])
+            need(package['sha256'] == result['catalog_source_sha256'], 'retained source differs from catalog qualification')
             need(rc.clean_source(root) == source, 'source changed during archive creation')
             result.update(source=source, source_archive=package, status='validated-release-candidate',
                           release_candidate_validated=True)
@@ -66,7 +71,7 @@ def main(argv=None, *, root=ROOT):
         print('Release candidate validation failed: ' + str(error), file=sys.stderr)
     finally:
         (directory / 'result.json').write_text(json_text(result), encoding='utf-8', newline='\n')
-        summary = ('## Release candidate — 0.78d\n\nStatus: **' + result['status'] + '**.\n\n'
+        summary = ('## Release candidate — 0.79\n\nStatus: **' + result['status'] + '**.\n\n'
                    'Source policy checks alone do not establish runtime acceptance. '
                    'No tag or release was published. See result.json, source.json, the frozen policy, '
                    'and the job/step/artifact evidence.\n')

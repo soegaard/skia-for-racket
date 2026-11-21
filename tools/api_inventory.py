@@ -417,7 +417,7 @@ def validate_sources(root: Path, catalog: dict) -> dict:
             require(ref["name"] in names, f"public declaration not found: {ref['module']}:{ref['name']} ({f['id']})")
             anchors.append(ref)
     info = safe_file(root, "info.rkt").read_text()
-    for term in ('(define version "0.78")', '("base" #:version "8.18")', '("draw-lib" #:version "1.22")'):
+    for term in ('(define version "0.79")', '("base" #:version "8.18")', '("draw-lib" #:version "1.22")'):
         require(term in info, "package version/minimum mismatch: " + term)
     require(safe_file(root, "private/native-default-version.txt").read_text().strip() == "3.119.1", "native pin changed without inventory review")
     required.update(("info.rkt", "private/native-default-version.txt"))

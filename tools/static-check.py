@@ -225,6 +225,8 @@ with tempfile.TemporaryDirectory(prefix='skia-installer-check-') as temp:
 with tempfile.TemporaryDirectory(prefix='harfbuzz-installer-check-') as temp:
     t=Path(temp); project=t/'project with spaces'; (project/'tools').mkdir(parents=True)
     target=project/'tools/install-harfbuzz.sh';shutil.copy2(R/'tools/install-harfbuzz.sh',target)
+    (project/'private').mkdir()
+    shutil.copy2(R/'private/harfbuzz-default-version.txt',project/'private/harfbuzz-default-version.txt')
     if platform.system() == 'Darwin':
         hpkg='HarfBuzzSharp.NativeAssets.macOS'; hrid='osx'; hlib='libHarfBuzzSharp.dylib'
     elif platform.system() == 'Linux' and platform.machine() in ('x86_64','aarch64','arm64'):

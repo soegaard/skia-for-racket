@@ -14,10 +14,11 @@
          racket/path
          (only-in setup/dirs get-lib-search-dirs)
          "native-platform.rkt"
+         "native-pins.rkt" "native-package-paths.rkt"
          "harfbuzz-types.rkt")
 (provide harfbuzz-package-version harfbuzz-platform harfbuzz-filename
          harfbuzz-check! harfbuzz-available? harfbuzz-native-version
-         harfbuzz-native-library-path)
+         harfbuzz-native-library-path harfbuzz-library-report)
 
 ;;;
 ;;; Platform Selection and Isolated Loading
@@ -25,7 +26,7 @@
 
 ; harfbuzz-package-version : string?
 ;   Pins the HarfBuzzSharp package whose embedded HarfBuzz version and ABI this binding expects.
-(define harfbuzz-package-version "8.3.1.2")
+(define harfbuzz-package-version native-harfbuzz-version)
 
 ; native-root : path?
 ;   Locates bundled platform-native libraries relative to this module rather than the process
@@ -123,20 +124,11 @@
 ; hb-library : promise?
 ;   Selects an override, bundled, or system HarfBuzzSharp library and requires native HarfBuzz
 ;   version 8.3.1.
+(define hb-request (delay/sync (native-library-request 'harfbuzz native-root)))
 (define hb-library
   (delay/sync
-    (define override (getenv "RACKET_HARFBUZZ_LIBRARY"))
-    (define platform (harfbuzz-platform))
-    (define candidates
-      (cond
-        [override (list (path->complete-path override))]
-        [platform
-         (list (build-path native-root platform (harfbuzz-filename))
-               "libHarfBuzzSharp")]
-        [else
-         (error 'harfbuzz
-                "unsupported automatic library selection for ~a/~a; set RACKET_HARFBUZZ_LIBRARY"
-                (system-type 'os) (system-type 'arch))]))
+    (define request (force hb-request))
+    (define candidates (list (native-request-filename request)))
     (define failures '())
     (define found
       (for/or ([candidate (in-list candidates)])
@@ -171,6 +163,12 @@
               "  native package: ~a\n  loader errors: ~a")
              harfbuzz-package-version (reverse failures)))
     found))
+
+(define (harfbuzz-library-report)
+  (harfbuzz-check!)
+  (hash-set (hash-set (native-request-report (force hb-request))
+                      'upstream_version harfbuzz-package-version)
+            'native_version (harfbuzz-native-version)))
 
 ;;;
 ;;; Lazy HarfBuzz Registry and Shaping Bindings

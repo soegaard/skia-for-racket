@@ -38,12 +38,14 @@ jobs:
           variant: CS
       - name: Install pinned Skia and HarfBuzz libraries
         run: |
+          python3 tools/stage-native-catalog.py --racket racket --output output/pages-catalog
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
       - name: Build registered Scribble manuals
         env:
           PLTUSERHOME: ${{ runner.temp }}/racket-user
         run: |
+          raco pkg config --set catalogs "$GITHUB_WORKSPACE/output/pages-catalog/catalog" https://download.racket-lang.org/releases/9.3/catalog/
           raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
           raco setup --no-zo --pkgs skia-for-racket
       - name: Collect the static site
@@ -136,12 +138,14 @@ jobs:
           variant: CS
       - name: Install pinned Skia and HarfBuzz libraries
         run: |
+          python3 tools/stage-native-catalog.py --racket racket --output output/pages-catalog
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
       - name: Build registered Scribble manuals
         env:
           PLTUSERHOME: ${{ runner.temp }}/racket-user
         run: |
+          raco pkg config --set catalogs "$GITHUB_WORKSPACE/output/pages-catalog/catalog" https://download.racket-lang.org/releases/9.3/catalog/
           raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
           raco setup --pkgs skia-for-racket
       - name: Check Reference coverage, bindings, and installed links

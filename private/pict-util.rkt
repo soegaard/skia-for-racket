@@ -97,7 +97,9 @@
 (define (checked-raster-dimension who value scale description)
   (define product (* value scale))
   (positive-float who product description)
-  (define pixels (ceiling product))
+  ;; Native picture extents are inexact even for integral dimensions. Convert
+  ;; the checked finite ceiling to the exact count required by byte allocation.
+  (define pixels (inexact->exact (ceiling product)))
   (unless (exact-positive-integer? pixels)
     (raise-arguments-error who "raster dimension is not a positive exact integer"
                            "value" value "scale" scale))

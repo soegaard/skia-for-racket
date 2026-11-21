@@ -47,7 +47,7 @@ def fixture_tree(root):
                                                  'egl': [dict(surface='surfaceless', runner='ubuntu-24.04')]}))
     for name in ('validation_regressions.py', 'ci_matrix.py'):
         write(root, 'tools/' + name, '# synthetic source\n')
-    for key in ('ci', 'api-inventory'):
+    for key in ('ci', 'api-inventory', 'catalog-package'):
         body = (f'name: {key}\non:\n  workflow_call:\njobs:\n  test:\n'
                 f'    name: {key} / ${{{{ matrix.racket }}}}\n    runs-on: ubuntu-24.04\n'
                 "    strategy:\n      matrix:\n        racket: ['8.18', '9.3']\n"
@@ -67,7 +67,7 @@ def fixture_tree(root):
 
 
 def policy():
-    return {'needs': ['ci', 'acceptance', 'inventory'],
+    return {'needs': ['ci', 'acceptance', 'inventory', 'catalog'],
             'jobs': [dict(name='CI / Native', workflow='.github/workflows/ci.yml', runner='ubuntu-24.04',
                          artifacts=['native-{attempt}'],
                          steps=[dict(number=2, name='Test', expected='success'),
@@ -169,8 +169,8 @@ class Graph(unittest.TestCase):
         self.root=Path(self.temp.name);self.p=fixture_tree(self.root)
     def edit(self, name, before, after):
         p=self.root/name;p.write_text(p.read_text().replace(before,after))
-    def test_every_matrix_job(self):self.assertEqual(len(self.p['jobs']),5)
-    def test_artifacts_unique(self):self.assertEqual(len(self.p['artifact_names']),5)
+    def test_every_matrix_job(self):self.assertEqual(len(self.p['jobs']),7)
+    def test_artifacts_unique(self):self.assertEqual(len(self.p['artifact_names']),7)
     def test_nested_names(self):self.assertIn('Acceptance / Feature / Native',[j['name'] for j in self.p['jobs']])
     def test_repeatable(self):self.assertEqual(self.p,graph.build_policy(self.root))
     def test_conditional_steps_recorded(self):
@@ -207,7 +207,7 @@ class Graph(unittest.TestCase):
         self.edit('.github/workflows/acceptance.yml','    name: Feature\n','    name: Feature\n    secrets: inherit\n')
         with self.assertRaises(ValueError):graph.build_policy(self.root)
     def test_root_cannot_drop_inventory(self):
-        self.edit(graph.WORKFLOW,'needs: [ci, acceptance, inventory]','needs: [ci, acceptance]')
+        self.edit(graph.WORKFLOW,'needs: [ci, acceptance, inventory, catalog]','needs: [ci, acceptance, catalog]')
         with self.assertRaisesRegex(ValueError,'omits'):graph.build_policy(self.root)
     def test_no_automatic_expensive_workflow(self):
         self.edit(graph.WORKFLOW,'  workflow_dispatch:\n','  workflow_dispatch:\n  push:\n')
@@ -519,6 +519,13 @@ class SourcePackaging(unittest.TestCase):
     def test_native_file_excluded(self):
         write(self.root,'native.dll','synthetic');subprocess.run(['git','add','native.dll'],cwd=self.root,check=True)
         with self.assertRaises(ValueError):self.build('a.zip')
+    def test_font_and_bytecode_leaks_excluded(self):
+        for suffix in ('TTF','otf','ttc','zo','DLL'):
+            with self.subTest(suffix=suffix):
+                name='leaked.'+suffix
+                write(self.root,name,'synthetic');subprocess.run(['git','add',name],cwd=self.root,check=True)
+                with self.assertRaises(ValueError):self.build(suffix+'.zip')
+                subprocess.run(['git','rm','-f',name],cwd=self.root,check=True,stdout=subprocess.DEVNULL)
     def test_generated_member_excluded(self):
         write(self.root,'output/data.txt','synthetic');subprocess.run(['git','add','-f','output/data.txt'],cwd=self.root,check=True)
         with self.assertRaises(ValueError):self.build('a.zip')
@@ -528,7 +535,7 @@ class RepositoryIntegration(unittest.TestCase):
     def test_complete_current_contracts(self):
         p=rc.source_contracts(ROOT)
         self.assertGreater(len(p['jobs']),0)
-        self.assertEqual(set(p['needs']),{'ci','acceptance','inventory'})
+        self.assertEqual(set(p['needs']),{'ci','acceptance','inventory','catalog'})
     def test_minimum_and_platform_install_lanes(self):
         p=graph.build_policy(ROOT)
         rows=[j for j in p['jobs'] if j['workflow']=='.github/workflows/ci.yml' and j['job_id']=='cpu']
