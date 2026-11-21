@@ -3985,7 +3985,7 @@
     ".github/workflows/acceptance.yml": "6f50a3c8d12e12d061b46ffe68f2e6c5ae8d825de0475359230c68cb642a723b",
     ".github/workflows/advanced-canvases.yml": "04ff7b0c3b635bb66abc9819df3d660e0ab146011dccfa4611cfa7bc9edf1102",
     ".github/workflows/api-inventory.yml": "b309a4a0591b86862b4354007c286402a9fee2a748aba81c66f43a1bd58648a1",
-    ".github/workflows/catalog-package.yml": "4d36daa88f747fa638f503bb20d521532cc54b5081903fb2377669b7a924ec83",
+    ".github/workflows/catalog-package.yml": "ae7f304a88b6b671c56239692d0cd4edf42869a2a4460e4c6fc18a79561a12ac",
     ".github/workflows/ci.yml": "d96f6c2542cb23dd6adcb3f4c970b8aaafcbc514e8ee1bea47f6db9250dfb0dc",
     ".github/workflows/codec-queries.yml": "fd3c1bd0b529449afef9d124348bee64d0b552ecaa2ff1ae5c7b8d72232ecc89",
     ".github/workflows/dc-output.yml": "32c60d279b234f15bd7b5b0782550f797d0f0cdc2714ea075b7b4454cd2c729d",

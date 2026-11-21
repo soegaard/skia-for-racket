@@ -25,7 +25,7 @@ import tempfile
 import zipfile
 from native_packages import ROOT, need, json_bytes, sha256, write_zip
 from catalog_snapshot import inventory
-from catalog_execution import RUNTIME_ENVIRONMENTS
+from catalog_execution import RUNTIME_ENVIRONMENTS, relocatable_runtime
 
 
 def network_evidence():
@@ -46,10 +46,11 @@ def network_evidence():
 
 class Validator:
     def __init__(self, runtime, catalog, directory, *, base_catalog=None, forms=True, drdr=True, wrong_abi=None, owned_stage=None):
+        runtime = relocatable_runtime(runtime)
         need(not directory.exists(), 'validation directory must be new')
         directory.mkdir(parents=True)
         self.root = directory.resolve()
-        self.runtime = runtime.resolve()
+        self.runtime = runtime
         self.catalog = catalog.resolve()
         self.base_catalog = base_catalog.resolve() if base_catalog else self.catalog
         self.forms = forms
@@ -135,7 +136,9 @@ class Validator:
         self.save()
         need((isinstance(code, int) and code != 0) if failure else code == 0,
              f'unexpected exit {code}; see {log}')
-        return log.read_text(errors='replace').strip()
+        # Racket writes UTF-8. Windows' default Python 3.12 text encoding can
+        # otherwise turn the deliberately non-ASCII disposable path into mojibake.
+        return log.read_text(encoding='utf-8', errors='replace').strip()
 
     def raco(self, env, *args, **kw):
         return self.run(env, '-l', 'raco', *args, **kw)
@@ -174,7 +177,8 @@ class Validator:
                 library = report[kind]['loader'] if kind == 'skia' else report[kind]
                 need(library['origin'] == 'managed', 'override/system/checkout supplied native smoke')
                 path = Path(library['absolute_path']).resolve()
-                need(path.is_relative_to(environment[2]) and path.is_file(), 'library escaped isolated runtime/home')
+                need(path.is_relative_to(environment[2]), 'library escaped isolated runtime/home: ' + str(path))
+                need(path.is_file(), 'reported managed library is absent: ' + str(path))
                 need(path.parent == Path(library['managed_directory']).resolve(), 'mixed native pair directories')
                 manifest = library['manifest']
                 need(library['installed_sha256'] == manifest['files'][kind]['sha256'], 'installed payload bytes differ')
@@ -343,6 +347,10 @@ class Validator:
         self.save()
 
     def execute(self):
+        if sys.platform.startswith('linux'):
+            self.report['execution_uid'] = os.geteuid()
+            need(self.report['execution_uid'] > 0,
+                 'Linux qualification must run unprivileged so read-only source permissions are enforced')
         self.report['network_denial'] = network_evidence()
         first = self.environment('source installation')
         identity = json.loads(self.run(first, '-e', "(begin (require json) (write-json (hasheq 'version (version) 'target (path->string (system-library-subpath #f)) 'vm (symbol->string (system-type 'vm)) 'bits (system-type 'word))))"))

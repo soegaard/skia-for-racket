@@ -59,6 +59,9 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
     actual = {r['archive']:r['sha256'] for r in staging['artifacts']['artifacts']}
     need(actual == artifacts, 'catalog lane used different native/font archives')
     identity = report['identity']
+    if identity['target'].startswith('x86_64-linux'):
+        need(type(report.get('execution_uid')) is int and report['execution_uid'] > 0,
+             'Linux read-only qualification requires an unprivileged execution UID')
     need(identity['version'] == staging['identity']['version'] and identity['target'] == staging['identity']['target'],
          'catalog acquisition/execution target differs')
     need(set(report.get('rebuilt_smoke', {})) == {'source', 'built', 'binary-lib'}, 'catalog rebuilt package proof missing')

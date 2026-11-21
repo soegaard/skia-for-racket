@@ -84,6 +84,8 @@ jobs:
           architecture: ${{ matrix.architecture }}
           distribution: full
           variant: CS
+          # The default Linux install uses /usr, which is not a runtime tree.
+          dest: ${{ runner.os == 'Linux' && format('{0}/catalog-racket', runner.temp) || '' }}
       - name: Install declared ordinary Linux baseline
         if: runner.os == 'Linux'
         run: |
@@ -118,7 +120,12 @@ jobs:
         with:
           python-version: '3.12'
       - name: Acquire exact real pkg-build runtime
-        run: python tools/prepare-natipkg-runtime.py --version ${{ matrix.racket }} --output output/catalog-runtime
+        run: |
+          python tools/prepare-natipkg-runtime.py --version ${{ matrix.racket }} --output output/catalog-runtime || {
+            mkdir -p output/catalog-ci/evidence
+            cp output/catalog-runtime.acquisition.json output/catalog-ci/evidence/runtime-acquisition.json
+            exit 1
+          }
       - name: Build clean natipkg execution image
         run: docker build --platform linux/amd64 -t skia-catalog-natipkg -f packaging/prototypes/linux-audit.Dockerfile .
       - name: Stage exact archives and qualify natipkg without network or OS fontconfig

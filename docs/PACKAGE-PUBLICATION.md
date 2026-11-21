@@ -34,6 +34,22 @@ settled and does not approve the native payload's redistribution obligations.
 Use exact released 64-bit Racket CS 8.18 and 9.3 executables, not a development
 version whose directory happens to be named 9.3. Generated/native/font binaries
 stay under ignored output directories and never enter the source ZIP.
+Runtime lifecycle checks require a self-contained relocatable Racket tree with
+its own executable and `collects/`. The catalog workflow sets setup-racket's
+Linux `dest` input to a directory under `runner.temp`; its default Unix-style
+`/usr` installation must never be copied as a runtime. The harness rejects that
+layout before creating an execution tree.
+Use an ordinary Linux runner account. Namespace creation uses privilege, then
+returns to that account; Docker validation uses the same UID/GID. The validator
+and final evidence checker reject root execution, which can bypass source
+permission bits and cannot establish the required read-only check.
+
+Natipkg acquisition tries only the locked official release URL and mirror.
+Every source must match the existing installer SHA-256 before execution; digest
+or size failures stop instead of trying another mirror. The adjacent
+`.acquisition.json` records attempted/final URLs, bytes, digest and status.
+Successful lanes retain it with their bounded evidence; acquisition failures
+retain the failed receipt and remain failed jobs.
 
 ```sh
 python3 tools/prepare-native-packages.py --lock packaging/native-assets.json \

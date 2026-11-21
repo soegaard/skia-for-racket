@@ -16,7 +16,7 @@ import subprocess
 import sys
 import uuid
 from native_packages import ROOT, need, json_bytes
-from catalog_execution import windows_network_programs
+from catalog_execution import relocatable_runtime, windows_network_programs
 
 
 def load(name):
@@ -28,11 +28,13 @@ def load(name):
 
 def execute(racket, output, runtime=None, docker_image=None):
     need(not output.exists(), 'CI output must be new')
-    output.mkdir(parents=True)
-    output = output.resolve()
+    if sys.platform.startswith('linux'):
+        need(os.getuid() > 0, 'Linux catalog CI must start from an unprivileged runner account')
     selected = Path(shutil.which(racket) or racket).resolve()
     runtime = runtime or (selected.parent.parent if selected.parent.name == 'bin' else selected.parent)
-    runtime = runtime.resolve()
+    runtime = relocatable_runtime(runtime)
+    output.mkdir(parents=True)
+    output = output.resolve()
     stage = output / 'staged'
     staged = load('stage-native-catalog').stage(str(selected), stage, snapshot=True)
     fixture_build = output / 'fixture-build'
@@ -51,11 +53,15 @@ def execute(racket, output, runtime=None, docker_image=None):
     elif sys.platform.startswith('linux'):
         if docker_image:
             guarded = ['docker', 'run', '--rm', '--network', 'none', '--platform', 'linux/amd64',
+                       '--user', f'{os.getuid()}:{os.getgid()}',
                        '--mount', f'type=bind,source={ROOT},target={ROOT},readonly',
                        '--mount', f'type=bind,source={output},target={output}',
                        docker_image, 'python3', *command[1:]]
         else:
-            guarded = ['sudo', '-n', 'unshare', '--net', '--', *command]
+            # The namespace needs privilege; package execution must return to
+            # the runner account so source chmod restrictions actually apply.
+            guarded = ['sudo', '-n', 'unshare', '--net', '--setgid', str(os.getgid()),
+                       '--setuid', str(os.getuid()), '--', *command]
     elif sys.platform == 'win32':
         # Rules are limited to the validation processes, and removed in finally.
         # No firewall default/account/repository settings are changed.
@@ -78,6 +84,9 @@ def execute(racket, output, runtime=None, docker_image=None):
     evidence.mkdir()
     for name in ('staging-receipt.json', 'catalog-request.json', 'dependency-staging.log'):
         shutil.copy2(stage / name, evidence / name)
+    acquisition = runtime.with_suffix('.acquisition.json')
+    if acquisition.is_file():
+        shutil.copy2(acquisition, evidence / 'runtime-acquisition.json')
     for path in (stage / 'artifacts').glob('*.json'):
         shutil.copy2(path, evidence / path.name)
     execution = output / 'execution'

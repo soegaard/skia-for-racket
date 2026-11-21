@@ -4,10 +4,12 @@
   "natipkg": {
     "8.18": {
       "url": "https://download.racket-lang.org/releases/8.18/installers/racket-8.18-x86_64-linux-natipkg-buster-pkg-build-cs.sh",
+      "mirrors": ["https://mirror.racket-lang.org/installers/8.18/racket-8.18-x86_64-linux-natipkg-buster-pkg-build-cs.sh"],
       "sha256": "e3711b4cc267d8617a1a181aab973ee5e3b15b3cde1de67813836626c8360ada"
     },
     "9.3": {
       "url": "https://download.racket-lang.org/releases/9.3/installers/racket-9.3-x86_64-linux-natipkg-buster-pkg-build-cs.sh",
+      "mirrors": ["https://mirror.racket-lang.org/installers/9.3/racket-9.3-x86_64-linux-natipkg-buster-pkg-build-cs.sh"],
       "sha256": "2d2daf7afd6656641b13b52663f027e1f9717abc1e2d134fb73bb5df22f0daca"
     }
   }

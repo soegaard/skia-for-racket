@@ -1,20 +1,34 @@
-# Initial GitHub CI push
+# GitHub CI test branch
 
-The prepared local branch is `codex/catalog-ci`. The maintainer will push it;
+The test branch is `codex/catalog-ci`. The maintainer pushed `487ff148`;
 the implementation agent does not push, publish packages or dispatch deployments.
+The follow-up fixes below require another maintainer push and fresh CI results.
 
 From the repository, push only this branch:
 
 ```sh
-git push -u origin codex/catalog-ci
+git push origin codex/catalog-ci
 ```
 
 This starts CI, Acceptance, API inventory and Catalog packaging. Central CI's
 branch filter explicitly includes this branch, with regression-scope selection
 kept in agreement. All ten catalog platform/version lanes remain enabled:
 released Racket CS 8.18 and 9.3 on macOS ARM64/Intel, Windows x64, ordinary Linux
-x64 and actual Linux natipkg. GitHub execution has not yet occurred for this
-prepared commit; a configured workflow is not execution evidence.
+x64 and actual Linux natipkg. The first push passed CI, Acceptance, API inventory
+and all four macOS catalog lanes. Windows, ordinary Linux and natipkg catalog
+lanes failed; their exact results are recorded in
+[catalog validation](CATALOG-VALIDATION.md#first-github-push).
+
+The follow-up makes Racket command output explicitly UTF-8, installs ordinary
+Linux Racket into a self-contained directory instead of copying `/usr`, rejects
+system prefixes before runtime copying, and uses a generated Latin fixture for
+the fallback regression instead of assuming a system CJK font. Natipkg acquisition
+can try a locked official mirror after transport failure, verifies the same
+existing SHA-256 before executing either installer, and retains acquisition
+failure receipts. No native pin, font package or public API changed.
+
+These local corrections do not turn the first attempt's failed lanes into passes.
+Inspect fresh results at the new pushed commit.
 
 ## Artifact and publication behavior
 
@@ -36,7 +50,7 @@ Only the explicitly dispatched `Release candidate` caller selects the original
 native/font/source archive upload. This preserves the full release gate's
 77 jobs, 84 required artifacts and exact-byte archive checks; a receipt-only
 artifact cannot substitute for the required archive set. Do not dispatch that
-workflow as part of this initial push.
+workflow as part of this test-branch push.
 
 The push creates no GitHub Release, package catalog entry or package registry
 upload. GitHub Pages deployment and the complete Release candidate workflow
@@ -57,14 +71,19 @@ successful CI alone. The approved four-font package and native pins are unchange
 The earlier clean local candidate `71a51735` passed both complete Mac ARM64
 validators (83 commands each; DrDr 19.471 s and 17.915 s). Its source ZIP was
 `244405bd38eda38b60770727fb90d643679fddf9442dfaa5e2caaa17031bdfa0`.
-Those receipts identify that earlier candidate, not the new push-preparation
-commit. The new changes concern CI retention, branch triggers, tests and
-documentation; native payloads, package API and loader behavior are unchanged.
+Those receipts identify that earlier candidate, not subsequent commits. The
+first GitHub candidate `487ff148` used source ZIP SHA-256
+`93f6edd5e00b196d8da6bcc006ac0f54fb421ad409ebc9aab41f936cf8133c86`.
+Its four macOS catalog receipts each completed all 83 commands. The subsequent
+follow-up must be checked at its own commit; native payloads, package API and
+loader behavior are unchanged.
 
 Local preparation runs the source/synthetic suites, the source-only release
 audit, collector verification against the retained real candidate, and explicit
 comparison of frozen job/artifact requirements. The resulting preparation
-receipts are under ignored `output/catalog/push-preparation/`.
+receipts are under ignored `output/catalog/push-preparation/`. First GitHub
+attempt artifacts, hash checks, logs and follow-up diagnostics are under
+`output/catalog/github-first-run-20261121/`.
 
 After the push, inspect all four workflow results at the pushed commit. Use
 the returned failures to guide fixes, preserving actual platform/version and

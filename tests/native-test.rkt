@@ -14,7 +14,7 @@
 
 (require rackunit rackunit/text-ui racket/file racket/class racket/list
          (except-in racket/draw make-font)
-         "../main.rkt" "../bitmap.rkt" "../private/bidi.rkt")
+         "../main.rkt" "../bitmap.rkt" "../private/bidi.rkt" "typeface-fixtures.rkt")
 (provide native-tests)
 
 
@@ -1465,14 +1465,16 @@ third"))
                      (>= (mixed-text-run-origin-x r) 0)))))
    (test-case "mixed text layout records font fallback"
      (with-skia ([fm (default-font-manager)]
-                 [tf (make-typeface)]
+                 [tf (typeface-from-bytes (fixture-font-bytes))]
                  [f (make-font tf #:size 28)]
                  [sh (make-shaper f)])
-       (define missing? (zero? (font-char->glyph f #\界)))
-       (define layout (layout-mixed-text sh fm "A界B" #:width 300 #:language "zh"))
+       ;; The original AV fixture deliberately lacks B. The declared platform
+       ;; Latin font supplies fallback; no registered system CJK face is assumed.
+       (check-true (positive? (font-char->glyph f #\A)))
+       (check-equal? (font-char->glyph f #\B) 0)
+       (define layout (layout-mixed-text sh fm "ABA" #:width 300 #:language "en"))
        (define runs (mixed-text-line-runs (first (mixed-text-layout-lines layout))))
-       (when missing?
-         (check-not-false (for/or ([r (in-list runs)]) (mixed-text-run-family r))))))
+       (check-not-false (for/or ([r (in-list runs)]) (mixed-text-run-family r)))))
    (test-case "mixed text layout preserves LTR number runs in RTL paragraphs"
      (with-skia ([fm (default-font-manager)]
                  [tf (make-typeface)]

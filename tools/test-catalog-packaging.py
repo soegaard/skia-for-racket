@@ -3,20 +3,32 @@
 import copy
 import hashlib
 import importlib.util
+import io
 import json
+import os
 import shutil
+import sys
 import tempfile
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 import catalog_release as c
 import catalog_asset_evidence as asset_evidence
 import native_packages as n
-from catalog_execution import RUNTIME_ENVIRONMENTS, windows_network_programs
+from catalog_execution import RUNTIME_ENVIRONMENTS, relocatable_runtime, windows_network_programs
 
 SHA = 'a'*64
 COMMIT = 'b'*40
+
+
+def tool(name):
+    spec = importlib.util.spec_from_file_location(name.replace('-', '_'), n.ROOT / 'tools' / (name + '.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def fixtures():
@@ -27,6 +39,7 @@ def fixtures():
                    skia=dict(loader=copy.deepcopy(native)), harfbuzz=copy.deepcopy(native))
               for order in ('skia-first','draw-first')]
     report = dict(status='passed-local-selected-checks', checks={key:True for key in c.REQUIRED_CHECKS},
+                  execution_uid=1001,
                   identity=dict(version='9.3', target='x86_64-linux'), drdr_seconds=37.4,
                   network_denial=[dict(address=address,errno=101) for address in ('1.1.1.1','8.8.8.8')],
                   smoke=smokes, rebuilt_smoke={form:copy.deepcopy(smokes) for form in ('source','built','binary-lib')})
@@ -91,6 +104,11 @@ class Evidence(unittest.TestCase):
     def test_timeout_is_not_os_network_denial(self):
         report, stage = fixtures(); report['network_denial'][0]['errno']=None
         with self.assertRaises(ValueError): self.verify(report,stage)
+    def test_linux_root_cannot_claim_readonly_qualification(self):
+        for uid in (0, None, '1001', True):
+            report, stage = fixtures(); report['execution_uid'] = uid
+            with self.subTest(uid=uid), self.assertRaisesRegex(ValueError, 'unprivileged execution UID'):
+                self.verify(report, stage)
     def test_partial_review_cannot_approve_this_checkout(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -157,6 +175,142 @@ class WindowsNetworkCoverage(unittest.TestCase):
         self.assertEqual(len(RUNTIME_ENVIRONMENTS), len(set(RUNTIME_ENVIRONMENTS)))
         self.assertTrue(all(Path(name).name == name and name not in ('.', '..')
                             for name in RUNTIME_ENVIRONMENTS))
+
+
+class CatalogRuntime(unittest.TestCase):
+    def test_linux_root_is_rejected_before_any_installation(self):
+        validator = tool('validate-catalog-package')
+        instance = object.__new__(validator.Validator)
+        instance.report = {}
+        with patch.object(validator.sys, 'platform', 'linux'), \
+             patch.object(validator.os, 'geteuid', return_value=0, create=True):
+            with self.assertRaisesRegex(ValueError, 'must run unprivileged'):
+                instance.execute()
+        self.assertEqual(instance.report['execution_uid'], 0)
+
+    def test_system_prefix_is_rejected_before_creating_an_execution_tree(self):
+        validator = tool('validate-catalog-package')
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            work = root / 'must not be created'
+            with self.assertRaisesRegex(ValueError, 'self-contained relocatable Racket'):
+                validator.Validator(Path('/usr'), root / 'catalog', work)
+            self.assertFalse(work.exists())
+
+    def test_self_contained_runtime_is_accepted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'bin').mkdir()
+            (root / 'bin/racket').write_bytes(b'fixture executable')
+            (root / 'collects/racket').mkdir(parents=True)
+            (root / 'collects/racket/base.rkt').write_bytes(b'#lang racket/base\n')
+            self.assertEqual(relocatable_runtime(root), root.resolve())
+
+    def test_utf8_command_paths_survive_a_windows_default_text_encoding(self):
+        validator = tool('validate-catalog-package')
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = root / 'user home with spaces æ' / 'libSkiaSharp.dll'
+            payload.parent.mkdir()
+            payload.write_bytes(b'path fixture, never loaded')
+            instance = object.__new__(validator.Validator)
+            instance.root = instance.away = root
+            instance.report = dict(commands=[])
+            data = json.dumps(dict(absolute_path=str(payload)), ensure_ascii=False).encode('utf-8')
+            code = 'import sys; sys.stdout.buffer.write(' + repr(data) + ')'
+            # Exercise real subprocess output while simulating Python 3.12's
+            # default Windows text codec, independently of this test host.
+            with patch('io.text_encoding', side_effect=lambda encoding, *args:
+                       'cp1252' if encoding in (None, 'locale') else encoding):
+                report = json.loads(instance.run((Path(sys.executable), dict(os.environ), root), '-c', code))
+            self.assertEqual(report['absolute_path'], str(payload))
+            self.assertTrue(Path(report['absolute_path']).is_file())
+            self.assertNotEqual(json.loads((root / '001.log').read_text(encoding='cp1252'))['absolute_path'],
+                                str(payload))
+
+
+class RuntimeAcquisition(unittest.TestCase):
+    class Response(io.BytesIO):
+        def __init__(self, data, url):
+            super().__init__(data)
+            self.url = url
+
+        def geturl(self):
+            return self.url
+
+    def fixture(self, root):
+        module = tool('prepare-natipkg-runtime')
+        data = b'hash-pinned installer fixture, never executed'
+        pin = dict(url='https://primary.example/runtime.sh', mirrors=['https://mirror.example/runtime.sh'],
+                   sha256=hashlib.sha256(data).hexdigest())
+        lock = root / 'runtimes.json'
+        lock.write_bytes(n.json_bytes(dict(natipkg={'9.3':pin})))
+        return module, data, pin, lock
+
+    def test_transport_failure_uses_only_a_locked_mirror_before_installing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            module, data, pin, lock = self.fixture(root)
+            with patch.object(module.urllib.request, 'build_opener') as make_opener, \
+                 patch.object(module.subprocess, 'run') as install:
+                make_opener.return_value.open.side_effect = [
+                    urllib.error.HTTPError(pin['url'], 403, 'Forbidden', None, None),
+                    self.Response(data, pin['mirrors'][0])]
+                report = module.prepare('9.3', root / 'runtime', lock_path=lock)
+                self.assertEqual([call.args[0] for call in make_opener.return_value.open.call_args_list],
+                                 [pin['url'], *pin['mirrors']])
+                install.assert_called_once()
+            self.assertEqual(report['status'], 'installed')
+            self.assertEqual(report['sha256'], pin['sha256'])
+            self.assertEqual(report['selected_url'], pin['mirrors'][0])
+            self.assertEqual(report['attempts'][0]['status'], 'transport-failed')
+            self.assertFalse(report['catalog_candidate_validated'])
+            self.assertEqual(n.read_json(root / 'runtime.acquisition.json'), report)
+
+    def test_changed_bytes_are_never_executed_or_hidden_by_mirror_retry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            module, data, pin, lock = self.fixture(root)
+            with patch.object(module.urllib.request, 'build_opener') as make_opener, \
+                 patch.object(module.subprocess, 'run') as install:
+                make_opener.return_value.open.return_value = self.Response(data + b'changed', pin['url'])
+                with self.assertRaisesRegex(ValueError, 'digest differs'):
+                    module.prepare('9.3', root / 'runtime', lock_path=lock)
+                install.assert_not_called()
+                self.assertEqual(make_opener.return_value.open.call_count, 1)
+            self.assertEqual(n.read_json(root / 'runtime.acquisition.json')['status'], 'failed')
+            self.assertFalse((root / 'runtime').exists())
+
+    def test_oversized_bytes_fail_before_installing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            module, data, pin, lock = self.fixture(root)
+            with patch.object(module.urllib.request, 'build_opener') as make_opener, \
+                 patch.object(module.subprocess, 'run') as install, \
+                 patch.object(module, 'MAX_INSTALLER', len(data) - 1):
+                make_opener.return_value.open.return_value = self.Response(data, pin['url'])
+                with self.assertRaisesRegex(ValueError, 'exceeds limit'):
+                    module.prepare('9.3', root / 'runtime', lock_path=lock)
+                install.assert_not_called()
+                self.assertEqual(make_opener.return_value.open.call_count, 1)
+
+    def test_existing_installer_is_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            module, _, _, lock = self.fixture(root)
+            installer = root / 'runtime.sh'
+            installer.write_bytes(b'keep this unrelated file')
+            with patch.object(module.urllib.request, 'build_opener') as make_opener:
+                with self.assertRaisesRegex(ValueError, 'must be new'):
+                    module.prepare('9.3', root / 'runtime', lock_path=lock)
+                make_opener.assert_not_called()
+            self.assertEqual(installer.read_bytes(), b'keep this unrelated file')
+
+    def test_http_redirect_is_rejected_before_it_can_be_followed(self):
+        module = tool('prepare-natipkg-runtime')
+        request = urllib.request.Request('https://primary.example/runtime.sh')
+        with self.assertRaisesRegex(ValueError, 'insecure runtime redirect'):
+            module.HTTPSOnly().redirect_request(request, None, 302, 'Moved', {}, 'http://mirror.example/runtime.sh')
 
 
 class ReceiptOnlyAssets(unittest.TestCase):

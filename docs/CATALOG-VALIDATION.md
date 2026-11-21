@@ -1,11 +1,79 @@
 # Catalog candidate validation — 0.79
 
-Status: the final local macOS ARM64 checks passed on both released runtimes;
-**the publication candidate remains unqualified**. No publication action has
+Status: GitHub CI, Acceptance, API inventory and all four macOS catalog lanes
+passed at `487ff148`; Windows and Linux catalog checks need corrected reruns.
+**The publication candidate remains unqualified**. No publication action has
 been performed. Native pins
 remain SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2, native generation/revision 1/1.0.
 Source/API collection remains `skia`. The final matrix and maintainer
 redistribution approval remain required even when individual local checks pass.
+
+## First GitHub push
+
+The maintainer pushed `codex/catalog-ci` at
+`487ff1489464e83f5916fd5139a7e9a963394e01`. Attempt 1 completed on November 21,
+2026. This is GitHub Actions execution against disposable staging catalogs;
+nothing was submitted to the Racket package server.
+
+| Workflow | Result | Jobs |
+| --- | --- | --- |
+| [CI](https://github.com/soegaard/skia-for-racket/actions/runs/44929473832) | Passed | 12 |
+| [Acceptance](https://github.com/soegaard/skia-for-racket/actions/runs/44929473902) | Passed | 52 |
+| [API inventory](https://github.com/soegaard/skia-for-racket/actions/runs/44929473829) | Passed | 2 |
+| [Catalog packaging](https://github.com/soegaard/skia-for-racket/actions/runs/44929473901) | Failed | Asset job and four macOS lanes passed; six execution lanes failed |
+
+Every retained platform staging receipt identifies the same clean source ZIP,
+SHA-256 `93f6edd5e00b196d8da6bcc006ac0f54fb421ad409ebc9aab41f936cf8133c86`,
+and the same four native/font ZIP digests. The asset upload contains exactly six
+JSON receipts/digests; no candidate ZIP was uploaded. Downloaded evidence ZIP
+sizes and SHA-256 values were checked against GitHub's artifact records before
+bounded extraction into ignored `output/catalog/github-first-run-20261121/`.
+
+| Catalog target | Racket CS | Commands | DrDr | Result |
+| --- | --- | --- | --- | --- |
+| macOS ARM64 | 8.18 | 83 | 60.427 s | Complete selected checks passed |
+| macOS ARM64 | 9.3 | 83 | 64.702 s | Complete selected checks passed |
+| macOS Intel | 8.18 | 83 | 90.166 s | Complete selected checks passed |
+| macOS Intel | 9.3 | 83 | 68.112 s | Complete selected checks passed |
+
+Those receipts include dependency-driven full documentation setup, denied
+network execution, both text load orders, negative loader cases, scope/update/
+removal behavior, read-only source and all three rebuilt-package reinstalls.
+They identify `487ff148`, not the subsequent follow-up changes.
+
+The failed lanes remain failed:
+
+- Both Windows lanes installed, built manuals and completed the first actual
+  pixel/PNG/script-shaping smoke. The Python harness rejected a reported DLL
+  path. Racket emitted literal UTF-8 `æ`; the harness used the host default
+  text codec. A regression reproduces the resulting mojibake with CP1252;
+  command logs now decode explicitly as UTF-8. Containment and file-existence
+  checks remain mandatory, with separate diagnostics. A Windows rerun is required.
+- Ordinary Linux 8.18 completed 48 commands through DrDr, where the font-fallback
+  regression assumed a system CJK face. It now uses the original AV-only font
+  fixture, proves B is absent, and unconditionally requires a Latin fallback
+  from the declared platform font baseline. Separate declared-font tests still
+  require CJK/Arabic/Hebrew shaping. No test is omitted or made conditional.
+- Linux 8.18's receipt identified `/usr` as its runtime source. Linux 9.3's
+  [runner annotation](https://github.com/soegaard/skia-for-racket/actions/runs/44929473901/job/136922721838)
+  reports a full disk; its job log and evidence artifact are unavailable.
+  The default setup action installed a Unix-style tree into `/usr`, which the
+  harness mistakenly copied wholesale. The workflow now selects an in-place
+  directory under `runner.temp`, and the harness rejects system-prefix layouts.
+  Linux execution also returns to the ordinary runner UID after namespace
+  creation (or selects it in Docker). Root execution is rejected by both the
+  validator and evidence checker, so read-only source permissions cannot be
+  bypassed by the qualification process.
+- Both natipkg jobs stopped at HTTP 403 from the official release download URL,
+  before Racket installation or package execution. The reviewed official mirror
+  is now a bounded transport fallback with unchanged installer digest pins,
+  HTTPS-only redirects and an acquisition receipt. Changed/oversized bytes still
+  fail immediately; no unverified installer is executed.
+
+Source/harness tests and local native diagnostics check the follow-up, but only
+fresh GitHub execution can close the Windows/native Linux matrix gaps. Separate
+workflow successes do not replace the eventual full same-attempt release gate.
+Native approval flags and `catalog_candidate_validated` remain false.
 
 ## Exact identities
 
@@ -173,10 +241,10 @@ load-order diagnostics do not close the interrupted fresh-run gap.
 
 ## Required external qualification and decisions
 
-Independent macOS x86-64 and Windows x86-64 execution is unavailable locally.
-Both versions on those runners, Windows clean-PATH/dependent-DLL behavior,
-source stripping, update/remove after process exit, and universal-slice evidence
-remain required. Native x86-64 Linux timing, the actual natipkg build-service
+The first GitHub attempt now supplies complete macOS ARM64/Intel results on both
+released versions, as recorded above. Windows clean-PATH/dependent-DLL behavior,
+source stripping and update/remove after process exit still require complete
+successful catalog reruns. Native x86-64 Linux timing, the actual natipkg build-service
 configuration and ordinary fontconfig baseline must be qualified independently
 of Apple-silicon emulation. Deployment/load-command observations do not by
 themselves certify older OS releases or every distribution at glibc 2.27.
@@ -185,6 +253,7 @@ Linux ARM64, musl, 32-bit and BC are not newly supported targets.
 Maintainer redistribution review remains pending: exact embedded graph/runtime
 attestation and GCC exception applicability, Adobe conditions and Windows
 redistribution terms. Proposed package names/version and public availability
-need a separate final review. There is no authorization to publish, tag, push,
-create repositories, register catalog entries or change repository settings.
+need a separate final review. The maintainer pushed the GitHub test branch;
+the agent does not push, publish, tag, create repositories, register catalog
+entries or change repository settings.
 The release aggregator refuses to approve incomplete/pending catalog evidence.
