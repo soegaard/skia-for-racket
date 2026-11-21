@@ -402,6 +402,9 @@ class WorkflowTests(unittest.TestCase):
     def test_automatic_scope_truth_table(self):
         for event, ref, manual, expected in (
             ('push', 'refs/heads/main', '', 'none'),
+            ('push', 'refs/heads/codex/catalog-ci', '', 'none'),
+            ('push', 'refs/heads/codex/catalog-ci-other', '', 'full'),
+            ('push', 'refs/heads/Codex/catalog-ci', '', 'full'),
             ('push', 'refs/tags/v0.74', '', 'none'),
             ('pull_request', 'refs/pull/1/merge', '', 'none'),
             ('push', 'refs/heads/topic', '', 'full'),
@@ -422,7 +425,7 @@ class WorkflowTests(unittest.TestCase):
         match = re.search(r'(?ms)^on:\n(.*?)(?=^\S)', text)
         self.assertIsNotNone(match)
         self.assertEqual(match[1].strip(),
-                         "  push:\n    branches: [main]\n    tags: ['v*']\n"
+                         "  push:\n    branches: [main, 'codex/catalog-ci']\n    tags: ['v*']\n"
                          "  pull_request:\n  workflow_dispatch:\n  workflow_call:".strip())
     def test_scope_job_uses_checked_selector(self):
         text = (ROOT/'.github/workflows/acceptance.yml').read_text()

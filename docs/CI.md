@@ -11,6 +11,12 @@ removal and source/built/binary-lib reinstalls remain mandatory. No `--no-docs`
 or native installer is used in this lane. See [the runbook](PACKAGE-PUBLICATION.md)
 and [actual local results/external gaps](CATALOG-VALIDATION.md).
 
+Standalone catalog CI verifies the archives on the runner and uploads only
+JSON receipts/digests. The explicitly dispatched Release candidate caller
+still retains the complete archive set required by the release verifier.
+See [the initial test-branch push](PUSH-READINESS.md); existing rendering
+artifacts in the other execution gates remain required.
+
 The central CI developer route also stages the unpublished native/font package
 names before installation. It retains fresh explicit installers and their
 source-tree containment check, with explicit local-library overrides. All
@@ -98,7 +104,8 @@ No `pict`, plot, style-expansion, GUI or GPU-facade acceptance is claimed here.
 
 ## Workflow and required result
 
-`.github/workflows/ci.yml` runs for pull requests, pushes to `main`, version tags
+`.github/workflows/ci.yml` runs for pull requests, pushes to `main` or
+`codex/catalog-ci`, version tags
 starting with `v`, and manual dispatch. The source lane publishes the validated
 matrix from `tools/ci-matrix.json`; five CPU lanes and two EGL lanes then run
 without fail-fast cancellation between matrix entries. `CI required` runs even
@@ -108,7 +115,7 @@ and raster canvas;
 
 Automatic stage acceptance is grouped under `.github/workflows/acceptance.yml`
 instead of giving every historical stage its own push/pull-request run. A normal
-push to `main`, a `v*` tag push, or a pull request creates those existing
+push to `main` or `codex/catalog-ci`, a `v*` tag push, or a pull request creates those existing
 top-level workflows plus `Catalog packaging`: `CI`, `API inventory`, `Acceptance`,
 and `Catalog packaging`. The stage-specific
 workflow files remain individually dispatchable and reusable: they expose

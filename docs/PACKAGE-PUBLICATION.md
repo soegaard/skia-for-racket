@@ -199,11 +199,12 @@ receipts and approved review state, and refuses partial/mismatched evidence.
 Native ZIPs are retained once; per-lane uploads contain bounded logs/receipts.
 
 `catalog-package.yml` runs automatically on pushes and pull requests. Its assets
-job uploads all candidate source/native/font ZIPs to GitHub Actions artifacts
-with 30-day retention; it does not create a release or catalog entry. A push
-would therefore transfer native binaries to GitHub even while redistribution
-review is pending. The current no-push boundary remains in effect. Review this
-artifact transfer explicitly before using GitHub as the qualification runner.
+job assembles and verifies all candidate source/native/font ZIPs, then uploads
+only JSON receipts/digests in standalone CI. The prepared `codex/catalog-ci`
+branch also triggers central CI. See [push readiness](PUSH-READINESS.md).
+Only the explicitly dispatched `Release candidate` caller selects the full
+30-day archive upload required by the final evidence checks. That later transfer
+remains separate from the initial CI push. No path creates a release or catalog entry.
 Local source checks establish configuration consistency; they do not establish
 that unexecuted Intel, Windows or native Linux jobs pass.
 

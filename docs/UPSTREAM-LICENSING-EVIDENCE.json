@@ -1,0 +1,702 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-11-21T16:05:10.284813+00:00",
+  "candidate_baseline": "71a51735406955a3ef8c204363d1af83e6fda463",
+  "native_lock_sha256": "29a498c601d8a8b9e229d6827ca2c7e8599590d6b30cb18a92f95812e95b5d73",
+  "upstream_versions": {
+    "harfbuzz": "8.3.1.2",
+    "skia": "3.119.1"
+  },
+  "scope": "Read-only upstream release/licensing research; no publication or license approval",
+  "redistribution_approved": false,
+  "approval_flags_changed": false,
+  "sources": [
+    {
+      "id": "release",
+      "url": "https://api.github.com/repos/mono/SkiaSharp/releases/tags/v3.119.1",
+      "cache": "output/catalog/licensing-search-20261121/release.txt",
+      "size": 2044,
+      "sha256": "b5b3d024b4183357defbb3a13310af6fb860f452f01c0368b3ac9ffedcaa1cb4",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": true
+    },
+    {
+      "id": "upstream-commit",
+      "url": "https://api.github.com/repos/mono/SkiaSharp/commits/cc78b5933d23e6383db5d246e70db915770d55d6",
+      "cache": "output/catalog/licensing-search-20261121/upstream-commit.txt",
+      "size": 4520,
+      "sha256": "73424ff5ddec007bfe57abd94434bc615a0a4a7506cd963e2d9ee8d8bf8d70ae",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "external-dependency-info",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/External-Dependency-Info.txt",
+      "cache": "output/catalog/licensing-search-20261121/external-dependency-info.txt",
+      "size": 137059,
+      "sha256": "98acf9d4d6083959988c884f630cdff760f94bfeb9acf57774653e08c23d1e45",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "cgmanifest",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/cgmanifest.json",
+      "cache": "output/catalog/licensing-search-20261121/cgmanifest.txt",
+      "size": 7085,
+      "sha256": "332ecbca8d526b4d070beff5845b3161edbd00727db2d3cdbe405a6867103b56",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "license-md",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/LICENSE.md",
+      "cache": "output/catalog/licensing-search-20261121/license-md.txt",
+      "size": 1110,
+      "sha256": "ad9ec300dcb006b80c012b9d263c0e0dc26fcbfdcd0c02e8c4181365b7c1439b",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "pinned-readme",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/README.md",
+      "cache": "output/catalog/licensing-search-20261121/pinned-readme.txt",
+      "size": 4401,
+      "sha256": "61fb05739a75a51606d23bea3f075ff4e69d4422a051ee6729d835197c698259",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "pipeline-variables",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-templates-variables.yml",
+      "cache": "output/catalog/licensing-search-20261121/pipeline-variables.txt",
+      "size": 1320,
+      "sha256": "3262cb6493ec6e2b1efc1087d56d9b199d4a0891ca7a14db78c10c965544c64a",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "azure-pipelines-complete.yml",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-pipelines-complete.yml",
+      "cache": "output/catalog/licensing-search-20261121/azure-pipelines-complete.yml.txt",
+      "size": 2973,
+      "sha256": "63cfbe5f29e236e947b9a739d4567bb1e04d472ff04c8c26d4000939929eb499",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "azure-pipelines-complete-internal.yml",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-pipelines-complete-internal.yml",
+      "cache": "output/catalog/licensing-search-20261121/azure-pipelines-complete-internal.yml.txt",
+      "size": 3034,
+      "sha256": "a923b76aa0778ba6939e66b1972394d9160f1f369665eabcb6dadc56b7842439",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "azure-pipelines-native.yml",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-pipelines-native.yml",
+      "cache": "output/catalog/licensing-search-20261121/azure-pipelines-native.yml.txt",
+      "size": 3173,
+      "sha256": "bdbe181182bafa2f15d1fff865b69715385cdb4a91c8c0f6a4a8705f7ce4ada9",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "azure-pipelines-package.yml",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-pipelines-package.yml",
+      "cache": "output/catalog/licensing-search-20261121/azure-pipelines-package.yml.txt",
+      "size": 5741,
+      "sha256": "5c01400c5e702963b1f31372b4b3bae0e391c0cf7de39e6bbf48ca3bd0766149",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "azure-templates-jobs-bootstrapper.yml",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-templates-jobs-bootstrapper.yml",
+      "cache": "output/catalog/licensing-search-20261121/azure-templates-jobs-bootstrapper.yml.txt",
+      "size": 22330,
+      "sha256": "4f612b264b6fea4edce886a5fa16d854e3aeb6d84c62058cb4cb14b409fdf365",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "azure-templates-steps-download-artifacts.yml",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-templates-steps-download-artifacts.yml",
+      "cache": "output/catalog/licensing-search-20261121/azure-templates-steps-download-artifacts.yml.txt",
+      "size": 3524,
+      "sha256": "b8ef465c9cf9f3f25906f8ccfa3ed5a1ee1fd337a0583f1216a77329f4222943",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "gcc8-runtime-notice",
+      "url": "https://github.com/gcc-mirror/gcc/blob/releases/gcc-8.3.0/libgcc/unwind-dw2.c",
+      "cache": "output/catalog/licensing-search-20261121/gcc8-runtime-notice.txt",
+      "size": 48329,
+      "sha256": "aea81840a77dda6f59b0ea33c26009c4d2fc3a960dc4cc46f1edd8ef1cedbc2c",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "gcc8-cpp-notice",
+      "url": "https://github.com/gcc-mirror/gcc/blob/releases/gcc-8.3.0/libstdc%2B%2B-v3/libsupc%2B%2B/new_op.cc",
+      "cache": "output/catalog/licensing-search-20261121/gcc8-cpp-notice.txt",
+      "size": 1839,
+      "sha256": "d0aa4e46f5c99ef1445b4f3a4de7511131abca1f0fd024152cc0878d748da4d4",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "gcc8-exception",
+      "url": "https://github.com/gcc-mirror/gcc/blob/releases/gcc-8.3.0/COPYING.RUNTIME",
+      "cache": "output/catalog/licensing-search-20261121/gcc8-exception.txt",
+      "size": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "issue136",
+      "url": "https://api.github.com/repos/mono/SkiaSharp/issues/136",
+      "cache": "output/catalog/licensing-search-20261121/issue136.txt",
+      "size": 5180,
+      "sha256": "a9c12a36a280595225b00af3b1ee8061c4c80be827b3c3faff148683d9ce17d7",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": true
+    },
+    {
+      "id": "issue136-comments",
+      "url": "https://api.github.com/repos/mono/SkiaSharp/issues/136/comments",
+      "cache": "output/catalog/licensing-search-20261121/issue136-comments.txt",
+      "size": 57969,
+      "sha256": "c1df008f02016f17e10446133cccbcd113f187273f468269c30bea5c4c9ac731",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": true
+    },
+    {
+      "id": "release-tag-commit",
+      "url": "https://api.github.com/repos/mono/SkiaSharp/commits/v3.119.1",
+      "cache": "output/catalog/licensing-search-20261121/release-tag-commit.txt",
+      "size": 4520,
+      "sha256": "73424ff5ddec007bfe57abd94434bc615a0a4a7506cd963e2d9ee8d8bf8d70ae",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "release-doc",
+      "url": "https://github.com/mono/SkiaSharp/blob/main/documentation/docfx/releases/3.119.1.md",
+      "cache": "output/catalog/licensing-search-20261121/release-doc.txt",
+      "size": 3936,
+      "sha256": "d45777b9b995ce968a214a6eddbabaec6a08edc6f5591d28d195b55b72f41cfe",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": true
+    },
+    {
+      "id": "get-build-type",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/get-build-type.ps1",
+      "cache": "output/catalog/licensing-search-20261121/get-build-type.txt",
+      "size": 1661,
+      "sha256": "867d60fed185f9759e2a90858438a12114339db87169b4c2c8c35ed915c6c93a",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "stages-package",
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-templates-stages-package.yml",
+      "cache": "output/catalog/licensing-search-20261121/stages-package.txt",
+      "size": 5612,
+      "sha256": "d65acfc05dcf62e19c4a0a45c2eeb75dace709c05b52e5cef9a939480b166829",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": false
+    },
+    {
+      "id": "pipeline-status",
+      "url": "https://api.github.com/repos/mono/SkiaSharp/commits/cc78b5933d23e6383db5d246e70db915770d55d6/status",
+      "cache": "output/catalog/licensing-search-20261121/pipeline-status.txt",
+      "size": 4457,
+      "sha256": "612078d253b4bc04260529bcd49690f96fcee33047aefb20403a2c984e886be2",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": true
+    },
+    {
+      "id": "pipeline-checks",
+      "url": "https://api.github.com/repos/mono/SkiaSharp/commits/cc78b5933d23e6383db5d246e70db915770d55d6/check-runs",
+      "cache": "output/catalog/licensing-search-20261121/pipeline-checks.txt",
+      "size": 33,
+      "sha256": "e83cfac35507982a40cfeb776ce85aa0367e7646f81fe857df4a6c841ea8a170",
+      "representation": "UTF-8 text returned by GitHub repository connector",
+      "mutable_url": true
+    },
+    {
+      "id": "harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg.registration.json",
+      "url": "https://api.nuget.org/v3/registration5-gz-semver2/harfbuzzsharp.nativeassets.linux/8.3.1.2.json",
+      "cache": "output/catalog/licensing-search-20261121/harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg.registration.json",
+      "size": 836,
+      "sha256": "569c6fe5998551c9dab027d6827438d72ff2d1d1507e1a6da229fa0704f6fafd",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "gzip",
+      "wire_sha256": "a23b7076dfa45a293f4d0e4ac6ba28d172353b04128f12149d7799d21cfc726b"
+    },
+    {
+      "id": "harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg.catalog.json",
+      "url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.34.10/harfbuzzsharp.nativeassets.linux.8.3.1.2.json",
+      "cache": "output/catalog/licensing-search-20261121/harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg.catalog.json",
+      "size": 12152,
+      "sha256": "6773eb319648a439d6331723b9b08f29e42dfa42dac69aa8fdfd0af176774574",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "",
+      "wire_sha256": "6773eb319648a439d6331723b9b08f29e42dfa42dac69aa8fdfd0af176774574"
+    },
+    {
+      "id": "harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg.registration.json",
+      "url": "https://api.nuget.org/v3/registration5-gz-semver2/harfbuzzsharp.nativeassets.macos/8.3.1.2.json",
+      "cache": "output/catalog/licensing-search-20261121/harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg.registration.json",
+      "size": 835,
+      "sha256": "518fe55f417c0a460aa09740a467c546dd7962812cb49c66de775f5882176cd6",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "gzip",
+      "wire_sha256": "6417f53915078495e939c5bd0b32c16b0e6b38474c246b1fdc1f98b4ec6526f0"
+    },
+    {
+      "id": "harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg.catalog.json",
+      "url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.32.51/harfbuzzsharp.nativeassets.macos.8.3.1.2.json",
+      "cache": "output/catalog/licensing-search-20261121/harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg.catalog.json",
+      "size": 9244,
+      "sha256": "7bb32c80f8619d51e2ab6733cadb734fecf707be3840730a7bce8d95f8e32521",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "",
+      "wire_sha256": "7bb32c80f8619d51e2ab6733cadb734fecf707be3840730a7bce8d95f8e32521"
+    },
+    {
+      "id": "harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg.registration.json",
+      "url": "https://api.nuget.org/v3/registration5-gz-semver2/harfbuzzsharp.nativeassets.win32/8.3.1.2.json",
+      "cache": "output/catalog/licensing-search-20261121/harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg.registration.json",
+      "size": 836,
+      "sha256": "e228e50376d387927ddc866d81b243fd92c9adfd653b10385d0c897b5e33074c",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "gzip",
+      "wire_sha256": "5de5c0b2ce58b9296b24411a1ad58752b96e20d5040c976fc5ddad10521f6fe3"
+    },
+    {
+      "id": "harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg.catalog.json",
+      "url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.32.51/harfbuzzsharp.nativeassets.win32.8.3.1.2.json",
+      "cache": "output/catalog/licensing-search-20261121/harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg.catalog.json",
+      "size": 10194,
+      "sha256": "e91c9aaea3d0f444e7599a9f6e0fee16e864d22e608c1825b748a16c40dc70f1",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "",
+      "wire_sha256": "e91c9aaea3d0f444e7599a9f6e0fee16e864d22e608c1825b748a16c40dc70f1"
+    },
+    {
+      "id": "skiasharp.nativeassets.linux.3.119.1.nupkg.registration.json",
+      "url": "https://api.nuget.org/v3/registration5-gz-semver2/skiasharp.nativeassets.linux/3.119.1.json",
+      "cache": "output/catalog/licensing-search-20261121/skiasharp.nativeassets.linux.3.119.1.nupkg.registration.json",
+      "size": 816,
+      "sha256": "b43a4952ef1799da2e45a210e01c62b33b8675e5e3aa05575947b9857b32fa15",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "gzip",
+      "wire_sha256": "6142a9bd166129e0e8fa8cfda9efdaf54deee6f82c332b8b46c2eed4073c84c1"
+    },
+    {
+      "id": "skiasharp.nativeassets.linux.3.119.1.nupkg.catalog.json",
+      "url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.36.01/skiasharp.nativeassets.linux.3.119.1.json",
+      "cache": "output/catalog/licensing-search-20261121/skiasharp.nativeassets.linux.3.119.1.nupkg.catalog.json",
+      "size": 12389,
+      "sha256": "8385725c82d6f9d81e0432b41a28b7150deb9c17e606ca69c6ef6cc3ff693011",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "",
+      "wire_sha256": "8385725c82d6f9d81e0432b41a28b7150deb9c17e606ca69c6ef6cc3ff693011"
+    },
+    {
+      "id": "skiasharp.nativeassets.macos.3.119.1.nupkg.registration.json",
+      "url": "https://api.nuget.org/v3/registration5-gz-semver2/skiasharp.nativeassets.macos/3.119.1.json",
+      "cache": "output/catalog/licensing-search-20261121/skiasharp.nativeassets.macos.3.119.1.nupkg.registration.json",
+      "size": 816,
+      "sha256": "128fd8e121a6c1dfceb6b03d3ea04325c8f11725be21b591e7bbe64fe6bace35",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "gzip",
+      "wire_sha256": "0caf6e071a13ad1d4061615075aaf1f0ae60e4d9a9b2035750e4cde8f0bb512f"
+    },
+    {
+      "id": "skiasharp.nativeassets.macos.3.119.1.nupkg.catalog.json",
+      "url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.34.10/skiasharp.nativeassets.macos.3.119.1.json",
+      "cache": "output/catalog/licensing-search-20261121/skiasharp.nativeassets.macos.3.119.1.nupkg.catalog.json",
+      "size": 9614,
+      "sha256": "d2140e4d64f66e7f787259656f178ef41da189d67d36724a8e2a015553212160",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "",
+      "wire_sha256": "d2140e4d64f66e7f787259656f178ef41da189d67d36724a8e2a015553212160"
+    },
+    {
+      "id": "skiasharp.nativeassets.win32.3.119.1.nupkg.registration.json",
+      "url": "https://api.nuget.org/v3/registration5-gz-semver2/skiasharp.nativeassets.win32/3.119.1.json",
+      "cache": "output/catalog/licensing-search-20261121/skiasharp.nativeassets.win32.3.119.1.nupkg.registration.json",
+      "size": 816,
+      "sha256": "9aae2cf60b4c4cff9cc69601bed42b8564dcfbfb57d90719fee06ecf0f725e28",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "gzip",
+      "wire_sha256": "80faac3a094fdba160dd4402092c718be88b303b899c4b69b9b8721c7b094b5c"
+    },
+    {
+      "id": "skiasharp.nativeassets.win32.3.119.1.nupkg.catalog.json",
+      "url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.33.31/skiasharp.nativeassets.win32.3.119.1.json",
+      "cache": "output/catalog/licensing-search-20261121/skiasharp.nativeassets.win32.3.119.1.nupkg.catalog.json",
+      "size": 10542,
+      "sha256": "cda5ad7066bf1613190c75cce9f36484f03822c545553a9303f4a8238cb20302",
+      "representation": "Decoded HTTP JSON; gzip wire body retained separately when present",
+      "content_encoding": "",
+      "wire_sha256": "cda5ad7066bf1613190c75cce9f36484f03822c545553a9303f4a8238cb20302"
+    },
+    {
+      "id": "gcc-debian8-copyright",
+      "url": "https://sources.debian.org/data/main/g/gcc-8/8.3.0-6/debian/copyright",
+      "cache": "output/catalog/licensing-search-20261121/debian-gcc8-copyright",
+      "size": 64067,
+      "sha256": "9865be517c31de50eb2b36a8957ccd97942807974afad2515578101d1168887a",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "gcc-faq",
+      "url": "https://www.gnu.org/licenses/gcc-exception-3.1-faq.html",
+      "cache": "output/catalog/licensing-search-20261121/gcc-exception-faq.html",
+      "size": 26264,
+      "sha256": "5d711a5b32f92ff218c13dbc3ab51b46821b91e0eb9f670b16135b4e9cbb2f4c",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "vs2019-license-page",
+      "url": "https://visualstudio.microsoft.com/license-terms/mlt031619/",
+      "cache": "output/catalog/licensing-search-20261121/vs2019-enterprise-page.html",
+      "size": 235836,
+      "sha256": "36f7e26344b395b9eddb69e289e33b6f76ad0c41917a782665a2612220965fb2",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "vs2019-license",
+      "url": "https://visualstudio.microsoft.com/wp-content/uploads/2019/03/VS_2019_ENU.1033.docx",
+      "cache": "output/catalog/licensing-search-20261121/vs2019-enterprise.docx",
+      "size": 46367,
+      "sha256": "aef86e7b0a113cb18dc90ed3ade225c25f16cfa3ccf67e16caa56057f17fca79",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "vs2019-buildtools-license",
+      "url": "https://visualstudio.microsoft.com/wp-content/uploads/2019/03/VS_2019_DiagnosticBuildTools_ENU.1033.docx",
+      "cache": "output/catalog/licensing-search-20261121/vs2019-buildtools.docx",
+      "size": 30250,
+      "sha256": "03c90f7595dd03827e3944af29c5647598a8ce3ef0c97d3e1f99342f73a786b1",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "vc-runtime-user-license",
+      "url": "https://visualstudio.microsoft.com/wp-content/uploads/2021/09/Visual-C-Runtime-2015-2022-License-1.docx",
+      "cache": "output/catalog/licensing-search-20261121/vc-runtime-2015-2022.docx",
+      "size": 39644,
+      "sha256": "f1e3d56ceb2ad68aae0711b910375009e651ac5530fa0760f0dea6e81e54fae1",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "sdk-nuget-license-4",
+      "url": "https://www.nuget.org/packages/Microsoft.Windows.SDK.CPP/10.0.19041.4/License",
+      "cache": "output/catalog/licensing-search-20261121/sdk19041-4-license",
+      "size": 12136,
+      "sha256": "d36d3f17df13be2d5b29e1e3d84a0cff2cc92b18fc741d580f0fe7b15d633fa6",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "sdk-nuget-license-5",
+      "url": "https://www.nuget.org/packages/Microsoft.Windows.SDK.CPP/10.0.19041.5/License",
+      "cache": "output/catalog/licensing-search-20261121/sdk19041-license",
+      "size": 12136,
+      "sha256": "3dbce6886495e7cc8f301cf89558899d52c8dbd4b3f4e1c9acaede0eb5b60554",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "sdk-license",
+      "url": "https://aka.ms/WinSDKLicenseURL",
+      "cache": "output/catalog/licensing-search-20261121/windows-sdk-license",
+      "size": 246945,
+      "sha256": "dd07eb178e00c6bba4148457fc00ff77cd4887eb521d504186fe59c9ec8bbe62",
+      "representation": "HTTP response body",
+      "mutable_url": true,
+      "effective_url": "https://download.microsoft.com/download/0/F/F/0FF2B061-47DD-4F55-89B6-FD1D8C44F14D/sdk_license.rtf",
+      "eula_id": "WIN10SDK.RTM.AUG_2018_en-US"
+    },
+    {
+      "id": "sdk-redist",
+      "url": "https://learn.microsoft.com/en-us/legal/windows-sdk/redist",
+      "cache": "output/catalog/licensing-search-20261121/sdk-redist",
+      "size": 38264,
+      "sha256": "f0c49b33309520df6f1d9357a9dad16de011bf0ad812bada59f748512fe8e9fc",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "crt-library-features",
+      "url": "https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170",
+      "cache": "output/catalog/licensing-search-20261121/ms-crt-library-features.html",
+      "size": 64782,
+      "sha256": "e129ae43d21465d0d5f113788a5d3900a958957d7d4cee821df184d6b35f3a57",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "dng-source-license",
+      "url": "https://android.googlesource.com/platform/external/dng_sdk/+/c8d0c9b1d16bfda56f15165d39e0ffa360a11123/LICENSE.source_code?format=TEXT",
+      "cache": "output/catalog/licensing-search-20261121/dng-source-license.b64",
+      "size": 6876,
+      "sha256": "ebc17612cf98127276d105d2cd3ce0c788c5910b551928525794a71858707d9a",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "dng-patents",
+      "url": "https://android.googlesource.com/platform/external/dng_sdk/+/c8d0c9b1d16bfda56f15165d39e0ffa360a11123/PATENTS?format=TEXT",
+      "cache": "output/catalog/licensing-search-20261121/dng-patents.b64",
+      "size": 4664,
+      "sha256": "daf776868edefff43b87d851cab29aba00006f0615040f70caa191e3d7cd5488",
+      "representation": "HTTP response body",
+      "mutable_url": true
+    },
+    {
+      "id": "azure-definitions",
+      "url": "https://dev.azure.com/xamarin/public/_apis/build/definitions?api-version=7.1",
+      "cache": "output/catalog/licensing-search-20261121/azure-public-definitions.json",
+      "size": 56066,
+      "sha256": "cdde66e7abf5e929305f253c855a32f03a4ac96424189d530968def54849caf8",
+      "representation": "HTTP response body",
+      "mutable_url": true,
+      "http_status": 200,
+      "returned_count": 29
+    },
+    {
+      "id": "azure-release-branch",
+      "url": "https://dev.azure.com/xamarin/public/_apis/build/builds?definitions=4&branchName=refs%2Fheads%2Frelease%2F3.119.1&%24top=100&api-version=7.1",
+      "cache": "output/catalog/licensing-search-20261121/azure-public-release-branch.json",
+      "size": 22,
+      "sha256": "24671536a99f2811863afea1306b8f2907e1febfeb03f4b272841e1bf0ee5135",
+      "representation": "HTTP response body",
+      "mutable_url": true,
+      "http_status": 200,
+      "returned_count": 0
+    },
+    {
+      "id": "azure-september-all",
+      "url": "https://dev.azure.com/xamarin/public/_apis/build/builds?minTime=2025-09-01T00%3A00%3A00Z&maxTime=2025-09-30T23%3A59%3A59Z&%24top=100&api-version=7.1",
+      "cache": "output/catalog/licensing-search-20261121/azure-public-september.json",
+      "size": 22,
+      "sha256": "24671536a99f2811863afea1306b8f2907e1febfeb03f4b272841e1bf0ee5135",
+      "representation": "HTTP response body",
+      "mutable_url": true,
+      "http_status": 200,
+      "returned_count": 0
+    },
+    {
+      "id": "azure-september-branch",
+      "url": "https://dev.azure.com/xamarin/public/_apis/build/builds?definitions=4&branchName=refs%2Fheads%2Frelease%2F3.119.1&minTime=2025-09-01T00%3A00%3A00Z&maxTime=2025-09-30T23%3A59%3A59Z&%24top=100&api-version=7.1",
+      "cache": "output/catalog/licensing-search-20261121/azure-public.json",
+      "size": 22,
+      "sha256": "24671536a99f2811863afea1306b8f2907e1febfeb03f4b272841e1bf0ee5135",
+      "representation": "HTTP response body",
+      "mutable_url": true,
+      "http_status": 200,
+      "returned_count": 0
+    },
+    {
+      "id": "azure-retained-history",
+      "url": "https://dev.azure.com/xamarin/public/_apis/build/builds?definitions=4&%24top=100&api-version=7.1",
+      "cache": "output/catalog/licensing-search-20261121/azure-public-skia-history.json",
+      "size": 609798,
+      "sha256": "1995dd6220b530ff16a4e3766f74aa4df7d6db1f33838c19bd60e605448609cd",
+      "representation": "HTTP response body",
+      "mutable_url": true,
+      "http_status": 200,
+      "returned_count": 100
+    },
+    {
+      "id": "azure-internal",
+      "url": "https://dev.azure.com/devdiv/DevDiv/_apis/build/definitions/10789?api-version=7.1",
+      "cache": "output/catalog/licensing-search-20261121/azure-internal-response",
+      "size": 15956,
+      "sha256": "0eec954ba3487efe8c688c2abe49c01386a4fa6f48a3432c7e2becee40cb9fb4",
+      "representation": "HTTP response body",
+      "mutable_url": true,
+      "http_status": 203,
+      "result": "Anonymous request redirected to sign-in; no build information obtained"
+    }
+  ],
+  "packages": [
+    {
+      "archive": "harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg",
+      "archive_sha256": "ac853418f917cd44062996ed56194306f7712081020893bf61d8c42525966d5f",
+      "id": "HarfBuzzSharp.NativeAssets.Linux",
+      "version": "8.3.1.2",
+      "published": "2025-09-23T21:29:14.877Z",
+      "license_expression": "MIT",
+      "license_url": "https://licenses.nuget.org/MIT",
+      "authors": "Microsoft",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.34.10/harfbuzzsharp.nativeassets.linux.8.3.1.2.json",
+      "package_content": "https://api.nuget.org/v3-flatcontainer/harfbuzzsharp.nativeassets.linux/8.3.1.2/harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg"
+    },
+    {
+      "archive": "harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg",
+      "archive_sha256": "306a73e811f7b37540c54e90da11ebc07a6cfa7f68766a6776c5a2ce00180664",
+      "id": "HarfBuzzSharp.NativeAssets.macOS",
+      "version": "8.3.1.2",
+      "published": "2025-09-23T21:29:17.36Z",
+      "license_expression": "MIT",
+      "license_url": "https://licenses.nuget.org/MIT",
+      "authors": "Microsoft",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.32.51/harfbuzzsharp.nativeassets.macos.8.3.1.2.json",
+      "package_content": "https://api.nuget.org/v3-flatcontainer/harfbuzzsharp.nativeassets.macos/8.3.1.2/harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg"
+    },
+    {
+      "archive": "harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg",
+      "archive_sha256": "117b14db26273a911dce8ae92a3112bb40400ece9ac4d8a43e9cf8efe97fb6db",
+      "id": "HarfBuzzSharp.NativeAssets.Win32",
+      "version": "8.3.1.2",
+      "published": "2025-09-23T21:29:23.297Z",
+      "license_expression": "MIT",
+      "license_url": "https://licenses.nuget.org/MIT",
+      "authors": "Microsoft",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.32.51/harfbuzzsharp.nativeassets.win32.8.3.1.2.json",
+      "package_content": "https://api.nuget.org/v3-flatcontainer/harfbuzzsharp.nativeassets.win32/8.3.1.2/harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg"
+    },
+    {
+      "archive": "skiasharp.nativeassets.linux.3.119.1.nupkg",
+      "archive_sha256": "4d363a6f114f936ec964a79f8af6fe37f9347930064e5983472851bd9e068e67",
+      "id": "SkiaSharp.NativeAssets.Linux",
+      "version": "3.119.1",
+      "published": "2025-09-23T21:29:34.417Z",
+      "license_expression": "MIT",
+      "license_url": "https://licenses.nuget.org/MIT",
+      "authors": "Microsoft",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.36.01/skiasharp.nativeassets.linux.3.119.1.json",
+      "package_content": "https://api.nuget.org/v3-flatcontainer/skiasharp.nativeassets.linux/3.119.1/skiasharp.nativeassets.linux.3.119.1.nupkg"
+    },
+    {
+      "archive": "skiasharp.nativeassets.macos.3.119.1.nupkg",
+      "archive_sha256": "d1024670ef753162d2790a44e19367fca515a0745cacf7836ca925c42541d34a",
+      "id": "SkiaSharp.NativeAssets.macOS",
+      "version": "3.119.1",
+      "published": "2025-09-23T21:29:40.187Z",
+      "license_expression": "MIT",
+      "license_url": "https://licenses.nuget.org/MIT",
+      "authors": "Microsoft",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.34.10/skiasharp.nativeassets.macos.3.119.1.json",
+      "package_content": "https://api.nuget.org/v3-flatcontainer/skiasharp.nativeassets.macos/3.119.1/skiasharp.nativeassets.macos.3.119.1.nupkg"
+    },
+    {
+      "archive": "skiasharp.nativeassets.win32.3.119.1.nupkg",
+      "archive_sha256": "c923e49fc4ab4a13aa862842df7109e0726df5d7ac0c8482e20008e054018b65",
+      "id": "SkiaSharp.NativeAssets.Win32",
+      "version": "3.119.1",
+      "published": "2025-09-23T21:29:50.177Z",
+      "license_expression": "MIT",
+      "license_url": "https://licenses.nuget.org/MIT",
+      "authors": "Microsoft",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2025.09.23.21.33.31/skiasharp.nativeassets.win32.3.119.1.json",
+      "package_content": "https://api.nuget.org/v3-flatcontainer/skiasharp.nativeassets.win32/3.119.1/skiasharp.nativeassets.win32.3.119.1.nupkg"
+    }
+  ],
+  "notice_comparisons": [
+    {
+      "archive": "harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg",
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+      "matches_source_after_crlf_to_lf": true,
+      "symbol_manifest_members": []
+    },
+    {
+      "archive": "harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg",
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+      "matches_source_after_crlf_to_lf": true,
+      "symbol_manifest_members": []
+    },
+    {
+      "archive": "harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg",
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+      "matches_source_after_crlf_to_lf": true,
+      "symbol_manifest_members": []
+    },
+    {
+      "archive": "skiasharp.nativeassets.linux.3.119.1.nupkg",
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+      "matches_source_after_crlf_to_lf": true,
+      "symbol_manifest_members": []
+    },
+    {
+      "archive": "skiasharp.nativeassets.macos.3.119.1.nupkg",
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+      "matches_source_after_crlf_to_lf": true,
+      "symbol_manifest_members": []
+    },
+    {
+      "archive": "skiasharp.nativeassets.win32.3.119.1.nupkg",
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5",
+      "matches_source_after_crlf_to_lf": true,
+      "symbol_manifest_members": []
+    }
+  ],
+  "input_recheck": {
+    "lock_sha256": "29a498c601d8a8b9e229d6827ca2c7e8599590d6b30cb18a92f95812e95b5d73",
+    "checked": [
+      {
+        "archive": "harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg",
+        "sha256": "ac853418f917cd44062996ed56194306f7712081020893bf61d8c42525966d5f",
+        "target": "linux",
+        "library": "runtimes/linux-x64/native/libHarfBuzzSharp.so",
+        "library_sha256": "c952458933ea7f1ce66ade61fa32e708df7dfb2ab8bae77ed5ec06f49223a75c"
+      },
+      {
+        "archive": "harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg",
+        "sha256": "306a73e811f7b37540c54e90da11ebc07a6cfa7f68766a6776c5a2ce00180664",
+        "target": "macos",
+        "library": "runtimes/osx/native/libHarfBuzzSharp.dylib",
+        "library_sha256": "dfaf1adb2772c788bec97f82b282c4e75ba92dfe3a1ffe0cb5449e4158f2c528"
+      },
+      {
+        "archive": "harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg",
+        "sha256": "117b14db26273a911dce8ae92a3112bb40400ece9ac4d8a43e9cf8efe97fb6db",
+        "target": "win32",
+        "library": "runtimes/win-x64/native/libHarfBuzzSharp.dll",
+        "library_sha256": "9b9b8b3de63088f3cf67fc87207f98f663e6e9b2f33a68158507e864a9eba6a6"
+      },
+      {
+        "archive": "skiasharp.nativeassets.linux.3.119.1.nupkg",
+        "sha256": "4d363a6f114f936ec964a79f8af6fe37f9347930064e5983472851bd9e068e67",
+        "target": "linux",
+        "library": "runtimes/linux-x64/native/libSkiaSharp.so",
+        "library_sha256": "60d85e06fe74c61db577c2a58311b1567d2b9cba137510d22795bffdc7766e8a"
+      },
+      {
+        "archive": "skiasharp.nativeassets.macos.3.119.1.nupkg",
+        "sha256": "d1024670ef753162d2790a44e19367fca515a0745cacf7836ca925c42541d34a",
+        "target": "macos",
+        "library": "runtimes/osx/native/libSkiaSharp.dylib",
+        "library_sha256": "47afd8ebe1f9612916d32ff71140ac4531f2154aa75973c8e9ef047e7ed7a64e"
+      },
+      {
+        "archive": "skiasharp.nativeassets.win32.3.119.1.nupkg",
+        "sha256": "c923e49fc4ab4a13aa862842df7109e0726df5d7ac0c8482e20008e054018b65",
+        "target": "win32",
+        "library": "runtimes/win-x64/native/libSkiaSharp.dll",
+        "library_sha256": "de22ab3e7b83644614efb55da18ef0965c3976ba4df99017f1025fbdb1893ff1"
+      }
+    ]
+  },
+  "findings": {
+    "component_manifest": "Found but conflicts with release source revisions",
+    "gcc_runtime": "Compiler-family license and exception basis established; actual build inputs unconfirmed",
+    "windows": "Conditional downstream and SDK static-library permission texts located; exact-build applicability and recipient obligations need review",
+    "adobe": "Existing pinned software/patent texts reconfirmed; maintainer disposition remains pending",
+    "native_provenance": "No exact producing-build attestation recovered from queried public records"
+  }
+}

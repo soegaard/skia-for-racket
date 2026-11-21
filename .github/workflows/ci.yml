@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/catalog-ci']
     tags: ['v*']
   pull_request:
   workflow_dispatch:

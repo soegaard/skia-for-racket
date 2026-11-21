@@ -23,7 +23,7 @@ concurrency:
   group: acceptance-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Central CI owns full regressions on PRs, main pushes and v* tags.
+# Central CI owns full regressions on PRs, main/catalog-ci pushes and v* tags.
 # Standalone dispatch and other pushes keep full regressions by default.
 # Acceptance success alone does not certify the separate CI required gate.
 jobs:

@@ -101,7 +101,7 @@ def automatic_regression_mode(event: str, ref: str, requested: str = '') -> str:
     tag_prefix = 'refs/tags/'
     tag = ref[len(tag_prefix):] if ref.startswith(tag_prefix) else ''
     covered = event == 'pull_request' or (
-        event == 'push' and (ref == 'refs/heads/main' or
+        event == 'push' and (ref in ('refs/heads/main', 'refs/heads/codex/catalog-ci') or
                              (tag.startswith('v') and '/' not in tag)))
     return 'none' if covered else 'full'
 

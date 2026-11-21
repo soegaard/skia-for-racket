@@ -97,6 +97,10 @@ receipt cannot certify its own still-running job or a failed artifact upload.
 
 ## Run it
 
+For the initial receipt-only CI trial, use [push readiness](PUSH-READINESS.md).
+That push does not dispatch this workflow. This full release workflow uploads
+the complete candidate archives and retains all publication-review gates.
+
 After committing and pushing the implementation, choose **Release candidate →
 Run workflow** in GitHub Actions and select the candidate ref. The GitHub CLI
 alternative is:

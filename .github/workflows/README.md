@@ -8,10 +8,10 @@ and evidence rules are documented in [CI](../../docs/CI.md).
 
 | Workflow | Role |
 | --- | --- |
-| [ci.yml](ci.yml) | Central source regressions, isolated package installation, CPU checks, and EGL matrix. Runs on pull requests, main pushes, version tags, or explicit invocation. |
+| [ci.yml](ci.yml) | Central source regressions, isolated package installation, CPU checks, and EGL matrix. Runs on pull requests, main or `codex/catalog-ci` pushes, version tags, or explicit invocation. |
 | [acceptance.yml](acceptance.yml) | Acceptance artifacts and selected validation profiles; complements, rather than replaces, the central CI gate. |
 | [api-inventory.yml](api-inventory.yml) | Checks reviewed native/API inventory and source consistency on pushes, pull requests, or manual dispatch. |
-| [catalog-package.yml](catalog-package.yml) | Exact unpublished native/font/source artifacts, dependency-driven manual builds, OS network denial, DrDr and rebuilt-package qualification on the required platform/version matrix. |
+| [catalog-package.yml](catalog-package.yml) | Exact unpublished archives, dependency-driven manual builds, OS network denial, DrDr and rebuilt-package checks. Standalone CI uploads JSON receipts only; the full release caller retains the required archives. |
 | [release-candidate.yml](release-candidate.yml) | Explicitly dispatched release-candidate matrix and evidence collection. |
 | [pages.yml](pages.yml) | Manually builds registered Scribble manuals, collects the static site, and deploys GitHub Pages. |
 
@@ -37,3 +37,11 @@ document-inspection, and platform requirements.
 Keep the existing read-only pull-request trust boundary and pinned action
 revisions when maintaining these files. Documentation deployment has separate
 write permissions; it is not an automatic pull-request action.
+
+For the prepared test branch and exact push command, see
+[push readiness](../../docs/PUSH-READINESS.md). Automatic catalog checks still
+assemble and test all candidate ZIPs on the runners. Their asset upload contains
+only verified JSON receipts and checksums, while the existing rendered test
+outputs in CI/Acceptance remain required. The explicitly dispatched Release
+candidate workflow retains its complete native/font/source archive set and
+cannot accept receipt-only evidence as a substitute.

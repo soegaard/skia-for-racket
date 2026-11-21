@@ -34,10 +34,24 @@ jobs:
           python tools/build-native-packages.py --lock packaging/native-assets.json --inputs output/catalog-assets/inputs --output output/catalog-repro --local-candidate
           python tools/compare-native-artifacts.py output/catalog-assets/artifacts output/catalog-repro
       - name: Keep one bounded candidate archive set
+        # github.workflow names the caller for reusable workflows. Ordinary
+        # pushes/PRs retain receipts only; the manual full release keeps ZIPs.
+        if: github.workflow == 'Release candidate'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: catalog-assets-${{ github.run_attempt }}
           path: output/catalog-assets/artifacts/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Collect catalog asset receipts without payloads
+        if: github.workflow != 'Release candidate'
+        run: python tools/collect-catalog-asset-evidence.py --artifacts output/catalog-assets/artifacts --output output/catalog-assets/evidence
+      - name: Keep catalog asset receipts without payloads
+        if: github.workflow != 'Release candidate'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: catalog-asset-receipts-${{ github.run_attempt }}
+          path: output/catalog-assets/evidence/
           if-no-files-found: error
           retention-days: 30
 

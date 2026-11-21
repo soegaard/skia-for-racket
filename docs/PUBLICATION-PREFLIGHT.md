@@ -2,6 +2,9 @@
 
 Read-only review on November 21, 2026. No push, tag, release upload, catalog
 registration or repository/account change is authorized or performed.
+The later [initial CI push preparation](PUSH-READINESS.md) gives the maintainer
+a dedicated test branch with receipt-only automatic catalog uploads. The
+maintainer performs that push; the agent has not pushed it.
 
 ## Proposed identities
 
@@ -43,7 +46,7 @@ beside them. A mutable branch URL is not the proposed package source.
 | Native redistribution | Review the [specific build/runtime/Adobe questions](../packaging/REDISTRIBUTION-REVIEW.md); obtain exact upstream build/link evidence and Windows runtime terms, then record a substantive maintainer disposition | Upstream build maintainers supply provenance; project maintainer decides redistribution basis |
 | Intel, Windows, ordinary Linux and natipkg execution | Run both released CS versions with `tools/run-catalog-ci.py` on native hosts; retain complete validator receipts | Runner operator; project maintainer supplies authorized infrastructure |
 | Same-attempt release evidence | Run the existing Release candidate workflow on the exact committed candidate; all CI, Acceptance, API inventory and catalog jobs plus the aggregator must pass | Maintainer/authorized GitHub runner operator |
-| GitHub access to candidate | Supply an authorized existing runner able to read a local checkout, or separately authorize exposing the candidate ref and native Actions artifacts; current instructions prohibit pushing | Project maintainer |
+| GitHub access to candidate | Push the prepared `codex/catalog-ci` branch for receipt-only automatic CI; separately review the full archive transfer before an eventual Release candidate dispatch | Project maintainer |
 | Names/contact/immutable URL | Confirm catalog-account identity and proposed release location against the final exact manifest | Project maintainer |
 
 Local ARM64 checks and source-policy validation cannot close these external
@@ -77,8 +80,9 @@ and made available, the prepared complete release invocation is:
 gh workflow run release-candidate.yml --repo soegaard/skia-for-racket --ref EXACT_CANDIDATE_REF
 ```
 
-This command has not been run. Automatic push/PR catalog jobs upload native
-archives to Actions artifacts; review that transfer before recommending a push.
+This command has not been run. Automatic push/PR catalog jobs retain verified
+JSON receipts only. The full Release candidate caller retains native archives;
+review that later transfer before dispatching it.
 
 ## Later publication sequence
 

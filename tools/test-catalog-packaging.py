@@ -9,7 +9,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 import catalog_release as c
+import catalog_asset_evidence as asset_evidence
 import native_packages as n
 from catalog_execution import RUNTIME_ENVIRONMENTS, windows_network_programs
 
@@ -155,6 +157,114 @@ class WindowsNetworkCoverage(unittest.TestCase):
         self.assertEqual(len(RUNTIME_ENVIRONMENTS), len(set(RUNTIME_ENVIRONMENTS)))
         self.assertTrue(all(Path(name).name == name and name not in ('.', '..')
                             for name in RUNTIME_ENVIRONMENTS))
+
+
+class ReceiptOnlyAssets(unittest.TestCase):
+    def assets(self, root, *, clean=True, source_commit=COMMIT):
+        folder = root / 'artifacts'
+        folder.mkdir()
+        rows = []
+        names = [target['package'] for target in n.TARGETS.values()] + ['skia-fonts-1']
+        for name in names:
+            archive = folder / (name + '.zip')
+            identity = n.write_zip(archive, {'payload/private-library.dll': b'NATIVE-PAYLOAD-SENTINEL'})
+            row = dict(identity, archive=archive.name, source_commit_observed=COMMIT,
+                       catalog_candidate_validated=False)
+            (folder / (name + '.receipt.json')).write_bytes(n.json_bytes(row))
+            rows.append(row)
+        (folder / 'native-artifacts.json').write_bytes(n.json_bytes(dict(schema=1, artifacts=rows)))
+        n.write_zip(folder / 'skia.zip', {
+            'private/source-identity.json': n.json_bytes(dict(
+                schema=1, source_commit_observed=source_commit, source_worktree_clean=clean)),
+            'source.rkt': b'#lang racket/base\n'})
+        return folder
+
+    def test_only_receipts_and_digests_leave_the_artifact_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifacts = self.assets(root)
+            (artifacts / 'extra.dll').write_bytes(b'NATIVE-PAYLOAD-SENTINEL')
+            (artifacts / 'extra.json').write_text('{"do_not_copy": true}')
+            output = root / 'evidence'
+            report = asset_evidence.collect(artifacts, output)
+            self.assertEqual(len(list(output.iterdir())), 6)
+            self.assertTrue(all(p.suffix == '.json' for p in output.iterdir()))
+            self.assertFalse((output / 'extra.json').exists())
+            self.assertFalse(any(b'NATIVE-PAYLOAD-SENTINEL' in p.read_bytes() for p in output.iterdir()))
+            self.assertEqual(len(report['archives']), 5)
+            self.assertEqual(report['source']['source_commit_observed'], COMMIT)
+            self.assertFalse(report['catalog_candidate_validated'])
+            self.assertFalse(report['native_payloads_uploaded'])
+
+    def test_modified_archive_is_rejected_even_with_a_new_checksum(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifacts = self.assets(root)
+            archive = next(p for p in artifacts.glob('*.zip') if p.name != 'skia.zip')
+            data = archive.read_bytes() + b'changed'
+            archive.write_bytes(data)
+            archive.with_suffix('.zip.CHECKSUM').write_text(hashlib.sha1(data).hexdigest())
+            with self.assertRaisesRegex(ValueError, 'differs from receipt'):
+                asset_evidence.collect(artifacts, root / 'evidence')
+            self.assertFalse((root / 'evidence').exists())
+
+    def test_individual_and_aggregate_receipts_must_agree(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifacts = self.assets(root)
+            receipt = next(artifacts.glob('*.receipt.json'))
+            data = n.read_json(receipt)
+            data['source_commit_observed'] = 'c' * 40
+            receipt.write_bytes(n.json_bytes(data))
+            with self.assertRaisesRegex(ValueError, 'receipts differ'):
+                asset_evidence.collect(artifacts, root / 'evidence')
+
+    def test_archive_names_cannot_escape_the_allowlist(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifacts = self.assets(root)
+            manifest = n.read_json(artifacts / 'native-artifacts.json')
+            manifest['artifacts'][0]['archive'] = '../outside.zip'
+            (artifacts / 'native-artifacts.json').write_bytes(n.json_bytes(manifest))
+            with self.assertRaisesRegex(ValueError, 'unknown/duplicate'):
+                asset_evidence.collect(artifacts, root / 'evidence')
+            self.assertFalse((root / 'evidence').exists())
+
+    def test_dirty_source_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.assertRaisesRegex(ValueError, 'clean committed'):
+                asset_evidence.collect(self.assets(root, clean=False), root / 'evidence')
+
+    def test_data_and_source_must_name_the_same_commit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.assertRaisesRegex(ValueError, 'different commits'):
+                asset_evidence.collect(self.assets(root, source_commit='c' * 40), root / 'evidence')
+
+    def test_dirty_data_package_receipt_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifacts = self.assets(root)
+            native = n.read_json(artifacts / 'native-artifacts.json')
+            row = native['artifacts'][0]
+            row['source_worktree_clean'] = False
+            (artifacts / (row['archive'].removesuffix('.zip') + '.receipt.json')).write_bytes(n.json_bytes(row))
+            (artifacts / 'native-artifacts.json').write_bytes(n.json_bytes(native))
+            with self.assertRaisesRegex(ValueError, 'dirty worktree'):
+                asset_evidence.collect(artifacts, root / 'evidence')
+            self.assertFalse((root / 'evidence').exists())
+
+    def test_receipt_only_artifact_cannot_replace_full_release_archives(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / 'evidence'
+            asset_evidence.collect(self.assets(root), output)
+            n.write_zip(root / 'receipt-only.zip', {p.name: p.read_bytes() for p in output.iterdir()})
+            (root / 'artifact-index.json').write_text(json.dumps({'catalog-assets-1': {'file': 'receipt-only.zip'}}))
+            with patch.object(c, 'reviewed_lock', return_value=({}, SHA)):
+                with self.assertRaises((KeyError, ValueError)):
+                    c.verify(root, root, commit=COMMIT, attempt=1)
 
 
 if __name__ == '__main__': unittest.main()

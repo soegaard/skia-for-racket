@@ -3450,6 +3450,16 @@
           "expected": "success",
           "name": "Keep one bounded candidate archive set",
           "number": 6
+        },
+        {
+          "expected": "skipped",
+          "name": "Collect catalog asset receipts without payloads",
+          "number": 7
+        },
+        {
+          "expected": "skipped",
+          "name": "Keep catalog asset receipts without payloads",
+          "number": 8
         }
       ],
       "workflow": ".github/workflows/catalog-package.yml"
@@ -3972,11 +3982,11 @@
   "stage": "0.79",
   "workflow": ".github/workflows/release-candidate.yml",
   "workflow_sources": {
-    ".github/workflows/acceptance.yml": "92d8dcbfd57cfac73744f07fa29665012824e81dbbcd22a0969bec5b40182f4f",
+    ".github/workflows/acceptance.yml": "6f50a3c8d12e12d061b46ffe68f2e6c5ae8d825de0475359230c68cb642a723b",
     ".github/workflows/advanced-canvases.yml": "04ff7b0c3b635bb66abc9819df3d660e0ab146011dccfa4611cfa7bc9edf1102",
     ".github/workflows/api-inventory.yml": "b309a4a0591b86862b4354007c286402a9fee2a748aba81c66f43a1bd58648a1",
-    ".github/workflows/catalog-package.yml": "1d4ad912631e921a8d294ad2e7c613ab45cfe193909aaf03df8e22fe9c0e1255",
-    ".github/workflows/ci.yml": "25104103d510fc862a0217f8e29a41ee53ee4f9f55a0d24a3ddf721cd2033857",
+    ".github/workflows/catalog-package.yml": "4d36daa88f747fa638f503bb20d521532cc54b5081903fb2377669b7a924ec83",
+    ".github/workflows/ci.yml": "d96f6c2542cb23dd6adcb3f4c970b8aaafcbc514e8ee1bea47f6db9250dfb0dc",
     ".github/workflows/codec-queries.yml": "fd3c1bd0b529449afef9d124348bee64d0b552ecaa2ff1ae5c7b8d72232ecc89",
     ".github/workflows/dc-output.yml": "32c60d279b234f15bd7b5b0782550f797d0f0cdc2714ea075b7b4454cd2c729d",
     ".github/workflows/effects.yml": "0c122725f3397da2f81d6a17e7b3a721dac5e0efc2b1074c70c54dced5c427a8",
@@ -3989,7 +3999,7 @@
     ".github/workflows/gpu-formats.yml": "483bc5ff6d3cf20f634c2dc4ae6e063a7598b6f11d4c4b8a62f9af3ddb9ee535",
     ".github/workflows/image-operations.yml": "00221adbf6677e17c7fd8bbff963ff36354a0a861ed9a0c559d3bdeb056ac3de",
     ".github/workflows/integer-pixels.yml": "c39513f7e85767e006558952e6adae6a4ff230861e7509c59600e3366bc22a87",
-    ".github/workflows/pages.yml": "31787c71623353dc42ed20c03158067d30629063bb025bbf88dc961f57c4c2ef",
+    ".github/workflows/pages.yml": "8e24a56a839749acda47d6d62a0f42096ac9de661741d65004279bdceb6d5447",
     ".github/workflows/release-candidate.yml": "d04f6feff37894dcdad88047822351a0900c51ea45247e6fe1b08ca15147b45c",
     ".github/workflows/render-canvas.yml": "f305bd43dc9cb0ef8e5e1227c8bb62fe0b9de06d19b353065185588cacba243f",
     ".github/workflows/streams.yml": "cdec4d730667e19412894b862ba26cab4d83b761b2e3593877f8639c05531678",
@@ -3997,6 +4007,6 @@
     ".github/workflows/typefaces.yml": "bbdca7f1cb59783c35be15105a761d2da84fe372df3bb9b10b401f5b2fd9fffd",
     "tools/ci-matrix.json": "b3e7f9298c6694337234d39eae47a66217d056ff97dc38b8b6d2ba5cdf7771e9",
     "tools/ci_matrix.py": "d799db9446dd27784a58a8f6e101ff6bc63d702a793b351b5e31cc510ee25044",
-    "tools/validation_regressions.py": "f6aaef346fe50b0fa9900d22bea79007b3540180f2c89a3f18bf64f3622b3634"
+    "tools/validation_regressions.py": "dec453e7b62499f79bdaba6c2b668a4549286c62cee49eaf15c5de9776c240cc"
   }
 }

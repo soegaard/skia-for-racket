@@ -1,7 +1,7 @@
 name: Publish Skia documentation
 
-# Documentation deployment is deliberately manual. Required CI, API-inventory,
-# and acceptance workflows remain the only automatic push/PR gates.
+# Documentation deployment is deliberately manual. CI, API inventory,
+# Acceptance and catalog packaging are the automatic push/PR gates.
 on:
   workflow_dispatch:
 

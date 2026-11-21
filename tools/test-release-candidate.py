@@ -163,6 +163,34 @@ class Matrices(unittest.TestCase):
         with self.assertRaises(ValueError): graph.matrix_rows({'a':list(range(100)), 'b':list(range(100))}, {})
 
 
+class CatalogRetention(unittest.TestCase):
+    def steps(self, workflow):
+        data = graph.workflow_data((ROOT / '.github/workflows/catalog-package.yml').read_text())
+        context = {'github.workflow': workflow}
+        return [step for step in data['jobs']['assets']['steps']
+                if graph.condition(step.get('if'), context)]
+
+    def test_standalone_push_pr_and_dispatch_keep_no_candidate_archives(self):
+        for caller in ('Catalog packaging', 'CI', 'Acceptance', 'API inventory'):
+            with self.subTest(caller=caller):
+                steps = self.steps(caller)
+                uploads = [s for s in steps if s.get('uses', '').startswith('actions/upload-artifact@')]
+                self.assertEqual(len(uploads), 1)
+                self.assertEqual(uploads[0]['with']['path'], 'output/catalog-assets/evidence/')
+                self.assertTrue(uploads[0]['with']['name'].startswith('catalog-asset-receipts-'))
+                self.assertTrue(any('collect-catalog-asset-evidence.py' in s.get('run', '') for s in steps))
+                self.assertTrue(any('compare-native-artifacts.py' in s.get('run', '') for s in steps))
+
+    def test_full_release_still_requires_the_original_candidate_archive_set(self):
+        steps = self.steps('Release candidate')
+        uploads = [s for s in steps if s.get('uses', '').startswith('actions/upload-artifact@')]
+        self.assertEqual(len(uploads), 1)
+        self.assertEqual(uploads[0]['with']['name'], 'catalog-assets-${{ github.run_attempt }}')
+        self.assertEqual(uploads[0]['with']['path'], 'output/catalog-assets/artifacts/')
+        self.assertFalse(any('collect-catalog-asset-evidence.py' in s.get('run', '') for s in steps))
+        self.assertTrue(any('compare-native-artifacts.py' in s.get('run', '') for s in steps))
+
+
 class Graph(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
