@@ -237,10 +237,13 @@ def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -
         'tools/overlay-candidate-catalog.rkt',
         'tools/check-rebuilt-native-info.rkt',
         'tools/catalog-from-archives.py', 'tools/validate-catalog-package.py', 'tools/catalog-smoke.rkt',
-        'tools/catalog_release.py', 'tools/catalog_snapshot.py', 'tools/run-catalog-ci.py', 'tools/prepare-natipkg-runtime.py',
+        'tools/catalog_release.py', 'tools/catalog_snapshot.py', 'tools/catalog_execution.py',
+        'tools/run-catalog-ci.py', 'tools/prepare-natipkg-runtime.py',
         'tools/compare-native-artifacts.py', 'tools/catalog-fixtures/CMakeLists.txt', 'tools/catalog-fixtures/wrong-abi.c',
         '.github/workflows/catalog-package.yml', 'docs/PACKAGE-PUBLICATION.md',
         'docs/PACKAGE-PUBLICATION-AUDIT.md', 'docs/CATALOG-VALIDATION.md',
+        'docs/PUBLICATION-PREFLIGHT.md',
+        'NOTICE.md', 'plans/README.md', 'plans/skia-package-catalog-publication.md',
     })
     names.update(p.relative_to(root).as_posix() for p in (root / 'packaging').rglob('*') if p.is_file())
     for cap in catalog['features']['capabilities']:

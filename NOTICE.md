@@ -20,6 +20,10 @@ complete SIL OFL notices and the font name-table copyright records. Binding MIT
 licensing does not relicense these assets. Maintainer redistribution sign-off
 is pending; local candidate assembly is not permission to publish.
 
+This product includes DNG technology under license by Adobe Systems Incorporated.
+The DNG source, technology, notice and patent terms are retained in
+`packaging/licenses/dng-*.txt` and in every native data package.
+
 The package is an independent project and is not affiliated with, endorsed by,
 or an official binding of the Skia or SkiaSharp projects.
 

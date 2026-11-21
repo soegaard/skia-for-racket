@@ -1,0 +1,491 @@
+{
+  "basis": "Pinned source recipes and static inspection; no exact build attestation or redistribution approval",
+  "binaries": [
+    {
+      "archive": "harfbuzzsharp.nativeassets.linux.8.3.1.2.nupkg",
+      "archive_sha256": "ac853418f917cd44062996ed56194306f7712081020893bf61d8c42525966d5f",
+      "compiler_comment_strings": [
+        "GCC: (Debian 8.3.0-6) 8.3.0",
+        "Debian clang version 13.0.1-6~deb10u4"
+      ],
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "ELF64",
+        "needed": [
+          "libpthread.so.0",
+          "libm.so.6",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "required_symbol_versions": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3"
+        ],
+        "rpath_runpath": []
+      },
+      "library": "runtimes/linux-x64/native/libHarfBuzzSharp.so",
+      "library_sha256": "c952458933ea7f1ce66ade61fa32e708df7dfb2ab8bae77ed5ec06f49223a75c",
+      "nuget_signature": {
+        "cryptographically_verified": false,
+        "present": true,
+        "sha256": "5e7f7a99059b1fdbfc40d91124d2a5453275018f51dfcad1139048ae1c147dc2",
+        "size": 25732
+      }
+    },
+    {
+      "archive": "harfbuzzsharp.nativeassets.macos.8.3.1.2.nupkg",
+      "archive_sha256": "306a73e811f7b37540c54e90da11ebc07a6cfa7f68766a6776c5a2ce00180664",
+      "inspection": {
+        "architectures": [
+          "aarch64",
+          "x86_64"
+        ],
+        "format": "Mach-O universal",
+        "slices": [
+          {
+            "architecture": "x86_64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libHarfBuzzSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              }
+            ],
+            "minimum_os": [
+              "10.13.0"
+            ]
+          },
+          {
+            "architecture": "aarch64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libHarfBuzzSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              }
+            ],
+            "minimum_os": [
+              "11.0.0"
+            ]
+          }
+        ]
+      },
+      "library": "runtimes/osx/native/libHarfBuzzSharp.dylib",
+      "library_sha256": "dfaf1adb2772c788bec97f82b282c4e75ba92dfe3a1ffe0cb5449e4158f2c528",
+      "nuget_signature": {
+        "cryptographically_verified": false,
+        "present": true,
+        "sha256": "f84ea9d07b5e45672dc7753c73e5f3fc293c5db4a02c91fc96f4213d156cca42",
+        "size": 25730
+      }
+    },
+    {
+      "archive": "harfbuzzsharp.nativeassets.win32.8.3.1.2.nupkg",
+      "archive_sha256": "117b14db26273a911dce8ae92a3112bb40400ece9ac4d8a43e9cf8efe97fb6db",
+      "delay_import_directory": {
+        "directory_count": 16,
+        "rva": 0,
+        "size": 0
+      },
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "PE32+",
+        "imports": [
+          "KERNEL32.dll"
+        ]
+      },
+      "library": "runtimes/win-x64/native/libHarfBuzzSharp.dll",
+      "library_sha256": "9b9b8b3de63088f3cf67fc87207f98f663e6e9b2f33a68158507e864a9eba6a6",
+      "linker_version": [
+        14,
+        29
+      ],
+      "nuget_signature": {
+        "cryptographically_verified": false,
+        "present": true,
+        "sha256": "b8cac2d8acf505340b8d8f45bcdbad3db7a773b32863a9440aa6aa25e2bb134f",
+        "size": 25731
+      }
+    },
+    {
+      "archive": "skiasharp.nativeassets.linux.3.119.1.nupkg",
+      "archive_sha256": "4d363a6f114f936ec964a79f8af6fe37f9347930064e5983472851bd9e068e67",
+      "compiler_comment_strings": [
+        "GCC: (Debian 8.3.0-6) 8.3.0",
+        "Debian clang version 13.0.1-6~deb10u4"
+      ],
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "ELF64",
+        "needed": [
+          "libpthread.so.0",
+          "libfontconfig.so.1",
+          "libdl.so.2",
+          "libm.so.6",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "required_symbol_versions": [
+          "GLIBC_2.14",
+          "GLIBC_2.16",
+          "GLIBC_2.17",
+          "GLIBC_2.2.5",
+          "GLIBC_2.27",
+          "GLIBC_2.3",
+          "GLIBC_2.3.2",
+          "GLIBC_2.7"
+        ],
+        "rpath_runpath": []
+      },
+      "library": "runtimes/linux-x64/native/libSkiaSharp.so",
+      "library_sha256": "60d85e06fe74c61db577c2a58311b1567d2b9cba137510d22795bffdc7766e8a",
+      "nuget_signature": {
+        "cryptographically_verified": false,
+        "present": true,
+        "sha256": "e2fceced895037d993bcc6737a536cec696b027a387ef9766767b130e65a8612",
+        "size": 25732
+      }
+    },
+    {
+      "archive": "skiasharp.nativeassets.macos.3.119.1.nupkg",
+      "archive_sha256": "d1024670ef753162d2790a44e19367fca515a0745cacf7836ca925c42541d34a",
+      "inspection": {
+        "architectures": [
+          "aarch64",
+          "x86_64"
+        ],
+        "format": "Mach-O universal",
+        "slices": [
+          {
+            "architecture": "x86_64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libSkiaSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libobjc.A.dylib"
+              }
+            ],
+            "minimum_os": [
+              "10.13.0"
+            ]
+          },
+          {
+            "architecture": "aarch64",
+            "dylibs": [
+              {
+                "command": "0xd",
+                "name": "@rpath/libSkiaSharp.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Metal.framework/Versions/A/Metal"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libc++.1.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libSystem.B.dylib"
+              },
+              {
+                "command": "0xc",
+                "name": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+              },
+              {
+                "command": "0xc",
+                "name": "/usr/lib/libobjc.A.dylib"
+              }
+            ],
+            "minimum_os": [
+              "11.0.0"
+            ]
+          }
+        ]
+      },
+      "library": "runtimes/osx/native/libSkiaSharp.dylib",
+      "library_sha256": "47afd8ebe1f9612916d32ff71140ac4531f2154aa75973c8e9ef047e7ed7a64e",
+      "nuget_signature": {
+        "cryptographically_verified": false,
+        "present": true,
+        "sha256": "350a380821b8fa495938a1962dbbdc3f71c10c949ddc252c7f5e89cecf7e9929",
+        "size": 25730
+      }
+    },
+    {
+      "archive": "skiasharp.nativeassets.win32.3.119.1.nupkg",
+      "archive_sha256": "c923e49fc4ab4a13aa862842df7109e0726df5d7ac0c8482e20008e054018b65",
+      "delay_import_directory": {
+        "directory_count": 16,
+        "rva": 0,
+        "size": 0
+      },
+      "inspection": {
+        "architectures": [
+          "x86_64"
+        ],
+        "format": "PE32+",
+        "imports": [
+          "ole32.dll",
+          "FONTSUB.dll",
+          "USER32.dll",
+          "d3d12.dll",
+          "D3DCOMPILER_47.dll",
+          "KERNEL32.dll"
+        ]
+      },
+      "library": "runtimes/win-x64/native/libSkiaSharp.dll",
+      "library_sha256": "de22ab3e7b83644614efb55da18ef0965c3976ba4df99017f1025fbdb1893ff1",
+      "linker_version": [
+        14,
+        0
+      ],
+      "nuget_signature": {
+        "cryptographically_verified": false,
+        "present": true,
+        "sha256": "873e6cf29af80e1a949b43e643e99f6cc474cfd24149210ed4f6e9cf26c87327",
+        "size": 25731
+      }
+    }
+  ],
+  "date": "2026-11-21",
+  "nuget_signatures_verified": false,
+  "primary_sources": [
+    {
+      "id": "linux-build",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "202e24acb2969c2921dc51c432e7f4a78e7f5af599c7f6dcea48782b1ed5b58c",
+      "size": 6595,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/native/linux/build.cake"
+    },
+    {
+      "id": "win-build",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "85838aadb2781dd53e0dc7669dc65a0d082f3f82d382493dafb348993d27e372",
+      "size": 4077,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/native/windows/build.cake"
+    },
+    {
+      "id": "mac-build",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "2f35d647836c28d046c531a5ea5d80a42203f66cb94078707116dd4755aec95d",
+      "size": 2681,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/native/macos/build.cake"
+    },
+    {
+      "id": "native-shared",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "8d7c96916588c9d2b895ad99739375dafa2a22f8800203c3a352e70a4fad0523",
+      "size": 4876,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/cake/native-shared.cake"
+    },
+    {
+      "id": "skia-config",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "977d91e0fe3bad99bca3c70a01d6a1340bd68db1c5fdb89eda9e7de65048a5ab",
+      "size": 9371,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/gn/skia.gni"
+    },
+    {
+      "id": "skia-build",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "70de3c0a9d7d9f9a2ea09bb29994bb501fc7c8cd424f727ac3b08abb0ea3a438",
+      "size": 98160,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/BUILD.gn"
+    },
+    {
+      "id": "skia-deps",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "022000bf923415adf0c483cc437927d4c6d73682b353227ece27481bc0e028c7",
+      "size": 9013,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/DEPS"
+    },
+    {
+      "id": "freetype-build",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "6e04c7e39efb2575f7db7d95ea8dd5ce38bc254d628481723e9a76d40fe4bb40",
+      "size": 3742,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/third_party/freetype2/BUILD.gn"
+    },
+    {
+      "id": "codec-deps",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "9e4e4464c1ccb12cdf0f56d43b7cda6710d3e736a23b8f3ae4f18d057d5c429b",
+      "size": 8582,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/third_party/dng_sdk/BUILD.gn"
+    },
+    {
+      "id": "linux-pipeline",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "9f292dca234cb974f7855f6d152aeac39c1346aeb4db7c0dddf06f4fb6072a88",
+      "size": 2165,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-templates-stages-native-linux.yml"
+    },
+    {
+      "id": "linux-matrix",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "c5493d89cab57c781e9627bf61a017e2abaff2be2fd2b1f0834f21f446448c46",
+      "size": 1684,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-templates-jobs-linux-matrix.yml"
+    },
+    {
+      "id": "windows-pipeline",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "906884244bc266944a6158e52eeaefbedce7a3d4ce2e0af52961c97ee4322752",
+      "size": 7761,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/azure-templates-stages-native-windows.yml"
+    },
+    {
+      "id": "docker-x64",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "f9f9af831edcf8a9f5c037f8c98046c0b863a0444450aec86f3740cc51729491",
+      "size": 1120,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/Docker/debian/amd64/Dockerfile"
+    },
+    {
+      "id": "versions",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "4df9f426150f4bb4b45e8b8deb052e9fee17d9b92464ee99e5c22b5e0d957edb",
+      "size": 4741,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/scripts/VERSIONS.txt"
+    },
+    {
+      "id": "submodules",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "bf22cc02b77906ab208afe759eb356ba1e2ebb1be9961aa9ea40c2792b9e7b4d",
+      "size": 380,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/.gitmodules"
+    },
+    {
+      "id": "hb-windows-project",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "59bcaca1dff8e707eca52bc7efb747ca4913d78ecb94800f3b3d8f0761d81e0c",
+      "size": 13143,
+      "url": "https://github.com/mono/SkiaSharp/blob/cc78b5933d23e6383db5d246e70db915770d55d6/native/windows/libHarfBuzzSharp/libHarfBuzzSharp.vcxproj"
+    },
+    {
+      "id": "skia-modules-skottie",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "b8419bbd2a377fb0fc9b2e297a857b1f04373824b9e1085f6183d11417b1661a",
+      "size": 4415,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/modules/skottie/BUILD.gn"
+    },
+    {
+      "id": "skia-modules-skshaper",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "b862e6b6b742f1ef4511b5a6b1a13549191834676231b0612c07e40502b6b155",
+      "size": 1940,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/modules/skshaper/BUILD.gn"
+    },
+    {
+      "id": "skia-gn-build",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "ddb6c90eac5344f009584b601b3849c675a388136665b2a579015457717092b1",
+      "size": 8303,
+      "url": "https://github.com/mono/skia/blob/40f75dc0051d141913c07c20d4c19590c7da0cb7/gn/BUILDCONFIG.gn"
+    },
+    {
+      "id": "gcc-exception",
+      "representation": "UTF-8 text returned by the GitHub repository-file connector",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "size": 3324,
+      "url": "https://github.com/gcc-mirror/gcc/blob/releases/gcc-12.2.0/COPYING.RUNTIME"
+    }
+  ],
+  "redistribution_approved": false,
+  "schema": 1,
+  "skia_commit": "40f75dc0051d141913c07c20d4c19590c7da0cb7",
+  "skiasharp_commit": "cc78b5933d23e6383db5d246e70db915770d55d6",
+  "upstream_versions": {
+    "harfbuzz": "8.3.1.2",
+    "skia": "3.119.1"
+  }
+}

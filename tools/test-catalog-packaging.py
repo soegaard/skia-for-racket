@@ -2,13 +2,16 @@
 """Catalog evidence must reject partial, mismatched and fabricated receipts."""
 import copy
 import hashlib
+import importlib.util
 import json
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 import catalog_release as c
 import native_packages as n
+from catalog_execution import RUNTIME_ENVIRONMENTS, windows_network_programs
 
 SHA = 'a'*64
 COMMIT = 'b'*40
@@ -98,6 +101,13 @@ class Evidence(unittest.TestCase):
 
 
 class Lock(unittest.TestCase):
+    def test_build_evidence_and_review_text_are_bound_before_assembly(self):
+        for key in ('component_build_evidence', 'redistribution_review_document'):
+            lock = n.read_json(n.ROOT/'packaging/native-assets.json')
+            lock[key]['sha256'] = '0' * 64
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'build evidence differs'):
+                n.validate_distribution_lock(lock)
+
     def test_configuration_template_must_match_lock(self):
         lock = n.read_json(n.ROOT/'packaging/native-assets.json')
         lock['configurations']['linux-fontconfig']['sha256']='0'*64
@@ -115,6 +125,36 @@ class Lock(unittest.TestCase):
         lock = n.read_json(n.ROOT/'packaging/native-assets.json')
         lock['font_package']['files'][0]['url']='https://example.com/latest.ttf'
         with self.assertRaisesRegex(ValueError,'not immutable'): n.validate_distribution_lock(lock)
+
+
+class WindowsNetworkCoverage(unittest.TestCase):
+    def test_foreign_target_and_all_rebuilt_runtimes_are_denied(self):
+        output = Path('/disposable CI output with spaces æ')
+        python = Path('/selected Python/python.exe')
+        programs = windows_network_programs(output, python)
+        self.assertEqual(programs[0], python)
+        for name in ('source installation', 'scope lifecycle', 'foreign target data',
+                     'reinstalled source', 'reinstalled built', 'reinstalled binary-lib'):
+            for executable in ('Racket.exe', 'racket.exe'):
+                self.assertIn(output / 'execution' / name / 'Racket runtime' / executable, programs)
+        self.assertEqual(len(programs), 13)
+
+    def test_unregistered_runtime_is_rejected_before_filesystem_changes(self):
+        spec = importlib.util.spec_from_file_location('catalog_validator_network_test',
+                                                     n.ROOT / 'tools/validate-catalog-package.py')
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'must not be created'
+            instance = SimpleNamespace(root=root, runtime=Path(temporary) / 'unused')
+            with self.assertRaisesRegex(ValueError, 'network-denial coverage'):
+                validator.Validator.environment(instance, 'a future uncovered runtime')
+            self.assertFalse(root.exists())
+
+    def test_runtime_names_are_distinct_safe_directory_components(self):
+        self.assertEqual(len(RUNTIME_ENVIRONMENTS), len(set(RUNTIME_ENVIRONMENTS)))
+        self.assertTrue(all(Path(name).name == name and name not in ('.', '..')
+                            for name in RUNTIME_ENVIRONMENTS))
 
 
 if __name__ == '__main__': unittest.main()

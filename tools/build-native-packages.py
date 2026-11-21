@@ -100,6 +100,8 @@ def build(lock_path, inputs, output, *, local_candidate=False):
             if key not in ('noto-ofl', 'cjk-ofl'):
                 members['licenses/components/' + key + '.txt'] = (ROOT / record['path']).read_bytes()
         members['licenses/COMPONENTS.json'] = json_bytes(lock['component_inventory'])
+        members['licenses/BUILD-EVIDENCE.json'] = (ROOT / lock['component_build_evidence']['path']).read_bytes()
+        members['licenses/REDISTRIBUTION-REVIEW.md'] = (ROOT / lock['redistribution_review_document']['path']).read_bytes()
         members['licenses/skia-for-racket-MIT.txt'] = (ROOT / 'LICENSE').read_bytes()
         members['skia-native-1/manifest.json'] = json_bytes(manifest)
         members['info.rkt'] = native_info(dict(target, id=name), lock['native_package_version'], reviewed=reviewed, lock=lock)

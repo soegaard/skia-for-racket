@@ -16,6 +16,7 @@ import subprocess
 import sys
 import uuid
 from native_packages import ROOT, need, json_bytes
+from catalog_execution import windows_network_programs
 
 
 def load(name):
@@ -59,10 +60,7 @@ def execute(racket, output, runtime=None, docker_image=None):
         # Rules are limited to the validation processes, and removed in finally.
         # No firewall default/account/repository settings are changed.
         label = 'Skia catalog validation ' + uuid.uuid4().hex
-        paths = [Path(sys.executable)]
-        paths += [output / 'execution' / name / 'Racket runtime' / exe
-                  for name in ('source installation', 'scope lifecycle', 'reinstalled source', 'reinstalled built', 'reinstalled binary-lib')
-                  for exe in ('Racket.exe', 'racket.exe')]
+        paths = windows_network_programs(output, Path(sys.executable))
         quote = lambda s: "'" + str(s).replace("'", "''") + "'"
         rules = '\n'.join('New-NetFirewallRule -DisplayName ' + quote(label) +
                           ' -Direction Outbound -Action Block -Program ' + quote(path) + ' | Out-Null' for path in paths)

@@ -154,6 +154,7 @@
         "architectures": [
           "x86_64"
         ],
+        "delay_imports": [],
         "format": "PE32+",
         "imports": [
           "KERNEL32.dll"
@@ -432,6 +433,7 @@
         "architectures": [
           "x86_64"
         ],
+        "delay_imports": [],
         "format": "PE32+",
         "imports": [
           "ole32.dll",
@@ -489,6 +491,11 @@
     "macos_x86_64": "load-command minimum 10.13; external execution pending",
     "windows_x86_64": "system DLL imports include d3d12.dll and D3DCOMPILER_47.dll; clean-machine execution pending"
   },
+  "component_build_evidence": {
+    "path": "packaging/component-build-evidence.json",
+    "sha256": "ea0eabbde2f03db5d54aa316249191aba71dc32af30b7ff202a2b77bf8982fe3",
+    "size": 18069
+  },
   "component_inventory": [
     {
       "applicability": "Build scripts select native GL/Metal/D3D, not ANGLE; legacy combined notice retained",
@@ -498,18 +505,30 @@
       "name": "ANGLE"
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "DNG decoder source dependencies; piex enabled; DNG explicit on Windows and enabled by other native defaults",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "LicenseRef-Adobe-DNG-SDK",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "DNG SDK"
+      "name": "DNG SDK",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Separate HarfBuzzSharp library; Skia embedded HarfBuzz disabled",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "MIT-Modern-Variant",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "HarfBuzz"
+      "name": "HarfBuzz",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
       "applicability": "Explicit skia_use_icu=false in all three platform build recipes",
@@ -519,39 +538,56 @@
       "name": "ICU"
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "GPU shader/Vulkan headers under native defaults; retain original notice",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "MIT",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "SPIR-V Headers"
+      "name": "SPIR-V Headers",
+      "recipe_platforms": [
+        "linux",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Official release disables development SPIR-V validation; tool/test notice retained conservatively",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "Apache-2.0",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "SPIR-V Tools"
+      "name": "SPIR-V Tools",
+      "recipe_platforms": []
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Named etc1 target is tool/test-only; original notice retained conservatively",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "BSD-3-Clause",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "etc1"
+      "name": "etc1",
+      "recipe_platforms": []
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Linux bundled font/XML route; conservative original notice retained on macOS/Windows",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "MIT",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "expat"
+      "name": "expat",
+      "recipe_platforms": [
+        "linux"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Bundled Linux typeface engine; other native platforms use OS font engines",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "FTL",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "freetype"
+      "name": "freetype",
+      "recipe_platforms": [
+        "linux"
+      ]
     },
     {
       "applicability": "Current pinned GIF/LZW implementation is Wuffs; legacy Mozilla GIF notice retained",
@@ -575,11 +611,17 @@
       "name": "jsoncpp"
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Bundled JPEG decoder/encoder in library target",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "IJG AND BSD-3-Clause AND Zlib",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "libjpeg-turbo"
+      "name": "libjpeg-turbo",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
       "applicability": "Skia tool/debug server dependency, not SkiaSharp/skottie library target",
@@ -589,25 +631,43 @@
       "name": "libmicrohttpd"
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Bundled PNG decoder/encoder in library target",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "libpng-2.0",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "libpng"
+      "name": "libpng",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Bundled WebP decoder/encoder in library target",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "BSD-3-Clause",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "libwebp"
+      "name": "libwebp",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Explicit piex enable flag and DNG source dependency",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "Apache-2.0",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "piex"
+      "name": "piex",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
       "applicability": "Legacy tool/windowing notice, not the selected library targets",
@@ -624,54 +684,97 @@
       "name": "sfntly"
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "SkiaSharp library directly depends on Skia and skottie; includes skcms",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "BSD-3-Clause",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "skia"
+      "name": "skia",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Bundled library codec dependency",
       "basis": "verbatim combined upstream notice; may include build-tool-only components",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "Zlib",
       "license_review": "see licenses and component review; do not infer incorporation from notice inclusion",
-      "name": "zlib"
+      "name": "zlib",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "GIF/LZW library decoder source and pinned binary decoder strings",
       "basis": "Pinned Skia BUILD.gn GIF/LZW dependency and image-decoder strings in all three binaries",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "Apache-2.0",
       "name": "Wuffs",
-      "notice": "wuffs"
+      "notice": "wuffs",
+      "recipe_platforms": [
+        "linux",
+        "macos",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Native Vulkan defaults enable VMA; conservative notice retained for exact-build uncertainty",
       "basis": "Pinned Linux/Windows build enables Vulkan; retain conservative notices",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "MIT",
       "name": "VulkanMemoryAllocator",
-      "notice": "vma"
+      "notice": "vma",
+      "recipe_platforms": [
+        "linux",
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Native Windows Direct3D recipe; conservative notice retained",
       "basis": "Pinned Windows build enables D3D12",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "MIT",
       "name": "D3D12MemoryAllocator",
-      "notice": "d3d12allocator"
+      "notice": "d3d12allocator",
+      "recipe_platforms": [
+        "win32"
+      ]
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Tool/test and optional shader-translation dependencies; conservative notice retained without asserting runtime incorporation",
       "basis": "Pinned Skia GPU shader dependencies",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "Apache-2.0",
       "name": "SPIRV-Cross",
-      "notice": "spirv-cross"
+      "notice": "spirv-cross",
+      "recipe_platforms": []
     },
     {
-      "applicability": "Runtime source dependency or conservative upstream notice retained; platform selection documented in COMPONENTS.md",
+      "applicability": "Static libstdc++/libgcc flags; Debian GCC 8.3 and Clang 13 compiler strings; runtime archive/eligible-compilation attestation pending",
       "basis": "Linux build recipe uses -static-libstdc++ and -static-libgcc; exact compiler build provenance needs upstream/maintainer sign-off",
+      "evidence": "component-build-evidence.json and REDISTRIBUTION-REVIEW.md; recipes are not exact NuGet link maps",
       "license_id": "GPL-3.0-or-later WITH GCC-exception-3.1",
       "name": "GCC runtime",
       "notice": "gcc-runtime",
+      "recipe_platforms": [
+        "linux"
+      ],
       "review_gap": "NuGet has no exact compiler/runtime build attestation; maintainer redistribution review must confirm upstream runtime exception obligations"
+    },
+    {
+      "applicability": "Embedded Windows CRT; exact producing toolchain and downstream redistribution terms pending",
+      "basis": "Skia release /MT; HarfBuzz release MultiThreaded/v142; pinned PEs have no ordinary VC CRT or delayed DLL imports",
+      "license_id": "LicenseRef-Microsoft-Visual-Cpp-Runtime",
+      "name": "Microsoft Visual C++ runtime",
+      "recipe_platforms": [
+        "win32"
+      ],
+      "review_gap": "Obtain applicable upstream runtime/SDK terms and redistribution basis; absence of a VC DLL requirement is not redistribution approval"
     }
   ],
   "configurations": {
@@ -775,7 +878,7 @@
         "license": "OFL-1.1",
         "names": {
           "0": [
-            "© 2014-2021 Adobe (http://www.adobe.com/)."
+            "\u00a9 2014-2021 Adobe (http://www.adobe.com/)."
           ],
           "1": [
             "Noto Sans CJK JP"
@@ -805,7 +908,7 @@
   "native_license": {
     "linux": "(MIT AND BSD-3-Clause AND Apache-2.0 AND MIT-Modern-Variant AND libpng-2.0 AND Zlib AND IJG AND LicenseRef-Adobe-DNG-SDK AND FTL AND (GPL-3.0-or-later WITH GCC-exception-3.1))",
     "macos": "(MIT AND BSD-3-Clause AND Apache-2.0 AND MIT-Modern-Variant AND libpng-2.0 AND Zlib AND IJG AND LicenseRef-Adobe-DNG-SDK)",
-    "win32": "(MIT AND BSD-3-Clause AND Apache-2.0 AND MIT-Modern-Variant AND libpng-2.0 AND Zlib AND IJG AND LicenseRef-Adobe-DNG-SDK)"
+    "win32": "(MIT AND BSD-3-Clause AND Apache-2.0 AND MIT-Modern-Variant AND libpng-2.0 AND Zlib AND IJG AND LicenseRef-Adobe-DNG-SDK AND LicenseRef-Microsoft-Visual-Cpp-Runtime)"
   },
   "native_package_version": "1.0",
   "proposed_source_version": "0.79",
@@ -816,6 +919,11 @@
     "macos_aarch64": "not-run",
     "macos_x86_64": "not-run",
     "win32": "not-run"
+  },
+  "redistribution_review_document": {
+    "path": "packaging/REDISTRIBUTION-REVIEW.md",
+    "sha256": "96c1287330f53ffa94b3467d8da1c3f8606d4323a77ee6d02de7d80f38d687f2",
+    "size": 9857
   },
   "review": {
     "authenticity_basis": "HTTPS NuGet archives checked against package ID/version and repository commit; exact source revisions inspected via GitHub/Gitiles. No claim of NuGet signature verification.",

@@ -11,6 +11,9 @@ and exact source identity; it does not assert NuGet signature verification.
 Technical review: November 20, 2026, Codex implementation audit. Maintainer
 redistribution sign-off is **pending**. That state is retained in the lock,
 archives and release gate; local testing is not publication approval.
+The maintainer approved retaining the existing four-file `skia-fonts-1`
+dependency and OFL notices on November 21, 2026. This fixes the font-package
+design decision; it does not change any native redistribution approval flag.
 
 ## Source basis and notices
 
@@ -47,6 +50,15 @@ do not select the corresponding tool-only/disabled runtime components: ICU and
 sfntly are explicitly disabled; GIF uses Wuffs. These dispositions do not claim
 that merely including a license text incorporates that component. The lock
 also records identifiers and rationale for this retained notice superset.
+
+The [detailed follow-up review](REDISTRIBUTION-REVIEW.md) separates exact
+binary observations, source-recipe dispositions and unresolved build/permission
+questions. `component-build-evidence.json` records twenty primary source
+identities and six binary inspections; the lock binds its digest and the builder
+ships it in every native package. Windows normal and delayed imports are now
+both checked; neither pinned DLL has a delayed import. The Windows license
+expression explicitly identifies the unresolved embedded Microsoft runtime
+terms instead of treating them as MIT.
 
 The fonts are not installed into system font directories or substituted for the
 public system font manager. Executable script tutorials select the declared

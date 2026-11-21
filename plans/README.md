@@ -15,6 +15,7 @@ before treating a plan as the public API contract.
 | [Conceptual diagrams](skia-reference-conceptual-diagrams.md) | Editorial plan for explanatory Reference figures and the concepts each should teach. |
 | [Diagram progress](skia-reference-conceptual-diagrams-progress.md) | Implementation and verification notes for those figures. |
 | [Documentation navigation](skia-documentation-navigation.md) | Reference/Guide/Tutorial navigation, tutorial subject categories, and separate reading routes. |
+| [Package catalog publication](skia-package-catalog-publication.md) | Platform-specific native packages, catalog-equivalent validation, release sequencing, and implementation hand-off. |
 
 Maintainer procedures live in [docs/](../docs/README.md); runnable source and
 manual assets live in [examples/](../examples/README.md) and

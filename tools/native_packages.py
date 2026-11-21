@@ -207,6 +207,9 @@ def inspect_pe(data):
                 need(rawpos + rva - start + length <= len(data), 'PE RVA outside image')
                 return rawpos + rva - start
         raise ValueError('unmapped PE RVA')
+    directories = struct.unpack_from('<I', data, opt + 108)[0]
+    need(2 <= directories <= 16 and optsize >= 112 + directories * 8,
+         'invalid PE data directory count/size')
     imports, importsize = struct.unpack_from('<II', data, opt + 120)
     names = []
     if imports:
@@ -221,7 +224,26 @@ def inspect_pe(data):
             pos += 20
         else:
             raise ValueError('unterminated PE imports')
-    return dict(format='PE32+', architectures=['x86_64'], imports=names)
+    # PE32+ directory 13 can hide additional runtime DLL requirements. Only
+    # modern RVA descriptors are accepted; older VA descriptors need review.
+    delay_names = []
+    if directories > 13:
+        delayed, delayed_size = struct.unpack_from('<II', data, opt + 112 + 13 * 8)
+        need(bool(delayed) == bool(delayed_size), 'inconsistent PE delay imports')
+        if delayed:
+            need(32 <= delayed_size <= MAX_METADATA, 'invalid PE delay imports size')
+            pos = file_offset(delayed, delayed_size)
+            end = pos + delayed_size
+            while pos + 32 <= end:
+                row = struct.unpack_from('<IIIIIIII', data, pos)
+                if not any(row):
+                    break
+                need(row[0] == 1, 'unsupported PE delay import attributes')
+                delay_names.append(c_string(data, file_offset(row[1], 1)))
+                pos += 32
+            else:
+                raise ValueError('unterminated PE delay imports')
+    return dict(format='PE32+', architectures=['x86_64'], imports=names, delay_imports=delay_names)
 
 
 def inspect_macho(data):
@@ -355,6 +377,17 @@ def validate_distribution_lock(lock, root=ROOT):
     expected_checksums = ''.join(r['sha256'] + '  ' + name + '\n' for name,r in sorted(lock['archives'].items()))
     need((root / 'packaging/native-inputs.sha256').read_text() == expected_checksums,
          'legacy installer checksums differ from the reviewed lock')
+    for key, expected_path in (
+            ('component_build_evidence', 'packaging/component-build-evidence.json'),
+            ('redistribution_review_document', 'packaging/REDISTRIBUTION-REVIEW.md')):
+        evidence = lock.get(key, {})
+        need(evidence.get('path') == expected_path, 'missing component build evidence: ' + key)
+        evidence_path = root / evidence['path']
+        need(evidence_path.is_file() and not evidence_path.is_symlink()
+             and evidence_path.stat().st_size <= MAX_METADATA, 'missing/unsafe component build evidence')
+        data = evidence_path.read_bytes()
+        need(len(data) == evidence.get('size') and sha256(data) == evidence.get('sha256'),
+             'component build evidence differs from lock: ' + key)
     configurations = lock.get('configurations', {})
     need(set(configurations) == {'linux-fontconfig'}, 'incomplete/extra support configuration set')
     configuration = configurations['linux-fontconfig']

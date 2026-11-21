@@ -25,6 +25,9 @@ name availability still need final maintainer review before first publication.
 The source package is MIT. Each native package has its own component license
 expression and complete original/supplemental texts. The font package is
 OFL-1.1 and contains unmodified Noto files and their copyright metadata.
+The maintainer explicitly approved retaining `skia-fonts-1` with these four
+unmodified files and OFL notices on November 21, 2026. That design decision is
+settled and does not approve the native payload's redistribution obligations.
 
 ## Acquire, then assemble offline
 
@@ -93,6 +96,10 @@ scalar ABI fixture, then runs the validator under macOS sandbox-exec, Linux
 network-namespace isolation, or narrowly scoped Windows process firewall rules.
 Windows rules are removed in `finally`. The tool is for disposable runners;
 never use it to change a normal workstation's network configuration.
+The shared runtime registry covers source installation, scope lifecycle,
+foreign-target data checks and all three rebuilt installations. Creating an
+unregistered runtime fails before filesystem changes, so adding a new test
+environment cannot silently omit its Windows network-denial rules.
 
 For a prepared macOS runtime/catalog, run the lower-level validator inside an
 OS network-denial sandbox. Use a new work directory each time:
@@ -191,12 +198,26 @@ compares candidate archive digests across catalog lanes, checks complete local
 receipts and approved review state, and refuses partial/mismatched evidence.
 Native ZIPs are retained once; per-lane uploads contain bounded logs/receipts.
 
+`catalog-package.yml` runs automatically on pushes and pull requests. Its assets
+job uploads all candidate source/native/font ZIPs to GitHub Actions artifacts
+with 30-day retention; it does not create a release or catalog entry. A push
+would therefore transfer native binaries to GitHub even while redistribution
+review is pending. The current no-push boundary remains in effect. Review this
+artifact transfer explicitly before using GitHub as the qualification runner.
+Local source checks establish configuration consistency; they do not establish
+that unexecuted Intel, Windows or native Linux jobs pass.
+
 A complete candidate needs one clean committed source identity, exact source
 and native/font ZIPs/checksums/receipts, approved lock/notices, dependency snapshot
 and same-attempt CI/Acceptance/API/catalog evidence. Current local working-tree
 runs remain partial evidence; `catalog_candidate_validated` stays false.
 
 ## Publication requires a separate decision
+
+The [read-only preflight and responsibility list](PUBLICATION-PREFLIGHT.md)
+records the proposed names, versions, contact/source location, collision checks
+and prepared external commands. They remain proposals until the maintainer's
+corresponding decisions; no public source or catalog entry has been created.
 
 Stop here until every required qualification and review gap is closed. Then
 present the exact immutable artifact set, all receipts and checks, names,

@@ -41,6 +41,43 @@ def nuget_members():
             'LICENSE.txt': b'fixture license', 'THIRD-PARTY-NOTICES.txt': b'fixture notices'}
 
 
+def pe_delay(*, attributes=1, size=64):
+    data = bytearray(1024)
+    data[:2] = b'MZ'
+    struct.pack_into('<I', data, 0x3c, 64)
+    data[64:68] = b'PE\0\0'
+    struct.pack_into('<HHIIIHH', data, 68, 0x8664, 1, 0, 0, 0, 240, 0x2000)
+    struct.pack_into('<H', data, 88, 0x20b)
+    struct.pack_into('<I', data, 88 + 108, 16)
+    struct.pack_into('<II', data, 88 + 112 + 13 * 8, 0x1000, size)
+    struct.pack_into('<8sIIIIIIHHI', data, 328, b'.rdata', 512, 0x1000, 512, 512, 0, 0, 0, 0, 0)
+    struct.pack_into('<IIIIIIII', data, 512, attributes, 0x1080, 0, 0, 0, 0, 0, 0)
+    data[640:652] = b'fixture.dll\0'
+    return data
+
+
+class PEDependencies(unittest.TestCase):
+    def test_delay_import_is_not_silently_omitted(self):
+        observed = n.inspect_pe(pe_delay())
+        self.assertEqual(observed['imports'], [])
+        self.assertEqual(observed['delay_imports'], ['fixture.dll'])
+
+    def test_legacy_and_reserved_descriptor_flags_require_review(self):
+        for attributes in (0, 2, 3):
+            with self.subTest(attributes=attributes), self.assertRaisesRegex(ValueError, 'attributes'):
+                n.inspect_pe(pe_delay(attributes=attributes))
+
+    def test_truncated_delay_directory_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'unterminated PE delay'):
+            n.inspect_pe(pe_delay(size=32))
+
+    def test_truncated_optional_directories_are_rejected(self):
+        data = pe_delay()
+        struct.pack_into('<H', data, 84, 128)
+        with self.assertRaisesRegex(ValueError, 'directory count/size'):
+            n.inspect_pe(data)
+
+
 class LockedInputs(unittest.TestCase):
     def inspect(self, members, expected_version='3.119.1'):
         with tempfile.TemporaryDirectory() as directory:

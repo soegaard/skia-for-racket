@@ -25,6 +25,7 @@ import tempfile
 import zipfile
 from native_packages import ROOT, need, json_bytes, sha256, write_zip
 from catalog_snapshot import inventory
+from catalog_execution import RUNTIME_ENVIRONMENTS
 
 
 def network_evidence():
@@ -81,6 +82,8 @@ class Validator:
         (self.root / 'result.json').write_bytes(json_bytes(self.report))
 
     def environment(self, name):
+        need(name in RUNTIME_ENVIRONMENTS,
+             'unregistered disposable runtime; add its network-denial coverage before use')
         directory = self.root / name
         directory.mkdir()
         runtime = directory / 'Racket runtime'
