@@ -63,6 +63,13 @@ validation and rebuilt-catalog subprocess uses that profile after runtime copies
 relocate. Unknown profile data is rejected. The validators record the actual
 compile target and require machine-independent mode for natipkg evidence.
 
+An absolute Racket compiled root contains the source runtime's absolute path
+below it. After copying a prepared runtime, the harness rekeys that copied
+cache subtree for the new runtime path; changing `-R` alone is insufficient.
+Only the owned copy is changed. Cache bytecode/dependencies remain byte-identical,
+and missing caches, symlinks or collisions stop validation. Every disposable
+natipkg environment records its relocation for the final evidence checker.
+
 This prepares Racket's service runtime; it does not patch Racket sources or
 change any installer/native-library hash. Skia's subsequent ordinary dependency
 installation, all registered manuals and the complete execution/rebuild checks

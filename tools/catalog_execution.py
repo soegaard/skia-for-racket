@@ -59,6 +59,31 @@ def racket_command(executable: Path, *, profile=None):
     return command
 
 
+def relocate_runtime_cache(source: Path, copied: Path):
+    """Rekey the copied pkg-build cache for Racket's absolute-source-path layout."""
+    source, copied = source.resolve(), copied.resolve()
+    if runtime_profile(source / 'bin/racket') is None:
+        return None
+    cache = copied / 'zo'
+    old = cache / source.relative_to(source.anchor)
+    new = cache / copied.relative_to(copied.anchor)
+    need(cache.is_dir() and not cache.is_symlink() and old.is_dir() and not old.is_symlink(),
+         'prepared runtime lacks its bootstrapped absolute-path cache')
+    need(old.resolve().is_relative_to(cache.resolve()) and new.resolve().is_relative_to(cache.resolve())
+         and not old.is_relative_to(new) and not new.is_relative_to(old),
+         'runtime cache relocation escapes or overlaps its owned cache')
+    need(not new.exists() and not new.is_symlink(), 'runtime cache relocation destination already exists')
+    bytecode_files = 0
+    for path in old.rglob('*'):
+        need(not path.is_symlink(), 'symlink in bootstrapped runtime cache')
+        bytecode_files += path.is_file() and path.suffix == '.zo'
+    need(bytecode_files > 0, 'prepared runtime cache has no compiled modules')
+    new.parent.mkdir(parents=True, exist_ok=True)
+    old.rename(new)
+    return dict(source_runtime=str(source), copied_runtime=str(copied),
+                old_cache=str(old), new_cache=str(new), bytecode_files=bytecode_files)
+
+
 def windows_network_programs(output: Path, python: Path):
     """Cover the validator and every Racket copy it is allowed to create."""
     return [python, *(output / 'execution' / name / 'Racket runtime' / executable

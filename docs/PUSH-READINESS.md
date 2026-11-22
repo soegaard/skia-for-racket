@@ -1,6 +1,7 @@
 # GitHub CI test branch
 
-The test branch is `codex/catalog-ci`. The maintainer pushed `487ff148` and `d75b82d4`;
+The test branch is `codex/catalog-ci`. The maintainer pushed `487ff148`, `d75b82d4`
+and `170546e3`;
 the implementation agent does not push, publish packages or dispatch deployments.
 The follow-up fixes below require another maintainer push and fresh CI results.
 
@@ -27,13 +28,25 @@ can try a locked official mirror after transport failure, verifies the same
 existing SHA-256 before executing either installer, and retains acquisition
 failure receipts. No native pin, font package or public API changed.
 
-The next follow-up preserves nested ZIP member names on Windows, retains bounded
+Commit `170546e3` preserves nested ZIP member names on Windows, retains bounded
 preparation-failure evidence and prepares the machine-independent pkg-build
 runtime using the upstream bootstrap and `-MCR` startup profile. Both natipkg
 versions must run again under that complete profile. The new runtime marker is
 written only after successful bootstrap and a real `net/url` import check.
 Normal package installation still runs with documentation enabled; the runtime
 bootstrap does not replace package setup or any release gate.
+
+At that commit, CI, API inventory and all macOS/ordinary Linux catalog lanes
+passed. Acceptance's Windows WARP lane encountered a Racket download timeout
+before project tests. Windows catalog validation reached binary-lib editable
+source retention; both natipkg versions bootstrapped successfully but their
+copied runtime caches used the old absolute path. See the
+[third run](CATALOG-VALIDATION.md#third-github-push).
+
+The next follow-up uses native metadata paths for the same editable file set
+and relocates each owned natipkg cache subtree for its copied runtime, with
+strict per-environment evidence. All ten native lanes and the failed Acceptance
+lane still require fresh GitHub execution at the next pushed commit.
 
 These corrections do not turn earlier failed lanes into passes. Inspect fresh
 results at the new pushed commit. No Racket package server submission occurred.

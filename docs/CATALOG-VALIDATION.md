@@ -1,13 +1,88 @@
 # Catalog candidate validation — 0.79
 
-Status: GitHub CI, Acceptance and API inventory passed at `d75b82d4`; seven
-catalog execution lanes passed. Windows rebuilding and the complete natipkg
-service profile need corrected reruns.
+Status: GitHub CI and API inventory passed at `170546e3`; six catalog execution
+lanes passed. Acceptance encountered a Racket download timeout. Windows binary
+source retention and natipkg runtime-cache relocation need corrected reruns.
 **The publication candidate remains unqualified**. No publication action has
 been performed. Native pins
 remain SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2, native generation/revision 1/1.0.
 Source/API collection remains `skia`. The final matrix and maintainer
 redistribution approval remain required even when individual local checks pass.
+
+## Third GitHub push
+
+The maintainer pushed `170546e3d373b7edd54e3a414178cce1c89d0eae`.
+[CI](https://github.com/soegaard/skia-for-racket/actions/runs/44959239434) (12 jobs)
+and [API inventory](https://github.com/soegaard/skia-for-racket/actions/runs/44959239452)
+(2) passed. [Acceptance](https://github.com/soegaard/skia-for-racket/actions/runs/44959239520)
+passed 50 jobs; the Windows WARP render-canvas lane timed out downloading Racket
+in setup-racket (`connect ETIMEDOUT 165.124.149.122:443`) before project tests,
+and its required gate consequently failed. This is an acquisition failure;
+that lane still needs a successful fresh run.
+
+[Catalog packaging](https://github.com/soegaard/skia-for-racket/actions/runs/44959239445)
+passed its asset job and six execution lanes. All eleven retained artifact ZIPs
+matched GitHub's sizes/SHA-256 values before bounded extraction under ignored
+`output/catalog/github-third-run-20261122/`. Every staging receipt identifies
+the same clean source archive SHA-256
+`99baff73c7ad0e0647959349ea69f4ab3ac8277120256393a6517676795cbce1`
+and identical native/font archives. The strict selected-lane verifier accepted
+all six successful execution receipts.
+
+| Catalog target | CS | Commands | DrDr | Observed result |
+| --- | --- | --- | --- | --- |
+| macOS ARM64 | 8.18 | 83 | 61.670 s | All selected checks passed |
+| macOS ARM64 | 9.3 | 83 | 67.118 s | All selected checks passed |
+| macOS Intel | 8.18 | 83 | 97.802 s | All selected checks passed |
+| macOS Intel | 9.3 | 83 | 115.022 s | All selected checks passed |
+| Ordinary Linux x64 | 8.18 | 84 | 54.050 s | All selected checks passed, UID 1001 |
+| Ordinary Linux x64 | 9.3 | 84 | 45.714 s | All selected checks passed, UID 1001 |
+| Windows x64 | 8.18 | 62 | 68.234 s | Failed binary-lib editable-source retention |
+| Windows x64 | 9.3 | 62 | 75.672 s | Failed binary-lib editable-source retention |
+| Actual natipkg x64 | 8.18 | 2 | Not run | Copied runtime failed `raco pkg config` |
+| Actual natipkg x64 | 9.3 | 3 | Not run | Copied runtime failed ordinary package setup |
+
+The Windows lanes passed the corrected payload/notice ZIP checks through all
+three rebuilt forms, then exposed a separate metadata issue. Racket's
+[package stripper](https://github.com/racket/racket/blob/v8.18/racket/collects/pkg/strip.rkt)
+uses path equality for retention keys. A Windows path created from
+`"scribblings/tutorials/squadron/model.rkt"` does not equal the path assembled
+by directory traversal. The package now uses `build-path` components for every
+nested retention entry. The retained file set is unchanged. A pure regression
+evaluates the actual metadata expression with Unix and Windows path conventions
+and checks every advertised tutorial asset. All byte-preservation assertions
+and ordinary package/documentation tests remain required.
+
+Both actual natipkg versions completed the full upstream bootstrap, `net/url`
+import check and dependency snapshot staging before the copied runtime failed.
+The earlier assumption that relocating the `zo` root alone relocated its
+contents was wrong. Racket's
+[compilation paths](https://github.com/racket/racket/blob/v8.18/racket/collects/compiler/compilation-path.rkt)
+include the absolute source path under an absolute compiled root. Copying a
+prepared runtime leaves its bytecode under the old runtime's key. The 8.18
+copy hit the original static FFI error; the 9.3 copy reached ordinary setup
+but reported missing `core-syntax.rkt` submodules.
+
+Each owned runtime copy now moves its bootstrapped cache subtree to the copied
+runtime's absolute key before executing Racket. Bytecode and dependency bytes
+are preserved. Missing caches, symlinks, overlapping paths and destination
+collisions fail clearly. Per-environment receipts record the move and compiled
+file count; natipkg evidence requires it for every disposable runtime. No Racket
+source is patched, and full upstream bootstrap, ordinary documentation-enabled
+setup, network denial, DrDr, shaping/rendering and rebuilt installation checks
+remain mandatory. Fresh native GitHub execution is required before qualification.
+
+Local metadata/pure tests passed all 12 cases on released macOS ARM64 Racket
+8.18 and 9.3 with dependencies staged and networking denied. The actual metadata
+expression retains every advertised tutorial asset under both path conventions.
+Offline x86-emulated Linux probes bootstrapped the `racket` collection for each
+pinned installer, then exercised copies after removing the original runtime.
+Both corrected copies passed imports, package configuration and ordinary source
+compilation. The unfixed 8.18 copy reproduced the static FFI failure; the 9.3
+import-only probe also passed without rekeying, so that narrow probe does not
+reproduce or qualify its full package-setup failure. These are diagnostic cache
+tests, not complete native catalog qualification. Production still uses the
+complete upstream bootstrap and all existing package checks.
 
 ## Second GitHub push
 

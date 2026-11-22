@@ -82,56 +82,63 @@
 (define compile-omit-paths '("native" "downloads" "html" "doc" "output"))
 
 ;; The advertised copier needs editable tutorial source even in binary-lib
-;; installs. Pin files are read lazily by both loaders in every package form.
-(define binary-keep-files '("examples" "scribblings"
-                            ;; Directory entries do not recursively retain compiled .rkt source.
-                            ;; Explicit files are the editable sets in support/catalog.json;
-                            ;; the round-trip validator checks every member independently.
-                            "scribblings/quick/moonlight.rkt"
-                            "scribblings/tutorials/animation/orbiting-lights.rkt"
-                            "scribblings/tutorials/animation/scene.rkt"
-                            "scribblings/tutorials/clock/clock.rkt"
-                            "scribblings/tutorials/color-spaces/color-study.rkt"
-                            "scribblings/tutorials/effects/card-with-shadows.rkt"
-                            "scribblings/tutorials/gpu/gpu-offscreen.rkt"
-                            "scribblings/tutorials/gpu/linux-opengl.rkt"
-                            "scribblings/tutorials/gpu/render-scene.rkt"
-                            "scribblings/tutorials/gpu/scene.rkt"
-                            "scribblings/tutorials/images/contact-sheet.rkt"
-                            "scribblings/tutorials/images/fixtures/flower.png"
-                            "scribblings/tutorials/images/fixtures/mountains.jpg"
-                            "scribblings/tutorials/images/fixtures/pattern.webp"
-                            "scribblings/tutorials/images/fixtures/pixel-art.png"
-                            "scribblings/tutorials/interaction/bezier-editor.rkt"
-                            "scribblings/tutorials/interaction/scene.rkt"
-                            "scribblings/tutorials/logo/logo.rkt"
-                            "scribblings/tutorials/navigation/model.rkt"
-                            "scribblings/tutorials/navigation/navigate.rkt"
-                            "scribblings/tutorials/navigation/scene.rkt"
-                            "scribblings/tutorials/paragraph/article-card.rkt"
-                            "scribblings/tutorials/path-ops/badge.rkt"
-                            "scribblings/tutorials/pdf-svg/geometry-diagram.rkt"
-                            "scribblings/tutorials/pictures/pattern-sheet.rkt"
-                            "scribblings/tutorials/pixels/pixel-lab.rkt"
-                            "scribblings/tutorials/poster/poster.rkt"
-                            "scribblings/tutorials/shaders/waves-window.rkt"
-                            "scribblings/tutorials/shaders/waves.rkt"
-                            "scribblings/tutorials/shaping/language-sampler.rkt"
-                            "scribblings/tutorials/sprites/atlas.rkt"
-                            "scribblings/tutorials/sprites/balls.rkt"
-                            "scribblings/tutorials/sprites/model.rkt"
-                            "scribblings/tutorials/sprites/scene.rkt"
-                            "scribblings/tutorials/squadron/atlas.rkt"
-                            "scribblings/tutorials/squadron/model.rkt"
-                            "scribblings/tutorials/squadron/scene.rkt"
-                            "scribblings/tutorials/squadron/squadron.rkt"
-                            "scribblings/tutorials/support/sprite-assets.rkt"
-                            "scribblings/tutorials/support/sprite-math.rkt"
-                            "scribblings/tutorials/support/sprite-window.rkt"
-                            "scribblings/tutorials/text/type-specimen.rkt"
-                            "scribblings/tutorials/vector-raster/vector-raster.rkt"
-                            "private/native-default-version.txt" "private/harfbuzz-default-version.txt"
-                            "private/source-identity.json"))
+;; installs. Build paths from components so Windows retention keys match the
+;; native paths used by Racket's package stripper. Pin files are read lazily
+;; by both loaders in every package form.
+
+; binary-keep-files : (listof path-string?)
+;   Preserves editable tutorials and lazy loader inputs in binary package forms.
+(define binary-keep-files
+  (list "examples" "scribblings"
+        ;; Directory entries do not recursively retain compiled .rkt source.
+        ;; Explicit files are the editable sets in support/catalog.json;
+        ;; the round-trip validator checks every member independently.
+        (build-path "scribblings" "quick" "moonlight.rkt")
+        (build-path "scribblings" "tutorials" "animation" "orbiting-lights.rkt")
+        (build-path "scribblings" "tutorials" "animation" "scene.rkt")
+        (build-path "scribblings" "tutorials" "clock" "clock.rkt")
+        (build-path "scribblings" "tutorials" "color-spaces" "color-study.rkt")
+        (build-path "scribblings" "tutorials" "effects" "card-with-shadows.rkt")
+        (build-path "scribblings" "tutorials" "gpu" "gpu-offscreen.rkt")
+        (build-path "scribblings" "tutorials" "gpu" "linux-opengl.rkt")
+        (build-path "scribblings" "tutorials" "gpu" "render-scene.rkt")
+        (build-path "scribblings" "tutorials" "gpu" "scene.rkt")
+        (build-path "scribblings" "tutorials" "images" "contact-sheet.rkt")
+        (build-path "scribblings" "tutorials" "images" "fixtures" "flower.png")
+        (build-path "scribblings" "tutorials" "images" "fixtures" "mountains.jpg")
+        (build-path "scribblings" "tutorials" "images" "fixtures" "pattern.webp")
+        (build-path "scribblings" "tutorials" "images" "fixtures" "pixel-art.png")
+        (build-path "scribblings" "tutorials" "interaction" "bezier-editor.rkt")
+        (build-path "scribblings" "tutorials" "interaction" "scene.rkt")
+        (build-path "scribblings" "tutorials" "logo" "logo.rkt")
+        (build-path "scribblings" "tutorials" "navigation" "model.rkt")
+        (build-path "scribblings" "tutorials" "navigation" "navigate.rkt")
+        (build-path "scribblings" "tutorials" "navigation" "scene.rkt")
+        (build-path "scribblings" "tutorials" "paragraph" "article-card.rkt")
+        (build-path "scribblings" "tutorials" "path-ops" "badge.rkt")
+        (build-path "scribblings" "tutorials" "pdf-svg" "geometry-diagram.rkt")
+        (build-path "scribblings" "tutorials" "pictures" "pattern-sheet.rkt")
+        (build-path "scribblings" "tutorials" "pixels" "pixel-lab.rkt")
+        (build-path "scribblings" "tutorials" "poster" "poster.rkt")
+        (build-path "scribblings" "tutorials" "shaders" "waves-window.rkt")
+        (build-path "scribblings" "tutorials" "shaders" "waves.rkt")
+        (build-path "scribblings" "tutorials" "shaping" "language-sampler.rkt")
+        (build-path "scribblings" "tutorials" "sprites" "atlas.rkt")
+        (build-path "scribblings" "tutorials" "sprites" "balls.rkt")
+        (build-path "scribblings" "tutorials" "sprites" "model.rkt")
+        (build-path "scribblings" "tutorials" "sprites" "scene.rkt")
+        (build-path "scribblings" "tutorials" "squadron" "atlas.rkt")
+        (build-path "scribblings" "tutorials" "squadron" "model.rkt")
+        (build-path "scribblings" "tutorials" "squadron" "scene.rkt")
+        (build-path "scribblings" "tutorials" "squadron" "squadron.rkt")
+        (build-path "scribblings" "tutorials" "support" "sprite-assets.rkt")
+        (build-path "scribblings" "tutorials" "support" "sprite-math.rkt")
+        (build-path "scribblings" "tutorials" "support" "sprite-window.rkt")
+        (build-path "scribblings" "tutorials" "text" "type-specimen.rkt")
+        (build-path "scribblings" "tutorials" "vector-raster" "vector-raster.rkt")
+        (build-path "private" "native-default-version.txt")
+        (build-path "private" "harfbuzz-default-version.txt")
+        (build-path "private" "source-identity.json")))
 (define binary-lib-keep-files binary-keep-files)
 
 ;; Manuals use Scribble plus reference targets from Racket and the GUI libraries.

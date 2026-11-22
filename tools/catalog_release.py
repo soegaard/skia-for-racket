@@ -5,7 +5,7 @@ import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import zipfile
-from catalog_execution import PKG_BUILD_PROFILE
+from catalog_execution import PKG_BUILD_PROFILE, RUNTIME_ENVIRONMENTS
 from native_packages import validate_distribution_lock
 from release_graph import need, json_data
 
@@ -65,6 +65,26 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
              'Linux read-only qualification requires an unprivileged execution UID')
     need(identity['version'] == staging['identity']['version'] and identity['target'] == staging['identity']['target'],
          'catalog acquisition/execution target differs')
+    if identity['target'] == 'x86_64-linux-natipkg':
+        need(report.get('runtime_profile') == PKG_BUILD_PROFILE and
+             staging.get('runtime_profile') == PKG_BUILD_PROFILE and
+             identity.get('compile_target_machine', 'missing') is False and
+             staging['identity'].get('compile_target_machine', 'missing') is False,
+             'natipkg qualification omitted the pkg-build machine-independent execution profile')
+        relocations = report.get('runtime_cache_relocations') or []
+        need(len(relocations) == len(RUNTIME_ENVIRONMENTS) and
+             {row.get('environment') for row in relocations} == set(RUNTIME_ENVIRONMENTS),
+             'natipkg qualification omitted a copied runtime cache relocation')
+        for row in relocations:
+            source = PurePosixPath(row['source_runtime'])
+            copied = PurePosixPath(row['copied_runtime'])
+            need(source.is_absolute() and copied.is_absolute() and source != copied and
+                 copied.name == 'Racket runtime' and copied.parent.name == row['environment'] and
+                 row['source_runtime'] == report.get('runtime_source') and
+                 row.get('old_cache') == str(copied / 'zo' / source.relative_to('/')) and
+                 row.get('new_cache') == str(copied / 'zo' / copied.relative_to('/')) and
+                 type(row.get('bytecode_files')) is int and row['bytecode_files'] > 0,
+                 'natipkg copied runtime cache was not rekeyed for its new absolute path')
     need(set(report.get('rebuilt_smoke', {})) == {'source', 'built', 'binary-lib'}, 'catalog rebuilt package proof missing')
     groups = [report.get('smoke', [])] + list(report['rebuilt_smoke'].values())
     need(all({s['text_load_order'] for s in group} == {'skia-first', 'draw-first'} for group in groups), 'catalog text load order missing')
@@ -79,11 +99,6 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
             path = path_type(native['absolute_path'])
             need(path.is_absolute() and path.parent == path_type(native['managed_directory']), 'catalog library escaped its generation')
         if identity['target'] == 'x86_64-linux-natipkg':
-            need(report.get('runtime_profile') == PKG_BUILD_PROFILE and
-                 staging.get('runtime_profile') == PKG_BUILD_PROFILE and
-                 identity.get('compile_target_machine', 'missing') is False and
-                 staging['identity'].get('compile_target_machine', 'missing') is False,
-                 'natipkg qualification omitted the pkg-build machine-independent execution profile')
             configuration = smoke['skia'].get('fontconfig') or {}
             need(configuration.get('origin') == 'managed-cache' and
                  configuration.get('template_sha256') == smoke['skia']['loader']['manifest']['support_configuration']['sha256'] and

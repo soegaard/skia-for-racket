@@ -13,7 +13,7 @@ import unittest
 import urllib.error
 import urllib.request
 import zipfile
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from types import SimpleNamespace
 from unittest.mock import patch
 import catalog_release as c
@@ -21,7 +21,8 @@ import catalog_asset_evidence as asset_evidence
 import native_packages as n
 from catalog_execution import (PKG_BUILD_PROFILE, PROFILE_FILE, RUNTIME_ENVIRONMENTS,
                                preserved_package_files, racket_command,
-                               relocatable_runtime, windows_network_programs)
+                               relocatable_runtime, relocate_runtime_cache,
+                               windows_network_programs)
 
 SHA = 'a'*64
 COMMIT = 'b'*40
@@ -51,6 +52,18 @@ def fixtures():
                                             catalog_sha256=hashlib.sha256(b'#hash()').hexdigest()),
                    identity=report['identity'], artifacts=dict(artifacts=[dict(archive='native.zip',sha256=SHA)]))
     return report, staging
+
+
+def cache_fixture(report):
+    source = PurePosixPath('/qualification/prepared runtime')
+    report['runtime_source'] = str(source)
+    report['runtime_cache_relocations'] = []
+    for name in RUNTIME_ENVIRONMENTS:
+        copied = PurePosixPath('/qualification/execution') / name / 'Racket runtime'
+        report['runtime_cache_relocations'].append(dict(
+            environment=name, source_runtime=str(source), copied_runtime=str(copied),
+            old_cache=str(copied / 'zo' / source.relative_to('/')),
+            new_cache=str(copied / 'zo' / copied.relative_to('/')), bytecode_files=143))
 
 
 class Evidence(unittest.TestCase):
@@ -99,6 +112,7 @@ class Evidence(unittest.TestCase):
         report['identity']['target']='x86_64-linux-natipkg'
         report['identity']['compile_target_machine']=False
         report['runtime_profile']=stage['runtime_profile']=copy.deepcopy(PKG_BUILD_PROFILE)
+        cache_fixture(report)
         with self.assertRaises(ValueError): self.verify(report,stage)
         for group in [report['smoke'], *report['rebuilt_smoke'].values()]:
             for smoke in group:
@@ -106,6 +120,19 @@ class Evidence(unittest.TestCase):
                 smoke['skia'].update(support_library='/home/test/lib/libfontconfig.so.1',support_library_sha256=SHA,
                     fontconfig=dict(origin='managed-cache',template_sha256=SHA,materialized_sha256=SHA))
         self.assertEqual(self.verify(report,stage), ('x86_64-linux-natipkg','9.3'))
+    def test_natipkg_copied_caches_cannot_be_missing_or_keyed_to_an_old_runtime(self):
+        for defect in ('missing', 'old-key', 'source-mismatch', 'empty'):
+            report, stage = fixtures()
+            report['identity'].update(target='x86_64-linux-natipkg', compile_target_machine=False)
+            report['runtime_profile']=stage['runtime_profile']=copy.deepcopy(PKG_BUILD_PROFILE)
+            cache_fixture(report)
+            rows = report['runtime_cache_relocations']
+            if defect == 'missing': rows.pop()
+            elif defect == 'old-key': rows[0]['new_cache'] = rows[0]['old_cache']
+            elif defect == 'source-mismatch': rows[0]['source_runtime'] = '/another runtime'
+            elif defect == 'empty': rows[0]['bytecode_files'] = 0
+            with self.subTest(defect=defect), self.assertRaisesRegex(ValueError, 'runtime cache'):
+                self.verify(report, stage)
     def test_timeout_is_not_os_network_denial(self):
         report, stage = fixtures(); report['network_denial'][0]['errno']=None
         with self.assertRaises(ValueError): self.verify(report,stage)
@@ -191,6 +218,51 @@ class WindowsNetworkCoverage(unittest.TestCase):
 
 
 class CatalogRuntime(unittest.TestCase):
+    def test_runtime_cache_copy_survives_original_removal_without_changing_bytecode(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary).resolve() / 'prepared runtime æ'
+            (source / 'etc').mkdir(parents=True)
+            (source / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+            relative = source.relative_to(source.anchor) / 'collects/racket/compiled/base_rkt.zo'
+            original = source / 'zo' / relative
+            original.parent.mkdir(parents=True)
+            original.write_bytes(b'opaque compiled fixture, never executed')
+            copied = source.with_name('copied runtime with spaces æ')
+            shutil.copytree(source, copied)
+            relocation = relocate_runtime_cache(source, copied)
+            self.assertEqual(relocation['bytecode_files'], 1)
+            self.assertFalse((copied / 'zo' / relative).exists())
+            moved = Path(relocation['new_cache']) / 'collects/racket/compiled/base_rkt.zo'
+            self.assertEqual(moved.read_bytes(), original.read_bytes())
+            shutil.rmtree(source)
+            self.assertEqual(moved.read_bytes(), b'opaque compiled fixture, never executed')
+            self.assertEqual(racket_command(copied / 'bin/racket')[-1], str(copied / 'zo') + os.pathsep)
+
+    def test_runtime_cache_copy_rejects_collision_and_symlinks(self):
+        for defect in ('collision', 'symlink', 'missing-cache'):
+            with self.subTest(defect=defect), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                source, copied = root / 'prepared', root / 'copied'
+                (source / 'etc').mkdir(parents=True)
+                (source / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+                shutil.copytree(source, copied)
+                old = copied / 'zo' / source.relative_to(source.anchor)
+                old.mkdir(parents=True)
+                if defect != 'missing-cache':
+                    (old / 'module.zo').write_bytes(b'fixture')
+                if defect == 'collision':
+                    (copied / 'zo' / copied.relative_to(copied.anchor)).mkdir(parents=True)
+                elif defect == 'symlink':
+                    (old / 'escaped.dep').symlink_to(root / 'outside')
+                with self.assertRaises(ValueError):
+                    relocate_runtime_cache(source, copied)
+                self.assertTrue(old.exists())
+
+    def test_plain_runtime_needs_no_separate_cache(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.assertIsNone(relocate_runtime_cache(root / 'plain', root / 'copy'))
+
     def test_pkg_build_profile_uses_upstream_flags_and_a_relocatable_cache(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / 'Racket runtime æ'

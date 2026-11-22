@@ -1,8 +1,12 @@
 #lang racket/base
 
-(require rackunit racket/file racket/path json
+(require rackunit racket/file racket/path racket/runtime-path json
          "../private/native-package-paths.rkt" "../private/native-pins.rkt"
          "../private/native-fontconfig.rkt")
+
+; collection-root : path?
+;   Locates the metadata and tutorial catalogue without relying on the process directory.
+(define-runtime-path collection-root "..")
 
 (define (write-manifest directory [edit values])
   (make-directory* directory)
@@ -21,6 +25,46 @@
                                'files files)) out))))
 
 (module+ test
+  (test-case "editable tutorial retention matches Unix and Windows traversal paths"
+    ;; Evaluate the actual metadata expression with each path convention. Racket's
+    ;; stripper keys retention by path equality, which does not normalize slashes.
+    (define expression
+      (call-with-input-file (build-path collection-root "info.rkt")
+        (lambda (in)
+          (read-line in)
+          (let loop ()
+            (define form (read in))
+            (cond
+              [(eof-object? form) (error 'retention "binary-keep-files definition missing")]
+              [(and (list? form) (equal? (car form) 'define)
+                    (equal? (cadr form) 'binary-keep-files))
+               (caddr form)]
+              [else (loop)])))))
+    (define catalogue
+      (call-with-input-file
+          (build-path collection-root "scribblings" "tutorials" "support" "catalog.json")
+        read-json))
+    (for ([convention '(unix windows)])
+      (define (join . pieces)
+        (apply build-path
+               (for/list ([piece (in-list pieces)])
+                 (bytes->path (string->bytes/utf-8 piece) convention))))
+      (define namespace (make-base-namespace))
+      (namespace-set-variable-value! 'build-path join #t namespace)
+      (define retained (parameterize ([current-namespace namespace]) (eval expression)))
+      (define keeps
+        (for/hash ([path (in-list retained)])
+          (values (if (path-for-some-system? path)
+                      path
+                      (bytes->path (string->bytes/utf-8 path) convention))
+                  #t)))
+      (for* ([tutorial (in-list (hash-ref catalogue 'tutorials))]
+             [file (in-list (hash-ref tutorial 'files))])
+        (define relative
+          (string-append "scribblings/" (if (regexp-match? #rx"^quick/" file) "" "tutorials/")
+                         file))
+        (check-true (hash-ref keeps (apply join (regexp-split #rx"/" relative)) #f)
+                    (format "~a: ~a" convention relative)))))
   (define root (make-temporary-file "skia pair ~a" 'directory))
   (dynamic-wind
     void

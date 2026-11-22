@@ -26,7 +26,8 @@ import zipfile
 from native_packages import ROOT, need, json_bytes, sha256, write_zip
 from catalog_snapshot import inventory
 from catalog_execution import (RUNTIME_ENVIRONMENTS, preserved_package_files,
-                               racket_command, relocatable_runtime, runtime_profile)
+                               racket_command, relocatable_runtime, relocate_runtime_cache,
+                               runtime_profile)
 
 
 def network_evidence():
@@ -91,6 +92,10 @@ class Validator:
         directory.mkdir()
         runtime = directory / 'Racket runtime'
         shutil.copytree(self.runtime, runtime, symlinks=True)
+        relocation = relocate_runtime_cache(self.runtime, runtime)
+        if relocation:
+            self.report.setdefault('runtime_cache_relocations', []).append(dict(environment=name, **relocation))
+            self.save()
         home = directory / 'user home with spaces æ'
         home.mkdir()
         env = {k:v for k,v in os.environ.items()
