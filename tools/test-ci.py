@@ -379,8 +379,9 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")\n'
                       '               "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"\n'
                       '               "scribble-lib" "racket-index"', text)
-        for name in ('skia-fonts-1', 'skia-native-macos-1', 'skia-native-win32-x86_64-1', 'skia-native-x86_64-linux-1'):
+        for name in ('skia-fonts-1', 'skia-native-macos-1', 'skia-native-x86_64-linux-1'):
             self.assertIn('("' + name + '" #:version "1.0"', text)
+        self.assertNotIn('skia-native-win32-x86_64-1', text)
         self.assertIn('"pict-doc"', text)
         self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
     def test_symbol_auditors_normalize_nm_formats(self):

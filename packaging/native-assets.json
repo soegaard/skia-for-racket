@@ -788,6 +788,11 @@
     }
   },
   "directory": "skia-native-1",
+  "distribution": {
+    "linux": "racket-package",
+    "macos": "racket-package",
+    "win32": "direct-nuget"
+  },
   "font_package": {
     "collection": "skia-fonts-1",
     "files": [
@@ -922,14 +927,18 @@
   },
   "redistribution_review_document": {
     "path": "packaging/REDISTRIBUTION-REVIEW.md",
-    "sha256": "96c1287330f53ffa94b3467d8da1c3f8606d4323a77ee6d02de7d80f38d687f2",
-    "size": 9857
+    "sha256": "7ea52b8d36d8d8e0dab75b65c64865c2d5340e6cce8d426e360c2d6364a10aaf",
+    "size": 10783
   },
   "review": {
     "authenticity_basis": "HTTPS NuGet archives checked against package ID/version and repository commit; exact source revisions inspected via GitHub/Gitiles. No claim of NuGet signature verification.",
     "component_license_mapping_complete": false,
     "date": "2026-11-20",
     "redistribution_approved": false,
+    "redistribution_targets": [
+      "macos",
+      "linux"
+    ],
     "reviewer": "Codex implementation audit; maintainer redistribution sign-off remains required",
     "status": "technical-review",
     "technical_component_inventory_complete": true,

@@ -99,12 +99,37 @@ def read_source(kind: str, archive: Path | None) -> tuple[bytes, str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--racket', default=os.environ.get('RACKET', 'racket'))
-    parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument('--root', type=Path, help='explicit legacy developer checkout destination')
+    parser.add_argument('--scope', choices=['user', 'installation'], default='user')
+    parser.add_argument('--remove', action='store_true', help='remove the owned direct-download directory')
+    parser.add_argument('--from-directory', type=Path, help='explicit offline directory of locked NuGet archives')
     parser.add_argument('--library', choices=['both', *PACKAGES], default='both')
     for kind in PACKAGES:
         parser.add_argument(f'--{kind}-archive', type=Path)
         parser.add_argument(f'--{kind}-sha256')
     args = parser.parse_args()
+    if args.root is None:
+        from windows_native import acquire, install, locations, remove
+        if args.library != 'both' or any(getattr(args, kind + suffix) is not None
+                                         for kind in PACKAGES for suffix in ('_archive', '_sha256')):
+            parser.error('direct installation always uses both locked inputs; use --from-directory for offline preparation')
+        destination = locations(args.racket)[args.scope]
+        if args.remove:
+            remove(destination)
+            print(f'Removed {destination}')
+            return
+        lock = Path(__file__).resolve().parents[1] / 'packaging/native-assets.json'
+        from native_packages import read_json, validate_distribution_lock
+        validate_distribution_lock(read_json(lock))
+        with tempfile.TemporaryDirectory(prefix='skia Windows NuGet ') as temporary:
+            inputs = Path(temporary) / 'inputs'
+            acquire(lock, inputs, source=args.from_directory)
+            install(lock, inputs, destination)
+        print(f'Installed pinned upstream pair at {destination}')
+        print('Run raco setup --pkgs skia to build the registered manuals. Close native users before replacing/removing DLLs.')
+        return
+    if args.remove or args.from_directory or args.scope != 'user':
+        parser.error('--root selects the legacy developer installer; scope/remove/from-directory belong to the direct route')
     # Select the interpreter's architecture, not Python's or the host shell's.
     platform = subprocess.check_output(
         [args.racket, '-e', '(printf "~a/~a" (system-type (quote os)) (system-type (quote arch)))'], text=True).strip()

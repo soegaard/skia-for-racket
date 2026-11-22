@@ -6,6 +6,12 @@ document.
 
 Date: November 20, 2026.
 
+Amended November 22, 2026 at the maintainer's request: Windows x86-64 uses an
+explicit installer that acquires both pinned binaries directly from NuGet.
+The project does not publish a Windows native data package. macOS and Linux
+retain the package-managed design. This supersedes the original Windows
+one-command/native-package assumptions and does not approve any publication.
+
 Inspected source baseline: `e944213d0fac4b02ef81bb35beb1e26729aca8f7`.
 Recheck the checkout and relevant instructions before implementation. Preserve
 unrelated work. The proposed names and release numbers below require a final
@@ -13,7 +19,7 @@ availability/maintainer check before publication, not before local development.
 
 ## 1. Outcome and first-release decisions
 
-On an advertised supported platform, a user should be able to run:
+On macOS and Linux, a user should be able to run:
 
 ```sh
 raco pkg install --auto skia
@@ -25,6 +31,24 @@ installing .NET, or compiling Skia. Normal Racket package installation may
 download packages; compilation, documentation building, testing, and first
 render must not download anything.
 
+Windows is the explicit exception. With Python 3.12 or later available, use:
+
+```sh
+raco pkg install --auto --no-setup skia
+racket -l skia/tools/install-windows-natives
+raco setup --pkgs skia
+```
+
+The middle command acquires the locked SkiaSharp 3.119.1 and HarfBuzzSharp
+8.3.1.2 Win32 NuGets from their official HTTPS URLs and installs the validated
+pair under the selected Racket user's library directory, `skia-upstream-1`.
+This directory is outside every Racket package. Setup, imports, tests and first
+render never initiate acquisition. CI stages those two inputs before denying
+network access, then exercises the same installer with its explicit offline
+cache option. Built/source/binary-library packages and uploaded artifacts must
+exclude both DLLs and raw NuGets. Reinstalling on a fresh Windows environment
+requires the explicit installer again. Retain every Windows execution gate.
+
 The public catalog must be able to build the registered manuals and exercise
 a meaningful CPU test suite. A source checkout, the installed source package,
 and the catalog's rebuilt package must all retain correct native discovery.
@@ -35,12 +59,12 @@ Recommended first-release decisions:
 |---|---|
 | User-facing package | `skia`, with the existing single collection named `skia`. |
 | Source organization | Keep the existing collection layout; no simultaneous `skia-lib`/`skia-doc` split. |
-| Native packages | One package per supported target group, containing both pinned SkiaSharp and HarfBuzzSharp libraries. |
+| Native packages | macOS and Linux packages each contain both pinned libraries; Windows uses direct upstream acquisition. |
 | Native pins | Retain SkiaSharp 3.119.1 and HarfBuzzSharp 8.3.1.2. Do not combine publication with a native ABI upgrade. |
 | Initial targets | macOS ARM64 and x86-64, Windows x86-64, glibc Linux x86-64 including the catalog's `natipkg` configuration. |
 | Linux ARM64 | Prepared extension, but not advertised or selected automatically until a real execution lane passes. |
-| Native installation | Racket-managed foreign-library installation in a private, generation-qualified subdirectory. |
-| Native acquisition | Maintainer/CI preparation only, from locked upstream assets. No setup-time downloader. |
+| Native installation | macOS/Linux use Racket-managed foreign-library installation; Windows uses an explicit owned pair outside package contents. Both use private generation-qualified directories. |
+| Native acquisition | Locked maintainer/CI preparation for macOS/Linux; explicit user NuGet installer on Windows. No setup-time or runtime downloader. |
 | Documentation | Keep executable CPU figures, supplied by declared dependencies; eliminate undeclared font/environment assumptions. |
 | Verification | Add catalog-style source and built-package testing; retain existing full native/GPU/GUI acceptance. |
 | Publication | An explicitly approved, separate operation after candidate validation. |
@@ -83,7 +107,7 @@ combination. It does not merge their licenses or claim they share one ABI.
 |---|---|---|---|
 | `skia` | All platforms; useful native execution only where qualified | Racket source and current manuals/examples | Required |
 | `skia-native-macos-1` | `#rx"^(aarch64|x86_64)-macosx$"` | The `osx` members from the two macOS NuGet packages | Required on both architectures |
-| `skia-native-win32-x86_64-1` | `"win32\\x86_64"` as a Racket string | The two `win-x64` DLLs | Required |
+| Windows direct installer | Windows x86-64 CS only; no native package dependency | The two locked `win-x64` members acquired from NuGet by the user | Required explicit preparation |
 | `skia-native-x86_64-linux-1` | `#rx"^x86_64-linux(-natipkg)?$"` | The two `linux-x64` shared libraries | Required in ordinary and catalog environments |
 | `skia-native-aarch64-linux-1` | `#rx"^aarch64-linux(-natipkg)?$"` | The two `linux-arm64` shared libraries | Deferred until execution-qualified |
 
@@ -109,8 +133,6 @@ Append entries of this form to the existing dependency list:
 ```racket
 ("skia-native-macos-1"
  #:version "1.0" #:platform #rx"^(aarch64|x86_64)-macosx$")
-("skia-native-win32-x86_64-1"
- #:version "1.0" #:platform "win32\\x86_64")
 ("skia-native-x86_64-linux-1"
  #:version "1.0" #:platform #rx"^x86_64-linux(-natipkg)?$")
 ```
@@ -118,6 +140,9 @@ Append entries of this form to the existing dependency list:
 These are fragments inside the dependency datum, not standalone expressions.
 Do not add the ARM64 Linux dependency until its release gate is satisfied.
 Use catalog package names, not NuGet URLs or unpublished developer paths.
+Windows has no native package dependency. Keep its two upstream archives in
+the input lock for the direct installer, and explicitly exclude that target
+from native ZIP generation and the distributable artifact manifest.
 
 Racket's dependency version is a lower bound, not an exact upstream asset pin.
 The `-1` package family, reviewed lock manifest, loader checks, and release
@@ -204,7 +229,8 @@ Only the matching native package may own this directory in a given target
 installation. Detect overlapping package selectors and foreign-file ownership
 conflicts in preparation/tests. Never resolve a conflict with `--force` or by
 deleting another package's files. The same selectors must produce exactly one
-native package for each supported target and none for explicitly excluded ones.
+native package for each automatic macOS/Linux target and none for Windows or
+explicitly excluded targets.
 
 Keep filenames and library bytes unmodified when possible. Directory copying
 does not magically repair ELF dependency paths, Mach-O install names, signatures,
@@ -232,6 +258,13 @@ Required lifecycle proof:
    to the first environment and staging tree.
 4. Verify payload, notices, loader paths, and actual rendering/shaping.
 5. Update and remove the packages and check managed-directory ownership/cleanup.
+
+For Windows, test the direct installer's paired replacement/rollback and
+explicit removal instead of native-package ownership. Test both user and
+installation scopes in disposable runtimes. Rebuilt Racket packages must
+contain no downloaded DLLs or NuGets, preserve the installer and lock, and work
+after a fresh explicit acquisition. Never copy the download directory into a
+candidate, built package or evidence upload.
 
 Include user-specific and installation-wide scope tests in disposable
 environments. Do not require users to write into the installed source package.
@@ -357,6 +390,11 @@ environment variable or unit-testing a platform string is not equivalent.
   shell with a clean PATH. Any redistributable support DLL needs an approved
   package/redistribution route. Do not change machine PATH or require an
   administrator installer as a hidden normal-install step.
+  The explicit direct installer owns `skia-upstream-1`, preserves original and
+  collected component notices and records the exact NuGet/member hashes. Its
+  user scope needs no administrator privileges. Upstream terms still apply to
+  use and any later redistribution; this exception does not approve bundling
+  Windows DLLs in our releases or CI artifacts.
 - Preserve the HarfBuzzSharp isolation used to coexist with GTK/Pango. Test
   both load orders and actual Draw and Skia text on Linux; resolving a symbol
   is not sufficient to prove that dependent relocations used the intended ABI.
@@ -397,6 +435,13 @@ Resolve each library on first use in this order:
    if no managed generation is present.
 4. The existing system-library fallback, only if neither managed nor local
    installation is selected.
+
+On Windows, step 2 selects the explicitly installed `skia-upstream-1` pair in
+Racket's library search order and reports origin `upstream-download`, with the
+absolute download directory and acquisition manifest. It does not claim a
+Racket native dependency package owns those files. Missing Windows data in an
+installed package reports the explicit installer command; a selected broken
+pair fails without borrowing from another scope or a host DLL.
 
 Choose one managed generation directory as a pair: do not load Skia from one
 scope and HarfBuzz from another just because one file is missing. A present but
@@ -450,6 +495,10 @@ change the condition to accept any library found anywhere on the host.
 The catalog lane must run ordinary installation/setup with documentation
 enabled. Do not use `--no-docs`, hidden manual downloads, or a pre-populated
 checkout `native/` directory to obtain a green result.
+The documented Windows exception runs `pkg install --no-setup`, the explicit
+upstream installer, then full `raco setup --pkgs skia`. Its private library
+directory is outside the source package. This explicit sequence and its raw
+upstream input receipts must be visible in Windows evidence.
 
 Audit every entry in `scribblings` and their transitive support modules for:
 
@@ -468,7 +517,7 @@ with explicit provenance and execute its source in dedicated CI. Do not render
 an error placeholder or silently omit the example and call the manual passed.
 GPU examples must not require a GPU merely to build their documentation.
 
-Build native packages and the main package together through normal dependency
+On macOS/Linux, build native packages and the main package together through normal dependency
 installation. Test that foreign libraries are present when Scribble evaluation
 first needs them; do not assume setup phase ordering from a manual test.
 
@@ -527,6 +576,8 @@ Separate two environments:
 The source and native package digests must be identical in both. An installation
 with a completely empty package cache and no network is not the intended test:
 the build service stages packages before isolated execution too.
+Windows also stages its two raw upstream NuGets separately before isolation.
+They are acquisition inputs, never catalog sources or distributable packages.
 
 ### 9.2 Required matrix
 
@@ -539,7 +590,7 @@ the build service stages packages before isolated execution too.
 | Current released Racket | Same catalog path on the release version selected when the candidate is frozen. Do not equate a development executable with the release. |
 | macOS ARM64 | Candidate universal payload, managed paths, rendering/shaping, clean-user install/update/remove. |
 | macOS x86-64 | Independent execution of the other universal slice with the same package digest. |
-| Windows x86-64 | Clean PATH/runtime dependencies, managed DLLs, rendering/shaping, spaces in paths, update/remove after process exit. |
+| Windows x86-64 | Direct pinned NuGet preparation, clean PATH/runtime dependencies, paired upstream DLLs, full manuals/DrDr/rendering/shaping offline, scope/update/rollback/removal, and DLL/NuGet exclusion from every rebuilt package and upload. |
 | No-native developer mode | Imports and pure tests with deliberate invalid overrides; no native/GUI initialization. |
 | Optional Linux ARM64 | Real ARM64 execution and all native-package claims before adding this target to release metadata. |
 
@@ -619,7 +670,9 @@ Do not remove that check merely to avoid deciding the new release baseline.
 Keep the old explicit-installer lanes as developer-route regression coverage.
 Where necessary, set explicit local-library overrides only in those lanes.
 The catalog lane must use no such overrides and must prove dependency-package
-discovery. Record the two modes separately.
+discovery on macOS/Linux and explicit upstream-pair discovery on Windows.
+Record these modes separately. Windows feature/developer lanes pass an explicit
+checkout root to preserve their existing local-library containment checks.
 
 ### 10.2 Release artifact set
 
@@ -652,7 +705,7 @@ reports honestly.
 | B. Lock and generate | Reviewed native lock, offline deterministic builder, archive/checksum/selector tests, package templates. | Each native ZIP rebuilds reproducibly from known inputs; no unsigned-off payload. |
 | C. Integrate loaders | Shared private path discovery, managed pair selection, diagnostics, shadowing/error tests, updated doctor/smoke. | Actual package-managed rendering/shaping; old explicit overrides and isolation preserved. |
 | D. Integrate metadata/docs/tests | Native dependencies, concise metadata, font/doc audit, bounded catalog suite, installation instructions. | Normal dependency-driven setup builds every manual and runs meaningful CPU tests. |
-| E. Qualify distribution | Staging catalog, offline execution, platform/minimum/current matrix, built/binary-library lifecycle tests. | Every advertised target passes from exact release ZIPs, without manual native setup. |
+| E. Qualify distribution | Staging catalog, offline execution, platform/minimum/current matrix, built/binary-library lifecycle tests. | macOS/Linux pass dependency-driven setup; Windows passes the explicit upstream installer exception with no downloaded binary in a rebuilt package. |
 | F. Integrate release evidence | Required catalog gate, reviewed frozen policy/version changes, immutable artifact manifest, publication runbook. | Complete candidate receipt, checksums, notices, and reproducible commands ready for maintainer review. |
 | G. Publish and observe | Approved public assets, native catalog entries first, main entry last, actual server build inspection. | Public installation and server results verified; no success claim based only on local CI. |
 
@@ -749,7 +802,9 @@ Implementation-ready candidate:
 - [ ] Native-directory copy/strip/update/remove works on minimum/current Racket.
 - [ ] Managed loading uses explicit paths and preserves HarfBuzz isolation.
 - [ ] Missing/corrupt selected native payloads fail without hidden host fallback.
-- [ ] Ordinary installation requires no native-install script or custom environment.
+- [ ] macOS/Linux ordinary installation requires no native-install script or custom environment.
+- [ ] Windows explicitly acquires both pinned NuGets; full setup/tests/rendering remain offline afterward.
+- [ ] No Windows DLL/NuGet/native package enters release assets, CI evidence or rebuilt packages.
 - [ ] Offline setup builds all registered manuals with declared inputs.
 - [ ] Catalog-style tests have meaningful CPU coverage and timing headroom.
 - [ ] Source, built, and binary-library distribution paths are exercised.
@@ -783,8 +838,11 @@ repository instructions first, inspect the current checkout, and preserve
 unrelated work. This task is implementation and validation, not authorization
 to publish externally.
 
-The intended installation is `raco pkg install --auto skia`, followed by working
-CPU rendering and HarfBuzz shaping with no manual native-install script. Keep
+The intended macOS/Linux installation is `raco pkg install --auto skia`, followed
+by working CPU rendering and HarfBuzz shaping with no native-install script.
+Windows uses the explicit direct NuGet installer exception in Section 1; retain
+its complete execution gates and exclude downloaded Windows bytes from all
+distributable and rebuilt packages. Keep
 the existing single `skia` collection and public API; do not simultaneously
 split the source/docs packages, add graphics features, or upgrade the pinned
 SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2 pair.
@@ -795,7 +853,7 @@ on supported Racket versions. Treat the plan's package names/version as proposed
 defaults, and document any substantive assumption contradicted by current code
 or testing before broadening scope.
 
-Build platform-specific, data-only native packages containing both libraries.
+Build macOS/Linux data-only native packages containing both libraries.
 Use a reviewed locked-input manifest, bounded safe extraction, deterministic
 offline assembly, Racket-compatible archive checksums plus SHA-256 receipts,
 and complete upstream/component notices. Install the payload into an isolated
@@ -817,6 +875,8 @@ network-disabled execution after dependency staging, `raco test --drdr`, actual
 rendering/shaping, and installation from rebuilt packages. No `--no-docs` shortcut,
 runtime download, blanket test skip, or undeclared font/system-library assumption
 may substitute for these checks.
+The explicit Windows preparation step occurs before full documentation setup
+and uses the pinned raw NuGets staged before network denial in qualification.
 
 Retain the existing full release gates and source-archive binary exclusions.
 Review frozen workflow/API/release policies and version assertions deliberately;

@@ -9,11 +9,12 @@
          "../private/catalog-fonts.rkt" "typeface-fixtures.rkt")
 
 (module+ test
-  (test-case "ordinary installed native dependencies select a managed pair"
+  (test-case "the qualified installed native route selects a paired payload"
     (skia-check!) (harfbuzz-check!)
     (unless (or (getenv "RACKET_SKIA_LIBRARY") (getenv "RACKET_HARFBUZZ_LIBRARY"))
-      (check-equal? (hash-ref (hash-ref (native-library-report) 'loader) 'origin) "managed")
-      (check-equal? (hash-ref (harfbuzz-library-report) 'origin) "managed"))
+      (define expected (if (eq? (system-type 'os) 'windows) "upstream-download" "managed"))
+      (check-equal? (hash-ref (hash-ref (native-library-report) 'loader) 'origin) expected)
+      (check-equal? (hash-ref (harfbuzz-library-report) 'origin) expected))
     (check-equal? (skia-native-version) "119.0")
     (check-equal? (harfbuzz-native-version) "8.3.1"))
   (test-case "asymmetric raster and lossless PNG preserve exact interior pixels"

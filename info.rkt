@@ -32,7 +32,6 @@
                "scribble-lib" "racket-index"
                ("skia-fonts-1" #:version "1.0")
                ("skia-native-macos-1" #:version "1.0" #:platform #rx"^(aarch64|x86_64)-macosx$")
-               ("skia-native-win32-x86_64-1" #:version "1.0" #:platform "win32\\x86_64")
                ("skia-native-x86_64-linux-1" #:version "1.0" #:platform #rx"^x86_64-linux(-natipkg)?$")))
 
 ; license : symbol?
@@ -138,6 +137,12 @@
         (build-path "scribblings" "tutorials" "vector-raster" "vector-raster.rkt")
         (build-path "private" "native-default-version.txt")
         (build-path "private" "harfbuzz-default-version.txt")
+        (build-path "packaging" "native-assets.json")
+        (build-path "tools" "install-native-windows.py")
+        (build-path "tools" "install-native-windows.ps1")
+        (build-path "tools" "windows_native.py")
+        (build-path "tools" "native_packages.py")
+        (build-path "tools" "native_abi.py")
         (build-path "private" "source-identity.json")))
 (define binary-lib-keep-files binary-keep-files)
 

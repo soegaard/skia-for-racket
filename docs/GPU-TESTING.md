@@ -119,7 +119,7 @@ Use Windows x64 Racket and Python. The loaders now select
 ```powershell
 $env:RACKET = 'C:\Program Files\Racket\Racket.exe'
 $env:PYTHON = 'python'
-.\tools\install-native-windows.ps1 -Racket $env:RACKET -Python $env:PYTHON
+.\tools\install-native-windows.ps1 -Racket $env:RACKET -Python $env:PYTHON -Root (Get-Location).Path
 .\tools\validate-gpu.ps1 -Racket $env:RACKET -Python $env:PYTHON
 ```
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import zipfile
 
-from native_packages import (MAX_ARCHIVE, MAX_METADATA, TARGETS, bounded_member,
+from native_packages import (MAX_ARCHIVE, MAX_METADATA, TARGETS, DISTRIBUTED_TARGETS, bounded_member,
                              json_bytes, need, read_json, unique, zip_index)
 
 
@@ -35,7 +35,7 @@ def collect(artifacts: Path, output: Path) -> dict:
     need(not output.exists(), 'receipt output must be a new directory')
     native = read_json(artifacts / 'native-artifacts.json')
     need(type(native) is dict and native.get('schema') == 1, 'invalid native artifact index')
-    expected = {target['package'] + '.zip' for target in TARGETS.values()} | {'skia-fonts-1.zip'}
+    expected = {TARGETS[name]['package'] + '.zip' for name in DISTRIBUTED_TARGETS} | {'skia-fonts-1.zip'}
     rows = native.get('artifacts')
     need(type(rows) is list and len(rows) == len(expected), 'incomplete native/font receipt set')
     need(all(type(row) is dict and type(row.get('archive')) is str

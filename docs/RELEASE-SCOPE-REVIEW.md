@@ -35,7 +35,41 @@ source review, not substitute execution evidence. See
 [CATALOG-VALIDATION.md](CATALOG-VALIDATION.md) for local results and unresolved
 external qualification. No old capability or API capture is regenerated.
 
-## The two resolved decisions
+## Windows acquisition amendment on November 22
+
+The maintainer authorized an explicit pinned NuGet installer exception for
+Windows, retaining macOS/Linux dependency-driven native installation. The
+source metadata removes the Windows native dependency, the generator explicitly
+limits distributable natives to macOS/Linux, and the asset verifier requires
+that exact three-package native/font set. All six upstream inputs and both
+native version pins remain unchanged. The reviewed lock binds this distribution
+policy and the amended redistribution record without approving redistribution.
+
+Windows installation stages source with `--no-setup`, explicitly acquires both
+NuGets, then runs full docs-enabled setup. The installer validates bounded ZIPs,
+metadata, PE identity and exact archive/member hashes before replacing an owned
+pair outside package contents. Its private directory, acquisition provenance,
+scope shadowing, repair, rollback and explicit removal are tested. The existing
+legacy `--root` route remains available to developer/ABI/GPU validation.
+
+The 16 Windows feature workflow installer calls now explicitly pass their
+original checkout destination. Review the changed installer commands and workflow
+fingerprints while retaining every job, runner, version, required step and
+artifact. The graph remains 77 leaf jobs and 84 required artifacts. No actions,
+permissions, caller gates, artifact limits or historical API snapshots change.
+The release verifier additionally rejects retained Win32 library DLLs, their
+native package ZIP and raw NuGets. Catalog Windows receipts must prove direct
+acquisition of the exact pins and binary exclusion from all three rebuilt
+package forms, alongside the existing full setup/DrDr/rendering checks.
+
+The source-review ledger includes the direct installer, launcher, pure tests,
+policy checks and installation documentation. Updating their deliberately
+reviewed fingerprints does not certify Windows execution. New Windows CS
+8.18/9.3 execution and the full single-attempt release gate remain required.
+The earlier green automatic matrix at `a37d0f8b` is evidence for the original
+managed Windows route, preserved separately. Publication remains unauthorized.
+
+## The two resolved capability decisions
 
 `colors.xyz-ops` is now **supported-with-limits**. The two formerly unbound C
 functions are implemented as `xyz-d50-concat` and `xyz-d50-invert` in the existing

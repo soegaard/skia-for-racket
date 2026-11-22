@@ -16,4 +16,4 @@ if __name__ == '__main__':
         for suffix in ('', '.CHECKSUM'):
             name = receipt['archive'] + suffix
             need((args.first / name).read_bytes() == (args.second / name).read_bytes(), 'non-reproducible archive: ' + name)
-    print('Four native/font packages and Racket checksums reproduce byte for byte.')
+    print('Three macOS/Linux/font packages and Racket checksums reproduce byte for byte; Windows uses direct NuGet acquisition.')

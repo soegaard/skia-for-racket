@@ -6,13 +6,18 @@ The later [initial CI push preparation](PUSH-READINESS.md) gives the maintainer
 a dedicated test branch with receipt-only automatic catalog uploads. The
 maintainer performs that push; the agent has not pushed it.
 
+Amendment, November 22: Windows now uses explicit direct NuGet acquisition.
+Exclude its native package from the proposed publication set. The earlier
+managed Windows execution receipts qualify the old route; the revised route
+needs both released Windows lanes again. macOS/Linux packaging is unchanged.
+See the [Windows procedure](PACKAGE-PUBLICATION.md#windows-direct-nuget-exception).
+
 ## Proposed identities
 
 | Package | Version | Distribution |
 | --- | --- | --- |
 | `skia` | `0.79` | Existing single source/API collection |
 | `skia-native-macos-1` | `1.0` | Both unchanged universal native dylibs |
-| `skia-native-win32-x86_64-1` | `1.0` | Both unchanged x64 DLLs |
 | `skia-native-x86_64-linux-1` | `1.0` | Both unchanged x64 glibc libraries; declared natipkg dependencies |
 | `skia-fonts-1` | `1.0` | Four approved unmodified Noto fonts and OFL notices |
 
@@ -20,7 +25,8 @@ The authoritative [catalog index](https://pkgs.racket-lang.org/pkgs) contained
 2,845 names and none of these five names at inspection. The retained response
 is `output/catalog/publication-followup-20261121/catalog-names.rktd`, 41,140 bytes,
 SHA-256 `7b9c59c8412c469ea03ebdd2d2b1f855ab402d3f13858b14336d85c2a4855e13`.
-This is a point-in-time collision check, not a reservation. Recheck immediately
+This historical five-name check includes the now-excluded Windows name.
+It is a point-in-time collision check, not a reservation. Recheck immediately
 before any later authorized registration.
 
 The existing public repository is
@@ -43,7 +49,7 @@ beside them. A mutable branch URL is not the proposed package source.
 
 | Blocker | Exact next action | Responsible party |
 | --- | --- | --- |
-| Native redistribution | Review the [specific build/runtime/Adobe questions](../packaging/REDISTRIBUTION-REVIEW.md); obtain exact upstream build/link evidence and Windows runtime terms, then record a substantive maintainer disposition | Upstream build maintainers supply provenance; project maintainer decides redistribution basis |
+| Native redistribution | Review the [macOS/Linux component, runtime and Adobe questions](../packaging/REDISTRIBUTION-REVIEW.md); document a supported maintainer disposition and any focused clarification needed. Windows DLL redistribution is excluded. | Project maintainer, with upstream clarification where needed |
 | Intel, Windows, ordinary Linux and natipkg execution | Run both released CS versions with `tools/run-catalog-ci.py` on native hosts; retain complete validator receipts | Runner operator; project maintainer supplies authorized infrastructure |
 | Same-attempt release evidence | Run the existing Release candidate workflow on the exact committed candidate; all CI, Acceptance, API inventory and catalog jobs plus the aggregator must pass | Maintainer/authorized GitHub runner operator |
 | GitHub access to candidate | Push the prepared `codex/catalog-ci` branch for receipt-only automatic CI; separately review the full archive transfer before an eventual Release candidate dispatch | Project maintainer |
@@ -88,8 +94,8 @@ review that later transfer before dispatching it.
 
 Only after pre-publication review and every required gate pass, present the
 exact immutable manifest for explicit publication approval. Publish the accepted
-bytes and complete notices/checksums without rebuilding. Register the three
-native packages and `skia-fonts-1` before `skia`, then verify dependency-driven
+bytes and complete notices/checksums without rebuilding. Register the two
+macOS/Linux native packages and `skia-fonts-1` before `skia`, then verify dependency-driven
 public installation. Actual catalog-server documentation/test builds and public
 built-package installs are post-publication checks; no disposable staging
 catalog result claims they have already happened. The complete procedure and

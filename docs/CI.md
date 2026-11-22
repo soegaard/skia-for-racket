@@ -8,7 +8,12 @@ platform/version lanes and one reproducible native/font/source artifact set.
 Ordinary dependency installation builds all registered manuals with networking
 denied after staging; DrDr, rendering/shaping, loader failures, scope/update/
 removal and source/built/binary-lib reinstalls remain mandatory. No `--no-docs`
-or native installer is used in this lane. See [the runbook](PACKAGE-PUBLICATION.md)
+is used in this lane. macOS/Linux retain dependency-only native installation.
+Windows stages its pinned NuGets directly from upstream, explicitly invokes the
+installer before full setup, and proves DLL/NuGet exclusion from rebuilt packages
+and uploads. Its installer owns a separate paired user/installation directory.
+Both CS versions and all existing Windows CPU/GPU/GUI/feature gates remain
+required. See [the runbook](PACKAGE-PUBLICATION.md)
 and [actual local results/external gaps](CATALOG-VALIDATION.md).
 
 Standalone catalog CI verifies the archives on the runner and uploads only

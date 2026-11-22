@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-GENERATOR_VERSION = 2
+GENERATOR_VERSION = 3
 MAX_ARCHIVE = 180 * 1024 * 1024
 MAX_MEMBER = 100 * 1024 * 1024
 MAX_TOTAL = 600 * 1024 * 1024
@@ -30,6 +30,8 @@ TARGETS = {
     'linux': dict(package='skia-native-x86_64-linux-1', rid='linux-x64', suffix='.so',
                   selector='#rx"^x86_64-linux(-natipkg)?$"'),
 }
+DISTRIBUTED_TARGETS = ('macos', 'linux')
+DISTRIBUTION = {'macos': 'racket-package', 'linux': 'racket-package', 'win32': 'direct-nuget'}
 
 
 def need(ok, message):
@@ -374,6 +376,9 @@ def validate_observations(lock):
 
 def validate_distribution_lock(lock, root=ROOT):
     validate_observations(lock)
+    need(lock.get('distribution') == DISTRIBUTION, 'unreviewed native distribution/acquisition policy')
+    need(lock.get('review', {}).get('redistribution_targets') == list(DISTRIBUTED_TARGETS),
+         'redistribution review must explicitly cover the shipped macOS/Linux targets')
     expected_checksums = ''.join(r['sha256'] + '  ' + name + '\n' for name,r in sorted(lock['archives'].items()))
     need((root / 'packaging/native-inputs.sha256').read_text() == expected_checksums,
          'legacy installer checksums differ from the reviewed lock')

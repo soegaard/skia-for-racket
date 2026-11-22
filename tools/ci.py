@@ -35,7 +35,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
-    'test-native-packages.py', 'test-catalog-packaging.py',
+    'test-native-packages.py', 'test-catalog-packaging.py', 'test-windows-native.py',
     'test-release-scope.py', 'test-small-gaps.py', 'test-public-api.py', 'test-release-candidate.py',
     'test-gpu-diagnostics.py',
     'test-gpu-context-controls.py',

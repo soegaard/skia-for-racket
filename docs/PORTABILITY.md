@@ -2,7 +2,7 @@
 
 ## Catalog candidate — 0.79
 
-Automatic native data targets are macOS ARM64/x86-64, Windows x86-64 and glibc
+Automatic native data targets are macOS ARM64/x86-64 and glibc
 Linux x86-64 including actual natipkg, on 64-bit Racket CS 8.18 and released 9.3.
 This is the qualification matrix, not an assertion that all new lanes have
 passed. See [exact local results and external gaps](CATALOG-VALIDATION.md).
@@ -11,6 +11,13 @@ directory. Linux natipkg explicitly declares and initializes Racket's
 fontconfig/TTF support. Ordinary Linux requires OS fontconfig; the observed
 GLIBC 2.27 symbol floor is not a universal old-distribution qualification.
 Linux ARM64, musl, 32-bit and other new targets are not advertised.
+
+Windows x86-64 uses an explicit pinned NuGet download before full setup on the
+same CS 8.18/9.3 matrix. It has no native dependency package. The paired
+`skia-upstream-1` directory is outside every package; source/built/binary-library
+reinstalls must repeat explicit preparation. Full Windows CPU, WARP, DXGI and
+feature checks remain required. This changed route needs fresh Windows
+execution evidence; the earlier managed-package passes do not qualify it.
 
 ## Current minimum and DC validation — 0.54
 

@@ -1,6 +1,6 @@
 # Racket Skia — 0.79 candidate
 
-The catalog installation being prepared is:
+The macOS and Linux catalog installation being prepared is:
 
 ```sh
 raco pkg install --auto skia
@@ -9,13 +9,30 @@ raco pkg install --auto skia
 It declares platform native data and licensed tutorial/test fonts as package
 dependencies. Both CPU rendering and HarfBuzz shaping use those managed assets;
 no native-install script or runtime download is part of package setup.
+
+Windows x86-64 uses an explicit upstream-download exception. With Python 3.12
+or later available, run:
+
+```sh
+raco pkg install --auto --no-setup skia
+racket -l skia/tools/install-windows-natives
+raco setup --pkgs skia
+```
+
+The middle command downloads both pinned Windows NuGets directly from NuGet,
+verifies archive/member hashes and PE identity, and installs one paired directory
+outside the source package. No Windows native package is published. Setup,
+imports and rendering never download libraries. Remove that owned user download
+with `racket -l skia/tools/install-windows-natives -- --remove`; stop rendering
+processes first. See the [Windows procedure](docs/PACKAGE-PUBLICATION.md#windows-direct-nuget-exception).
 **These package names are unpublished candidates.** Use the disposable staging
 catalog in the [publication runbook](docs/PACKAGE-PUBLICATION.md) until the
 candidate is qualified and separately approved for publication. See the exact
 [local results and external gaps](docs/CATALOG-VALIDATION.md).
 
 Automatic targets are 64-bit Racket CS 8.18 or released 9.3 on macOS ARM64 and
-x86-64, Windows x86-64, and glibc Linux x86-64 (ordinary and real `natipkg`).
+x86-64 and glibc Linux x86-64 (ordinary and real `natipkg`). Windows x86-64 uses
+the same interpreter versions with the explicit installer above.
 These are qualification targets, not a claim of completed execution on every
 platform. Ordinary Linux needs OS fontconfig and a default Latin font (CI uses
 `fonts-dejavu-core`); natipkg declares Racket's draw
@@ -1214,8 +1231,9 @@ filename.
 
 ## Install as a Racket package
 
-After the candidate has been published with separate approval, use
-`raco pkg install --auto skia`. For pre-publication testing, configure only a
+After the candidate has been published with separate approval, macOS/Linux use
+`raco pkg install --auto skia`. Windows uses the three explicit installation
+commands at the start of this README. For pre-publication testing, configure only a
 disposable environment with the exact staging catalog described in the runbook.
 The single public collection remains:
 
@@ -1224,8 +1242,9 @@ The single public collection remains:
 ```
 
 The source ZIP contains no native libraries or font binaries. The package
-manager obtains the separately checksummed declared data packages during
-installation. Importing `skia` performs no native load or download. Keep a
+manager obtains the separately checksummed declared font data and macOS/Linux
+native packages during installation. Windows native downloads stay outside the
+package and require the explicit installer. Importing `skia` performs no native load or download. Keep a
 linked development source directory available while its package is installed.
 
 ## First drawing

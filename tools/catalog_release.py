@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import zipfile
 from catalog_execution import PKG_BUILD_PROFILE, RUNTIME_ENVIRONMENTS, verify_drdr_child
-from native_packages import validate_distribution_lock
+from native_packages import ROOT, DISTRIBUTED_TARGETS, TARGETS, read_json, validate_distribution_lock
 from release_graph import need, json_data
 
 REQUIRED_CHECKS = ('ordinary_setup_with_documentation', 'package_dependencies_and_registered_manuals',
@@ -20,6 +20,33 @@ REQUIRED_CHECKS = ('ordinary_setup_with_documentation', 'package_dependencies_an
                    'original_environment_and_candidate_archives_removed',
                    'rebuilt_native_metadata_semantics',
                    'source_built_binary_lib_roundtrips_and_removal')
+WINDOWS_CHECKS = ('windows_explicit_installer_before_offline_setup',
+                  'windows_rebuilt_packages_exclude_downloaded_payload')
+
+
+def verify_windows_acquisition(report, lock, lock_sha256):
+    from windows_native import ROUTE, check_url, records
+    acquisition = report.get('windows_upstream_acquisition') or {}
+    need(acquisition.get('route') == ROUTE and acquisition.get('lock_sha256') == lock_sha256,
+         'Windows direct NuGet acquisition identity is missing or differs')
+    rows = acquisition.get('archives') or []
+    expected = records(lock)
+    need(len(rows) == 2 and {row.get('name') for row in rows} == set(expected), 'Windows acquisition must name exactly both locked NuGets')
+    for row in rows:
+        source = expected[row['name']]
+        need(all(row.get(key) == source[key] for key in ('package', 'version', 'url', 'size', 'sha256', 'kind'))
+             and row.get('member') == source['library_member']
+             and row.get('member_sha256') == source['members'][source['library_member']]['sha256']
+             and row.get('obtained_by') == 'nuget-download', 'Windows upstream acquisition differs from locked inputs')
+        check_url(row.get('final_url', ''))
+    need(all(report.get('checks', {}).get(key) is True for key in WINDOWS_CHECKS),
+         'Windows exception omitted explicit installer or binary exclusion checks')
+    lifecycle = report.get('windows_upstream_lifecycle') or {}
+    need(lifecycle.get('compatible_revision') == '1.1' and lifecycle.get('rollback_revision') == '1.0'
+         and all(lifecycle.get(key) is True for key in ('user_scope_removed', 'installation_scope_removed',
+                                                       'partial_shadow_rejected', 'unrelated_sentinel_preserved')),
+         'Windows upstream lifecycle evidence is incomplete')
+    return expected
 
 
 def reviewed_lock(root):
@@ -38,7 +65,7 @@ def member_json(archive, name):
     return json_data(archive.read(name).decode('utf-8'))
 
 
-def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commit):
+def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commit, native_lock=None):
     need(report.get('status') == 'passed-local-selected-checks', 'catalog execution did not pass')
     need(not report.get('continued_existing_installation'), 'catalog final qualification requires one complete fresh run')
     need(not report.get('cleanup_leftovers'), 'catalog disposable environment cleanup was incomplete')
@@ -60,6 +87,8 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
     actual = {r['archive']:r['sha256'] for r in staging['artifacts']['artifacts']}
     need(actual == artifacts, 'catalog lane used different native/font archives')
     identity = report['identity']
+    windows = identity['target'] == 'win32\\x86_64'
+    windows_records = verify_windows_acquisition(report, native_lock or read_json(ROOT / 'packaging/native-assets.json'), lock_sha256) if windows else None
     if identity['target'].startswith('x86_64-linux'):
         need(type(report.get('execution_uid')) is int and report['execution_uid'] > 0,
              'Linux read-only qualification requires an unprivileged execution UID')
@@ -101,12 +130,30 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
         need(smoke.get('status') == 'passed' and smoke.get('source_version') == '0.79', 'catalog native smoke missing')
         for kind in ('skia', 'harfbuzz'):
             native = smoke[kind]['loader'] if kind == 'skia' else smoke[kind]
-            need(native.get('origin') == 'managed' and native.get('absolute_path') and
+            need(native.get('origin') == ('upstream-download' if windows else 'managed') and native.get('absolute_path') and
                  native.get('installed_sha256') == native['manifest']['files'][kind]['sha256'] and
                  native['manifest']['lock_sha256'] == lock_sha256, 'catalog native provenance differs')
             path_type = PureWindowsPath if re.match(r'^[A-Za-z]:', native['absolute_path']) else PurePosixPath
             path = path_type(native['absolute_path'])
-            need(path.is_absolute() and path.parent == path_type(native['managed_directory']), 'catalog library escaped its generation')
+            directory = native.get('download_directory') if windows else native.get('managed_directory')
+            need(directory and path.is_absolute() and path.parent == path_type(directory), 'catalog library escaped its generation')
+            if windows:
+                source = next(row for row in windows_records.values() if row['kind'] == kind)
+                member = source['members'][source['library_member']]
+                record = native['manifest']['files'][kind]
+                need(path.parent.name == 'skia-upstream-1' and native.get('managed_directory') in (None, False)
+                     and native['manifest'].get('package') == 'skia-upstream-win32-x86_64-1'
+                     and native['manifest'].get('upstream_versions') == (native_lock or read_json(ROOT / 'packaging/native-assets.json'))['upstream_versions']
+                     and native['manifest'].get('acquisition', {}).get('route') == 'direct-nuget'
+                     and record.get('sha256') == member['sha256'] and record.get('size') == member['size']
+                     and record.get('filename') == source['library_filename']
+                     and record.get('asset_version') == source['version']
+                     and record.get('archive_sha256') == source['sha256'], 'Windows installed DLL provenance differs from pinned upstream')
+                expected_acquisition = dict(route='direct-nuget', archives=[
+                    dict(name=name, url=row['url'], sha256=row['sha256'], size=row['size'])
+                    for name, row in sorted(windows_records.items())])
+                need(native['manifest'].get('acquisition') == expected_acquisition,
+                     'Windows installed acquisition manifest differs from locked NuGets')
         if identity['target'] == 'x86_64-linux-natipkg':
             configuration = smoke['skia'].get('fontconfig') or {}
             need(configuration.get('origin') == 'managed-cache' and
@@ -126,6 +173,13 @@ def verify(root, directory, *, commit, attempt):
     need(assets is not None, 'catalog artifact set missing')
     with zipfile.ZipFile(directory / assets['file']) as archive:
         receipts = member_json(archive, 'native-artifacts.json')['artifacts']
+        expected = {TARGETS[name]['package'] + '.zip' for name in DISTRIBUTED_TARGETS} | {'skia-fonts-1.zip'}
+        need(len(receipts) == len(expected) and {r.get('archive') for r in receipts} == expected,
+             'catalog artifacts must exclude the Windows direct-download payload')
+        allowed = {'native-artifacts.json', 'skia.zip', 'skia.zip.CHECKSUM'}
+        for name in expected:
+            allowed.update((name, name + '.CHECKSUM', name.removesuffix('.zip') + '.receipt.json'))
+        need(set(archive.namelist()) == allowed, 'unexpected candidate payload or file in catalog artifact set')
         artifacts = {}
         for receipt in receipts:
             name = receipt['archive']
@@ -136,14 +190,15 @@ def verify(root, directory, *, commit, attempt):
                  archive.read(name + '.CHECKSUM') == receipt['sha1'].encode('ascii'), 'catalog archive checksum differs')
             need(receipt['lock_sha256'] == digest and receipt['source_commit_observed'] == commit, 'catalog asset provenance differs')
             artifacts[name] = receipt['sha256']
-        need(len(artifacts) == 4, 'incomplete catalog native/font set')
+        need(len(artifacts) == 3, 'incomplete catalog native/font set')
         source_sha = hashlib.sha256(archive.read('skia.zip')).hexdigest()
     targets = set()
     for name, record in index.items():
         if name.startswith('catalog-') and not name.startswith('catalog-assets-'):
             with zipfile.ZipFile(directory / record['file']) as archive:
                 targets.add(verify_lane(member_json(archive, 'result.json'), member_json(archive, 'staging-receipt.json'),
-                                        source_sha256=source_sha, artifacts=artifacts, lock_sha256=digest, commit=commit))
+                                        source_sha256=source_sha, artifacts=artifacts, lock_sha256=digest, commit=commit,
+                                        native_lock=lock))
     expected = {(target, version) for target in ('aarch64-macosx', 'x86_64-macosx', 'win32\\x86_64',
                                                  'x86_64-linux', 'x86_64-linux-natipkg') for version in ('8.18', '9.3')}
     need(targets == expected, 'catalog platform/version qualification is incomplete: ' + repr(sorted(expected - targets)))

@@ -23,7 +23,7 @@ import sys
 import time
 import tempfile
 import zipfile
-from native_packages import ROOT, need, json_bytes, read_json, sha256, write_zip
+from native_packages import ROOT, DISTRIBUTED_TARGETS, TARGETS, need, json_bytes, read_json, sha256, write_zip
 from catalog_snapshot import inventory
 from catalog_execution import (RUNTIME_ENVIRONMENTS, preserved_package_files,
                                racket_command, relocatable_runtime, relocate_runtime_cache,
@@ -48,7 +48,7 @@ def network_evidence():
 
 
 class Validator:
-    def __init__(self, runtime, catalog, directory, *, base_catalog=None, forms=True, drdr=True, wrong_abi=None, owned_stage=None):
+    def __init__(self, runtime, catalog, directory, *, base_catalog=None, forms=True, drdr=True, wrong_abi=None, owned_stage=None, windows_inputs=None):
         runtime = relocatable_runtime(runtime)
         need(not directory.exists(), 'validation directory must be new')
         directory.mkdir(parents=True)
@@ -60,6 +60,8 @@ class Validator:
         self.drdr = drdr
         self.wrong_abi = wrong_abi.resolve() if wrong_abi else None
         self.owned_stage = owned_stage.resolve() if owned_stage else None
+        self.windows_inputs = windows_inputs.resolve() if windows_inputs else None
+        self.windows = os.name == 'nt'
         snapshot_verified = False
         if self.owned_stage:
             need(self.catalog == self.owned_stage / 'snapshot/catalog' and
@@ -119,10 +121,10 @@ class Validator:
             self.report['windows_clean_path'] = env['PATH']
         return executable, env, directory
 
-    def run(self, environment, *arguments, timeout=900, failure=False, extra_env=None):
+    def run(self, environment, *arguments, timeout=900, failure=False, extra_env=None, python=False):
         executable, env, _ = environment
-        command = [*racket_command(executable), *map(str, arguments)]
-        inherited = runtime_child_environment(executable)
+        command = [*([sys.executable] if python else racket_command(executable)), *map(str, arguments)]
+        inherited = {} if python else runtime_child_environment(executable)
         start = time.monotonic()
         number = len(self.report['commands']) + 1
         log = self.root / f'{number:03}.log'
@@ -172,8 +174,29 @@ class Validator:
                     return
                 time.sleep(0.2)
 
-    def install(self, environment, catalog):
+    def windows_installer(self, environment, *, scope='user', remove=False):
+        arguments = ['-l', 'skia/tools/install-windows-natives', '--', '--scope', scope]
+        if remove:
+            arguments += ['--remove']
+        else:
+            need(self.windows_inputs is not None, 'Windows requires its explicit separately staged NuGet inputs')
+            arguments += ['--from-directory', self.windows_inputs]
+        self.run(environment, *arguments, extra_env={'PYTHON': sys.executable})
+        self.report.setdefault('windows_installer_actions', []).append(dict(scope=scope, operation='remove' if remove else 'install'))
+        self.save()
+
+    def install(self, environment, catalog, *, windows_scope='user'):
         self.raco(environment, 'pkg', 'config', '--set', 'catalogs', catalog, self.base_catalog)
+        if self.windows:
+            # The explicitly approved exception stages source/dependencies,
+            # invokes the upstream installer, then runs normal docs-enabled setup.
+            self.raco(environment, 'pkg', 'install', '--no-setup', '--auto', '--batch', 'skia', timeout=3600)
+            message = self.run(environment, '-e', '(begin (require skia) (skia-check!))', failure=True)
+            need('install-native-windows.py' in message, 'missing Windows pair did not explain the explicit installer')
+            self.windows_installer(environment, scope=windows_scope)
+            self.raco(environment, 'setup', '--pkgs', 'skia', timeout=3600)
+            self.report['checks']['windows_explicit_installer_before_offline_setup'] = True
+            return
         # Intentionally ordinary dependency-driven setup, INCLUDING manuals.
         self.raco(environment, 'pkg', 'install', '--auto', '--batch', 'skia', timeout=3600)
 
@@ -186,11 +209,13 @@ class Validator:
             need(collection.is_relative_to(environment[2]), 'collection escaped disposable installation')
             for kind in ('skia', 'harfbuzz'):
                 library = report[kind]['loader'] if kind == 'skia' else report[kind]
-                need(library['origin'] == 'managed', 'override/system/checkout supplied native smoke')
+                expected_origin = 'upstream-download' if self.windows else 'managed'
+                need(library['origin'] == expected_origin, 'override/system/checkout supplied native smoke')
                 path = Path(library['absolute_path']).resolve()
                 need(path.is_relative_to(environment[2]), 'library escaped isolated runtime/home: ' + str(path))
                 need(path.is_file(), 'reported managed library is absent: ' + str(path))
-                need(path.parent == Path(library['managed_directory']).resolve(), 'mixed native pair directories')
+                directory = library['download_directory'] if self.windows else library['managed_directory']
+                need(path.parent == Path(directory).resolve(), 'mixed native pair directories')
                 manifest = library['manifest']
                 need(library['installed_sha256'] == manifest['files'][kind]['sha256'], 'installed payload bytes differ')
             if report['target'] == 'x86_64-linux-natipkg':
@@ -212,7 +237,7 @@ class Validator:
 
     def negatives(self, environment, report):
         loader = report['skia']['loader']
-        generation = Path(loader['managed_directory'])
+        generation = Path(loader['download_directory'] if self.windows else loader['managed_directory'])
         manifest = generation / 'manifest.json'
         original = manifest.read_bytes()
         harfbuzz = Path(report['harfbuzz']['absolute_path'])
@@ -237,7 +262,7 @@ class Validator:
         quarantine = self.root / 'quarantined native member'
         harfbuzz.rename(quarantine)
         try:
-            rejected('missing-paired-member', 'selected managed payload')
+            rejected('missing-paired-member', 'selected upstream payload' if self.windows else 'selected managed payload')
         finally:
             quarantine.rename(harfbuzz)
         for label, mutate, expected in (
@@ -273,7 +298,7 @@ class Validator:
             value = json.loads(original)
             value['files']['skia'].update(size=len(invalid), sha256=sha256(invalid))
             manifest.write_bytes(json_bytes(value))
-            rejected('selected-unloadable-image', 'could not load selected managed library')
+            rejected('selected-unloadable-image', 'could not load selected upstream-download library' if self.windows else 'could not load selected managed library')
         finally:
             replace_image(skia, native)
             manifest.write_bytes(original)
@@ -294,7 +319,7 @@ class Validator:
                 value = json.loads(original)
                 value['files']['skia'].update(size=len(architecture), sha256=sha256(architecture))
                 manifest.write_bytes(json_bytes(value))
-                rejected('selected-wrong-architecture', 'could not load selected managed library')
+                rejected('selected-wrong-architecture', 'could not load selected upstream-download library' if self.windows else 'could not load selected managed library')
                 replace_image(skia, invalid)
                 value = json.loads(original)
                 value['files']['skia'].update(size=len(invalid), sha256=sha256(invalid))
@@ -317,6 +342,8 @@ class Validator:
         self.save()
 
     def native_lifecycle(self, environment, native, smoke):
+        if self.windows:
+            return self.windows_lifecycle(environment, smoke)
         package = Path(self.run(environment, '-e', f'(begin (require pkg/lib) (display (pkg-directory "{native}")))'))
         archive_directory = self.root / 'native lifecycle archives'
         archive_directory.mkdir()
@@ -357,6 +384,45 @@ class Validator:
         self.report['checks']['scopes_removal_and_unrelated_sentinel'] = True
         self.save()
 
+    def windows_lifecycle(self, environment, smoke):
+        directory = Path(smoke['skia']['loader']['download_directory'])
+        collection = Path(smoke['collection'])
+        code = ('import sys; from pathlib import Path; '
+                'sys.path.insert(0,sys.argv[1]); import windows_native as w; '
+                'w.install(Path(sys.argv[2]),Path(sys.argv[3]),Path(sys.argv[4]),revision="1.1")')
+        self.run(environment, '-c', code, collection / 'tools', collection / 'packaging/native-assets.json',
+                 self.windows_inputs, directory, python=True)
+        need(self.smoke(environment)[0]['skia']['loader']['manifest']['package_version'] == '1.1',
+             'Windows compatible installer revision was not selected')
+        self.windows_installer(environment)
+        need(self.smoke(environment)[0]['skia']['loader']['manifest']['package_version'] == '1.0',
+             'Windows explicit installer rollback was not selected')
+        self.report['checks']['compatible_update_and_explicit_rollback'] = True
+        scopes = self.environment('scope lifecycle')
+        self.install(scopes, self.catalog, windows_scope='installation')
+        installation = self.smoke(scopes)[0]
+        install_directory = Path(installation['skia']['loader']['download_directory'])
+        sentinel = install_directory.parent / 'unrelated catalog lifecycle sentinel.txt'
+        sentinel.write_text('retain me\n')
+        self.windows_installer(scopes, scope='user')
+        user = self.smoke(scopes)[0]
+        user_directory = Path(user['skia']['loader']['download_directory'])
+        need(user_directory != install_directory, 'Windows user installer did not isolate its directory')
+        # A broken selected user pair must never borrow the installation pair.
+        self.negatives(scopes, user)
+        self.windows_installer(scopes, scope='user', remove=True)
+        need(not user_directory.exists() and Path(self.smoke(scopes)[0]['skia']['loader']['download_directory']) == install_directory,
+             'Windows user removal did not restore installation-scope selection')
+        self.windows_installer(scopes, scope='installation', remove=True)
+        need(not install_directory.exists() and sentinel.read_text() == 'retain me\n', 'Windows removal changed unrelated libraries')
+        self.raco(scopes, 'pkg', 'remove', '--batch', 'skia', 'skia-fonts-1', timeout=1800)
+        self.remove_environment(scopes)
+        self.report['windows_upstream_lifecycle'] = dict(compatible_revision='1.1', rollback_revision='1.0',
+            user_scope_removed=True, installation_scope_removed=True, partial_shadow_rejected=True,
+            unrelated_sentinel_preserved=True)
+        self.report['checks']['scopes_removal_and_unrelated_sentinel'] = True
+        self.save()
+
     def execute(self):
         if sys.platform.startswith('linux'):
             self.report['execution_uid'] = os.geteuid()
@@ -368,6 +434,13 @@ class Validator:
         need(identity['version'] in ('8.18', '9.3') and identity['vm'] == 'chez-scheme' and identity['bits'] == 64,
              'qualification requires exact released 64-bit CS Racket 8.18 or 9.3')
         self.report['identity'] = identity
+        if self.windows:
+            from windows_native import records, checked_input
+            need(self.windows_inputs is not None, 'Windows direct NuGet input cache is missing')
+            lock = read_json(ROOT / 'packaging/native-assets.json')
+            for name, record in records(lock).items():
+                checked_input(self.windows_inputs / name, record)
+            self.report['windows_upstream_acquisition'] = read_json(self.windows_inputs / 'acquisition.json')
         self.install(first, self.catalog)
         self.report['checks']['ordinary_setup_with_documentation'] = True
         self.raco(first, 'setup', '--check-pkg-deps', '--pkgs', 'skia', timeout=3600)
@@ -381,7 +454,7 @@ class Validator:
         self.raco(environment, 'pkg', 'config', '--set', 'catalogs', self.catalog, self.base_catalog)
         library = Path(self.run(environment, '-e', '(begin (require setup/dirs) (display (find-user-lib-dir)))'))
         records = []
-        for name in ('skia-native-macos-1', 'skia-native-win32-x86_64-1', 'skia-native-x86_64-linux-1'):
+        for name in (TARGETS[target]['package'] for target in DISTRIBUTED_TARGETS):
             if name == native: continue
             self.raco(environment, 'pkg', 'install', '--auto', '--batch', name, timeout=1800)
             self.raco(environment, 'setup', '--pkgs', name, timeout=1800)
@@ -436,7 +509,7 @@ class Validator:
     def qualify_installed(self, first):
         self.report['smoke'] = self.smoke(first)
         collection = Path(self.report['smoke'][0]['collection'])
-        native = self.report['smoke'][0]['skia']['loader']['manifest']['package']
+        native = None if self.windows else self.report['smoke'][0]['skia']['loader']['manifest']['package']
         self.negatives(first, self.report['smoke'][0])
         self.run(first, '-l', 'skia/tools/ci-import-smoke', extra_env={
             'RACKET_SKIA_LIBRARY':str(self.away / 'missing skia'),
@@ -489,7 +562,7 @@ class Validator:
             example_hashes = {name:sha256((collection / name).read_bytes()) for name in example_paths}
             original_directories = {}
             metadata_checks = []
-            for name in (native, 'skia-fonts-1'):
+            for name in ([native] if native else []) + ['skia-fonts-1']:
                 directory = Path(self.run(first, '-e', f'(begin (require pkg/lib) (display (pkg-directory "{name}")))'))
                 original_directories[name] = directory
                 # Payload may be moved in binary forms; at this point it is a source install.
@@ -497,13 +570,15 @@ class Validator:
             for form in ('source', 'built', 'binary-lib'):
                 artifacts = self.root / 'rebuilt' / form
                 artifacts.mkdir(parents=True)
-                for package in ('skia', native, 'skia-fonts-1'):
+                for package in ['skia'] + ([native] if native else []) + ['skia-fonts-1']:
                     self.raco(first, 'pkg', 'create', '--from-install', '--' + form, '--dest', artifacts, package)
                 for name, members in expected.items():
                     with zipfile.ZipFile(artifacts / (name + '.zip')) as archive:
                         for member, digest in members.items():
                             need(sha256(archive.read(member)) == digest, form + ' dropped/changed notice or payload: ' + member)
                 with zipfile.ZipFile(artifacts / 'skia.zip') as archive:
+                    need(not any(name.lower().endswith(('.dll', '.nupkg', '.so', '.dylib', '.exe'))
+                                 for name in archive.namelist()), 'rebuilt Skia package bundled a downloaded native payload')
                     for name, digest in example_hashes.items():
                         need(name in archive.namelist() and sha256(archive.read(name)) == digest,
                              form + ' stripped/changed advertised editable example: ' + name)
@@ -518,8 +593,12 @@ class Validator:
             self.report['checks']['rebuilt_native_metadata_semantics'] = True
             self.report['checks']['advertised_example_sources_preserved'] = True
             self.report['retained_example_source_files'] = len(example_hashes)
-            self.raco(first, 'pkg', 'remove', '--batch', 'skia', native, 'skia-fonts-1', timeout=1800)
-            managed = Path(self.report['smoke'][0]['skia']['loader']['managed_directory'])
+            if self.windows:
+                self.report['checks']['windows_rebuilt_packages_exclude_downloaded_payload'] = True
+                self.windows_installer(first, remove=True)
+            self.raco(first, 'pkg', 'remove', '--batch', *(['skia'] + ([native] if native else []) + ['skia-fonts-1']), timeout=1800)
+            loader = self.report['smoke'][0]['skia']['loader']
+            managed = Path(loader['download_directory'] if self.windows else loader['managed_directory'])
             need(not managed.exists(), 'native removal left its generation directory')
             standard = self.root / 'standard-only-catalog'
             self.run(first, ROOT / 'tools/standard-only-catalog.rkt', self.base_catalog, standard)
@@ -542,9 +621,12 @@ class Validator:
                 self.install(current, catalog)
                 self.report.setdefault('rebuilt_smoke', {})[form] = self.smoke(current)
                 self.raco(current, 'skia-examples', 'shaping', self.away / ('copied ' + form))
-                self.raco(current, 'pkg', 'remove', '--batch', 'skia', native, 'skia-fonts-1', timeout=1800)
+                if self.windows:
+                    self.windows_installer(current, remove=True)
+                self.raco(current, 'pkg', 'remove', '--batch', *(['skia'] + ([native] if native else []) + ['skia-fonts-1']), timeout=1800)
                 smoke = self.report['rebuilt_smoke'][form][0]
-                need(not Path(smoke['skia']['loader']['managed_directory']).exists()
+                loader = smoke['skia']['loader']
+                need(not Path(loader['download_directory'] if self.windows else loader['managed_directory']).exists()
                      and not Path(smoke['collection']).exists(), 'rebuilt removal left native/source payload')
                 self.remove_environment(current)
             self.report['checks']['source_built_binary_lib_roundtrips_and_removal'] = True
@@ -564,9 +646,11 @@ if __name__ == '__main__':
     p.add_argument('--no-drdr', action='store_true', help='partial diagnostic run; never full qualification')
     p.add_argument('--wrong-abi', type=Path, help='locally compiled incompatible scalar ABI fixture, never a distribution input')
     p.add_argument('--owned-stage', type=Path, help='disposable stage owned by this run; remove original candidate archives before rebuilt installs')
+    p.add_argument('--windows-inputs', type=Path, help='separate explicit Windows NuGet acquisition cache, never a package artifact')
     args = p.parse_args()
     validator = Validator(args.runtime, args.catalog, args.work, base_catalog=args.base_catalog,
-                          forms=not args.no_forms, drdr=not args.no_drdr, wrong_abi=args.wrong_abi, owned_stage=args.owned_stage)
+                          forms=not args.no_forms, drdr=not args.no_drdr, wrong_abi=args.wrong_abi, owned_stage=args.owned_stage,
+                          windows_inputs=args.windows_inputs)
     try:
         validator.execute()
     except Exception as error:

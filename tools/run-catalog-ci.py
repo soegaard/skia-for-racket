@@ -69,6 +69,21 @@ def execute(racket, output, runtime=None, docker_image=None):
     command = [sys.executable, str(ROOT / 'tools/validate-catalog-package.py'), '--runtime', str(runtime),
                '--catalog', str(stage / 'snapshot/catalog'), '--work', str(output / 'execution'),
                '--wrong-abi', str(fixtures[0]), '--owned-stage', str(stage)]
+    if sys.platform == 'win32':
+        from windows_native import acquire
+        inputs = output / 'windows-upstream-inputs'
+        # Exercise the real direct NuGet acquisition before firewall isolation.
+        # Its raw archives stay outside candidate/built packages and CI evidence.
+        try:
+            acquire(ROOT / 'packaging/native-assets.json', inputs)
+        except Exception as error:
+            evidence = output / 'evidence'
+            evidence.mkdir()
+            (evidence / 'windows-acquisition-failure.json').write_bytes(json_bytes(dict(
+                schema=1, status='failed-windows-upstream-acquisition', error=str(error)[:8192],
+                catalog_candidate_validated=False, publication_performed=False)))
+            raise
+        command += ['--windows-inputs', str(inputs)]
     if sys.platform == 'darwin':
         guarded = ['/usr/bin/sandbox-exec', '-p', '(version 1)(allow default)(deny network*)', *command]
     elif sys.platform.startswith('linux'):

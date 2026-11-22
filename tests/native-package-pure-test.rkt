@@ -8,19 +8,22 @@
 ;   Locates the metadata and tutorial catalogue without relying on the process directory.
 (define-runtime-path collection-root "..")
 
-(define (write-manifest directory [edit values])
+(define (write-manifest directory [edit values] #:windows? [windows? #f])
   (make-directory* directory)
   (define files
     (for/hasheq ([kind '(skia harfbuzz)]
-                [name '("libSkiaSharp.dylib" "libHarfBuzzSharp.dylib")]
+                [name (if windows? '("libSkiaSharp.dll" "libHarfBuzzSharp.dll")
+                          '("libSkiaSharp.dylib" "libHarfBuzzSharp.dylib"))]
                 [version (list native-skia-version native-harfbuzz-version)])
       (define path (build-path directory name))
       (call-with-output-file path #:exists 'truncate (lambda (out) (write-bytes #"fixture" out)))
       (values kind (hasheq 'filename name 'asset_version version 'size 7 'sha256 (native-file-sha256 path)))))
   (call-with-output-file (build-path directory "manifest.json") #:exists 'truncate
     (lambda (out)
-      (write-json (edit (hasheq 'schema 1 'generation 1 'package "skia-native-macos-1"
-                               'target "macos" 'upstream_versions
+      (write-json (edit (hasheq 'schema 1 'generation 1
+                               'package (if windows? "skia-upstream-win32-x86_64-1" "skia-native-macos-1")
+                               'target (if windows? "win32" "macos")
+                               'acquisition (hasheq 'route "direct-nuget") 'upstream_versions
                                (hasheq 'skia native-skia-version 'harfbuzz native-harfbuzz-version)
                                'files files)) out))))
 
@@ -111,6 +114,31 @@
                    (lambda () (discover-managed-pair (list user) #:subpath "aarch64-linux"))))
       (test-case "bare system requests are never labelled absolute paths"
         (check-false (hash-ref (native-request-report (native-request 'system "libSkiaSharp" #f)) 'absolute_path)))
+      (define windows-user (build-path user "skia-upstream-1"))
+      (define windows-installation (build-path installation "skia-upstream-1"))
+      (define (windows-discover)
+        (discover-managed-pair (list user installation) #:os 'windows #:subpath "win32\\x86_64"
+                               #:directory-name "skia-upstream-1" #:upstream-download? #t))
+      (test-case "Windows has no automatic native dependency package"
+        (check-false (managed-package-name "win32\\x86_64"))
+        (check-false (windows-discover)))
+      (write-manifest windows-installation #:windows? #t)
+      (test-case "Windows selects an explicitly installed upstream pair"
+        (define pair (windows-discover))
+        (check-equal? (managed-pair-directory pair) windows-installation)
+        (define report (native-request-report
+                        (native-request 'upstream-download
+                                        (hash-ref (managed-pair-paths pair) 'skia) pair)))
+        (check-equal? (hash-ref report 'origin) "upstream-download")
+        (check-false (hash-ref report 'managed_directory))
+        (check-equal? (hash-ref report 'download_directory) (path->string windows-installation)))
+      (write-manifest windows-user #:windows? #t)
+      (test-case "Windows partial user data cannot borrow the installation pair"
+        (delete-file (build-path windows-user "libHarfBuzzSharp.dll"))
+        (check-exn #rx"selected upstream payload.*broken" windows-discover))
+      (write-manifest windows-user (lambda (m) (hash-remove m 'acquisition)) #:windows? #t)
+      (test-case "Windows requires direct acquisition provenance"
+        (check-exn #rx"NuGet acquisition provenance" windows-discover))
       (test-case "natipkg configuration is escaped content-addressed derived data"
         (define fonts (build-path root "fonts & æ"))
         (make-directory fonts)

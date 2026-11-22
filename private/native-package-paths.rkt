@@ -20,7 +20,6 @@
 
 (define (managed-package-name subpath)
   (cond [(regexp-match? #rx"^(aarch64|x86_64)-macosx$" subpath) "skia-native-macos-1"]
-        [(equal? subpath "win32\\x86_64") "skia-native-win32-x86_64-1"]
         [(regexp-match? #rx"^x86_64-linux(-natipkg)?$" subpath) "skia-native-x86_64-linux-1"]
         [else #f]))
 
@@ -29,20 +28,29 @@
 (define (absolute path) (simplify-path (path->complete-path path)))
 (define (bad directory format-string . args)
   (error 'skia-native-package
-         "selected managed payload ~a is broken: ~a; reinstall its native dependency and run raco setup. No host-library fallback is permitted"
-         directory (apply format format-string args)))
+         "selected ~a payload ~a is broken: ~a; ~a. No host-library fallback is permitted"
+         (if (regexp-match? #rx"skia-upstream-1" (format "~a" directory)) "upstream" "managed")
+         directory (apply format format-string args)
+         (if (regexp-match? #rx"skia-upstream-1" (format "~a" directory))
+             "rerun tools/install-native-windows.py, then raco setup --pkgs skia"
+             "reinstall its native dependency and run raco setup")))
 
 (define (discover-managed-pair directories
                                #:os [os (system-type 'os)]
-                               #:subpath [subpath (path->string (system-library-subpath #f))])
+                               #:subpath [subpath (path->string (system-library-subpath #f))]
+                               #:directory-name [directory-name generation-directory]
+                               #:upstream-download? [upstream? #f])
   (define selected
     (for/first ([base (in-list directories)]
-                #:when (let ([p (build-path base generation-directory)])
+                #:when (let ([p (build-path base directory-name)])
                          (or (directory-exists? p) (file-exists? p) (link-exists? p))))
-      (absolute (build-path base generation-directory))))
+      (absolute (build-path base directory-name))))
   (and selected
        (let ()
-         (define package (managed-package-name subpath))
+         (define package
+           (if (and upstream? (equal? os 'windows) (equal? subpath "win32\\x86_64"))
+               "skia-upstream-win32-x86_64-1"
+               (managed-package-name subpath)))
          (unless package (bad selected "unqualified interpreter target ~a" subpath))
          (unless (and (eq? (system-type 'vm) 'chez-scheme) (= (system-type 'word) 64))
            (bad selected "automatic packages require a qualified 64-bit Racket CS interpreter"))
@@ -69,6 +77,11 @@
                               (hasheq 'skia native-skia-version 'harfbuzz native-harfbuzz-version)))
            (bad selected "wrong generation, package or upstream asset pair"))
          (define files (hash-ref manifest 'files #f))
+         (when upstream?
+           (define acquisition (hash-ref manifest 'acquisition #f))
+           (unless (and (hash? acquisition)
+                        (equal? (hash-ref acquisition 'route #f) "direct-nuget"))
+             (bad selected "missing direct NuGet acquisition provenance")))
          (unless (and (hash? files) (= (hash-count files) 2))
            (bad selected "manifest must identify exactly both native libraries"))
          (define paths (make-hasheq))
@@ -109,14 +122,21 @@
 
 ;; This promise is shared by both loaders and fixes one search-order selection
 ;; for the process. Hashing is deferred to first native use, never import.
-(define installed-pair (delay/sync (discover-managed-pair (get-lib-search-dirs))))
+(define installed-pair
+  (delay/sync
+    (if (eq? (system-type 'os) 'windows)
+        (discover-managed-pair (get-lib-search-dirs)
+                               #:directory-name "skia-upstream-1" #:upstream-download? #t)
+        (discover-managed-pair (get-lib-search-dirs)))))
 
 (define (native-library-request kind native-root)
   (define override (getenv (if (eq? kind 'skia) "RACKET_SKIA_LIBRARY" "RACKET_HARFBUZZ_LIBRARY")))
   (cond
     [override (native-request 'override (absolute override) #f)]
     [(force installed-pair)
-     => (lambda (pair) (native-request 'managed (hash-ref (managed-pair-paths pair) kind) pair))]
+     => (lambda (pair)
+          (native-request (if (eq? (system-type 'os) 'windows) 'upstream-download 'managed)
+                          (hash-ref (managed-pair-paths pair) kind) pair))]
     [else
      (define subpath (path->string (system-library-subpath #f)))
      (define package (managed-package-name subpath))
@@ -132,7 +152,7 @@
          (begin
            (unless package
              (error 'skia-native-package
-                    "no qualified automatic native package for ~a; use the developer installer or explicit RACKET_SKIA_LIBRARY / RACKET_HARFBUZZ_LIBRARY"
+                    "no qualified automatic native package for ~a; Windows x86-64: run tools/install-native-windows.py --racket /path/to/racket, then raco setup --pkgs skia. Other targets: use the developer installer or explicit RACKET_SKIA_LIBRARY / RACKET_HARFBUZZ_LIBRARY"
                     subpath))
            ;; A registered 0.79 source package declares a native dependency.
            ;; Its absence is a broken install, not authority to use a host DLL.
@@ -164,6 +184,9 @@
           'library_request (if (path? filename) (path->string filename) filename)
           'absolute_path (and (path? filename) (path->string filename))
           'native_generation (and pair 1)
-          'managed_directory (and pair (path->string (managed-pair-directory pair)))
+          'managed_directory (and pair (eq? (native-request-origin request) 'managed)
+                                  (path->string (managed-pair-directory pair)))
+          'download_directory (and pair (eq? (native-request-origin request) 'upstream-download)
+                                   (path->string (managed-pair-directory pair)))
           'manifest_sha256 (and pair (managed-pair-manifest-sha256 pair))
           'manifest (and pair (managed-pair-manifest pair))))

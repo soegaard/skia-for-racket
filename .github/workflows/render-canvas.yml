@@ -105,7 +105,7 @@ jobs:
       - name: Install pinned native libraries
         shell: pwsh
         run: |
-          ./tools/install-native-windows.ps1 -Racket racket -Python python
+          ./tools/install-native-windows.ps1 -Racket racket -Python python -Root (Get-Location).Path
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require common API and staging reuse using explicit WARP
         shell: pwsh

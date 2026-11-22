@@ -12,7 +12,7 @@ from pathlib import Path
 import subprocess
 import zipfile
 
-from native_packages import (ROOT, GENERATOR_VERSION, check_locked_input,
+from native_packages import (ROOT, GENERATOR_VERSION, DISTRIBUTED_TARGETS, check_locked_input,
                              json_bytes, read_json, need, sha256, write_zip,
                              zip_index, bounded_member, MAX_METADATA, validate_observations,
                              validate_distribution_lock, check_font_input)
@@ -71,6 +71,8 @@ def build(lock_path, inputs, output, *, local_candidate=False):
     source_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     receipts = []
     for name, target in lock['targets'].items():
+        if name not in DISTRIBUTED_TARGETS:
+            continue  # Windows users acquire the pinned pair directly from NuGet.
         selected = {n: r for n, r in records.items() if r['target'] == name}
         need(sorted(r['kind'] for r in selected.values()) == ['harfbuzz', 'skia'], 'incomplete native pair')
         members = {}

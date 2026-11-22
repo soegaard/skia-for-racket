@@ -1,13 +1,64 @@
 # Catalog candidate validation — 0.79
 
-Status: GitHub CI, Acceptance and API inventory passed at `47ebdda3`; eight
-catalog execution lanes passed. Both natipkg lanes reached DrDr but exceeded
-its unchanged 600-second bound after child processes lost the compiled cache.
-**The publication candidate remains unqualified**. No publication action has
-been performed. Native pins
-remain SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2, native generation/revision 1/1.0.
-Source/API collection remains `skia`. The final matrix and maintainer
-redistribution approval remain required even when individual local checks pass.
+Status on November 22, 2026: all four automatic workflows and all ten catalog
+lanes passed at `a37d0f8bf9ba972f36753c29f72b099573de4a1f`. The later Windows
+direct-download amendment changes that route and needs fresh qualification.
+The full manual Release candidate gate and maintainer review remain pending.
+Nothing has been published. Native pins remain SkiaSharp 3.119.1 /
+HarfBuzzSharp 8.3.1.2; the collection and public API remain unchanged.
+
+## Windows direct NuGet amendment
+
+November 22, 2026: the maintainer authorized explicit upstream acquisition on
+Windows. The revised source has no Windows native package dependency or Windows
+ZIP in its artifact set. macOS/Linux retain the managed data packages and pinned
+native members. Windows must run the explicit installer before full setup, with
+fresh CS 8.18/9.3 execution of all existing checks and added non-bundling checks.
+Prior managed Windows passes do not qualify this changed route. The complete
+manual Release candidate run and maintainer redistribution review for shipped
+payloads remain pending. No publication is authorized by this amendment.
+
+The historical reports below retain their original candidate identities and
+artifact counts. They must not be read as receipts for the changed source.
+
+Local validation of the amendment passed all 54 Python test scripts (3,163
+tests), the static source check and the GPU source integration guard. Direct
+Windows acquisition/ownership tests cover both locked inputs, bounds, redirects,
+transaction rollback, corrupt-member repair, scopes, junction rejection and the
+Python 3.12 minimum. Real Windows inputs also passed offline archive/member and
+paired-discovery checks without executing either DLL.
+
+Both local macOS ARM64 CS runtimes passed all 17 catalog checks with networking
+denied: 78 commands each, documentation-enabled dependency setup, actual CPU
+rendering/shaping, scope/update/removal and all three rebuilt installation forms.
+DrDr took 15.313 seconds on 8.18 and 15.117 seconds on 9.3. Both used source ZIP
+SHA-256 `9963fcf1089079dd866b54a58e8c509f3a0f449f4ea8300d96821d3e5cab51c0`;
+their independently assembled macOS/Linux/font ZIP hashes match exactly.
+These dirty-checkout experiments cannot qualify a clean release candidate.
+Later edits clarify documentation and enforce the Windows-only Python minimum;
+macOS/Linux runtime code and native/font bytes are identical to those executions.
+
+Receipts, exact commands, failed/interrupted attempts and the final source delta
+are retained under ignored `output/catalog/windows-nuget-20261122/`, with a
+`VALIDATION.md` report. One attempt exhausted disk space and another was
+interrupted by the desktop update; complete fresh runs passed afterward without
+weakening checks. The new Windows download/launcher/DLL execution, macOS Intel,
+ordinary Linux and real natipkg lanes still need fresh CI at the new clean
+commit. No old Windows execution result qualifies the new acquisition route.
+
+## Fifth GitHub push
+
+The original managed-package design passed all 77 automatic jobs at `a37d0f8b`:
+[CI](https://github.com/soegaard/skia-for-racket/actions/runs/44977942766) (12),
+[Acceptance](https://github.com/soegaard/skia-for-racket/actions/runs/44977942840) (52),
+[API inventory](https://github.com/soegaard/skia-for-racket/actions/runs/44977942774) (2),
+and [Catalog packaging](https://github.com/soegaard/skia-for-racket/actions/runs/44977942844) (11).
+All ten catalog receipts passed strict verification against the same source
+and data archives; all eleven downloaded evidence ZIPs matched their GitHub
+digests. Both real natipkg DrDr children reused the compiled cache and completed
+within 600 seconds. These independent workflow runs are not the full manual
+single-attempt Release candidate gate. Their Windows results cover the old
+managed-package route, not the changed explicit NuGet preparation.
 
 ## Fourth GitHub push
 

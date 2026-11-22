@@ -45,3 +45,10 @@ only verified JSON receipts and checksums, while the existing rendered test
 outputs in CI/Acceptance remain required. The explicitly dispatched Release
 candidate workflow retains its complete native/font/source archive set and
 cannot accept receipt-only evidence as a substitute.
+
+Windows direct NuGet acquisition is the explicit November 22 exception. The
+catalog lanes run full setup/DrDr/native/rebuild checks after staging the two
+upstream inputs, and never upload their DLLs or raw NuGets. Full asset uploads
+contain only macOS/Linux native packages, fonts and source. Windows feature
+workflows pass `-Root`/`--root` explicitly to retain their developer-route
+containment checks; no required job or artifact is removed.

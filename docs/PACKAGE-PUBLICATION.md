@@ -1,10 +1,82 @@
 # Catalog packaging and publication runbook
 
 The 0.79 source candidate keeps the single `skia` collection and existing public
-API. It declares native generation 1 (package revision 1.0), with SkiaSharp
+API. macOS/Linux declare native generation 1 (package revision 1.0), with SkiaSharp
 3.119.1 and HarfBuzzSharp 8.3.1.2 unchanged, plus `skia-fonts-1` 1.0 data.
 **Nothing has been published.** See [the validation record](CATALOG-VALIDATION.md)
 for executed commands, failures, timings and external qualification gaps.
+
+## Windows direct NuGet exception
+
+The maintainer approved this installation-design exception on November 22,
+2026. The distributable set is now `skia`, `skia-native-macos-1`,
+`skia-native-x86_64-linux-1` and `skia-fonts-1`. Do not generate, upload or register
+`skia-native-win32-x86_64-1`. Its historical target identifier and the two Win32
+archive records remain in the input inventory for acquisition and audit.
+
+With Python 3.12 or later available, Windows users run:
+
+```sh
+raco pkg install --auto --no-setup skia
+racket -l skia/tools/install-windows-natives
+raco setup --pkgs skia
+```
+
+Use the unpublished staging catalog until publication is separately approved.
+The explicit middle command downloads both pinned NuGets directly from the
+official HTTPS NuGet endpoints, checks archive/member sizes and hashes,
+metadata, bounded ZIP structure and AMD64 PE identity, and installs the pair
+under `<Racket user library>/skia-upstream-1`. Original and collected component
+notices and an acquisition/ownership manifest are preserved. No DLL is loaded
+by acquisition. The default user scope needs no administrator privileges.
+The directory is outside every installed source/native package. Both loaders
+discover it lazily and report `upstream-download` with absolute paths and exact
+input/member provenance; invalid explicit overrides and broken selected pairs
+remain errors.
+
+For an explicit offline input directory, use:
+
+```sh
+racket -l skia/tools/install-windows-natives -- --from-directory /absolute/verified-nugets
+```
+
+The directory must contain the same two locked NuGets. Local files cannot
+change pins or expected hashes. Setup, docs, tests, imports and rendering never
+initiate a download. On a fresh environment, source/built/binary-library package
+installation requires this explicit preparation again.
+
+Close native processes before replacement/removal. Repeating the install
+replaces the complete owned pair after validating both inputs. Remove it before
+removing the source package:
+
+```sh
+racket -l skia/tools/install-windows-natives -- --remove
+raco pkg remove skia
+```
+
+`--scope installation` explicitly selects the chosen Racket installation's
+library directory; it requires permission to that installation and is tested
+only in disposable copies. User data shadows installation data as a complete
+pair. A partial user pair cannot borrow from the wider scope. Ordinary `raco
+pkg remove` does not own or remove this separately downloaded cache.
+
+Windows qualification must exercise real direct NuGet acquisition before
+firewall isolation, retain bounded JSON provenance only, and install from the
+separate verified input cache while execution networking is denied. It must
+build all registered manuals, run actual CPU/shaping/DrDr and loader/ABI
+negatives, test paired update/rollback and both scope removals, and reinstall
+all three rebuilt package forms. Every rebuilt main-package ZIP is checked for
+DLL/NuGet exclusion. The installer, lock and notices must survive those forms.
+The separate raw input cache is intentionally available for explicit offline
+re-preparation after removing original candidate package archives.
+
+Neither full release archives nor any Windows CI evidence may contain these
+DLLs or raw NuGets. The full manual release still requires all 77 policy jobs
+and 84 evidence artifacts; its archive set contains two native packages, fonts
+and source. Windows GPU/feature developer lanes explicitly select `--root` or
+`-Root` to preserve their existing checkout containment and override tests.
+This design exception does not approve native redistribution or publication.
+Upstream terms still apply to users and any later distributor of a bundle.
 
 ## Review and freeze the inputs
 
@@ -16,9 +88,11 @@ URLs, archive/member/font sizes and hashes, NuGet/source identities, native
 architectures/load requirements, component notices and Linux support routes.
 Font Git blob hashes were inspected separately from their downloads.
 
-Maintainer redistribution sign-off is pending, including exact GCC runtime
-exception applicability, Adobe DNG conditions, Windows toolchain terms and
-upstream's incomplete embedded-component attestation. Do not mark those fields
+Maintainer redistribution sign-off for the macOS/Linux payloads is pending,
+including GCC runtime exception applicability, Adobe DNG conditions and
+upstream's incomplete embedded-component attestation. Windows toolchain research
+is retained for any future bundling; the present artifact set excludes Windows
+DLLs. Do not mark those fields
 approved merely because the program runs. Names/version defaults and catalog
 name availability still need final maintainer review before first publication.
 
@@ -135,7 +209,7 @@ the source archive; a dirty HEAD is never labelled an exact validated commit.
 
 ## Execute with networking denied
 
-On a **fresh disposable CI runner**:
+On a **fresh disposable CI runner** (Windows uses the explicit exception above):
 
 ```sh
 python3 tools/run-catalog-ci.py --racket /absolute/released/racket \
@@ -184,8 +258,9 @@ racket -l skia/tools/catalog-smoke --
 racket -l skia/tools/catalog-smoke -- --draw-first
 ```
 
-No native-install script, `--no-docs`, runtime download or missing-native skip is
-used in this lane. It builds every registered manual from the source package,
+No `--no-docs`, runtime download or missing-native skip is used in this lane.
+macOS/Linux need no native-install script; Windows uses the explicit installer
+exception before full setup. It builds every registered manual from the source package,
 checks dependencies, actual pixels/PNG/shaping/default fonts, original AV
 fixture, path/picture/PDF/SVG/bitmap/pict behavior, lazy imports, corrupt/missing
 managed data, incompatible ABI, invalid overrides, read-only source first use,

@@ -5,6 +5,20 @@ SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2 inputs. It does not approve
 redistribution. The maintainer's decision to retain `skia-fonts-1` is settled
 and independent of the native review.
 
+Amendment, November 22, 2026: the maintainer selected explicit user acquisition
+from NuGet for Windows. No Windows DLL or Windows native package belongs in
+this project's distributable archive set. The Windows component/toolchain
+findings below remain audit material for possible later bundling; this
+amendment does not approve that bundling. macOS/Linux component mapping, GCC
+runtime and Adobe dispositions remain pending. Exact linker maps or individual
+permission letters are possible evidence, rather than universal requirements
+of the reviewed licenses; a final disposition must state its supported basis.
+
+All ten automatic catalog lanes passed at `a37d0f8b` under the original design.
+That closes the older execution gaps described below for that candidate, but
+does not qualify the changed Windows acquisition path. Both new Windows lanes
+must pass their explicit preparation, offline setup and non-bundling checks.
+
 ## Evidence and its limits
 
 `component-build-evidence.json` identifies twenty primary source files by

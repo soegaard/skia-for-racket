@@ -1,5 +1,12 @@
 # Upstream licensing search — native generation 1
 
+November 22 scope amendment: the project now excludes Windows DLLs from its
+native package/release set and uses explicit direct user acquisition from NuGet.
+The Windows terms research below is preserved for any future bundling; it does
+not represent a Windows redistribution approval. The recorded lock digest in
+the evidence index identifies the original research snapshot, whose six input
+archive/member bytes remain pinned. macOS/Linux review remains required.
+
 Research date: November 21, 2026. Candidate baseline: `71a51735406955a3ef8c204363d1af83e6fda463`.
 Native inputs remain SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2. This is a
 research supplement to [the redistribution review](../packaging/REDISTRIBUTION-REVIEW.md),
