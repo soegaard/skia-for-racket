@@ -1642,7 +1642,7 @@
     "tests/live-ffi-probe/probe.rkt": "fa79efba1827c7f90428b3cc386f51b5b17b5efa02406e2220bd22e3b9a998ea",
     "tests/live-stream-native-test.rkt": "f31db9638d37205dec27519a7be27e3d5cd506173d06a40958b139bb37d34336",
     "tests/live-stream-pure-test.rkt": "125c4ec5bdd87e7e76d74f8a0a0e25988304bd8a99fd5a33715369d35a6ffd11",
-    "tests/native-package-pure-test.rkt": "178b22a495c1d794b5b10138cf47e502112bb532beccf9afb988af222a1ae981",
+    "tests/native-package-pure-test.rkt": "b99e8261b2416c5dcab3e2d2e0072ac5d59886dffb0ff6208cfbdc78cfdbcce5",
     "tests/native-test.rkt": "a87713310b3b8ba23533986e8874030cf92c2d4a7cc4f1627c7136617aea21e3",
     "tests/output-native-test.rkt": "2ca6db4f1745c208c89a02927329b912ae46c90383ac9e7cbeadb64ad1dd7db1",
     "tests/path-matrix-native-test.rkt": "bf945ab8f8f8c8f729a3131fcadbdb8141171d59faad1a543b2d9308bde2bcd1",

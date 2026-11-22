@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require rackunit racket/file racket/path racket/runtime-path json
+(require rackunit racket/file racket/path racket/runtime-path syntax/modread json
          "../private/native-package-paths.rkt" "../private/native-pins.rkt"
          "../private/native-fontconfig.rkt")
 
@@ -28,18 +28,21 @@
   (test-case "editable tutorial retention matches Unix and Windows traversal paths"
     ;; Evaluate the actual metadata expression with each path convention. Racket's
     ;; stripper keys retention by path equality, which does not normalize slashes.
-    (define expression
+    (define metadata
       (call-with-input-file (build-path collection-root "info.rkt")
         (lambda (in)
-          (read-line in)
-          (let loop ()
-            (define form (read in))
-            (cond
-              [(eof-object? form) (error 'retention "binary-keep-files definition missing")]
-              [(and (list? form) (equal? (car form) 'define)
-                    (equal? (cadr form) 'binary-keep-files))
-               (caddr form)]
-              [else (loop)])))))
+          (with-module-reading-parameterization (lambda () (read in))))))
+    ;; Package creation can rewrite #lang info to a single module expression.
+    (define (retention-expression form)
+      (cond
+        [(and (list? form) (>= (length form) 3) (equal? (car form) 'define)
+              (equal? (cadr form) 'binary-keep-files))
+         (caddr form)]
+        [(list? form) (for/or ([part (in-list form)]) (retention-expression part))]
+        [else #f]))
+    (define expression
+      (or (retention-expression metadata)
+          (error 'retention "binary-keep-files definition missing")))
     (define catalogue
       (call-with-input-file
           (build-path collection-root "scribblings" "tutorials" "support" "catalog.json")
