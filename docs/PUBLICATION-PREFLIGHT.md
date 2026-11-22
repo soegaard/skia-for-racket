@@ -8,8 +8,8 @@ maintainer performs that push; the agent has not pushed it.
 
 Amendment, November 22: Windows now uses explicit direct NuGet acquisition.
 Exclude its native package from the proposed publication set. The earlier
-managed Windows execution receipts qualify the old route; the revised route
-needs both released Windows lanes again. macOS/Linux packaging is unchanged.
+managed Windows execution receipts qualify the old route. The revised route
+passed both released Windows lanes at `cc9bb585`; macOS/Linux packaging is unchanged.
 See the [Windows procedure](PACKAGE-PUBLICATION.md#windows-direct-nuget-exception).
 
 ## Proposed identities
@@ -49,14 +49,14 @@ beside them. A mutable branch URL is not the proposed package source.
 
 | Blocker | Exact next action | Responsible party |
 | --- | --- | --- |
-| Native redistribution | Review the [macOS/Linux component, runtime and Adobe questions](../packaging/REDISTRIBUTION-REVIEW.md); document a supported maintainer disposition and any focused clarification needed. Windows DLL redistribution is excluded. | Project maintainer, with upstream clarification where needed |
-| Intel, Windows, ordinary Linux and natipkg execution | Run both released CS versions with `tools/run-catalog-ci.py` on native hosts; retain complete validator receipts | Runner operator; project maintainer supplies authorized infrastructure |
+| Native redistribution | Approved November 22 on the basis of unmodified binaries from [SkiaSharp](https://github.com/mono/SkiaSharp), with original licenses and third-party notices included. Windows DLL redistribution is excluded. | Maintainer decision recorded in the bound review |
+| Intel, Windows, ordinary Linux and natipkg execution | All ten CS 8.18/9.3 catalog lanes passed at `cc9bb585`. The manual gate must rerun them for the resulting reviewed candidate. | Verified CI; manual-run operator |
 | Same-attempt release evidence | Run the existing Release candidate workflow on the exact committed candidate; all CI, Acceptance, API inventory and catalog jobs plus the aggregator must pass | Maintainer/authorized GitHub runner operator |
 | GitHub access to candidate | Push the prepared `codex/catalog-ci` branch for receipt-only automatic CI; separately review the full archive transfer before an eventual Release candidate dispatch | Project maintainer |
 | Names/contact/immutable URL | Confirm catalog-account identity and proposed release location against the final exact manifest | Project maintainer |
 
-Local ARM64 checks and source-policy validation cannot close these external
-gaps. The aggregator continues to require approved review flags, a clean source
+The complete ten-lane CI receipts close the earlier external execution gaps
+for `cc9bb585`. The aggregator continues to require approved review flags, a clean source
 identity, identical archives across catalog lanes and complete same-attempt
 evidence. `catalog_candidate_validated` remains false.
 

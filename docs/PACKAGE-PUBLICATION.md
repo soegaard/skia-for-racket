@@ -88,20 +88,19 @@ URLs, archive/member/font sizes and hashes, NuGet/source identities, native
 architectures/load requirements, component notices and Linux support routes.
 Font Git blob hashes were inspected separately from their downloads.
 
-Maintainer redistribution sign-off for the macOS/Linux payloads is pending,
-including GCC runtime exception applicability, Adobe DNG conditions and
-upstream's incomplete embedded-component attestation. Windows toolchain research
-is retained for any future bundling; the present artifact set excludes Windows
-DLLs. Do not mark those fields
-approved merely because the program runs. Names/version defaults and catalog
-name availability still need final maintainer review before first publication.
+On November 22, 2026, the maintainer approved redistributing the unmodified
+macOS/Linux binaries in reliance on the
+[SkiaSharp project's licensing](https://github.com/mono/SkiaSharp). Original
+licenses and third-party notices remain included. The present artifact set
+excludes Windows DLLs. Names/version defaults and catalog name availability
+still need confirmation before first publication.
 
 The source package is MIT. Each native package has its own component license
 expression and complete original/supplemental texts. The font package is
 OFL-1.1 and contains unmodified Noto files and their copyright metadata.
 The maintainer explicitly approved retaining `skia-fonts-1` with these four
 unmodified files and OFL notices on November 21, 2026. That design decision is
-settled and does not approve the native payload's redistribution obligations.
+settled. The native redistribution decision is recorded separately above.
 
 ## Acquire, then assemble offline
 

@@ -10,6 +10,10 @@ It declares platform native data and licensed tutorial/test fonts as package
 dependencies. Both CPU rendering and HarfBuzz shaping use those managed assets;
 no native-install script or runtime download is part of package setup.
 
+The native packages redistribute unmodified binaries from the
+[SkiaSharp project](https://github.com/mono/SkiaSharp), with the original licenses
+and third-party notices included.
+
 Windows x86-64 uses an explicit upstream-download exception. With Python 3.12
 or later available, run:
 

@@ -1,9 +1,9 @@
 # Catalog candidate validation — 0.79
 
 Status on November 22, 2026: all four automatic workflows and all ten catalog
-lanes passed at `a37d0f8bf9ba972f36753c29f72b099573de4a1f`. The later Windows
-direct-download amendment changes that route and needs fresh qualification.
-The full manual Release candidate gate and maintainer review remain pending.
+lanes passed at `cc9bb58545c55297b6c050cc77eb0b268e638247`, including the Windows
+direct NuGet installer. The maintainer approved the upstream licensing basis
+later that day. The full manual Release candidate gate remains unrun.
 Nothing has been published. Native pins remain SkiaSharp 3.119.1 /
 HarfBuzzSharp 8.3.1.2; the collection and public API remain unchanged.
 
@@ -15,8 +15,9 @@ ZIP in its artifact set. macOS/Linux retain the managed data packages and pinned
 native members. Windows must run the explicit installer before full setup, with
 fresh CS 8.18/9.3 execution of all existing checks and added non-bundling checks.
 Prior managed Windows passes do not qualify this changed route. The complete
-manual Release candidate run and maintainer redistribution review for shipped
-payloads remain pending. No publication is authorized by this amendment.
+manual Release candidate run remains pending. The maintainer subsequently
+approved redistributing unmodified [SkiaSharp](https://github.com/mono/SkiaSharp)
+binaries with the original licenses and third-party notices included.
 
 The historical reports below retain their original candidate identities and
 artifact counts. They must not be read as receipts for the changed source.
@@ -45,6 +46,25 @@ interrupted by the desktop update; complete fresh runs passed afterward without
 weakening checks. The new Windows download/launcher/DLL execution, macOS Intel,
 ordinary Linux and real natipkg lanes still need fresh CI at the new clean
 commit. No old Windows execution result qualifies the new acquisition route.
+
+## Sixth GitHub push and maintainer licensing decision
+
+All 77 automatic jobs passed at `cc9bb585`: [CI](https://github.com/soegaard/skia-for-racket/actions/runs/45050673995)
+(12), [Acceptance](https://github.com/soegaard/skia-for-racket/actions/runs/45050673955)
+(52), [API inventory](https://github.com/soegaard/skia-for-racket/actions/runs/45050673836)
+(2), and [Catalog packaging](https://github.com/soegaard/skia-for-racket/actions/runs/45050673904)
+(11). All ten catalog receipts passed the strict verifier, including 19 checks
+on each Windows version. Eleven downloaded evidence ZIPs matched GitHub's
+digests, and the four candidate archive identities matched local offline
+reconstruction. Evidence is under ignored
+`output/catalog/github-windows-nuget-20261122/`.
+
+The maintainer then approved relying on the SkiaSharp project's licensing for
+the unmodified binaries. The bound review and lock record that decision; source
+research and all original/component notices remain available. Recording it
+changes the candidate metadata and archive identities. The full manual gate
+must validate the resulting committed candidate; no earlier automatic run is
+substituted for its same-attempt evidence. Publication remains separate.
 
 ## Fifth GitHub push
 

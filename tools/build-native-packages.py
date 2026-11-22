@@ -108,8 +108,10 @@ def build(lock_path, inputs, output, *, local_candidate=False):
         members['skia-native-1/manifest.json'] = json_bytes(manifest)
         members['info.rkt'] = native_info(dict(target, id=name), lock['native_package_version'], reviewed=reviewed, lock=lock)
         members['README.md'] = (f"# {target['package']} — native generation 1\n\n"
-                               'Publication is pending qualification and maintainer redistribution review.\n'
-                               'Both libraries are unmodified pinned upstream members. See licenses/ for full upstream notices.\n'
+                               'This package redistributes unmodified binaries from the '
+                               '[SkiaSharp project](https://github.com/mono/SkiaSharp).\n'
+                               'Original licenses and third-party notices are included in licenses/.\n'
+                               'Publication awaits the full manual release gate and separate authorization.\n'
                                'This product includes DNG technology under license by Adobe Systems Incorporated.\n'
                                'Portions of this software are copyright The FreeType Project (www.freetype.org). All rights reserved.\n'
                                'Ordinary Linux requires OS fontconfig and glibc >= 2.27; natipkg support is declared in info.rkt.\n').encode()

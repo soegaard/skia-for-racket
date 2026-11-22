@@ -8,12 +8,13 @@ symbol versions were inspected. Fonts additionally match the Git blob SHA-1
 reported independently by GitHub before their download. This relies on HTTPS
 and exact source identity; it does not assert NuGet signature verification.
 
-Technical review: November 20, 2026, Codex implementation audit. Maintainer
-redistribution sign-off is **pending**. That state is retained in the lock,
-archives and release gate; local testing is not publication approval.
+Technical review: November 20, 2026, Codex implementation audit. On November 22,
+the maintainer approved redistributing the unmodified upstream binaries in
+reliance on the [SkiaSharp project's licensing](https://github.com/mono/SkiaSharp).
+Original and collected component notices remain included.
 The maintainer approved retaining the existing four-file `skia-fonts-1`
 dependency and OFL notices on November 21, 2026. This fixes the font-package
-design decision; it does not change any native redistribution approval flag.
+design decision. The font files and their notices remain unchanged.
 
 ## Source basis and notices
 
@@ -51,29 +52,25 @@ sfntly are explicitly disabled; GIF uses Wuffs. These dispositions do not claim
 that merely including a license text incorporates that component. The lock
 also records identifiers and rationale for this retained notice superset.
 
-The [detailed follow-up review](REDISTRIBUTION-REVIEW.md) separates exact
-binary observations, source-recipe dispositions and unresolved build/permission
-questions. `component-build-evidence.json` records twenty primary source
+The [maintainer review](REDISTRIBUTION-REVIEW.md) records the redistribution
+basis. `component-build-evidence.json` records twenty primary source
 identities and six binary inspections; the lock binds its digest and the builder
-ships it in every native package. Windows normal and delayed imports are now
-both checked; neither pinned DLL has a delayed import. The Windows license
-expression explicitly identifies the unresolved embedded Microsoft runtime
-terms instead of treating them as MIT.
+ships it in every native package. Windows normal and delayed imports were both
+checked; neither pinned DLL has a delayed import. Windows DLLs are acquired
+directly by the user and are excluded from our distributable package set.
 
 The fonts are not installed into system font directories or substituted for the
 public system font manager. Executable script tutorials select the declared
 files through the existing public `typeface-from-file` API. No font
 subsetting, family renaming or binary transformation is performed.
 
-## Remaining redistribution review
+## Redistribution basis
 
-NuGet does not attest the exact Linux compiler/runtime build, nor provide a
-complete link map. Maintainer review must confirm the selected source graph,
-GCC runtime exception applicability, Adobe conditions and Windows toolchain
-redistribution terms before publication. The package-level license expressions
-describe the candidate component set and are not a claim that the entire
-payload is MIT. The release gate must fail while redistribution approval is
-false. Nothing here authorizes publication.
+The native packages redistribute unmodified binaries from the
+[SkiaSharp project](https://github.com/mono/SkiaSharp), with original licenses
+and third-party notices included. The inventory and source research remain
+available as supporting records. The full manual release gate and separate
+publication approval remain required.
 
 ## Linux support route
 

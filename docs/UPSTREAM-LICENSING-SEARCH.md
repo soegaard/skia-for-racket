@@ -1,5 +1,11 @@
 # Upstream licensing search — native generation 1
 
+Maintainer decision, November 22: redistribution of the unmodified binaries is
+approved in reliance on the [SkiaSharp project](https://github.com/mono/SkiaSharp),
+with original licenses and third-party notices included. The research below is
+a historical supporting record; its open questions are not additional
+maintainer approval requirements for this candidate.
+
 November 22 scope amendment: the project now excludes Windows DLLs from its
 native package/release set and uses explicit direct user acquisition from NuGet.
 The Windows terms research below is preserved for any future bundling; it does

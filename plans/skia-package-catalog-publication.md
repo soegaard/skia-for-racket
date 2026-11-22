@@ -12,6 +12,13 @@ The project does not publish a Windows native data package. macOS and Linux
 retain the package-managed design. This supersedes the original Windows
 one-command/native-package assumptions and does not approve any publication.
 
+Maintainer licensing decision, November 22, 2026: redistribute the unmodified
+binaries from the [SkiaSharp project](https://github.com/mono/SkiaSharp), with
+original licenses and third-party notices included. The maintainer relies on
+SkiaSharp's upstream licensing. The component records remain available; no
+additional independent licensing investigation is required for this candidate.
+The full manual release gate and separate publication approval still apply.
+
 Inspected source baseline: `e944213d0fac4b02ef81bb35beb1e26729aca8f7`.
 Recheck the checkout and relevant instructions before implementation. Preserve
 unrelated work. The proposed names and release numbers below require a final

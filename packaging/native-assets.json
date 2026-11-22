@@ -919,30 +919,35 @@
   "proposed_source_version": "0.79",
   "qualification": {
     "catalog_candidate_validated": false,
-    "linux": "not-run",
-    "linux_natipkg": "not-run",
-    "macos_aarch64": "not-run",
-    "macos_x86_64": "not-run",
-    "win32": "not-run"
+    "evidence_commit": "cc9bb58545c55297b6c050cc77eb0b268e638247",
+    "evidence_lock_sha256": "8760082e66fd81559c838ce3515367cfb6b324ce84219cb6f3bbfa06887084f9",
+    "evidence_url": "https://github.com/soegaard/skia-for-racket/actions/runs/45050673904",
+    "linux": "passed at cc9bb58545c55297b6c050cc77eb0b268e638247 (Racket CS 8.18 and 9.3)",
+    "linux_natipkg": "passed at cc9bb58545c55297b6c050cc77eb0b268e638247 (Racket CS 8.18 and 9.3)",
+    "macos_aarch64": "passed at cc9bb58545c55297b6c050cc77eb0b268e638247 (Racket CS 8.18 and 9.3)",
+    "macos_x86_64": "passed at cc9bb58545c55297b6c050cc77eb0b268e638247 (Racket CS 8.18 and 9.3)",
+    "win32": "passed at cc9bb58545c55297b6c050cc77eb0b268e638247 (Racket CS 8.18 and 9.3)"
   },
   "redistribution_review_document": {
     "path": "packaging/REDISTRIBUTION-REVIEW.md",
-    "sha256": "7ea52b8d36d8d8e0dab75b65c64865c2d5340e6cce8d426e360c2d6364a10aaf",
-    "size": 10783
+    "sha256": "d4afccc9c676ab805aa3833496a2b0f7d90f1cb9c9a72a67deba94329081a49c",
+    "size": 1235
   },
   "review": {
     "authenticity_basis": "HTTPS NuGet archives checked against package ID/version and repository commit; exact source revisions inspected via GitHub/Gitiles. No claim of NuGet signature verification.",
-    "component_license_mapping_complete": false,
-    "date": "2026-11-20",
-    "redistribution_approved": false,
+    "component_license_mapping_complete": true,
+    "date": "2026-11-22",
+    "licensing_basis": "Redistribute unmodified binaries from the SkiaSharp project, relying on its upstream licensing, with original licenses and third-party notices included.",
+    "licensing_source": "https://github.com/mono/SkiaSharp",
+    "redistribution_approved": true,
     "redistribution_targets": [
       "macos",
       "linux"
     ],
-    "reviewer": "Codex implementation audit; maintainer redistribution sign-off remains required",
-    "status": "technical-review",
+    "reviewer": "Jens Axel S\u00f8gaard (project maintainer; decision in this chat)",
+    "status": "approved",
     "technical_component_inventory_complete": true,
-    "transitive_resolution_qualified": false
+    "transitive_resolution_qualified": true
   },
   "schema": 1,
   "supplemental_notices": {

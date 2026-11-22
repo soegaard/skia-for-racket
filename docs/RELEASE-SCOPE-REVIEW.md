@@ -69,6 +69,17 @@ reviewed fingerprints does not certify Windows execution. New Windows CS
 The earlier green automatic matrix at `a37d0f8b` is evidence for the original
 managed Windows route, preserved separately. Publication remains unauthorized.
 
+## Maintainer licensing decision on November 22
+
+The maintainer approved redistributing unmodified binaries from the
+[SkiaSharp project](https://github.com/mono/SkiaSharp), with original licenses
+and third-party notices included. The bound review and native lock record that
+decision. Transitive qualification is supported by the ten verified catalog
+lanes at `cc9bb585`; the resulting reviewed candidate still needs the full
+manual release gate. Changes here update attribution, review metadata and their
+explicitly reviewed source fingerprints. Native inputs, notices, public API,
+workflow policy and the 77-job/84-artifact evidence requirements are unchanged.
+
 ## The two resolved capability decisions
 
 `colors.xyz-ops` is now **supported-with-limits**. The two formerly unbound C
