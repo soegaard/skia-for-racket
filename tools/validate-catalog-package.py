@@ -23,11 +23,12 @@ import sys
 import time
 import tempfile
 import zipfile
-from native_packages import ROOT, need, json_bytes, sha256, write_zip
+from native_packages import ROOT, need, json_bytes, read_json, sha256, write_zip
 from catalog_snapshot import inventory
 from catalog_execution import (RUNTIME_ENVIRONMENTS, preserved_package_files,
                                racket_command, relocatable_runtime, relocate_runtime_cache,
-                               runtime_profile)
+                               runtime_child_environment, runtime_profile, runtime_root,
+                               verify_drdr_child)
 
 
 def network_evidence():
@@ -121,12 +122,13 @@ class Validator:
     def run(self, environment, *arguments, timeout=900, failure=False, extra_env=None):
         executable, env, _ = environment
         command = [*racket_command(executable), *map(str, arguments)]
+        inherited = runtime_child_environment(executable)
         start = time.monotonic()
         number = len(self.report['commands']) + 1
         log = self.root / f'{number:03}.log'
         print(f'[{number:03}] ' + ' '.join(map(str, arguments[:7])), flush=True)
         with log.open('wb') as stream:
-            process = subprocess.Popen(command, cwd=self.away, env=dict(env, **(extra_env or {})),
+            process = subprocess.Popen(command, cwd=self.away, env={**env, **(extra_env or {}), **inherited},
                                        stdout=stream, stderr=subprocess.STDOUT,
                                        start_new_session=os.name != 'nt')
             try:
@@ -140,6 +142,8 @@ class Validator:
                 code = 'timeout'
         self.report['commands'].append(dict(command=command, log=log.name, exit_code=code,
                                             seconds=round(time.monotonic()-start, 3)))
+        if inherited:
+            self.report['commands'][-1]['runtime_child_environment'] = inherited
         self.save()
         need((isinstance(code, int) and code != 0) if failure else code == 0,
              f'unexpected exit {code}; see {log}')
@@ -400,6 +404,35 @@ class Validator:
         self.remove_environment(environment)
         self.save()
 
+    def check_drdr_child(self, environment):
+        script = self.root / 'drdr-child-profile.rkt'
+        receipt = self.root / 'drdr-child-runtime.json'
+        script.write_text('''#lang racket/base
+(require json)
+(module+ test
+  (call-with-output-file (getenv "SKIA_CATALOG_CHILD_RECEIPT")
+    (lambda (out)
+      (write-json
+       (hasheq 'version (version)
+               'target (path->string (system-library-subpath #f))
+               'running_machine (symbol->string (system-type 'target-machine))
+               'compile_target_machine
+               (let ([m (current-compile-target-machine)]) (and m (symbol->string m)))
+               'compiled_roots
+               (for/list ([root (current-compiled-file-roots)])
+                 (if (path? root) (path->string root) (symbol->string root)))
+               'compiled_roots_environment (getenv "PLTCOMPILEDROOTS")
+               'executable (path->string (find-system-path 'exec-file)))
+       out))))
+''', encoding='utf-8')
+        self.raco(environment, 'test', '--drdr', script, timeout=120,
+                  extra_env={'SKIA_CATALOG_CHILD_RECEIPT': str(receipt)})
+        child = read_json(receipt)
+        verify_drdr_child(child, runtime_root(environment[0]),
+                          version=self.report['identity']['version'], target=self.report['identity']['target'])
+        self.report['drdr_child_runtime'] = child
+        self.save()
+
     def qualify_installed(self, first):
         self.report['smoke'] = self.smoke(first)
         collection = Path(self.report['smoke'][0]['collection'])
@@ -417,6 +450,8 @@ class Validator:
         self.native_lifecycle(first, native, self.report['smoke'][0])
         self.foreign_data(native)
         if self.drdr:
+            if self.report.get('runtime_profile'):
+                self.check_drdr_child(first)
             start = time.monotonic()
             self.raco(first, 'test', '--drdr', '--package', 'skia', timeout=600)
             self.report['drdr_seconds'] = round(time.monotonic()-start, 3)

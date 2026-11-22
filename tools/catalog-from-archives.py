@@ -2,12 +2,13 @@
 """Index local candidate/rebuilt archives; never contact a public catalog."""
 from __future__ import annotations
 import argparse
+import os
 import hashlib
 from pathlib import Path
 import subprocess
 import zipfile
 from native_packages import ROOT, need, zip_index, bounded_member, json_bytes
-from catalog_execution import racket_command
+from catalog_execution import racket_command, runtime_child_environment
 
 
 def create(racket, artifacts, output):
@@ -29,7 +30,7 @@ def create(racket, artifacts, output):
     need(rows, 'no candidate archives')
     request = output / 'request.json'
     request.write_bytes(json_bytes(rows))
-    subprocess.run([*racket_command(Path(racket)), str(ROOT / 'tools/write-staging-catalog.rkt'), str(request), str(output / 'catalog')], check=True)
+    subprocess.run([*racket_command(Path(racket)), str(ROOT / 'tools/write-staging-catalog.rkt'), str(request), str(output / 'catalog')], env=dict(os.environ, **runtime_child_environment(Path(racket))), check=True)
     return output / 'catalog'
 
 

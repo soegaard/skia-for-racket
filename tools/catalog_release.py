@@ -5,7 +5,7 @@ import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import zipfile
-from catalog_execution import PKG_BUILD_PROFILE, RUNTIME_ENVIRONMENTS
+from catalog_execution import PKG_BUILD_PROFILE, RUNTIME_ENVIRONMENTS, verify_drdr_child
 from native_packages import validate_distribution_lock
 from release_graph import need, json_data
 
@@ -85,6 +85,15 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
                  row.get('new_cache') == str(copied / 'zo' / copied.relative_to('/')) and
                  type(row.get('bytecode_files')) is int and row['bytecode_files'] > 0,
                  'natipkg copied runtime cache was not rekeyed for its new absolute path')
+        first = next(row for row in relocations if row['environment'] == 'source installation')
+        verify_drdr_child(report.get('drdr_child_runtime'), first['copied_runtime'],
+                          version=identity['version'], target=identity['target'])
+        drdr = [row for row in report.get('commands', [])
+                if row.get('command', [])[-4:] == ['test', '--drdr', '--package', 'skia']]
+        need(len(drdr) == 1 and drdr[0].get('exit_code') == 0 and
+             drdr[0].get('runtime_child_environment') == {
+                 'PLTCOMPILEDROOTS': str(PurePosixPath(first['copied_runtime']) / 'zo') + ':'},
+             'natipkg DrDr package command omitted the reviewed inherited cache environment')
     need(set(report.get('rebuilt_smoke', {})) == {'source', 'built', 'binary-lib'}, 'catalog rebuilt package proof missing')
     groups = [report.get('smoke', [])] + list(report['rebuilt_smoke'].values())
     need(all({s['text_load_order'] for s in group} == {'skia-first', 'draw-first'} for group in groups), 'catalog text load order missing')

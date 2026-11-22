@@ -1,6 +1,6 @@
 """Shared relocatable runtime checks and Windows network-denial coverage."""
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from native_packages import need, read_json, sha256
 
@@ -57,6 +57,31 @@ def racket_command(executable: Path, *, profile=None):
         need(profile == PKG_BUILD_PROFILE, 'unreviewed catalog runtime execution profile')
         command.extend(['-MCR', str(runtime_root(executable) / 'zo') + os.pathsep])
     return command
+
+
+def runtime_child_environment(executable: Path, *, profile=None):
+    """Match pkg-build's inherited cache path for Racket-created subprocesses."""
+    if profile is None:
+        profile = runtime_profile(executable)
+    if profile is None:
+        return {}
+    need(profile == PKG_BUILD_PROFILE, 'unreviewed catalog runtime execution profile')
+    return dict(PLTCOMPILEDROOTS=str(runtime_root(executable) / 'zo') + os.pathsep)
+
+
+def verify_drdr_child(child, runtime, *, version, target):
+    """Require observed subprocess cache reuse, not just parent command flags."""
+    runtime = PurePosixPath(runtime)
+    cache = str(runtime / 'zo')
+    need(type(child) is dict and child.get('version') == version and child.get('target') == target
+         and type(child.get('running_machine')) is str and bool(child['running_machine'])
+         and child.get('compile_target_machine') == child['running_machine']
+         and child.get('compiled_roots') == [cache, 'same']
+         and child.get('compiled_roots_environment') == cache + ':'
+         and type(child.get('executable')) is str and runtime.is_absolute()
+         and '..' not in PurePosixPath(child['executable']).parts
+         and PurePosixPath(child['executable']).is_relative_to(runtime),
+         'natipkg DrDr subprocess did not inherit the reviewed compiled cache and native execution mode')
 
 
 def relocate_runtime_cache(source: Path, copied: Path):

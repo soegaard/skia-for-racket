@@ -1,13 +1,80 @@
 # Catalog candidate validation — 0.79
 
-Status: GitHub CI and API inventory passed at `170546e3`; six catalog execution
-lanes passed. Acceptance encountered a Racket download timeout. Windows binary
-source retention and natipkg runtime-cache relocation need corrected reruns.
+Status: GitHub CI, Acceptance and API inventory passed at `47ebdda3`; eight
+catalog execution lanes passed. Both natipkg lanes reached DrDr but exceeded
+its unchanged 600-second bound after child processes lost the compiled cache.
 **The publication candidate remains unqualified**. No publication action has
 been performed. Native pins
 remain SkiaSharp 3.119.1 / HarfBuzzSharp 8.3.1.2, native generation/revision 1/1.0.
 Source/API collection remains `skia`. The final matrix and maintainer
 redistribution approval remain required even when individual local checks pass.
+
+## Fourth GitHub push
+
+The maintainer pushed `47ebdda38738a6eae6914a467b0a898e1d459832`.
+[CI](https://github.com/soegaard/skia-for-racket/actions/runs/44971726883) (12 jobs),
+[Acceptance](https://github.com/soegaard/skia-for-racket/actions/runs/44971727004)
+(52) and [API inventory](https://github.com/soegaard/skia-for-racket/actions/runs/44971726866)
+(2) passed. [Catalog packaging](https://github.com/soegaard/skia-for-racket/actions/runs/44971726906)
+passed its asset job and all eight macOS, Windows and ordinary Linux execution
+lanes. Both actual natipkg lanes failed at DrDr.
+
+All eleven evidence ZIPs matched GitHub's sizes/SHA-256 values before bounded
+extraction under ignored `output/catalog/github-fourth-run-20261122/`. Every
+staging receipt identifies the same clean source ZIP SHA-256
+`497fbeb830372cd677393129413c1f3c343c670519bd59df361cdde0b1acd3e7`
+and identical native/font archives. The strict selected-lane verifier accepted
+all eight successful execution receipts, including Windows source/built/binary-lib
+preservation, installation and removal.
+
+| Catalog target | CS | Commands | DrDr | Observed result |
+| --- | --- | --- | --- | --- |
+| macOS ARM64 | 8.18 | 83 | 65.168 s | All selected checks passed |
+| macOS ARM64 | 9.3 | 83 | 43.671 s | All selected checks passed |
+| macOS Intel | 8.18 | 83 | 86.255 s | All selected checks passed |
+| macOS Intel | 9.3 | 83 | 74.392 s | All selected checks passed |
+| Windows x64 | 8.18 | 83 | 67.562 s | All selected checks passed |
+| Windows x64 | 9.3 | 83 | 56.281 s | All selected checks passed |
+| Ordinary Linux x64 | 8.18 | 84 | 42.900 s | All selected checks passed, UID 1001 |
+| Ordinary Linux x64 | 9.3 | 84 | 64.474 s | All selected checks passed, UID 1001 |
+| Actual natipkg x64 | 8.18 | 49 | Timeout, 600.012 s | DrDr incomplete |
+| Actual natipkg x64 | 9.3 | 49 | Timeout, 600.027 s | DrDr incomplete |
+
+Both natipkg lanes passed the full runtime bootstrap, dependency snapshot,
+ordinary documentation-enabled setup, actual rendering/shaping in both text
+initialization orders, negative managed/override cases, bounded CPU tests,
+update/rollback, scope/removal and foreign-data checks. The earlier cache-copy
+fix worked. Their remaining rebuilt installations are unrun because DrDr failed.
+
+DrDr starts separate Racket processes. The
+[test runner](https://github.com/racket/racket/blob/v8.18/pkgs/compiler-lib/compiler/commands/test.rkt)
+does not copy the parent's `-MCR` arguments into their command lines. The
+[upstream service environment](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/private/vm.rkt)
+also supplies `PLTCOMPILEDROOTS`; our harness had omitted it. The service's
+[documentation](https://github.com/racket/pkg-build/blob/23cacfcedaead1021dff6bf97ae4a5852af2acfc/private/about.rkt)
+explains that machine-specific cached code lives separately from the portable
+`compiled` trees. The assumption that parent startup flags alone covered all
+descendants was incomplete. The 8.18 DrDr log includes static FFI errors such
+as `(_fun _Class _string _long -> _Class)` as children bypassed that cache.
+
+The harness now supplies the same reviewed cache through `PLTCOMPILEDROOTS`
+during preparation, staging, validation and rebuilt-catalog generation. A real
+DrDr subprocess preflight records its executable, version, target, native
+execution mode and effective compiled roots. Natipkg evidence requires that
+observed child result as well as the original parent profile and all existing
+checks. Child processes retain their ordinary native execution mode, matching
+the upstream service; the parent still uses its machine-independent compilation
+profile. No Racket source, package test set or timeout was changed.
+
+Offline x86-emulated probes of both pinned runtimes reproduced the missing
+inheritance: unconfigured DrDr children reported only `same` and failed the
+preflight. With the reviewed environment, real DrDr children reported the
+owned `zo` root plus `same`, and passed both the preflight and an import of
+`ffi/unsafe/objc`. Cache dependency headers confirmed native `ta6le` code. The
+original runtime had been removed before these child checks. The diagnostic
+bootstrap selected the `racket` collection; these probes do not establish the
+full package traversal, rebuilt installations or native timing. Both complete
+natipkg lanes must run again at the next pushed commit.
 
 ## Third GitHub push
 

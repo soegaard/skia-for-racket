@@ -22,7 +22,7 @@ import native_packages as n
 from catalog_execution import (PKG_BUILD_PROFILE, PROFILE_FILE, RUNTIME_ENVIRONMENTS,
                                preserved_package_files, racket_command,
                                relocatable_runtime, relocate_runtime_cache,
-                               windows_network_programs)
+                               runtime_child_environment, windows_network_programs)
 
 SHA = 'a'*64
 COMMIT = 'b'*40
@@ -64,6 +64,14 @@ def cache_fixture(report):
             environment=name, source_runtime=str(source), copied_runtime=str(copied),
             old_cache=str(copied / 'zo' / source.relative_to('/')),
             new_cache=str(copied / 'zo' / copied.relative_to('/')), bytecode_files=143))
+    first = PurePosixPath(report['runtime_cache_relocations'][0]['copied_runtime'])
+    report['drdr_child_runtime'] = dict(version=report['identity']['version'], target='x86_64-linux-natipkg',
+        running_machine='ta6le', compile_target_machine='ta6le', executable=str(first / 'bin/racket'),
+        compiled_roots=[str(first / 'zo'), 'same'], compiled_roots_environment=str(first / 'zo') + ':')
+    report['commands'] = [dict(command=[str(first / 'bin/racket'), '-MCR', str(first / 'zo') + ':',
+                                       '-l', 'raco', 'test', '--drdr', '--package', 'skia'],
+                              exit_code=0, runtime_child_environment={
+                                  'PLTCOMPILEDROOTS': str(first / 'zo') + ':'})]
 
 
 class Evidence(unittest.TestCase):
@@ -136,6 +144,28 @@ class Evidence(unittest.TestCase):
     def test_timeout_is_not_os_network_denial(self):
         report, stage = fixtures(); report['network_denial'][0]['errno']=None
         with self.assertRaises(ValueError): self.verify(report,stage)
+    def test_natipkg_drdr_requires_observed_child_cache_reuse(self):
+        for defect in ('missing', 'roots', 'target', 'executable', 'version'):
+            report, stage = fixtures()
+            report['identity'].update(target='x86_64-linux-natipkg', compile_target_machine=False)
+            report['runtime_profile']=stage['runtime_profile']=copy.deepcopy(PKG_BUILD_PROFILE)
+            cache_fixture(report)
+            child = report['drdr_child_runtime']
+            if defect == 'missing': del report['drdr_child_runtime']
+            elif defect == 'roots': child['compiled_roots'] = ['same']
+            elif defect == 'target': child['compile_target_machine'] = False
+            elif defect == 'executable': child['executable'] = '/unrelated/racket'
+            elif defect == 'version': child['version'] = '9.3.0.8'
+            with self.subTest(defect=defect), self.assertRaisesRegex(ValueError, 'DrDr subprocess'):
+                self.verify(report, stage)
+    def test_natipkg_full_drdr_cannot_drop_the_preflight_environment(self):
+        report, stage = fixtures()
+        report['identity'].update(target='x86_64-linux-natipkg', compile_target_machine=False)
+        report['runtime_profile']=stage['runtime_profile']=copy.deepcopy(PKG_BUILD_PROFILE)
+        cache_fixture(report)
+        del report['commands'][0]['runtime_child_environment']
+        with self.assertRaisesRegex(ValueError, 'DrDr package command'):
+            self.verify(report, stage)
     def test_linux_root_cannot_claim_readonly_qualification(self):
         for uid in (0, None, '1001', True):
             report, stage = fixtures(); report['execution_uid'] = uid
@@ -218,6 +248,37 @@ class WindowsNetworkCoverage(unittest.TestCase):
 
 
 class CatalogRuntime(unittest.TestCase):
+    def test_profile_child_cache_environment_relocates_without_changing_child_compile_mode(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'Racket runtime æ'
+            executable = root / 'bin/racket'
+            self.assertEqual(runtime_child_environment(executable), {})
+            self.assertEqual(runtime_child_environment(executable, profile=PKG_BUILD_PROFILE),
+                             {'PLTCOMPILEDROOTS': str(root / 'zo') + os.pathsep})
+            (root / 'etc').mkdir(parents=True)
+            (root / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+            moved = root.with_name('copied runtime with spaces æ')
+            shutil.copytree(root, moved)
+            self.assertEqual(runtime_child_environment(moved / 'bin/racket'),
+                             {'PLTCOMPILEDROOTS': str(moved / 'zo') + os.pathsep})
+
+    def test_runtime_child_cache_reaches_real_descendants_over_ambient_values(self):
+        validator = tool('validate-catalog-package')
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'etc').mkdir()
+            (root / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+            instance = object.__new__(validator.Validator)
+            instance.root = instance.away = root
+            instance.report = dict(commands=[])
+            code = 'import os,subprocess,sys; subprocess.run([sys.executable,"-c","import os; print(os.environ[\\\"PLTCOMPILEDROOTS\\\"])"])'
+            with patch.object(validator, 'racket_command', return_value=[sys.executable]):
+                output = instance.run((root / 'bin/racket', dict(os.environ), root), '-c', code,
+                                      extra_env={'PLTCOMPILEDROOTS': 'unreviewed ambient cache'})
+            self.assertEqual(output.strip(), str(root / 'zo') + os.pathsep)
+            self.assertEqual(instance.report['commands'][0]['runtime_child_environment'],
+                             {'PLTCOMPILEDROOTS': str(root / 'zo') + os.pathsep})
+
     def test_runtime_cache_copy_survives_original_removal_without_changing_bytecode(self):
         with tempfile.TemporaryDirectory() as temporary:
             source = Path(temporary).resolve() / 'prepared runtime æ'
@@ -284,6 +345,8 @@ class CatalogRuntime(unittest.TestCase):
             (root / PROFILE_FILE).write_bytes(n.json_bytes(profile))
             with self.assertRaisesRegex(ValueError, 'unreviewed catalog runtime execution profile'):
                 racket_command(root / 'bin/racket')
+            with self.assertRaisesRegex(ValueError, 'unreviewed catalog runtime execution profile'):
+                runtime_child_environment(root / 'bin/racket')
 
     def test_staging_failure_retains_bounded_cause_without_native_archives(self):
         runner = tool('run-catalog-ci')
@@ -427,6 +490,8 @@ class RuntimeAcquisition(unittest.TestCase):
                 self.assertEqual(install.call_args_list[1].args[0][-4:], ['-l-', 'raco', 'setup', '--recompile-only'])
                 self.assertIn('-MCR', install.call_args_list[2].args[0])
                 self.assertTrue(Path(install.call_args_list[1].kwargs['env']['PLTADDONDIR']).is_absolute())
+                self.assertEqual(install.call_args_list[1].kwargs['env']['PLTCOMPILEDROOTS'],
+                                 str(root.resolve() / 'runtime/zo') + os.pathsep)
             self.assertEqual(report['status'], 'installed')
             self.assertEqual(report['sha256'], pin['sha256'])
             self.assertEqual(report['selected_url'], pin['mirrors'][0])

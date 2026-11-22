@@ -9,7 +9,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from native_packages import ROOT, need, read_json, json_bytes
-from catalog_execution import PKG_BUILD_PROFILE, PROFILE_FILE, racket_command
+from catalog_execution import PKG_BUILD_PROFILE, PROFILE_FILE, racket_command, runtime_child_environment
 
 MAX_INSTALLER = 300 * 1024 * 1024
 
@@ -86,6 +86,7 @@ def prepare(version, directory, *, lock_path=ROOT / 'packaging/racket-runtimes.j
             env = {k:v for k,v in os.environ.items() if not k.startswith(('PLT', 'RACKET_', 'LD_', 'DYLD_'))}
             env.update(HOME=temporary, USERPROFILE=temporary, PLTUSERHOME=temporary,
                        PLTADDONDIR=str(Path(temporary) / 'addon'))
+            env.update(runtime_child_environment(directory.resolve() / 'bin/racket', profile=PKG_BUILD_PROFILE))
             with directory.with_suffix('.bootstrap.log').open('wb') as log:
                 subprocess.run(command, cwd=directory.resolve(), env=env, stdout=log, stderr=subprocess.STDOUT,
                                timeout=1200, check=True)

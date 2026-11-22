@@ -1,7 +1,6 @@
 # GitHub CI test branch
 
-The test branch is `codex/catalog-ci`. The maintainer pushed `487ff148`, `d75b82d4`
-and `170546e3`;
+The test branch is `codex/catalog-ci`. The maintainer pushed through `47ebdda3`;
 the implementation agent does not push, publish packages or dispatch deployments.
 The follow-up fixes below require another maintainer push and fresh CI results.
 
@@ -43,10 +42,20 @@ source retention; both natipkg versions bootstrapped successfully but their
 copied runtime caches used the old absolute path. See the
 [third run](CATALOG-VALIDATION.md#third-github-push).
 
-The next follow-up uses native metadata paths for the same editable file set
-and relocates each owned natipkg cache subtree for its copied runtime, with
-strict per-environment evidence. All ten native lanes and the failed Acceptance
-lane still require fresh GitHub execution at the next pushed commit.
+Commits `d7ec9843` and `47ebdda3` use native metadata paths for the same editable
+file set and relocate each owned natipkg cache subtree for its copied runtime,
+with strict per-environment evidence.
+
+At `47ebdda3`, CI, Acceptance, API inventory and all eight macOS, Windows and
+ordinary Linux catalog lanes passed. Both natipkg lanes passed setup, rendering,
+shaping and lifecycle checks, then exceeded the DrDr limit because separately
+launched Racket processes lost the compiled cache. See the
+[fourth run](CATALOG-VALIDATION.md#fourth-github-push).
+
+The next follow-up matches the upstream service's inherited `PLTCOMPILEDROOTS`
+environment and verifies it in an actual DrDr child. It preserves all package
+tests, the 600-second bound and the existing release gates. Both complete
+natipkg lanes and the rest of the platform matrix need a fresh same-source run.
 
 These corrections do not turn earlier failed lanes into passes. Inspect fresh
 results at the new pushed commit. No Racket package server submission occurred.

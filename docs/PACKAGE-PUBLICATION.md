@@ -70,6 +70,15 @@ Only the owned copy is changed. Cache bytecode/dependencies remain byte-identica
 and missing caches, symlinks or collisions stop validation. Every disposable
 natipkg environment records its relocation for the final evidence checker.
 
+The service also exports `PLTCOMPILEDROOTS` so separately launched Racket
+processes reuse machine-specific cached code. Parent `-MCR` flags alone do not
+configure DrDr's child processes. The harness supplies this environment only
+for reviewed, owned qualification runtimes. A real DrDr child preflight records
+the effective roots and executable; natipkg evidence requires those observations.
+Children execute in their ordinary native mode, while the parent retains its
+machine-independent compilation profile. The full package DrDr traversal and
+its 600-second limit remain unchanged.
+
 This prepares Racket's service runtime; it does not patch Racket sources or
 change any installer/native-library hash. Skia's subsequent ordinary dependency
 installation, all registered manuals and the complete execution/rebuild checks
