@@ -22,7 +22,7 @@ import zipfile
 
 from native_packages import ROOT, need, sha256, read_json, json_bytes, write_zip, zip_index, check_font_input
 from repository_layout import SOURCE_PACKAGES
-from catalog_snapshot import inventory
+from catalog_snapshot import inventory, stage_dependencies
 from catalog_execution import racket_command, runtime_child_environment, runtime_profile
 
 
@@ -126,12 +126,8 @@ def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base
     (output / 'staging-receipt.json').write_bytes(json_bytes(report))
     if snapshot:
         target = output / 'snapshot'
-        command = [*prefix, '-l', 'raco', 'pkg', 'catalog-archive', '--fast-file-copy', '--include', 'skia', '--include-deps',
-                   '--include-deps-platform', identity['os'], identity['target'], '--relative',
-                   '--version', identity['version'], str(target), str(output / 'catalog'),
-                   str(base_catalog or ('https://download.racket-lang.org/releases/' + identity['version'] + '/catalog/'))]
-        with (output / 'dependency-staging.log').open('wb') as log:
-            subprocess.run(command, env=environment, stdout=log, stderr=subprocess.STDOUT, check=True)
+        report['dependency_staging'] = stage_dependencies(prefix, output, identity, output / 'catalog',
+            base_catalog or ('https://download.racket-lang.org/releases/' + identity['version'] + '/catalog/'), environment)
         # Racket's catalog-archive repacks even local archives. Restore the
         # original candidate bytes AND their catalog checksums after staging
         # the standard closure; otherwise execution tests different ZIPs.
@@ -148,7 +144,7 @@ def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base
         report['snapshot_candidates_preserved'] = True
         report['snapshot_candidates'] = candidates
         report['dependency_snapshot'] = inventory(target)
-        report['dependency_staging_command'] = command
+        report['dependency_staging_command'] = report['dependency_staging']['attempts'][-1]['command']
         (output / 'staging-receipt.json').write_bytes(json_bytes(report))
     return report
 

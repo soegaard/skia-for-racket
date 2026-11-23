@@ -19,6 +19,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import catalog_release as c
 import catalog_asset_evidence as asset_evidence
+import catalog_snapshot as snapshot
 import native_packages as n
 from catalog_execution import (PKG_BUILD_PROFILE, PROFILE_FILE, RUNTIME_ENVIRONMENTS,
                                preserved_package_files, racket_command,
@@ -437,6 +438,7 @@ class CatalogRuntime(unittest.TestCase):
                 stage = output / 'staged'
                 stage.mkdir()
                 (stage / 'catalog-metadata.log').write_bytes(b'compile: fixture failure\n')
+                (stage / 'dependency-staging.json').write_bytes(n.json_bytes(dict(status='failed', attempts=[1, 2, 3])))
                 (stage / 'native.zip').write_bytes(b'never upload this payload')
                 raise ValueError('fixture metadata failed')
             with patch.object(runner, 'load', return_value=SimpleNamespace(stage=fail_staging)):
@@ -447,6 +449,7 @@ class CatalogRuntime(unittest.TestCase):
             self.assertEqual(report['status'], 'failed-preparation')
             self.assertFalse(report['catalog_candidate_validated'])
             self.assertEqual((evidence / 'catalog-metadata.log').read_bytes(), b'compile: fixture failure\n')
+            self.assertEqual(n.read_json(evidence / 'dependency-staging.json')['attempts'], [1, 2, 3])
             self.assertFalse(any(path.suffix == '.zip' for path in evidence.iterdir()))
 
     def test_windows_relative_files_are_checked_with_full_zip_member_names(self):
@@ -523,6 +526,166 @@ class CatalogRuntime(unittest.TestCase):
             self.assertTrue(Path(report['absolute_path']).is_file())
             self.assertNotEqual(json.loads((root / '001.log').read_text(encoding='cp1252'))['absolute_path'],
                                 str(payload))
+
+
+class DependencyStaging(unittest.TestCase):
+    def stage(self, root, *, windows=False, run=None):
+        identity = dict(version='9.3', os='windows' if windows else 'unix',
+                        target='win32\\x86_64' if windows else 'x86_64-linux-natipkg')
+        with patch.object(snapshot.sys, 'platform', 'win32' if windows else 'linux'), \
+             patch.object(snapshot, 'STAGING_RETRY_DELAY', 0), \
+             patch.object(snapshot.subprocess, 'run', side_effect=run or self.success) as process:
+            result = snapshot.stage_dependencies(['racket', '-MCR', '/runtime/zo:'], root, identity,
+                root / 'catalog', 'https://download.racket-lang.org/releases/9.3/catalog/',
+                dict(PLTCOMPILEDROOTS='/runtime/zo:', KEEP_ENVIRONMENT='yes'))
+        return result, process.call_args_list
+
+    @staticmethod
+    def success(command, **kwargs):
+        if 'catalog-copy' in command:
+            destination = Path(command[-1])
+            destination.mkdir(exist_ok=True)
+            (destination / 'pkgs-all').write_bytes(b'fixture frozen catalog')
+
+    def test_success_freezes_metadata_and_preserves_runtime_arguments(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report, calls = self.stage(root)
+            self.assertEqual(report['status'], 'passed')
+            self.assertEqual([a['phase'] for a in report['attempts']], ['catalog', 'archives'])
+            command = calls[1].args[0]
+            self.assertEqual(command[:3], ['racket', '-MCR', '/runtime/zo:'])
+            self.assertEqual(command[3:6], [str(n.ROOT / 'tools/catalog-raco.rkt'),
+                                           str(root / 'dependency-staging/downloads'), '-'])
+            self.assertIn('--state', command)
+            self.assertEqual(command[-1], str(root / 'dependency-staging/source-catalog'))
+            self.assertIn('x86_64-linux-natipkg', command)
+            self.assertNotIn('https://download.racket-lang.org/releases/9.3/catalog/', command)
+            child = calls[1].kwargs['env']
+            self.assertEqual(child['PLTADDONDIR'], str(root / 'dependency-staging/addon'))
+            self.assertEqual(child['PLTUSERHOME'], str(root / 'dependency-staging/user'))
+            self.assertEqual(child['PLTCOMPILEDROOTS'], '/runtime/zo:')
+            self.assertEqual(child['KEEP_ENVIRONMENT'], 'yes')
+            self.assertTrue(calls[1].kwargs['check'])
+            self.assertEqual(calls[1].kwargs['timeout'], snapshot.STAGING_TIMEOUT)
+            self.assertEqual(n.read_json(root / 'dependency-staging.json'), report)
+
+    def test_checksum_retry_resumes_the_identical_frozen_catalog(self):
+        attempts = []
+        def run(command, **kwargs):
+            self.success(command, **kwargs)
+            if 'catalog-archive' in command:
+                attempts.append(command)
+                if len(attempts) == 1:
+                    kwargs['stdout'].write(b'unexpected checksum on package\n')
+                    raise snapshot.subprocess.CalledProcessError(1, command)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report, calls = self.stage(root, run=run)
+            self.assertEqual(attempts[0], attempts[1])
+            self.assertEqual(sum('catalog-copy' in call.args[0] for call in calls), 1)
+            self.assertEqual([a['exit_code'] for a in report['attempts']], [0, 1, 0])
+            self.assertIn('unexpected checksum', (root / 'dependency-staging.log').read_text())
+
+    def test_persistent_failure_is_bounded_and_retains_all_attempts(self):
+        def run(command, **kwargs):
+            self.success(command, **kwargs)
+            if 'catalog-archive' in command:
+                raise snapshot.subprocess.CalledProcessError(1, command)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.assertRaises(snapshot.subprocess.CalledProcessError):
+                self.stage(root, run=run)
+            report = n.read_json(root / 'dependency-staging.json')
+            self.assertEqual(report['status'], 'failed')
+            self.assertEqual(len(report['attempts']), 1 + snapshot.STAGING_ATTEMPTS)
+            self.assertTrue(all(a['exit_code'] == 1 for a in report['attempts'][1:]))
+
+    def test_timeout_is_bounded_and_does_not_approve_a_partial_snapshot(self):
+        def run(command, **kwargs):
+            self.success(command, **kwargs)
+            if 'catalog-archive' in command:
+                raise snapshot.subprocess.TimeoutExpired(command, kwargs['timeout'])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.assertRaises(snapshot.subprocess.TimeoutExpired):
+                self.stage(root, run=run)
+            report = n.read_json(root / 'dependency-staging.json')
+            self.assertEqual(report['status'], 'failed')
+            self.assertEqual(len(report['attempts']), 1 + snapshot.STAGING_ATTEMPTS)
+            self.assertTrue(all(a['timed_out'] for a in report['attempts'][1:]))
+
+    def test_a_retry_cannot_change_the_frozen_catalog(self):
+        def run(command, **kwargs):
+            self.success(command, **kwargs)
+            if 'catalog-archive' in command:
+                (Path(command[-1]) / 'pkgs-all').write_bytes(b'different checksums')
+                raise snapshot.subprocess.CalledProcessError(1, command)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.assertRaisesRegex(ValueError, 'frozen dependency catalog changed'):
+                self.stage(root, run=run)
+            self.assertEqual(len(n.read_json(root / 'dependency-staging.json')['attempts']), 2)
+
+    def test_catalog_acquisition_can_retry_before_freezing(self):
+        attempts = []
+        def run(command, **kwargs):
+            if 'catalog-copy' in command:
+                attempts.append(command)
+                if len(attempts) == 1:
+                    raise snapshot.subprocess.CalledProcessError(1, command)
+            self.success(command, **kwargs)
+        with tempfile.TemporaryDirectory() as temporary:
+            report, _ = self.stage(Path(temporary), run=run)
+            self.assertEqual(report['status'], 'passed')
+            self.assertEqual([a['phase'] for a in report['attempts']], ['catalog', 'catalog', 'archives'])
+
+    def test_verification_bypass_is_rejected_before_running_racket(self):
+        for variable in ('PLT_PKG_SSL_NO_VERIFY', 'GIT_SSL_NO_VERIFY'):
+            with self.subTest(variable=variable), tempfile.TemporaryDirectory() as temporary, \
+                 patch.object(snapshot.subprocess, 'run') as process:
+                root = Path(temporary)
+                with self.assertRaisesRegex(ValueError, 'requires HTTPS certificate verification'):
+                    snapshot.stage_dependencies(['racket'], root, {}, root, root, {variable: ''})
+                process.assert_not_called()
+                self.assertFalse((root / 'dependency-staging').exists())
+
+    def test_windows_uses_exported_roots_only_in_the_staging_subprocess(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(snapshot.ssl, 'create_default_context') as make:
+            # Fixture bytes test PEM transport only; actual TLS is exercised separately.
+            make.return_value.get_ca_certs.return_value = [b'root-b', b'root-a', b'root-a']
+            root = Path(temporary)
+            report, calls = self.stage(root, windows=True)
+            roots = root / 'dependency-staging/trusted-roots.pem'
+            self.assertEqual(report['trust']['certificates'], 2)
+            self.assertEqual(report['trust']['sha256'], n.sha256(roots.read_bytes()))
+            self.assertEqual(report['trust']['source'], 'python-default-verified-roots')
+            make.assert_called_once_with()
+            make.return_value.get_ca_certs.assert_called_once_with(binary_form=True)
+            for call in calls:
+                self.assertEqual(call.args[0][3:6], [str(n.ROOT / 'tools/catalog-raco.rkt'),
+                                                   str(root / 'dependency-staging/downloads'), str(roots)])
+                self.assertNotIn('SSL_CERT_FILE', call.kwargs['env'])
+                self.assertNotIn('PLT_PKG_SSL_NO_VERIFY', call.kwargs['env'])
+
+    def test_empty_or_oversized_trust_store_fails_without_a_bundle(self):
+        for roots in ([], [b'x' * 65537]):
+            with self.subTest(size=len(roots)), tempfile.TemporaryDirectory() as temporary, \
+                 patch.object(snapshot.ssl, 'create_default_context') as make:
+                make.return_value.get_ca_certs.return_value = roots
+                path = Path(temporary) / 'roots.pem'
+                with self.assertRaisesRegex(ValueError, 'trusted certificate roots'):
+                    snapshot.export_trusted_roots(path)
+                self.assertFalse(path.exists())
+
+    def test_trust_export_does_not_replace_existing_files(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(snapshot.ssl, 'create_default_context') as make:
+            make.return_value.get_ca_certs.return_value = [b'fixture']
+            path = Path(temporary) / 'roots.pem'
+            path.write_bytes(b'unrelated')
+            with self.assertRaises(FileExistsError):
+                snapshot.export_trusted_roots(path)
+            self.assertEqual(path.read_bytes(), b'unrelated')
 
 
 class RuntimeAcquisition(unittest.TestCase):
@@ -685,16 +848,30 @@ class ReceiptOnlyAssets(unittest.TestCase):
             self.assertFalse(report['native_payloads_uploaded'])
 
     def test_modified_archive_is_rejected_even_with_a_new_checksum(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            artifacts = self.assets(root)
-            archive = next(p for p in artifacts.glob('*.zip') if p.name != 'skia.zip')
-            data = archive.read_bytes() + b'changed'
-            archive.write_bytes(data)
-            archive.with_suffix('.zip.CHECKSUM').write_text(hashlib.sha1(data).hexdigest())
-            with self.assertRaisesRegex(ValueError, 'differs from receipt'):
-                asset_evidence.collect(artifacts, root / 'evidence')
-            self.assertFalse((root / 'evidence').exists())
+        for target in n.DISTRIBUTED_TARGETS:
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                artifacts = self.assets(root)
+                archive = artifacts / (n.TARGETS[target]['package'] + '.zip')
+                data = archive.read_bytes() + b'changed'
+                archive.write_bytes(data)
+                archive.with_suffix('.zip.CHECKSUM').write_text(hashlib.sha1(data).hexdigest())
+                with self.assertRaisesRegex(ValueError, 'differs from receipt'):
+                    asset_evidence.collect(artifacts, root / 'evidence')
+                self.assertFalse((root / 'evidence').exists())
+
+    def test_modified_source_archives_are_rejected_even_with_new_checksums(self):
+        for package in ('skia', 'skia-lib', 'skia-doc'):
+            with self.subTest(package=package), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                artifacts = self.assets(root)
+                archive = artifacts / (package + '.zip')
+                data = archive.read_bytes() + b'changed'
+                archive.write_bytes(data)
+                archive.with_suffix('.zip.CHECKSUM').write_text(hashlib.sha1(data).hexdigest())
+                with self.assertRaisesRegex(ValueError, 'source archive differs'):
+                    asset_evidence.collect(artifacts, root / 'evidence')
+                self.assertFalse((root / 'evidence').exists())
 
     def test_individual_and_aggregate_receipts_must_agree(self):
         with tempfile.TemporaryDirectory() as temporary:

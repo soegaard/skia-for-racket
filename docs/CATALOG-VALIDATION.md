@@ -4,6 +4,116 @@ Current Windows amendment: [the managed Windows native package](WINDOWS-NATIVE-P
 adds a sixth catalog entry after `c8cf88a0`. The five-entry results below remain
 historical; they do not qualify the new Windows managed route or its changed lock.
 
+## November 23 push and staging repairs
+
+At `b11a6ef9`, [Catalog packaging run 45230583487](https://github.com/soegaard/skia-for-racket/actions/runs/45230583487)
+passed eight of ten platform/version lanes: both macOS architectures on CS
+8.18/9.3, ordinary Linux on both versions, natipkg 8.18, and Windows 8.18.
+The Windows 8.18 receipt records 123 commands, all 24 required checks, managed
+DLL provenance, network-denied rendering/shaping and documentation setup,
+DrDr in 78.172 seconds, rebuilt installs, update/rollback and scope/removal.
+This is actual Windows managed-package execution, superseding its initial
+unrun status; Windows 9.3 remains unqualified for that commit.
+
+The two failed catalog lanes stopped during acquisition, before installed
+execution. Windows 9.3's Racket OpenSSL reader rejected a Windows certificate
+store entry (`X509*->C`, argument `#f`). Natipkg 9.3's downloaded
+`typed-racket-more` ZIP did not match its release-catalog checksum. API inventory
+passed. The source CI test selected a source ZIP by filesystem order while
+expecting the native-receipt error. Two Acceptance CS 8.18 jobs timed out in
+`setup-racket`, before their Skia tests. None of those failures counts as a pass.
+
+The local repair explicitly tests corruption of all three named native ZIPs and
+all three source ZIPs. Staging now freezes the complete selected catalog once
+and allows at most three attempts per phase, each limited to 15 minutes. Every
+archive attempt uses that unchanged checksum set; persistent mismatches still
+fail. Racket's state database reuses only successfully checked archives. The
+download cache, addon and Racket home are private to the disposable stage.
+
+On Windows only, Python exports its default verified certificate roots to an
+owned, bounded PEM file. The staging subprocess uses
+[Racket's `ssl-default-verify-sources`](https://docs.racket-lang.org/openssl/index.html)
+parameter with that file. Other platforms retain their default trust sources.
+The helper preserves TLS certificate/hostname checks and refuses verification
+bypass variables. It changes neither the OS store nor Racket's installation.
+Normal installation and network-denied execution do not use this helper or
+download roots. `dependency-staging.json` records the frozen metadata digest,
+trust source/bundle digest and each command/attempt. Both success and preparation
+failure retain it with `dependency-staging.log`; no trust bundle or payload is
+added to uploaded evidence.
+
+Local HTTP/TLS protocol tests passed 12 cases across released macOS ARM64 CS
+8.18 and 9.3: corrupt-once recovery, persistent-corruption rejection, valid
+certificate acceptance, untrusted-certificate rejection, hostname-mismatch
+rejection and verification-bypass rejection. Each corrupt-once test also changes
+the original catalog after freezing and proves the valid earlier package is
+downloaded only once. The same frozen inputs are used by each retry. These are
+actual Racket processes; they are not Windows certificate-store execution.
+The focused Python suite passes 71 tests. Evidence and the reproducible local
+fixture driver are in `output/catalog/staging-fixes/` (`protocol-4/` is the final
+protocol run). Earlier exploratory failures remain recorded there, including
+the switch from SQLite to byte-stable directory metadata.
+
+Full staging with initially empty private caches passed on both released macOS
+ARM64 runtimes: CS 8.18 stages 88 package archives (147,780,882 bytes), and CS 9.3
+stages 85 (148,217,819 bytes), with all six candidate ZIPs restored byte for byte.
+Both metadata acquisition and archiving passed on their first attempts; neither
+used a prior download-cache entry. Receipts are in `isolated-stage-8.18/` and
+`isolated-stage-9.3/`. The acquisition-only commands were:
+
+```sh
+output/catalog/python314/bin/python tools/stage-native-catalog.py \
+  --racket output/catalog/runtimes/8.18/racket/bin/racket \
+  --cache output/catalog/bf-inputs \
+  --output output/catalog/staging-fixes/isolated-stage-8.18 --snapshot --allow-dirty
+output/catalog/python314/bin/python tools/stage-native-catalog.py \
+  --racket output/catalog/runtimes/9.3/racket/bin/racket \
+  --cache output/catalog/bf-inputs \
+  --output output/catalog/staging-fixes/isolated-stage-9.3 --snapshot --allow-dirty
+```
+
+These intentionally labelled dirty-worktree checks do not certify a clean
+release. All six candidate archive hashes also match the existing pre-repair
+archives in `output/catalog/windows-native-package/candidate/artifacts/`.
+Duplicate ZIPs/download caches were removed after comparison to conserve disk;
+logs, receipts and `unchanged-candidate-archives.json` are retained.
+
+One focused macOS ARM64 CS 9.3 follow-up passed eight commands under OS network
+denial: ordinary dependency-driven installation with manuals, setup dependency
+checks, actual CPU/PNG rendering and HarfBuzz shaping in both initialization
+orders, all four documentation-font smoke checks, DrDr for `skia-lib` and
+`skia-doc` (25.191 seconds), and automatic dependency removal. Both loaded
+libraries reported managed provenance and no longer existed after removal.
+The copied runtime/home were then removed. `offline-9.3/result.json` explicitly
+marks this as a focused follow-up, not all 24 lifecycle checks or a release
+qualification. The exact local driver commands were:
+
+```sh
+env PYTHONDONTWRITEBYTECODE=1 output/catalog/python314/bin/python \
+  output/catalog/staging-fixes/probe.py protocol-4
+/usr/bin/sandbox-exec -p '(version 1)(allow default)(deny network*)' \
+  output/catalog/python314/bin/python output/catalog/staging-fixes/offline-probe.py
+```
+
+All 63 Python regression suites, eight inspector self-tests and nine source/API/
+release/reference checks passed across the initial run and targeted follow-ups.
+The initial `test-reference.py` run had one disk-exhaustion error while copying
+a fixture; after the disposable installation freed space, all 586 reference
+tests passed. The initial standalone reference-check command also rejected an
+output directory inside the checkout; the corrected invocation uses
+`/private/tmp/skia-staging-repair-reference-check` and passed. Those failed
+records remain in `regressions/`, alongside the successful corrected logs.
+`test_dc_consumers.py` and `test_dc_styles.py` (the two underscore-named suites)
+passed separately. Public API and release validation here are source checks;
+the actual platform/full release jobs remain required.
+
+The new Windows/natipkg 9.3 CI runs, cancelled Acceptance lanes
+and the full manual Release candidate for the repaired commit remain external
+checks. No Windows runtime is available locally, and the local Docker daemon is
+unavailable (`~/.docker/run/docker.sock` is absent). No push, publication or
+catalog registration is authorized or performed.
+
+## Historical package-boundary evidence
 
 Current status, November 23, 2026: the unsplit candidate at `7693d907` passed
 Release candidate run `45096827302`, attempt 2. The retained baseline verification

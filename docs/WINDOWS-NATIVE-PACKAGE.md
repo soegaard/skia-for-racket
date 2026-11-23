@@ -50,6 +50,15 @@ local evidence, not a required publication host.
 
 ## Validation and limits
 
+After the initial local checks below, the maintainer pushed `b11a6ef9`.
+[Windows CS 8.18 catalog execution](https://github.com/soegaard/skia-for-racket/actions/runs/45230583487/job/137888716031)
+passed all 24 required checks (123 commands), including managed DLL loading,
+network-denied rendering/shaping, documentation setup, DrDr, rebuilt installs
+and the complete lifecycle. Windows CS 9.3 stopped during HTTPS dependency
+staging with a Racket certificate-store error, before installation tests.
+See [the staging repair and exact qualification limits](CATALOG-VALIDATION.md).
+The full manual gate is still required for the changed package layout.
+
 | Local check | Result |
 | --- | --- |
 | Offline native assembly and independent reproduction | Three archives match byte for byte, including Racket SHA-1 sidecars |
@@ -61,7 +70,7 @@ local evidence, not a required publication host.
 | Actual frozen public API reflection | Headless and GUI match; invalid native overrides prevent native loading |
 | Windows foreign-package rebuilding on macOS | All 37 non-metadata files, including both DLLs/notices, preserved in source, built and binary-library forms |
 | Full six-package macOS CS 9.3 lifecycle | Incomplete: disk exhaustion at command 105; fresh identical-input retry failed at command 44 for the same resource reason |
-| Actual Windows CS 8.18/9.3 and full manual release gate | Unrun; existing CI lanes remain required |
+| Actual Windows execution at initial implementation | Initially unrun; subsequent CS 8.18 CI passed as recorded above; CS 9.3 and the full manual gate remain required |
 
 The lifecycle failures report `errno=28`, “No space left on device,” while
 copying package files. They do not certify a complete lifecycle pass. Their

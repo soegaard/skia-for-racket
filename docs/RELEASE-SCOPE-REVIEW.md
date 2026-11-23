@@ -1,5 +1,30 @@
 # 0.78b — Review rationale and maintenance
 
+## November 23 dependency-staging repair
+
+Review of `b11a6ef9`'s CI failure found a test selecting an arbitrary ZIP after
+the source split. It now targets each named native archive explicitly and
+separately checks all three source archives. Neither receipt error matching nor
+archive/checksum rejection is weakened.
+
+Dependency staging freezes the selected release catalog in Racket's directory
+format before archiving. Three bounded attempts per phase, with a 15-minute
+per-attempt limit, preserve the same catalog checksum set. Racket's `--state`
+reuses verified completed packages and rejects corrupt downloads. Staging uses
+an explicit private download-cache parameter and an isolated addon/user home.
+Windows exports Python's default verified certificate roots to an owned PEM
+file and uses Racket's documented TLS-source parameter for the staging process.
+Certificate and hostname verification remain enabled. Persistent failures stay
+failures; attempt records and bounded log tails survive preparation
+failure. Actual local HTTP/TLS probes cover both released Racket versions.
+
+This deliberately reviews the staging helper, orchestrators, tests, status
+documentation and their source fingerprints, adding `tools/catalog-raco.rkt`
+to the reviewed input set. Native libraries/locks, source packages, public API
+captures, all 140 capability decisions, workflow sources, the full release graph
+and evidence requirements are unchanged. Local probes do not certify execution
+on Windows or natipkg, and do not replace their CI lanes or the manual gate.
+
 ## November 23 managed Windows amendment
 
 The maintainer requested a Windows native package after `c8cf88a0`. The existing

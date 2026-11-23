@@ -47,7 +47,7 @@ def execute(racket, output, runtime=None, docker_image=None):
         (evidence / 'preparation-failure.json').write_bytes(json_bytes(dict(
             schema=1, status='failed-preparation', error=str(error),
             runtime=str(runtime), catalog_candidate_validated=False)))
-        for path in (stage / 'catalog-metadata.log', stage / 'dependency-staging.log',
+        for path in (stage / 'catalog-metadata.log', stage / 'dependency-staging.log', stage / 'dependency-staging.json',
                      runtime.with_suffix('.acquisition.json')):
             if path.is_file() and not path.is_symlink():
                 limit = 4 * 1024 * 1024
@@ -104,7 +104,7 @@ def execute(racket, output, runtime=None, docker_image=None):
     # Upload logs/receipts, never several copies of large native/runtime/doc trees.
     evidence = output / 'evidence'
     evidence.mkdir()
-    for name in ('staging-receipt.json', 'catalog-request.json', 'dependency-staging.log'):
+    for name in ('staging-receipt.json', 'catalog-request.json', 'dependency-staging.log', 'dependency-staging.json'):
         shutil.copy2(stage / name, evidence / name)
     acquisition = runtime.with_suffix('.acquisition.json')
     if acquisition.is_file():
