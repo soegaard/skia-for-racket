@@ -261,7 +261,8 @@ def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -
                   'tools/test-package-layout.py', 'tools/prepare-git-catalog.py',
                   'tools/dc_validation.py', 'tools/validate-dc.py', 'tools/test-dc.py',
                   'tools/validate-skia-canvas.py', 'tools/test-validate-skia-canvas.py',
-                  'docs/GIT-PACKAGE-VALIDATION.md', 'plans/skia-package-catalog-git-publication.md',
+                  'docs/GIT-PACKAGE-VALIDATION.md', 'docs/WINDOWS-NATIVE-PACKAGE.md',
+                  'plans/skia-package-catalog-git-publication.md',
                   'README.md', '.gitignore', '.gitattributes'})
     for package in ('skia', 'skia-lib', 'skia-doc'):
         for path in (root / package).rglob('*'):

@@ -56,8 +56,9 @@ The [maintainer review](REDISTRIBUTION-REVIEW.md) records the redistribution
 basis. `component-build-evidence.json` records twenty primary source
 identities and six binary inspections; the lock binds its digest and the builder
 ships it in every native package. Windows normal and delayed imports were both
-checked; neither pinned DLL has a delayed import. Windows DLLs are acquired
-directly by the user and are excluded from our distributable package set.
+checked; neither pinned DLL has a delayed import. The Windows native package
+contains these same locked DLLs and their upstream/component notices. Raw NuGets
+and all native binaries remain excluded from the three source packages.
 
 The fonts are not installed into system font directories or substituted for the
 public system font manager. Executable script tutorials select the declared

@@ -791,7 +791,7 @@
   "distribution": {
     "linux": "racket-package",
     "macos": "racket-package",
-    "win32": "direct-nuget"
+    "win32": "racket-package"
   },
   "documentation_fonts": {
     "collection": "skia-doc",
@@ -931,24 +931,26 @@
   },
   "redistribution_review_document": {
     "path": "packaging/REDISTRIBUTION-REVIEW.md",
-    "sha256": "f7332e590d6b95e1ea0a6810bf551dfbe787794ebfca98574ebc048c3d90fd62",
-    "size": 1492
+    "sha256": "fedf3520999e856fec5c59a828d49aa38dcc6d4ab511f6f10796d59db3ee5287",
+    "size": 1758
   },
   "review": {
     "authenticity_basis": "HTTPS NuGet archives checked against package ID/version and repository commit; exact source revisions inspected via GitHub/Gitiles. No claim of NuGet signature verification.",
     "component_license_mapping_complete": true,
-    "date": "2026-11-22",
+    "date": "2026-11-23",
     "licensing_basis": "Redistribute unmodified binaries from the SkiaSharp project, relying on its upstream licensing, with original licenses and third-party notices included.",
     "licensing_source": "https://github.com/mono/SkiaSharp",
     "redistribution_approved": true,
     "redistribution_targets": [
       "macos",
-      "linux"
+      "linux",
+      "win32"
     ],
     "reviewer": "Jens Axel S\u00f8gaard (project maintainer; decision in this chat)",
     "status": "approved",
     "technical_component_inventory_complete": true,
-    "transitive_resolution_qualified": true
+    "transitive_resolution_qualified": true,
+    "windows_managed_package_decision": "Maintainer requested the Windows native package on November 23, 2026; the approved SkiaSharp licensing basis and locked upstream binaries are unchanged."
   },
   "schema": 1,
   "supplemental_notices": {

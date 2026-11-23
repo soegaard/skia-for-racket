@@ -8,18 +8,18 @@ This README is the directory's tracked source documentation. Platform-specific
 library directories are populated by installation rather than maintained as
 source code.
 
-Ordinary macOS/Linux catalog installs use the separate, generation-qualified
+Ordinary macOS/Linux/Windows x86-64 catalog installs use the separate, generation-qualified
 `skia-native-1` directory managed by Racket, containing both libraries and its
 manifest. Managed data takes precedence over files here. Set both explicit
 native-library overrides when testing developer builds. A selected broken
 managed pair does not fall back here or to host libraries.
 
-Windows uses the explicit `racket -l skia/tools/install-windows-natives`
-command. Its `skia-upstream-1` directory lives under Racket's user library
-directory, outside package contents. Both loaders report `upstream-download`;
-a broken pair fails without host fallback. The developer-only
-`tools/install-native-windows.py --root /path/to/checkout/skia-lib` route writes
-`native/win-x64` for the existing explicit-override acceptance gates.
+Windows uses `skia-native-win32-x86_64-1` as its normal dependency. The optional
+`racket -l skia/tools/install-windows-natives` developer command installs
+`skia-upstream-1` under Racket's library directory. Managed data takes precedence;
+a broken installed native package fails before this optional cache is considered.
+The developer-only `tools/install-native-windows.py --root /path/to/checkout/skia-lib`
+route writes `native/win-x64` for the explicit-override acceptance gates.
 
 This directory intentionally contains no binary in the source distribution.
 Run `bash tools/install-native.sh` from the repository root. The installer writes

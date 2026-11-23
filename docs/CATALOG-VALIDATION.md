@@ -1,5 +1,10 @@
 # Catalog candidate validation — 0.79
 
+Current Windows amendment: [the managed Windows native package](WINDOWS-NATIVE-PACKAGE.md)
+adds a sixth catalog entry after `c8cf88a0`. The five-entry results below remain
+historical; they do not qualify the new Windows managed route or its changed lock.
+
+
 Current status, November 23, 2026: the unsplit candidate at `7693d907` passed
 Release candidate run `45096827302`, attempt 2. The retained baseline verification
 is `output/catalog/manual-45096827302-attempt-2-20261123/VERIFIED-CANDIDATE.md`.

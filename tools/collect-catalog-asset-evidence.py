@@ -12,4 +12,4 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     collect(args.artifacts, args.output)
-    print('Verified five candidate archives; retained JSON receipts and digests only.')
+    print('Verified six candidate archives; retained JSON receipts and digests only.')

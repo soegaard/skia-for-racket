@@ -1,6 +1,6 @@
 # Racket Skia — 0.79 candidate
 
-The macOS and Linux catalog installation being prepared is:
+The catalog installation being prepared for supported macOS, Linux and Windows x86-64 is:
 
 ```sh
 raco pkg install --auto skia
@@ -16,29 +16,20 @@ The native packages redistribute unmodified binaries from the
 [SkiaSharp project](https://github.com/mono/SkiaSharp), with the original licenses
 and third-party notices included.
 
-Windows x86-64 uses an explicit upstream-download exception. With Python 3.12
-or later available, run:
+Windows x86-64 uses `skia-native-win32-x86_64-1`, containing both pinned DLLs
+and upstream notices in the same Racket-managed `skia-native-1` generation
+layout. The explicit NuGet installer remains available for developer checkouts.
+See the [Windows native package](docs/WINDOWS-NATIVE-PACKAGE.md) for validation
+status and the optional developer route.
 
-```sh
-raco pkg install --auto --no-setup skia
-racket -l skia/tools/install-windows-natives
-raco setup --pkgs skia-lib skia-doc skia
-```
-
-The middle command downloads both pinned Windows NuGets directly from NuGet,
-verifies archive/member hashes and PE identity, and installs one paired directory
-outside the source package. No Windows native package is published. Setup,
-imports and rendering never download libraries. Remove that owned user download
-with `racket -l skia/tools/install-windows-natives -- --remove`; stop rendering
-processes first. See the [Windows procedure](docs/PACKAGE-PUBLICATION.md#windows-direct-nuget-exception).
 **These package names are unpublished candidates.** Use the disposable staging
 catalog in the [publication runbook](docs/PACKAGE-PUBLICATION.md) until the
 candidate is qualified and separately approved for publication. See the exact
 [local results and external gaps](docs/CATALOG-VALIDATION.md).
 
 Automatic targets are 64-bit Racket CS 8.18 or released 9.3 on macOS ARM64 and
-x86-64 and glibc Linux x86-64 (ordinary and real `natipkg`). Windows x86-64 uses
-the same interpreter versions with the explicit installer above.
+x86-64 and glibc Linux x86-64 (ordinary and real `natipkg`), plus Windows x86-64 on
+the same interpreter versions.
 These are qualification targets, not a claim of completed execution on every
 platform. Ordinary Linux needs OS fontconfig and a default Latin font (CI uses
 `fonts-dejavu-core`); natipkg declares Racket's draw
@@ -1238,9 +1229,8 @@ filename.
 
 ## Install as a Racket package
 
-After the candidate has been published with separate approval, macOS/Linux use
-`raco pkg install --auto skia`. Windows uses the three explicit installation
-commands at the start of this README. For pre-publication testing, configure only a
+After the candidate has been published with separate approval, supported platforms use
+`raco pkg install --auto skia`. For pre-publication testing, configure only a
 disposable environment with the exact staging catalog described in the runbook.
 The single public collection remains:
 
@@ -1250,8 +1240,7 @@ The single public collection remains:
 
 The `skia` and `skia-lib` source packages contain no native libraries or fonts.
 `skia-doc` contains the four approved Noto files and their notices. The package
-manager obtains the declared macOS/Linux native packages during installation. Windows native downloads stay outside the
-package and require the explicit installer. Importing `skia` performs no native load or download. Keep a
+manager obtains the declared macOS/Linux/Windows native package during installation. Importing `skia` performs no native load or download. Keep a
 linked development source directory available while its package is installed.
 
 ## First drawing

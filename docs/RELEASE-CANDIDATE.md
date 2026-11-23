@@ -37,12 +37,13 @@ requires complete offline install/docs/DrDr/rebuilt-package evidence, compares
 exact archive digests across lanes and refuses pending redistribution review.
 See [the packaging runbook](PACKAGE-PUBLICATION.md).
 
-The November 22 Windows exception uses explicit pinned upstream NuGet
-preparation, then full offline setup, DrDr, rendering/shaping and rebuilt
-package checks. It adds strict download provenance and DLL/NuGet exclusion
-requirements; it does not remove either Windows version lane or any feature
-gate. The distributable native set contains macOS/Linux only. Windows raw
-inputs stay outside candidate ZIPs and retained evidence. The 16 feature
+The November 23 managed Windows amendment uses the same ordinary dependency
+setup, DrDr, rendering/shaping and rebuilt-package lifecycle as macOS/Linux.
+The exact distributable native set has three packages, including
+`skia-native-win32-x86_64-1`. Windows payloads must match the locked NuGet
+members and managed generation paths; loose SkiaSharp/HarfBuzzSharp DLLs and
+raw NuGets remain outside retained evidence and every source package. Both
+Windows version lanes and all feature gates remain required. The 16 feature
 installer calls explicitly preserve their developer checkout destinations;
 the reviewed graph records those command changes with the same jobs/artifacts.
 

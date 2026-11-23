@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import re
 from native_packages import ROOT, check_font_input, need, read_json
-from repository_layout import SOURCE_PACKAGES
+from repository_layout import SOURCE_PACKAGES, NATIVE_PACKAGES
 
 HELPERS = ('native_abi.py', 'native_packages.py', 'windows_native.py',
            'install-native-windows.py', 'install-native-windows.ps1', 'repository_layout.py')
@@ -19,6 +19,8 @@ def check(root=ROOT):
         need(re.findall(r'\(define version "([^"]+)"\)', info) == ['0.79'], 'package version drift: ' + name)
     info = (lib / 'info.rkt').read_text()
     need('(define collection "skia")' in info, 'public collection changed')
+    for package in NATIVE_PACKAGES:
+        need('("' + package + '" #:version "1.0"' in info, 'missing native dependency: ' + package)
     for dependency in ('skia-doc', 'skia-fonts-1', 'scribble-lib', 'racket-index'):
         need('"' + dependency + '"' not in info, 'documentation dependency in library: ' + dependency)
     need('(define build-deps \'())' in info, 'library acquired build dependencies')

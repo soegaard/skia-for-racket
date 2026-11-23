@@ -70,7 +70,7 @@ def build(lock_path, inputs, output, *, local_candidate=False):
     receipts = []
     for name, target in lock['targets'].items():
         if name not in DISTRIBUTED_TARGETS:
-            continue  # Windows users acquire the pinned pair directly from NuGet.
+            continue
         selected = {n: r for n, r in records.items() if r['target'] == name}
         need(sorted(r['kind'] for r in selected.values()) == ['harfbuzz', 'skia'], 'incomplete native pair')
         members = {}
@@ -111,8 +111,9 @@ def build(lock_path, inputs, output, *, local_candidate=False):
                                'Original licenses and third-party notices are included in licenses/.\n'
                                'Publication awaits the full manual release gate and separate authorization.\n'
                                'This product includes DNG technology under license by Adobe Systems Incorporated.\n'
-                               'Portions of this software are copyright The FreeType Project (www.freetype.org). All rights reserved.\n'
-                               'Ordinary Linux requires OS fontconfig and glibc >= 2.27; natipkg support is declared in info.rkt.\n').encode()
+                               'Portions of this software are copyright The FreeType Project (www.freetype.org). All rights reserved.\n').encode()
+        if name != 'win32':
+            members['README.md'] += b'Ordinary Linux requires OS fontconfig and glibc >= 2.27; natipkg support is declared in info.rkt.\n'
         if name == 'linux':
             members['README.md'] += (b'On natipkg the lazy loader materializes the verified fontconfig template with declared font/cache paths in the addon font cache.\n'
                                     b'It selects that file in the native process environment unless FONTCONFIG_FILE is already set. Native library bytes remain unmodified.\n')

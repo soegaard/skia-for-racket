@@ -377,9 +377,9 @@ class WorkflowAndIntegration(unittest.TestCase):
     def test_racket_package_metadata_is_canonical_and_complete(self):
         text = (source_path(HERE.parent, 'info.rkt')).read_text()
         self.assertIn('(define version "0.79")', text)
-        for name in ('skia-native-macos-1', 'skia-native-x86_64-linux-1'):
+        for name in ('skia-native-macos-1', 'skia-native-x86_64-linux-1', 'skia-native-win32-x86_64-1'):
             self.assertIn('("' + name + '" #:version "1.0"', text)
-        for name in ('skia-doc', 'skia-fonts-1', 'skia-native-win32-x86_64-1', 'scribble-lib', 'racket-index'):
+        for name in ('skia-doc', 'skia-fonts-1', 'scribble-lib', 'racket-index'):
             self.assertNotIn('"' + name + '"', text)
         doc = (HERE.parent / 'skia-doc/info.rkt').read_text()
         meta = (HERE.parent / 'skia/info.rkt').read_text()

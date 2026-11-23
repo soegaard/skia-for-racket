@@ -205,9 +205,9 @@ def inspect_zip(path, expected_digest):
             need(name and not name.startswith('/') and '\\' not in name and ':' not in name
                  and all(p not in ('', '.', '..') for p in parts) and not any(ord(c) < 32 for c in name),
                  'unsafe ZIP member name')
-            need(parts[-1].lower() not in ('libskiasharp.dll', 'libharfbuzzsharp.dll', 'skia-native-win32-x86_64-1.zip')
+            need(parts[-1].lower() not in ('libskiasharp.dll', 'libharfbuzzsharp.dll')
                  and not name.lower().endswith('.nupkg'),
-                 'Windows direct-download payload must not enter retained evidence')
+                 'raw DLLs and NuGet inputs must not enter retained evidence')
             need(name not in names, 'duplicate ZIP member')
             names.add(name)
             need(not stat.S_ISLNK(info.external_attr >> 16), 'symlink ZIP member')

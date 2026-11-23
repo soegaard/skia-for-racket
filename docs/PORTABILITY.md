@@ -1,8 +1,8 @@
 # Portability and evidence
 
 November 23 Git-layout amendment: the current source packages are `skia`,
-`skia-lib` and `skia-doc`, with two macOS/Linux native packages and the existing
-Windows NuGet exception. Fonts belong to `skia-doc`; there is no standalone font
+`skia-lib` and `skia-doc`, with three managed macOS/Linux/Windows x86-64 native packages. The explicit
+Windows NuGet installer remains a developer route. Fonts belong to `skia-doc`; there is no standalone font
 package. The old unsplit full gate passed at `7693d907` / run `45096827302`
 attempt 2. The split needs fresh CI and public Git-source checks. See
 [the current runbook](PACKAGE-PUBLICATION.md) and
@@ -22,12 +22,13 @@ fontconfig/TTF support. Ordinary Linux requires OS fontconfig; the observed
 GLIBC 2.27 symbol floor is not a universal old-distribution qualification.
 Linux ARM64, musl, 32-bit and other new targets are not advertised.
 
-Windows x86-64 uses an explicit pinned NuGet download before full setup on the
-same CS 8.18/9.3 matrix. It has no native dependency package. The paired
-`skia-upstream-1` directory is outside every package; source/built/binary-library
-reinstalls must repeat explicit preparation. Full Windows CPU, WARP, DXGI and
-feature checks remain required. This changed route needs fresh Windows
-execution evidence; the earlier managed-package passes do not qualify it.
+Windows x86-64 selects `skia-native-win32-x86_64-1` on the same CS 8.18/9.3
+matrix. Racket manages its paired `skia-native-1` directory in every package
+form. Full Windows CPU, WARP, DXGI and feature checks remain required. The
+current managed route needs fresh Windows execution evidence; older direct
+NuGet and managed-package results do not qualify this changed source layout.
+The optional direct NuGet installer remains a developer route. See
+[the Windows package evidence and gaps](WINDOWS-NATIVE-PACKAGE.md).
 
 ## Current minimum and DC validation — 0.54
 

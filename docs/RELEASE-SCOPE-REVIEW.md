@@ -1,5 +1,37 @@
 # 0.78b — Review rationale and maintenance
 
+## November 23 managed Windows amendment
+
+The maintainer requested a Windows native package after `c8cf88a0`. The existing
+`skia-native-win32-x86_64-1` identity becomes the third managed native package;
+`skia-lib` adds its x86-64-only Windows selector. Source/docs/meta roles, fonts,
+public API, both upstream pins and all 140 capability decisions remain intact.
+The reviewed lock extends the approved SkiaSharp redistribution basis to the
+same locked Windows DLLs. macOS/Linux native bytes are unchanged; their manifest
+lock hashes and project review text reflect the new distribution set.
+
+The optional direct NuGet installer stays available for development. Managed
+Windows data takes precedence, and a broken or missing installed generation
+cannot use that cache to hide an incomplete package installation. Discovery,
+package lookup, hashing and native loading remain lazy; explicit overrides win.
+
+Six candidate sources replace five. Catalog Windows lanes now use ordinary
+setup and the shared managed lifecycle, including native metadata/payload
+retention in source/built/binary-library forms. The old route-specific installer
+checks are replaced by those managed requirements and exact Windows DLL
+archive/member hash checks; old direct-route receipts are rejected. Loose DLLs
+and raw NuGets remain excluded from retained evidence, while the reviewed
+Windows native ZIP joins the exact candidate archive allowlist. Source-archive
+native exclusions and receipt-only push/PR uploads remain strict.
+
+All 77 required jobs and 84 artifacts remain. No workflow runner, version,
+permission, resource bound, public API capture or capability decision changes.
+The new Windows documentation and affected source/checker fingerprints are
+reviewed deliberately. Local metadata/PE/foreign-target tests do not establish
+Windows execution; fresh Windows CS 8.18/9.3 and the full manual gate remain
+required. No publication is authorized by this amendment.
+
+
 ## November 23 Git package-boundary review
 
 The revised plan explicitly accepts three source packages and two native Git

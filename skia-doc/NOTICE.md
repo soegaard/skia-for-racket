@@ -6,9 +6,9 @@ third-party notices are included, together with the component notices in
 `packaging/licenses/` and the inventory in `packaging/COMPONENTS.md`.
 
 The `skia` and `skia-lib` source packages contain no native library or font files.
-macOS/Linux use separate native data packages. The Windows installer downloads
-the pinned upstream binaries directly from NuGet; Windows DLLs are excluded
-from our package and release archives.
+macOS, Linux and Windows x86-64 use separate native data packages containing the
+pinned upstream binaries. Raw NuGets and native libraries are excluded from
+the three source packages.
 
 The `skia-doc` package contains unmodified Noto fonts, SIL OFL
 notices and font copyright records. The binding's MIT license does not replace

@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require rackunit racket/file racket/path racket/runtime-path syntax/modread json
+         setup/getinfo setup/matching-platform
          "../private/native-package-paths.rkt" "../private/native-pins.rkt"
          "../private/native-fontconfig.rkt")
 
@@ -8,7 +9,8 @@
 ;   Locates the metadata and tutorial catalogue without relying on the process directory.
 (define-runtime-path collection-root "..")
 
-(define (write-manifest directory [edit values] #:windows? [windows? #f])
+(define (write-manifest directory [edit values] #:windows? [windows? #f]
+                        #:upstream? [upstream? windows?])
   (make-directory* directory)
   (define files
     (for/hasheq ([kind '(skia harfbuzz)]
@@ -21,7 +23,10 @@
   (call-with-output-file (build-path directory "manifest.json") #:exists 'truncate
     (lambda (out)
       (write-json (edit (hasheq 'schema 1 'generation 1
-                               'package (if windows? "skia-upstream-win32-x86_64-1" "skia-native-macos-1")
+                               'package (if windows?
+                                            (if upstream? "skia-upstream-win32-x86_64-1"
+                                                "skia-native-win32-x86_64-1")
+                                            "skia-native-macos-1")
                                'target (if windows? "win32" "macos")
                                'acquisition (hasheq 'route "direct-nuget") 'upstream_versions
                                (hasheq 'skia native-skia-version 'harfbuzz native-harfbuzz-version)
@@ -76,9 +81,24 @@
       (define (windows-discover)
         (discover-managed-pair (list user installation) #:os 'windows #:subpath "win32\\x86_64"
                                #:directory-name "skia-upstream-1" #:upstream-download? #t))
-      (test-case "Windows has no automatic native dependency package"
-        (check-false (managed-package-name "win32\\x86_64"))
+      (test-case "Windows x86-64 selects its automatic native dependency"
+        (check-equal? (managed-package-name "win32\\x86_64") "skia-native-win32-x86_64-1")
+        (check-false (managed-package-name "win32\\aarch64"))
         (check-false (windows-discover)))
+      (test-case "Windows metadata selects only the qualified x86-64 target"
+        (define info (get-info/full collection-root))
+        (define dependency
+          (for/first ([row (in-list (info 'deps))]
+                      #:when (and (pair? row) (equal? (car row) "skia-native-win32-x86_64-1")))
+            row))
+        (check-not-false dependency)
+        (define selector (cadr (memq '#:platform dependency)))
+        (for ([row '((windows "win32\\x86_64" #t) (windows "win32\\aarch64" #f)
+                     (windows "win32\\i386" #f) (macosx "aarch64-macosx" #f)
+                     (unix "x86_64-linux" #f))])
+          (check-equal? (matching-platform? selector #:system-type (car row)
+                                           #:system-library-subpath (string->path (cadr row)))
+                        (caddr row))))
       (write-manifest windows-installation #:windows? #t)
       (test-case "Windows selects an explicitly installed upstream pair"
         (define pair (windows-discover))
@@ -96,6 +116,25 @@
       (write-manifest windows-user (lambda (m) (hash-remove m 'acquisition)) #:windows? #t)
       (test-case "Windows requires direct acquisition provenance"
         (check-exn #rx"NuGet acquisition provenance" windows-discover))
+      (define windows-root (build-path root "Windows managed selection"))
+      (define managed-windows (build-path windows-root "skia-native-1"))
+      (define upstream-windows (build-path windows-root "skia-upstream-1"))
+      (define (windows-select [installed? #f])
+        (discover-installed-pair (list windows-root) #:os 'windows #:subpath "win32\\x86_64"
+                                 #:managed-installed? installed?))
+      (write-manifest upstream-windows #:windows? #t)
+      (write-manifest managed-windows #:windows? #t #:upstream? #f)
+      (test-case "Windows managed payload takes precedence over the optional installer"
+        (check-equal? (managed-pair-directory (windows-select)) managed-windows))
+      (test-case "a selected broken Windows managed pair cannot use the upstream cache"
+        (delete-file (build-path managed-windows "libHarfBuzzSharp.dll"))
+        (check-exn #rx"selected managed payload.*broken" windows-select))
+      (delete-directory/files managed-windows)
+      (test-case "an installed Windows native package cannot hide missing data with the upstream cache"
+        (check-exn #rx"installed but its managed generation is absent"
+                   (lambda () (windows-select #t))))
+      (test-case "an unregistered Windows checkout retains its optional installer route"
+        (check-equal? (managed-pair-directory (windows-select)) upstream-windows))
       (test-case "natipkg configuration is escaped content-addressed derived data"
         (define fonts (build-path root "fonts & æ"))
         (make-directory fonts)

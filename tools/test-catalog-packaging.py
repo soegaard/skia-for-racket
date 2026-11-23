@@ -87,34 +87,24 @@ def cache_fixture(report):
 
 
 def windows_fixture():
-    import windows_native as w
     report, staging = fixtures()
     report['identity']['target'] = 'win32\\x86_64'
     lock = n.read_json(n.ROOT / 'packaging/native-assets.json')
-    records = w.records(lock)
-    acquisition = dict(route=w.ROUTE, archives=[dict(name=name, url=row['url'], sha256=row['sha256'], size=row['size'])
-                                              for name, row in sorted(records.items())])
     files = {}
-    for row in records.values():
+    for row in lock['archives'].values():
+        if row['target'] != 'win32': continue
         member = row['members'][row['library_member']]
         files[row['kind']] = dict(member, filename=row['library_filename'], asset_version=row['version'], archive_sha256=row['sha256'])
-    manifest = dict(package=w.IDENTITY, lock_sha256=SHA, upstream_versions=lock['upstream_versions'], files=files, acquisition=acquisition)
+    manifest = dict(package=n.TARGETS['win32']['package'], lock_sha256=SHA,
+                    upstream_versions=lock['upstream_versions'], files=files)
     for group in [report['smoke'], *report['rebuilt_smoke'].values()]:
         for smoke in group:
             for kind in ('skia', 'harfbuzz'):
                 value = smoke['skia']['loader'] if kind == 'skia' else smoke['harfbuzz']
-                value.update(origin='upstream-download', managed_directory=False,
-                             download_directory='C:/qualification/lib/skia-upstream-1',
-                             absolute_path='C:/qualification/lib/skia-upstream-1/' + files[kind]['filename'],
+                value.update(origin='managed', managed_directory='C:/qualification/lib/skia-native-1',
+                             download_directory=False,
+                             absolute_path='C:/qualification/lib/skia-native-1/' + files[kind]['filename'],
                              installed_sha256=files[kind]['sha256'], manifest=copy.deepcopy(manifest))
-    report['checks'].update({key: True for key in c.WINDOWS_CHECKS})
-    report['windows_upstream_lifecycle'] = dict(compatible_revision='1.1', rollback_revision='1.0',
-        user_scope_removed=True, installation_scope_removed=True, partial_shadow_rejected=True, unrelated_sentinel_preserved=True)
-    report['windows_upstream_acquisition'] = dict(route=w.ROUTE, lock_sha256=SHA, archives=[
-        dict(name=name, package=row['package'], version=row['version'], url=row['url'], final_url=row['url'],
-             sha256=row['sha256'], size=row['size'], kind=row['kind'], member=row['library_member'],
-             member_sha256=row['members'][row['library_member']]['sha256'], obtained_by='nuget-download')
-        for name, row in sorted(records.items())])
     return report, staging
 
 
@@ -123,36 +113,26 @@ class Evidence(unittest.TestCase):
         return c.verify_lane(report, staging, source_sha256=SHA, artifacts={'native.zip':SHA}, lock_sha256=SHA, commit=COMMIT)
     def test_complete_selected_receipt(self):
         self.assertEqual(self.verify(*fixtures()), ('x86_64-linux','9.3'))
-    def test_complete_windows_exception_receipt(self):
+    def test_complete_windows_managed_receipt(self):
         self.assertEqual(self.verify(*windows_fixture()), ('win32\\x86_64', '9.3'))
-    def test_windows_exception_never_applies_to_linux(self):
-        report, stage = fixtures()
+    def test_windows_never_accepts_the_optional_installer_as_managed_qualification(self):
+        report, stage = windows_fixture()
         report['smoke'][0]['harfbuzz']['origin'] = 'upstream-download'
         with self.assertRaises(ValueError): self.verify(report, stage)
-    def test_windows_requires_each_extra_check_and_lifecycle(self):
-        for key in c.WINDOWS_CHECKS:
-            report, stage = windows_fixture()
-            report['checks'][key] = False
+    def test_windows_requires_every_managed_lifecycle_check(self):
+        for key in c.REQUIRED_CHECKS:
+            report, stage = windows_fixture();report['checks'][key] = False
             with self.subTest(key=key), self.assertRaises(ValueError): self.verify(report, stage)
-        report, stage = windows_fixture()
-        del report['windows_upstream_lifecycle']
-        with self.assertRaises(ValueError): self.verify(report, stage)
-    def test_windows_acquisition_cannot_be_forged_or_replaced_by_a_local_cache_claim(self):
-        for change in (dict(sha256='0'*64), dict(url='https://example.com/input'),
-                       dict(obtained_by='verified-local-archive'), dict(member_sha256='0'*64),
-                       dict(final_url='http://api.nuget.org/input')):
-            report, stage = windows_fixture()
-            report['windows_upstream_acquisition']['archives'][0].update(change)
-            with self.subTest(change=change), self.assertRaises(ValueError): self.verify(report, stage)
-    def test_windows_rebuilt_smoke_must_use_the_exact_downloaded_members(self):
-        for defect in ('managed', 'wrong-bytes', 'relative-path', 'wrong-url'):
+    def test_windows_rebuilt_smoke_must_use_exact_managed_members(self):
+        for defect in ('upstream-download', 'wrong-bytes', 'relative-path', 'wrong-package', 'wrong-generation'):
             report, stage = windows_fixture()
             native = report['rebuilt_smoke']['binary-lib'][0]['harfbuzz']
-            if defect == 'managed': native['origin'] = 'managed'
+            if defect == 'upstream-download': native['origin'] = defect
             elif defect == 'wrong-bytes':
                 native['installed_sha256'] = native['manifest']['files']['harfbuzz']['sha256'] = '0'*64
             elif defect == 'relative-path': native['absolute_path'] = 'libHarfBuzzSharp.dll'
-            else: native['manifest']['acquisition']['archives'][0]['url'] = 'https://example.com/input'
+            elif defect == 'wrong-package': native['manifest']['package'] = 'skia-upstream-win32-x86_64-1'
+            else: native['managed_directory'] = 'C:/qualification/lib/skia-upstream-1'
             with self.subTest(defect=defect), self.assertRaises(ValueError): self.verify(report, stage)
     def test_each_required_check_must_be_true(self):
         for key in c.REQUIRED_CHECKS:
@@ -290,6 +270,25 @@ class Lock(unittest.TestCase):
         lock = n.read_json(n.ROOT/'packaging/native-assets.json')
         lock['documentation_fonts']['files'][0]['url']='https://example.com/latest.ttf'
         with self.assertRaisesRegex(ValueError,'not immutable'): n.validate_distribution_lock(lock)
+
+
+class ManagedWindowsInstallation(unittest.TestCase):
+    def test_windows_uses_ordinary_dependency_setup_without_an_installer(self):
+        module = tool('validate-catalog-package')
+        validator = module.Validator.__new__(module.Validator)
+        validator.windows = True
+        validator.base_catalog = Path('/staged/standard-catalog')
+        calls = []
+        validator.raco = lambda environment, *args, **options: calls.append(args)
+        for package in ('skia', 'skia-lib'):
+            calls.clear()
+            validator.install('disposable', Path('/staged/candidate-catalog'), package=package)
+            self.assertEqual(len(calls), 2)
+            install = calls[-1]
+            self.assertEqual(install[:2], ('pkg', 'install'))
+            self.assertIn('--auto', install)
+            self.assertNotIn('--no-setup', install)
+            self.assertEqual(install[-1], package)
 
 
 class WindowsNetworkCoverage(unittest.TestCase):
@@ -674,12 +673,13 @@ class ReceiptOnlyAssets(unittest.TestCase):
             report = asset_evidence.collect(artifacts, output)
             self.assertEqual({p.name for p in output.iterdir()}, {
                 'skia-native-macos-1.receipt.json', 'skia-native-x86_64-linux-1.receipt.json',
+                'skia-native-win32-x86_64-1.receipt.json',
                 'source-packages.json', 'native-artifacts.json', 'artifact-digests.json'})
             self.assertTrue(all(p.suffix == '.json' for p in output.iterdir()))
             self.assertFalse((output / 'extra.json').exists())
             self.assertFalse(any(b'NATIVE-PAYLOAD-SENTINEL' in p.read_bytes() for p in output.iterdir()))
-            self.assertEqual(len(report['archives']), 5)
-            self.assertNotIn('skia-native-win32-x86_64-1.zip', {row['archive'] for row in report['archives']})
+            self.assertEqual(len(report['archives']), 6)
+            self.assertIn('skia-native-win32-x86_64-1.zip', {row['archive'] for row in report['archives']})
             self.assertEqual(report['source']['source_commit_observed'], COMMIT)
             self.assertFalse(report['catalog_candidate_validated'])
             self.assertFalse(report['native_payloads_uploaded'])

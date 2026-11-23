@@ -31,9 +31,9 @@ class Layout(unittest.TestCase):
         self.assertEqual(result['editable_assets'], 43)
         self.assertEqual(result['source_packages'], ['skia','skia-lib','skia-doc'])
 
-    def test_public_sources_are_five_default_branch_subdirectories(self):
+    def test_public_sources_are_six_default_branch_subdirectories(self):
         module = load('prepare-git-catalog')
-        self.assertEqual(set(module.SOURCES), {'skia','skia-lib','skia-doc','skia-native-macos-1','skia-native-x86_64-linux-1'})
+        self.assertEqual(set(module.SOURCES), {'skia','skia-lib','skia-doc','skia-native-macos-1','skia-native-x86_64-linux-1','skia-native-win32-x86_64-1'})
         for name, url in module.SOURCES.items():
             self.assertTrue(url.endswith('.git?path=' + name))
             self.assertNotIn('#', url)
@@ -42,7 +42,7 @@ class Layout(unittest.TestCase):
     def test_git_commit_checksums_are_not_archive_digests(self):
         module = load('prepare-git-catalog')
         rows = module.rows('a'*40, 'b'*40, Path('/prepared/skia-libs'))
-        self.assertEqual([r['sha1'] for r in rows], ['a'*40]*3 + ['b'*40]*2)
+        self.assertEqual([r['sha1'] for r in rows], ['a'*40]*3 + ['b'*40]*3)
         self.assertTrue(all('archive' not in r for r in rows))
         for value in ('a'*64, 'main', '../HEAD', ''):
             with self.assertRaises(ValueError): module.commit(value)

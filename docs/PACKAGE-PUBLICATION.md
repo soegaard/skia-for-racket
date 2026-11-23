@@ -1,6 +1,6 @@
 # Git catalog publication runbook — 0.79
 
-The candidate uses three source packages and two native packages. The runtime
+The candidate uses three source packages and three native packages. The runtime
 still provides the `skia` collection and its existing public API. The source
 split needs fresh qualification; the successful unsplit baseline is commit
 `7693d907`, Release candidate run `45096827302`, attempt 2 (November 23, 2026).
@@ -13,6 +13,7 @@ No catalog registration or native repository publication has been performed.
 | `skia-doc` | 0.79 | `https://github.com/soegaard/skia-for-racket.git?path=skia-doc` |
 | `skia-native-macos-1` | 1.0 | `https://github.com/soegaard/skia-libs.git?path=skia-native-macos-1` |
 | `skia-native-x86_64-linux-1` | 1.0 | `https://github.com/soegaard/skia-libs.git?path=skia-native-x86_64-linux-1` |
+| `skia-native-win32-x86_64-1` | 1.0 | `https://github.com/soegaard/skia-libs.git?path=skia-native-win32-x86_64-1` |
 
 Use the repositories' ordinary default branches. Record the two resolved Git
 commits and each package path when validating/submitting. A Git catalog checksum
@@ -48,7 +49,7 @@ Linux glibc x86-64 (ordinary and real natipkg), on released Racket CS 8.18/9.3.
 ## Local preparation and validation
 
 The prepared native repository tree is
-`output/catalog/git-publication-prep/skia-libs/`. It contains the two package
+`output/catalog/windows-native-package/skia-libs/`. It contains the three package
 subdirectories, actual native files, metadata and notices. It has no ZIP wrapper,
 LFS pointer, or public remote. The per-file comparison and metadata deltas are
 recorded beside it. Never flatten a native generation into a shared namespace.
@@ -66,7 +67,7 @@ A clean committed checkout is required for candidate evidence. `--allow-dirty`
 labels local implementation experiments and does not certify a committed release.
 `--base-catalog /absolute/staged/catalog` can reuse an already staged dependency
 closure. Assembly is offline with a cache; dependency acquisition is a separate
-phase. All five candidate ZIPs are restored byte-for-byte after catalog staging.
+phase. All six candidate ZIPs are restored byte-for-byte after catalog staging.
 
 Run the existing `tools/run-catalog-ci.py` platform entry point, or the underlying
 validator in an OS network-denied sandbox/container after staging:
@@ -80,7 +81,7 @@ python3 tools/validate-catalog-package.py \
   --wrong-abi /absolute/locally-compiled-wrong-ABI-fixture
 ```
 
-The validator uses disposable runtime/home copies and a five-entry directory
+The validator uses disposable runtime/home copies and a six-entry directory
 catalog whose files are compared with the candidate archives. It proves library
 installation without documentation/Noto, adding documentation, independent docs
 removal, a separate full dependency installation, ordinary setup and dependency
@@ -96,34 +97,32 @@ It verifies the exact committed source package set, all existing feature/API/doc
 jobs, ten platform/version catalog lanes, and same-run-attempt artifact evidence.
 A local pass, historical run or source-only policy check does not replace it.
 
-## Windows direct NuGet exception
+## Windows managed native package
 
-With Python 3.12 or later available, Windows users install either `skia` or
-`skia-lib` without setup, acquire the pinned pair explicitly, then run setup:
-
-```sh
-raco pkg install --auto --no-setup skia
-racket -l skia/tools/install-windows-natives
-raco setup --pkgs skia-lib skia-doc skia
-```
-
-For a library-only installation, use `skia-lib` in the first/last commands.
-The explicit middle command downloads the two pinned NuGets directly from
-NuGet, verifies bounded archive/member hashes and AMD64 identity, and installs
-one owned `skia-upstream-1` directory outside the source packages. An explicitly
-staged offline directory can be supplied with `-- --from-directory /absolute/cache`.
-Setup, imports, docs and rendering never acquire native libraries. No Windows
-DLL, Windows native package or raw NuGet is distributed in our packages.
-
-Close native processes before replacing/removing the separately owned pair:
+Windows x86-64 uses the same ordinary dependency-driven installation:
 
 ```sh
-racket -l skia/tools/install-windows-natives -- --remove
-raco pkg remove skia skia-doc skia-lib
+raco pkg install --auto skia
 ```
 
-The installer also supports explicit installation scope in disposable runtimes.
-Normal package removal does not own this separately downloaded Windows cache.
+`skia-lib` selects `skia-native-win32-x86_64-1` only for `win32\x86_64`.
+The data-only package contains `libSkiaSharp.dll` and `libHarfBuzzSharp.dll` in
+`skia-native-1`, with the paired manifest, upstream licenses and component
+notices. Racket owns installation, update and removal in the selected scope.
+There is no native acquisition script during setup or first rendering. The three
+source packages continue excluding native libraries and raw NuGets.
+
+The optional `racket -l skia/tools/install-windows-natives` developer command
+still acquires the pinned pair directly from NuGet, with Python 3.12 or later.
+Its separate `skia-upstream-1` cache is used only when no managed generation or
+installed native dependency exists. A selected broken managed payload fails
+clearly. Explicit per-library overrides retain highest precedence. The developer
+`--root` route and feature/ABI workflow installers remain available.
+
+The optional cache is separately removed with
+`racket -l skia/tools/install-windows-natives -- --remove` after closing native
+processes. Ordinary package removal owns the managed Windows payload.
+See [Windows validation and evidence](WINDOWS-NATIVE-PACKAGE.md).
 
 ## Authorized external phase, later
 
@@ -133,11 +132,11 @@ Normal package removal does not own this separately downloaded Windows cache.
    and publish the source commit on the intended default branch. No release/tag
    or ZIP host is needed. Record both public repository HEAD commits.
 3. Run `tools/prepare-git-catalog.py --help` for the disposable actual Git-fetch
-   check. Its five catalog sources use the table above and the resolved commits;
+   check. Its six catalog sources use the table above and the resolved commits;
    exercise dependency installation, setup, core/docs tests and removal before
    public registration. Directory/ZIP tests do not prove anonymous Git fetching.
 4. Confirm catalog account/contact, name availability and the two repository
-   commits. Register the two native packages, `skia-lib`, `skia-doc`, then `skia`
+   commits. Register the three native packages, `skia-lib`, `skia-doc`, then `skia`
    using the ordinary Git sources. This is a separate publication action.
 5. Check the public catalog's actual build/test results and documentation links.
 

@@ -52,11 +52,10 @@ OpenAI Codex has been used in the development of this package.
 The Racket source in this project is released under the
 @hyperlink["https://github.com/soegaard/skia-for-racket/blob/main/LICENSE"]{MIT License}.
 That license does not relicense upstream Skia, SkiaSharp native packages,
-HarfBuzz, Unicode data, or other third-party components. The source
-distribution contains no native library or font files. The 0.79 catalog
-candidate declares separate macOS/Linux native data packages containing both
-pinned libraries and a licensed Noto font data package. Windows uses an explicit
-direct NuGet installer and excludes its downloaded DLLs from package archives.
+HarfBuzz, Unicode data, or other third-party components. The implementation and
+meta-packages contain no native libraries or fonts. The 0.79 catalog candidate
+declares separate macOS/Linux/Windows native data packages containing both pinned
+libraries; @tt{skia-doc} owns the licensed Noto files and their notices.
 Those native packages include upstream
 Skia and other third-party components under their own licenses. The developer
 installer remains available for checkouts. Candidate names remain unpublished

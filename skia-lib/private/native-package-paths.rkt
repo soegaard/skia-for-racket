@@ -9,7 +9,7 @@
          (only-in setup/dirs get-lib-search-dirs)
          "native-platform.rkt" "native-pins.rkt")
 (provide (struct-out managed-pair) (struct-out native-request)
-         managed-package-name discover-managed-pair native-library-request
+         managed-package-name discover-managed-pair discover-installed-pair native-library-request
          native-request-report native-file-sha256 managed-support-path managed-fontconfig-template)
 
 (struct managed-pair (directory manifest manifest-sha256 paths hashes) #:transparent)
@@ -20,6 +20,7 @@
 
 (define (managed-package-name subpath)
   (cond [(regexp-match? #rx"^(aarch64|x86_64)-macosx$" subpath) "skia-native-macos-1"]
+        [(equal? subpath "win32\\x86_64") "skia-native-win32-x86_64-1"]
         [(regexp-match? #rx"^x86_64-linux(-natipkg)?$" subpath) "skia-native-x86_64-linux-1"]
         [else #f]))
 
@@ -120,14 +121,30 @@
                        (make-immutable-hasheq (hash->list paths))
                        (make-immutable-hasheq (hash->list hashes))))))
 
-;; This promise is shared by both loaders and fixes one search-order selection
-;; for the process. Hashing is deferred to first native use, never import.
+; discover-installed-pair : (listof path?) -> (or/c #f managed-pair?)
+;   Selects managed data first, retaining the explicit upstream installer for checkouts.
+(define (discover-installed-pair directories
+                                 #:os [os (system-type 'os)]
+                                 #:subpath [subpath (path->string (system-library-subpath #f))]
+                                 #:managed-installed? [installed? #f])
+  (or (discover-managed-pair directories #:os os #:subpath subpath)
+      (begin
+        (when installed?
+          (bad generation-directory "~a is installed but its managed generation is absent"
+               (managed-package-name subpath)))
+        (and (eq? os 'windows)
+             (discover-managed-pair directories #:os os #:subpath subpath
+                                    #:directory-name "skia-upstream-1" #:upstream-download? #t)))))
+
+;; Shared by both loaders. All discovery, package lookup and hashing stay lazy.
 (define installed-pair
   (delay/sync
-    (if (eq? (system-type 'os) 'windows)
-        (discover-managed-pair (get-lib-search-dirs)
-                               #:directory-name "skia-upstream-1" #:upstream-download? #t)
-        (discover-managed-pair (get-lib-search-dirs)))))
+    (define package (managed-package-name (path->string (system-library-subpath #f))))
+    (discover-installed-pair
+     (get-lib-search-dirs)
+     #:managed-installed? (and package
+                              (with-handlers ([exn:fail? (lambda (_) #f)])
+                                (collection-path package))))))
 
 (define (native-library-request kind native-root)
   (define override (getenv (if (eq? kind 'skia) "RACKET_SKIA_LIBRARY" "RACKET_HARFBUZZ_LIBRARY")))
@@ -135,7 +152,9 @@
     [override (native-request 'override (absolute override) #f)]
     [(force installed-pair)
      => (lambda (pair)
-          (native-request (if (eq? (system-type 'os) 'windows) 'upstream-download 'managed)
+          (native-request (if (equal? (hash-ref (managed-pair-manifest pair) 'package)
+                                     "skia-upstream-win32-x86_64-1")
+                              'upstream-download 'managed)
                           (hash-ref (managed-pair-paths pair) kind) pair))]
     [else
      (define subpath (path->string (system-library-subpath #f)))
@@ -152,7 +171,7 @@
          (begin
            (unless package
              (error 'skia-native-package
-                    "no qualified automatic native package for ~a; Windows x86-64: run racket -l skia/tools/install-windows-natives (tools/install-native-windows.py), then raco setup. Other targets: use the developer installer or explicit RACKET_SKIA_LIBRARY / RACKET_HARFBUZZ_LIBRARY"
+                    "no qualified automatic native package for ~a; use the developer installer or explicit RACKET_SKIA_LIBRARY / RACKET_HARFBUZZ_LIBRARY"
                     subpath))
            ;; A registered 0.79 source package declares a native dependency.
            ;; Its absence is a broken install, not authority to use a host DLL.

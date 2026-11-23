@@ -30,6 +30,7 @@
 (define deps '(("base" #:version "8.18") ("draw-lib" #:version "1.22")
                "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"
                ("skia-native-macos-1" #:version "1.0" #:platform #rx"^(aarch64|x86_64)-macosx$")
+               ("skia-native-win32-x86_64-1" #:version "1.0" #:platform "win32\\x86_64")
                ("skia-native-x86_64-linux-1" #:version "1.0" #:platform #rx"^x86_64-linux(-natipkg)?$")))
 
 ; license : symbol?

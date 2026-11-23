@@ -382,11 +382,13 @@ class Archives(unittest.TestCase):
         with self.assertRaises(ValueError):self.check(self.archive(('../result.json',)))
     def test_absolute(self):
         with self.assertRaises(ValueError):self.check(self.archive(('/result.json',)))
-    def test_windows_downloads_are_not_release_evidence(self):
+    def test_raw_windows_downloads_are_not_release_evidence(self):
         for name in ('native/libSkiaSharp.dll', 'native/libHarfBuzzSharp.DLL',
-                     'skia-native-win32-x86_64-1.zip', 'downloads/input.nupkg'):
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'direct-download'):
+                     'downloads/input.nupkg'):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'raw DLLs'):
                 self.check(self.archive((name,)))
+    def test_managed_windows_package_archive_is_allowed_as_candidate_evidence(self):
+        self.assertEqual(self.check(self.archive(('skia-native-win32-x86_64-1.zip',)))['members'],1)
     def test_backslash(self):
         with self.assertRaises(ValueError):self.check(self.archive(('a\\result.json',)))
     def test_duplicate(self):

@@ -1,5 +1,10 @@
 # Revised Git package layout — local validation record
 
+Current Windows amendment: [the managed Windows native package](WINDOWS-NATIVE-PACKAGE.md)
+adds a sixth catalog entry after `c8cf88a0`. The five-entry results below remain
+historical; they do not qualify the new Windows managed route or its changed lock.
+
+
 November 23, 2026. The three source packages and two native package directories
 are implemented. Fresh local macOS ARM64 checks pass on released Racket CS 8.18
 and 9.3. The complete platform matrix and actual public Git fetching still need

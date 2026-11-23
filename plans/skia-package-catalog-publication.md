@@ -1,5 +1,12 @@
 # Implementation plan: publish Skia with platform-specific native packages
 
+Current amendment, November 23: the maintainer requested a managed Windows
+`skia-native-win32-x86_64-1` package after the source split. The six-package Git
+layout and Windows policy in [the revised plan](skia-package-catalog-git-publication.md)
+supersede the earlier direct-NuGet-only requirements below. Native pins and the
+approved upstream licensing basis are unchanged; publication remains unauthorized.
+
+
 Publication-route amendment, November 23, 2026: follow the
 [Git-based publication plan](skia-package-catalog-git-publication.md) for the
 remaining work. It supersedes this document's required immutable ZIP hosting,

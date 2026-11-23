@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare/check five ordinary public Git sources in disposable Racket scopes.
+"""Prepare/check six ordinary public Git sources in disposable Racket scopes.
 
 Default: describe the proposed sources, with no network or installation.
 --execute is for the later authorized repository-publication phase: it verifies
@@ -64,7 +64,7 @@ def execute(args):
     spec = importlib.util.spec_from_file_location('catalog_validator', ROOT / 'tools/validate-catalog-package.py')
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     validator = module.Validator(runtime, args.work / 'catalog', args.work / 'execution',
-                                 base_catalog=args.base_catalog.resolve(), windows_inputs=args.windows_inputs)
+                                 base_catalog=args.base_catalog.resolve())
     validator.report['git_sources'] = read_json(request)
     validator.report['remote_heads'] = dict(source=args.source_commit, native=args.native_commit)
     try:
@@ -87,11 +87,9 @@ def execute(args):
         validator.report['documentation_smoke'] = validator.documentation_smoke(full)
         installed = validator.raco(full, 'pkg', 'show', '--all', '--long')
         need(args.source_commit in installed, 'installed Git source commit absent')
-        if not validator.windows:
-            need(args.native_commit in installed, 'installed native Git commit absent')
+        need(args.native_commit in installed, 'installed native Git commit absent')
         validator.report['installed_packages'] = installed
         validator.raco(full, 'skia-examples', 'shaping', validator.away / 'git shaping')
-        if validator.windows: validator.windows_installer(full, remove=True)
         validator.raco(full, 'pkg', 'remove', '--auto', '--batch', *SOURCE_PACKAGES, timeout=1800)
         need(not Path(smokes[0]['collection']).exists(), 'Git source removal left collection')
         validator.remove_environment(full, required=True)
@@ -109,10 +107,9 @@ def main():
     parser.add_argument('--execute', action='store_true', help='actually fetch public Git; only after repository publication is authorized/completed')
     parser.add_argument('--source-commit', type=commit)
     parser.add_argument('--native-commit', type=commit)
-    parser.add_argument('--native-tree', type=Path, default=ROOT / 'output/catalog/git-publication-prep/skia-libs')
+    parser.add_argument('--native-tree', type=Path, default=ROOT / 'output/catalog/windows-native-package/skia-libs')
     parser.add_argument('--runtime', type=Path)
     parser.add_argument('--base-catalog', type=Path, help='staged standard dependency catalog for this released Racket/platform')
-    parser.add_argument('--windows-inputs', type=Path, help='separately acquired pinned Windows NuGet cache')
     parser.add_argument('--work', type=Path)
     args = parser.parse_args()
     if not args.execute:

@@ -12,7 +12,7 @@
   (test-case "the qualified installed native route selects a paired payload"
     (skia-check!) (harfbuzz-check!)
     (unless (or (getenv "RACKET_SKIA_LIBRARY") (getenv "RACKET_HARFBUZZ_LIBRARY"))
-      (define expected (if (eq? (system-type 'os) 'windows) "upstream-download" "managed"))
+      (define expected "managed")
       (check-equal? (hash-ref (hash-ref (native-library-report) 'loader) 'origin) expected)
       (check-equal? (hash-ref (harfbuzz-library-report) 'origin) expected))
     (check-equal? (skia-native-version) "119.0")

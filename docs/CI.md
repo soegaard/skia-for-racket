@@ -1,8 +1,8 @@
 # GitHub Actions CI
 
 November 23 Git-layout amendment: the current source packages are `skia`,
-`skia-lib` and `skia-doc`, with two macOS/Linux native packages and the existing
-Windows NuGet exception. Fonts belong to `skia-doc`; there is no standalone font
+`skia-lib` and `skia-doc`, with three managed macOS/Linux/Windows x86-64 native packages. The explicit
+Windows NuGet installer remains a developer route. Fonts belong to `skia-doc`; there is no standalone font
 package. The old unsplit full gate passed at `7693d907` / run `45096827302`
 attempt 2. The split needs fresh CI and public Git-source checks. See
 [the current runbook](PACKAGE-PUBLICATION.md) and
@@ -18,10 +18,11 @@ platform/version lanes and one reproducible native/font/source artifact set.
 Ordinary dependency installation builds all registered manuals with networking
 denied after staging; DrDr, rendering/shaping, loader failures, scope/update/
 removal and source/built/binary-lib reinstalls remain mandatory. No `--no-docs`
-is used in this lane. macOS/Linux retain dependency-only native installation.
-Windows stages its pinned NuGets directly from upstream, explicitly invokes the
-installer before full setup, and proves DLL/NuGet exclusion from rebuilt packages
-and uploads. Its installer owns a separate paired user/installation directory.
+is used in this lane. All supported targets use dependency-driven native
+installation. Windows stages the same pinned DLLs in its data-only package,
+then proves managed provenance and payload/notice retention in rebuilt forms.
+Native binaries and raw NuGets remain excluded from the three source packages;
+ordinary push/PR uploads retain receipts without native payloads.
 Both CS versions and all existing Windows CPU/GPU/GUI/feature gates remain
 required. See [the runbook](PACKAGE-PUBLICATION.md)
 and [actual local results/external gaps](CATALOG-VALIDATION.md).

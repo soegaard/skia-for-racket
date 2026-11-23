@@ -1,8 +1,8 @@
 # GitHub Actions workflows
 
 November 23 Git-layout amendment: the current source packages are `skia`,
-`skia-lib` and `skia-doc`, with two macOS/Linux native packages and the existing
-Windows NuGet exception. Fonts belong to `skia-doc`; there is no standalone font
+`skia-lib` and `skia-doc`, with three managed macOS/Linux/Windows x86-64 native packages. The explicit
+Windows NuGet installer remains a developer route. Fonts belong to `skia-doc`; there is no standalone font
 package. The old unsplit full gate passed at `7693d907` / run `45096827302`
 attempt 2. The split needs fresh CI and public Git-source checks. See
 [the current runbook](../../docs/PACKAGE-PUBLICATION.md) and
@@ -56,9 +56,8 @@ outputs in CI/Acceptance remain required. The explicitly dispatched Release
 candidate workflow retains its complete native/font/source archive set and
 cannot accept receipt-only evidence as a substitute.
 
-Windows direct NuGet acquisition is the explicit November 22 exception. The
-catalog lanes run full setup/DrDr/native/rebuild checks after staging the two
-upstream inputs, and never upload their DLLs or raw NuGets. Full asset uploads
-contain only macOS/Linux native packages, fonts and source. Windows feature
-workflows pass `-Root`/`--root` explicitly to retain their developer-route
-containment checks; no required job or artifact is removed.
+Windows uses the managed `skia-native-win32-x86_64-1` package for normal
+installation and catalog qualification. The explicit NuGet installer remains a
+developer route. The full manual gate may retain all three native package ZIPs;
+source packages and loose evidence exclude native DLLs and raw NuGets. Windows
+feature workflows retain their explicit checkout installer destinations.

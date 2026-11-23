@@ -8,7 +8,8 @@ from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_PACKAGES = ('skia', 'skia-lib', 'skia-doc')
-NATIVE_PACKAGES = ('skia-native-macos-1', 'skia-native-x86_64-linux-1')
+NATIVE_PACKAGES = ('skia-native-macos-1', 'skia-native-x86_64-linux-1',
+                   'skia-native-win32-x86_64-1')
 CATALOG_PACKAGES = SOURCE_PACKAGES + NATIVE_PACKAGES
 INSTALLED_TOOLS = frozenset((
     'doctor.rkt', 'ci-import-smoke.rkt', 'ci-package-smoke.rkt', 'catalog-smoke.rkt',

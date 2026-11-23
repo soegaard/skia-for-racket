@@ -4,13 +4,14 @@ Nothing in this implementation authorizes a push, new public repository, tag,
 release upload, catalog registration, or account/repository-setting change.
 The maintainer has accepted redistribution of the unmodified
 [SkiaSharp project](https://github.com/mono/SkiaSharp) binaries with notices.
-The pinned native pair and the Windows direct NuGet exception are unchanged.
+The pinned native pair is unchanged. The November 23 request adds a managed
+Windows native package; the explicit NuGet installer remains a developer tool.
 
 The successful baseline is `7693d907` / Release candidate run `45096827302`,
 attempt 2, November 23, 2026. It qualified the old unsplit package. The new
 `skia` / `skia-lib` / `skia-doc` boundaries require fresh evidence.
 
-The five proposed sources, native tree, local checks and subsequent public
+The six proposed sources, native tree, local checks and subsequent public
 Git-fetch procedure are in [the publication runbook](PACKAGE-PUBLICATION.md).
 There is no ZIP-host, GitHub Release or archive-branch decision to make.
 No separate font package is proposed.
@@ -27,8 +28,8 @@ After that validated candidate is ready, the maintainer still needs to:
   on their intended default branches, then confirm their public commit IDs.
 - Complete the prepared fresh anonymous Git-source installation check. Local
   copied-directory and rebuilt-archive installation are different evidence.
-- Confirm the catalog account/contact and current availability of all five
-  names, then explicitly authorize catalog registration using the five Git URLs.
+- Confirm the catalog account/contact and current availability of all six
+  names, then explicitly authorize catalog registration using the six Git URLs.
 
 These are later external actions. This chat's implementation phase performs
 none of them. Existing catalog/repository name observations are historical;

@@ -13,6 +13,35 @@ documentation, and meta-package split following Peek's package roles. Preserve
 the native implementation and licensing decisions; qualify the changed package
 boundaries before publication.
 
+## November 23 amendment: managed Windows package
+
+The maintainer requested `skia-native-win32-x86_64-1` after the split was committed
+as `c8cf88a0`. It joins the macOS/Linux packages in the proposed `skia-libs` data
+repository. Its source is
+`https://github.com/soegaard/skia-libs.git?path=skia-native-win32-x86_64-1`.
+There are now six proposed catalog entries: three source and three native.
+
+This amendment supersedes every Windows direct-download exception and five-entry
+instruction below. Windows x86-64 gains an ordinary platform-qualified `skia-lib`
+dependency and uses `raco pkg install --auto skia`, including normal setup and
+rebuilding. The optional pinned NuGet installer remains available for developer
+checkouts/explicit overrides. Managed packages take precedence; broken managed
+data cannot fall back to that cache. Keep both native pins, the upstream
+licensing basis/notices, fonts and public API unchanged. Raw NuGets and native
+binaries stay out of the three source packages; the Windows DLLs belong in their
+separate data package. The ordinary native Git tree therefore has three package
+directories and binary attributes for DLLs as well as dylibs/shared objects.
+
+Build the Windows package from the already locked original Win32 NuGets, with
+bounded extraction and deterministic offline assembly. Verify its hashes,
+selectors and source/built/binary-library retention using the existing framework.
+Existing Windows CS 8.18/9.3 catalog lanes must perform dependency-driven setup,
+managed provenance, negatives, update/rollback, scope/removal and rebuilt installs
+without the optional NuGet installer. The old direct-route and five-entry
+receipts remain historical; they do not qualify this amendment. Fresh actual
+Windows execution, the full manual gate and anonymous Git fetching remain
+required before catalog submission. No publication is authorized.
+
 ## 1. What the sibling repositories demonstrate
 
 | Example inspected | Relevant convention | Application to Skia |

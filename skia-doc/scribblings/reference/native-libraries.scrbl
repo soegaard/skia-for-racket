@@ -28,12 +28,13 @@ before first use to select an explicit library file. Otherwise, the search tries
 one generation-qualified Racket-managed directory containing both pinned
 libraries. A selected incomplete or corrupt generation fails with its managed
 path; it never borrows a library from another scope or from the host. Explicit
-overrides retain precedence independently for each library. On Windows the
-explicit installer supplies @tt{skia-upstream-1} outside package contents;
-diagnostics identify it as @tt{upstream-download} and report its acquisition
-manifest. A selected broken Windows pair also fails without fallback. Developer checkouts
-can still use the explicit native installers and their local native directory;
-bare system search is available only outside a registered package installation.
+overrides retain precedence independently for each library. Windows x86-64 uses
+@tt{skia-native-win32-x86_64-1} and the same @tt{skia-native-1} generation directory.
+Developer checkouts retain the optional direct NuGet installer and local native
+directory. Its separate @tt{skia-upstream-1} cache is considered only when no
+managed generation or installed native dependency is present. A selected broken
+managed pair never falls back to that cache or a host library. Bare system search
+is available only outside a registered package installation.
 Library selection
 and compatibility-check results are cached; changing an environment variable
 afterward does not switch the selected library.
@@ -53,17 +54,12 @@ The intended catalog command is @commandline{raco pkg install --auto skia}.
 The proposed 0.79 names are unpublished candidates; maintainers must use the
 disposable catalog described in the repository publication runbook until
 qualification and separate publication approval. Ordinary setup builds the
-manuals and needs no native-install command on macOS/Linux. Windows x86-64
-requires Python 3.12 or later and this explicit preparation:
-@commandline{raco pkg install --auto --no-setup skia}
-@commandline{racket -l skia/tools/install-windows-natives}
-@commandline{raco setup --pkgs skia}
-The installer downloads the two pinned NuGets and checks their locked hashes.
-Imports, setup and first rendering never initiate a download. Remove the owned
-Windows download with
-@commandline{racket -l skia/tools/install-windows-natives -- --remove}
-after closing rendering processes. Windows has no native dependency package;
-rebuilt packages require the same explicit preparation.
+manuals and needs no native-install command on supported macOS, Linux or Windows
+x86-64. The native packages contain both pinned libraries and their notices.
+Imports, setup and first rendering never initiate a native download. Package
+removal owns the managed generation; source, built and binary-library packages
+retain the native dependency and payload. The explicit Windows NuGet installer
+remains an optional developer tool with its own removal command.
 
 Qualification targets are 64-bit Racket CS 8.18/9.3 on macOS ARM64/x86-64, Windows x86-64 and
 glibc Linux x86-64, including the real @tt{natipkg} target. Ordinary Linux needs
