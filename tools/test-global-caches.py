@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Source contracts and synthetic inspector/orchestration tests, not native execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -33,10 +34,10 @@ def synthetic_evidence(root,token=TOKEN):
            purges=[dict(cache=name,before=[1,1,1,524288],after=[1,1,1,524288]) for name in ('font','resource','all')],
            counters=counters,light=snap(False),detailed=snap(True),
            truncated=dict(scope=v.SCOPE,atomic=False,detailed=False,dump_wrapped=False,truncated=True,dropped_count=4,string_bytes=0,entries=[]))
-    (root/'global-caches.json').write_text(json.dumps(r),encoding='utf-8')
+    (root / 'global-caches.json').write_text(json.dumps(r),encoding='utf-8')
     for name in ('before.rgba','limited.rgba','purge-font.rgba','purge-resource.rgba','purge-all.rgba'):
-        (root/name).write_bytes(v.pixels())
-    (root/'font.rgba').write_bytes(bytes((0,0,0,255))+bytes((255,255,255,255))*(80*48-1))
+        (source_path(root, name)).write_bytes(v.pixels())
+    (root / 'font.rgba').write_bytes(bytes((0,0,0,255))+bytes((255,255,255,255))*(80*48-1))
     return r
 
 class Completion(unittest.TestCase):
@@ -60,7 +61,7 @@ class Evidence(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name);self.r=synthetic_evidence(self.root)
-    def write(self):(self.root/'global-caches.json').write_text(json.dumps(self.r))
+    def write(self):(self.root / 'global-caches.json').write_text(json.dumps(self.r))
     def rejects(self):
         self.write()
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
@@ -98,26 +99,26 @@ class Evidence(unittest.TestCase):
     def test_full_report_truncated(self):self.r['light']['truncated']=True;self.rejects()
     def test_wrong_details(self):self.r['detailed']['detailed']=False;self.rejects()
     def test_pixel_change(self):
-        (self.root/'limited.rgba').write_bytes(b'\0'*192)
+        (self.root / 'limited.rgba').write_bytes(b'\0'*192)
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_missing_pixels(self):
-        (self.root/'purge-all.rgba').unlink()
+        (self.root / 'purge-all.rgba').unlink()
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_blank_font(self):
-        (self.root/'font.rgba').write_bytes(bytes((255,255,255,255))*80*48)
+        (self.root / 'font.rgba').write_bytes(bytes((255,255,255,255))*80*48)
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_duplicate_json(self):
-        p=self.root/'global-caches.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
+        p=self.root / 'global-caches.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
 
 class Orchestration(unittest.TestCase):
     def invoke(self,mode=None,failure=None,partial=False,mutate=False):
-        spec=importlib.util.spec_from_file_location('cache_driver_test',ROOT/'tools/validate-global-caches.py')
+        spec=importlib.util.spec_from_file_location('cache_driver_test',ROOT / 'tools/validate-global-caches.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         commands=[]
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
-            (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command);out=kwargs['stdout']
                 name=Path(command[1]).name if len(command)>1 else ''
@@ -128,11 +129,11 @@ class Orchestration(unittest.TestCase):
                 if name=='global-cache-doctor.rkt':
                     synthetic_evidence(command[command.index('--directory')+1],command[command.index('--token')+1])
                 out.flush();return subprocess.CompletedProcess(command,0)
-            args=['--racket',sys.executable,'--directory',str(root/'out')]
+            args=['--racket',sys.executable,'--directory',str(root / 'out')]
             if mode is not None:args+=['--regressions',mode]
             with patch.object(module.shutil,'which',return_value=sys.executable),patch.object(module.subprocess,'run',side_effect=execute),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 rc=module.main(args,root=root)
-            report=json.loads((root/'out/validation.json').read_text())
+            report=json.loads((root / 'out/validation.json').read_text())
         return rc,report,commands
     def test_default_full(self):
         rc,r,_=self.invoke();self.assertEqual(rc,0);self.assertEqual(r['regressions_status'],'passed')
@@ -162,14 +163,14 @@ class Orchestration(unittest.TestCase):
         self.assertTrue(r['global_cache_controls_executed']);self.assertTrue(r['memory_statistics_executed']);self.assertFalse(r['gpu_executed'])
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_counts(self):
         for kind,count in (('pure',v.PURE_CASES),('native',v.NATIVE_CASES)):
             s=self.text(f'tests/global-cache-{kind}-test.rkt')
             self.assertEqual(s.count('(test-case '),count);self.assertIn(f'(define global-cache-{kind}-test-count {count})',s)
     def test_exact_graphics_registry(self):
         import api_inventory as inv
-        side=inv.read_json(ROOT/'api/upstream-m119.json')
+        side=inv.read_json(ROOT / 'api/upstream-m119.json')
         expected=set(side['headers']['include/c/sk_graphics.h'])
         actual=set(inv.scan_bindings(ROOT)['symbols'])
         self.assertEqual(len(expected),16);self.assertTrue(expected<=actual)

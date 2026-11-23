@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic inspector/runner and production-source contracts; not Windows/GPU execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import ast
 import copy
 import importlib.util
@@ -209,7 +210,7 @@ class Runner(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)/'source'; root.mkdir()
             for p in v.SOURCES:
-                path = root/p; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('synthetic source fingerprint only')
+                path = source_path(root, p); path.parent.mkdir(parents=True, exist_ok=True); path.write_text('synthetic source fingerprint only')
             directory = Path(temporary)/'probe'; directory.mkdir(); calls = []
             def run(argv):
                 args = [str(x) for x in argv]; calls.append(args)
@@ -222,7 +223,7 @@ class Runner(unittest.TestCase):
                     raw, timeout = fixture(directory)
                     if change:
                         change(raw, timeout); v.write(directory/'interop.diagnostic.json', raw); v.write(directory/'interop.timeout.json', timeout)
-                    if source_change: (root/v.SOURCES[0]).write_text('changed')
+                    if source_change: (source_path(root, v.SOURCES[0])).write_text('changed')
                 return ''
             try:
                 result = v.execute(root, '/selected Racket/racket.exe', directory, run)
@@ -268,21 +269,21 @@ class Runner(unittest.TestCase):
 
 class Source(unittest.TestCase):
     def test_generic_api_has_no_raw_handle_export(self):
-        s = (ROOT/'gpu-interop.rkt').read_text()
+        s = (source_path(ROOT, 'gpu-interop.rkt')).read_text()
         self.assertNotIn('make-d3d12-external-texture', s)
         self.assertNotIn('ffi-lib', s)
         self.assertIn('gpu-import-image', s)
     def test_unsafe_boundary_explicit(self):
-        s = (ROOT/'unsafe/gpu-d3d12.rkt').read_text()
+        s = (source_path(ROOT, 'unsafe/gpu-d3d12.rkt')).read_text()
         self.assertIn('make-d3d12-external-texture', s)
         self.assertIn('call-with-gpu-d3d12-device', s)
     def test_driver_registers_and_forgets_actual_context(self):
-        s = (ROOT/'private/gpu-driver-d3d12.rkt').read_text()
+        s = (source_path(ROOT, 'private/gpu-driver-d3d12.rkt')).read_text()
         self.assertIn('(register-d3d12-handles! context adapter device queue)', s)
         self.assertIn('(forget-d3d12-handles! p)', s)
         self.assertIn('(forget-d3d12-handles! context)', s)
     def test_native_reentry_guard(self):
-        self.assertIn('(current-external-native?)', (ROOT/'private/gpu-interop-guard.rkt').read_text())
+        self.assertIn('(current-external-native?)', (source_path(ROOT, 'private/gpu-interop-guard.rkt')).read_text())
     def test_sdk_release_assertions(self):
         s = (HERE/'d3d12-interop-fixture/sdk-check.c').read_text()
         self.assertEqual(len(re.findall(r'^SLOT\(', s, re.M)), 6)
@@ -295,33 +296,33 @@ class Source(unittest.TestCase):
         self.assertIn('CreateCommandQueue(&q,IID_PPV_ARGS(&f->consumer))', s)
         self.assertIn('CopyTextureRegion', s)
     def test_normalization_not_direct_draw_image_optimization(self):
-        s = (ROOT/'private/gpu-d3d12-interop.rkt').read_text()
+        s = (source_path(ROOT, 'private/gpu-d3d12-interop.rkt')).read_text()
         self.assertIn('(make-image-shader snapshot #:sampling \'nearest)', s)
         self.assertIn('(draw-rect (surface-canvas borrowed-surface) 0 0 w h paint)', s)
         self.assertIn('(call-with-canvas-state canvas', s)
     def test_only_checked_device_accessor(self):
-        s = (ROOT/'private/gpu-d3d12-interop.rkt').read_text()
+        s = (source_path(ROOT, 'private/gpu-d3d12-interop.rkt')).read_text()
         self.assertIn('[current-external-native? #t]', s)
         self.assertNotIn('(proc device queue)', s)
     def test_single_use_native_session(self):
-        s = (ROOT/'private/gpu-external.rkt').read_text()
+        s = (source_path(ROOT, 'private/gpu-external.rkt')).read_text()
         self.assertIn("'consumed", s); self.assertIn('call-with-continuation-barrier', s)
         self.assertIn('current-future', s)
     def test_native_suite_count_matches_definition(self):
-        s = (ROOT/'tests/gpu-interop-native-test.rkt').read_text()
+        s = (source_path(ROOT, 'tests/gpu-interop-native-test.rkt')).read_text()
         self.assertEqual(s.count('(test-case '), v.NATIVE_CASES)
         self.assertIn(f'gpu-interop-native-test-count {v.NATIVE_CASES}', s)
     def test_translucent_native_probes(self):
-        s = (ROOT/'tests/gpu-interop-native-test.rkt').read_text()
+        s = (source_path(ROOT, 'tests/gpu-interop-native-test.rkt')).read_text()
         self.assertIn('straight-alpha translucent', s)
         self.assertIn('translucent premultiplied', s)
     def test_constructor_metadata_comes_from_native_getdesc(self):
-        s = (ROOT/'private/gpu-d3d12-interop-system.rkt').read_text()
+        s = (source_path(ROOT, 'private/gpu-d3d12-interop-system.rkt')).read_text()
         self.assertIn('(resource-description/native r)', s)
         self.assertLess(s.index('(same-device/native? r dev)'), s.index('(resource-description/native r)'))
         self.assertIn('(_fun _pointer _pointer -> _pointer)', s)
     def test_no_runtime_helper_dll(self):
-        for p in (ROOT/'private').glob('gpu-d3d12-interop*.rkt'):
+        for p in (source_path(ROOT, 'private')).glob('gpu-d3d12-interop*.rkt'):
             self.assertNotIn('fixture.dll', p.read_text())
     def test_no_kill_or_abort_for_negative_probe(self):
         s = (HERE/'gpu-d3d12-interop-doctor.rkt').read_text()
@@ -347,7 +348,7 @@ class CIEntry(unittest.TestCase):
             runner = types.SimpleNamespace(run=lambda argv, **kw: calls.append((argv, kw)))
             def execute(installed, racket, directory, run, **kw):
                 self.assertEqual(installed, root); self.assertEqual(racket, 'chosen racket')
-                self.assertEqual(directory.parent, root/'output'); self.assertEqual(kw, {'selection':'warp'})
+                self.assertEqual(directory.parent, root / 'output'); self.assertEqual(kw, {'selection':'warp'})
                 run(['selected-command']); return dict(status='passed')
             with patch.object(self.module, 'execute', side_effect=execute):
                 self.module.interop_checks(runner, root, away, env, report)
@@ -368,30 +369,30 @@ class CIEntry(unittest.TestCase):
 class Integration(unittest.TestCase):
     """Requires the full applied source checkout; never silently skipped."""
     def test_new_step_is_inside_required_d3d12_job(self):
-        s = (ROOT/'.github/workflows/ci.yml').read_text()
+        s = (ROOT / '.github/workflows/ci.yml').read_text()
         d3d = s.split('\n  d3d12:', 1)[1].split('\n  dxgi:', 1)[0]
         self.assertIn('python tools/ci-d3d12-interop.py', d3d)
         self.assertLess(d3d.index('python tools/ci-d3d12.py'), d3d.index('python tools/ci-d3d12-interop.py'))
         self.assertNotIn('continue-on-error', d3d)
         self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]', s)
     def test_failure_artifacts_retained(self):
-        s = (ROOT/'.github/workflows/ci.yml').read_text()
+        s = (ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('path: output/ci-d3d12-interop/', s)
     def test_source_and_local_runner_include_tests(self):
         self.assertIn("'test-gpu-interop.py'", (HERE/'ci.py').read_text())
         self.assertIn("'tools/test-gpu-interop.py'", (HERE/'validate-gpu.py').read_text())
     def test_pure_racket_suite_is_wired(self):
-        s = (ROOT/'run-tests.rkt').read_text()
+        s = (source_path(ROOT, 'run-tests.rkt')).read_text()
         self.assertIn('"tests/gpu-interop-pure-test.rkt"', s)
         self.assertIn('(run-tests gpu-interop-pure-tests)', s)
     def test_new_public_modules_in_native_free_smoke(self):
-        s = (HERE/'ci-import-smoke.rkt').read_text()
+        s = (source_path(HERE.parent, 'tools/ci-import-smoke.rkt')).read_text()
         self.assertIn('skia/gpu-interop', s); self.assertIn('skia/unsafe/gpu-d3d12', s)
     def test_stage_and_native_pin(self):
-        self.assertIn('(define version "0.79")', (ROOT/'info.rkt').read_text())
-        self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(), '3.119.1')
+        self.assertIn('(define version "0.79")', (source_path(ROOT, 'info.rkt')).read_text())
+        self.assertEqual((source_path(ROOT, 'private/native-default-version.txt')).read_text().strip(), '3.119.1')
     def test_registry_includes_completed_metal_wrapper(self):
-        data = json.loads((ROOT/'private/gpu-backends.json').read_text())
+        data = json.loads((source_path(ROOT, 'private/gpu-backends.json')).read_text())
         rows = {row['backend']: row for row in data['backends']}
         self.assertTrue(rows['direct3d']['features']['external_resource_interop'])
         self.assertTrue(rows['metal']['features']['external_resource_interop'])

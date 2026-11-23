@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Required local Metal interop validation; missing Metal is a failure, not a skip."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import os
 from pathlib import Path

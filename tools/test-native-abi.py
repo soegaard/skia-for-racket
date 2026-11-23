@@ -5,6 +5,7 @@ Default includes integration assertions against a complete checkout. Named
 unittest classes can be run independently when reviewing a source-only bundle.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import json
 import os
 from pathlib import Path
@@ -67,10 +68,10 @@ class ReaderTests(unittest.TestCase):
         with self.assertRaises(ValueError): abi.forms('#| bad')
     def test_inventory_uses_real_top_level_forms(self):
         with tempfile.TemporaryDirectory() as t:
-            root = Path(t); (root / 'private').mkdir()
+            root = Path(t); (source_path(root, 'private')).mkdir()
             for path, macro, index, _ in abi.BINDINGS:
                 prefix = ' '.join(['alias'] * (index - 1))
-                (root / path).write_text(f'#lang racket/base\n; ({macro} {prefix} sk_comment (_fun))\n'
+                (source_path(root, path)).write_text(f'#lang racket/base\n; ({macro} {prefix} sk_comment (_fun))\n'
                     f"'({macro} {prefix} sk_quoted (_fun))\n"
                     f'(define-syntax-rule ({macro} x) (ignored x))\n'
                     f'({macro} {prefix} sk_actual (_fun -> _int))\n')
@@ -153,7 +154,7 @@ class WorkerTests(unittest.TestCase):
         source.write_text('#include <stdbool.h>\n#include <stdlib.h>\n#include <signal.h>\n'
             'int sk_version_get_milestone(void) {' + milestone + '}\n' +
             ('int sk_version_get_increment(void) { return 0; }\n' if increment else '') + extra)
-        lib = self.root / ('fixture.dylib' if sys.platform == 'darwin' else 'fixture.so')
+        lib = source_path(self.root, 'fixture.dylib' if sys.platform == 'darwin' else 'fixture.so')
         subprocess.run([self.compiler, '-dynamiclib' if sys.platform == 'darwin' else '-shared', '-fPIC', str(source), '-o', str(lib)], check=True, capture_output=True)
         return lib
     def probe(self, lib, *, timeout=10, graphite=153):
@@ -208,16 +209,16 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(set(groups), {entry[3] for entry in abi.BINDINGS})
     def test_one_shared_handle(self):
         for path, _, _, _ in abi.BINDINGS[1:]:
-            source = (abi.ROOT / path).read_text()
+            source = (source_path(abi.ROOT, path)).read_text()
             self.assertIn('(delay/sync (skia-native-library-handle))', source)
             self.assertNotIn('(ffi-lib (skia-native-library-path))', source)
     def test_layout_gate_and_preflight_preserved(self):
-        source = (abi.ROOT / 'private/native.rkt').read_text()
+        source = (source_path(abi.ROOT, 'private/native.rkt')).read_text()
         self.assertIn('(native-abi-check-layouts! (native-library-profile) (native-layout-sizes))', source)
         self.assertIn('(for ([entry (in-list (reverse native-bindings))])', source)
         self.assertIn('lifetime-native-call', source)
     def test_racket_suites_wired(self):
-        source = (abi.ROOT / 'run-tests.rkt').read_text()
+        source = (source_path(abi.ROOT, 'run-tests.rkt')).read_text()
         self.assertIn('(run-tests native-abi-pure-tests)', source)
         self.assertIn("dynamic-require native-abi-native-tests-file 'native-abi-native-tests", source)
     def test_ci_candidate_is_required_on_linux(self):

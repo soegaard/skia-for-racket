@@ -6,6 +6,7 @@ acceptance additionally rechecks the 33-case surface and 42-case image reports.
 No display/window, zero-copy, hardware, or performance conclusion is inferred.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import copy
 import html
@@ -385,10 +386,10 @@ class Checks(unittest.TestCase):
     def test_duplicate_pngs(self): self.reject_gl(lambda d:d['workflow'].update(copy_image='host-source.png'))
     def test_unsafe_png(self): self.reject_gl(lambda d:d['workflow'].update(copy_image='../outside.png'))
     def test_corrupt_png(self):
-        (self.root/'owned-copy.png').write_bytes(b'bad')
+        (self.root / 'owned-copy.png').write_bytes(b'bad')
         with self.assertRaises(ValueError): interop(self.gl,self.root)
     def test_exact_source_not_just_pairwise_similarity(self):
-        for p in ('owned-copy.png','host-source.png'): (self.root/p).write_bytes(shared.png_bytes(bytes(256),(8,8)))
+        for p in ('owned-copy.png','host-source.png'): (source_path(self.root, p)).write_bytes(shared.png_bytes(bytes(256),(8,8)))
         with self.assertRaises(ValueError): interop(self.gl,self.root)
     def test_software_is_labelled(self):
         self.gl['initial_context']['renderer_class']='software'
@@ -397,30 +398,30 @@ class Checks(unittest.TestCase):
         self.gl['initial_context']['renderer_class']='software'
         self.reject_gl(lambda d:d.update(require_hardware=True))
     def test_failure_clears_stale_success(self):
-        prefix=self.root/'test'
+        prefix=self.root / 'test'
         for ext in ('.inspection.json','.review.html'): Path(str(prefix)+ext).write_text('stale')
         with self.assertRaises(ValueError): publish(prefix,lambda:(_ for _ in ()).throw(ValueError('bad')))
         self.assertFalse(Path(str(prefix)+'.inspection.json').exists())
         self.assertFalse(Path(str(prefix)+'.review.html').exists())
     def test_review_escapes_renderer(self):
         self.gl['initial_context']['renderer']='<script>bad</script>'
-        prefix=self.root/'test';publish(prefix,lambda:interop(self.gl,self.root))
+        prefix=self.root / 'test';publish(prefix,lambda:interop(self.gl,self.root))
         self.assertNotIn('<script>',Path(str(prefix)+'.review.html').read_text())
     def test_combined_rechecks_native_reports_and_pngs(self):
         fixture_combined(self.root)
         self.assertEqual(combined(self.root)['scenes_checked'],10)
     def test_combined_mixed_run(self):
         fixture_combined(self.root)
-        p=self.root/'images-egl.diagnostic.json';d=read_json(p);d['validation_run']='other';p.write_text(json.dumps(d))
+        p=self.root / 'images-egl.diagnostic.json';d=read_json(p);d['validation_run']='other';p.write_text(json.dumps(d))
         with self.assertRaises(ValueError): combined(self.root)
     def test_combined_ignores_forged_success(self):
         fixture_combined(self.root)
-        (self.root/'offscreen-egl.inspection.json').write_text('{"status":"passed"}')
-        p=self.root/'offscreen-egl.diagnostic.json';d=read_json(p);d['native_test_failures']=1;p.write_text(json.dumps(d))
+        (self.root / 'offscreen-egl.inspection.json').write_text('{"status":"passed"}')
+        p=self.root / 'offscreen-egl.diagnostic.json';d=read_json(p);d['native_test_failures']=1;p.write_text(json.dumps(d))
         with self.assertRaises(ValueError): combined(self.root)
     def test_combined_no_hidden_gui(self):
         fixture_combined(self.root)
-        p=self.root/'interop-egl.diagnostic.json';d=read_json(p);d['host']['headless']=False;p.write_text(json.dumps(d))
+        p=self.root / 'interop-egl.diagnostic.json';d=read_json(p);d['host']['headless']=False;p.write_text(json.dumps(d))
         with self.assertRaises(ValueError): combined(self.root)
 
 

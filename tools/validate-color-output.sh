@@ -18,10 +18,10 @@ bash tools/audit-harfbuzz-symbols.sh
 # A runner's dynamic-require targets are not raco make dependencies.
 # Compile every test file explicitly, with the same selected Racket.
 "$RACKET" -l raco -- make \
-  main.rkt color-space.rkt matrix.rkt output.rkt bitmap.rkt \
-  tools/doctor.rkt run-tests.rkt tests/*.rkt examples/color-output.rkt
-"$RACKET" tools/doctor.rkt
-"$RACKET" run-tests.rkt
+  skia-lib/main.rkt skia-lib/color-space.rkt skia-lib/matrix.rkt skia-lib/output.rkt skia-lib/bitmap.rkt \
+  skia-lib/tools/doctor.rkt skia-lib/run-tests.rkt tests/*.rkt skia-lib/examples/color-output.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
-"$RACKET" examples/color-output.rkt output/color-output-0.26
+"$RACKET" skia-lib/examples/color-output.rkt output/color-output-0.26
 python3 tools/inspect-color-output.py --probe-prefix output/color-output-0.26

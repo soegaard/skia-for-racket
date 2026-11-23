@@ -6,6 +6,7 @@ user catalog configuration. Linux natipkg uses the pinned official pkg-build
 runtime in the explicit --natipkg-runtime directory.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import importlib.util
 import json

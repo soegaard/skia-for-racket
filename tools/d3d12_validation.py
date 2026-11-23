@@ -4,6 +4,7 @@ A passing WARP report establishes software functionality, never acceleration,
 physical display pixels, or performance. No optional/skip/fallback mode exists.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import json
 import os

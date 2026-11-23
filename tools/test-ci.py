@@ -5,6 +5,7 @@ Filesystem/ZIP/Git and subprocess-log tests really execute locally. Package,
 installer and GPU invocations in orchestration tests are explicitly mocked.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import hashlib
@@ -44,7 +45,7 @@ def fixture(root: Path):
                           'info.rkt': '#lang info\n(define collection "skia")\n',
                           'main.rkt': '#lang racket/base\n',
                           'tools/example.rkt': '#lang racket/base\n'}.items():
-        p = root / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(content)
+        p = source_path(root, name); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(content)
     git(root, 'add', '--all')
     return root
 
@@ -64,7 +65,7 @@ def headless_fixture(root: Path, surface='surfaceless'):
                      cycles=[dict(initial_context=copy.deepcopy(context)) for _ in range(3)])
     ci.write_json(root / 'egl-lifecycle.diagnostic.json', lifecycle)
     for name in ('headless', 'output-egl', 'performance-opengl'):
-        ci.write_json(root / (name + '.inspection.json'), dict(status='passed', validation_run=root.name))
+        ci.write_json(source_path(root, name + '.inspection.json'), dict(status='passed', validation_run=root.name))
     return report, lifecycle
 
 
@@ -163,7 +164,7 @@ class Packaging(unittest.TestCase):
     def test_font_and_bytecode_leaks_are_not_source(self):
         for suffix in ('TTF', 'otf', 'ttc', 'zo', 'DLL'):
             with self.subTest(suffix=suffix):
-                path = self.root / ('leaked.' + suffix)
+                path = source_path(self.root, 'leaked.' + suffix)
                 path.write_bytes(b'not source'); git(self.root, 'add', path.name)
                 with self.assertRaises(ValueError): ci.make_source_archive(self.root, self.root.parent / ('source-' + suffix + '.zip'))
                 git(self.root, 'rm', '-f', path.name)
@@ -180,7 +181,7 @@ class Evidence(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / 'gpu-0.46-headless-test'; headless_fixture(self.root)
     def modify(self, filename, fn):
-        path = self.root / filename; data = json.loads(path.read_text()); fn(data); ci.write_json(path, data)
+        path = source_path(self.root, filename); data = json.loads(path.read_text()); fn(data); ci.write_json(path, data)
         with self.assertRaises((ValueError, KeyError)): ci.validate_headless(self.root, 'surfaceless')
     def test_software_result(self):
         result = ci.validate_headless(self.root, 'surfaceless')
@@ -278,10 +279,10 @@ class EnvironmentAndIdentity(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ValueError): ci.validate_identity(d, r)
     def test_loaded_native_path_receipt(self):
         with tempfile.TemporaryDirectory() as t:
-            root = Path(t); (root / 'native').mkdir()
+            root = Path(t); (source_path(root, 'native')).mkdir()
             libraries = {}
             for n in ('skia', 'harfbuzz'):
-                p = root / 'native' / n; p.write_bytes(b'receipt test only'); libraries[n] = str(p)
+                p = source_path(root, 'native') / n; p.write_bytes(b'receipt test only'); libraries[n] = str(p)
             smoke = dict(status='passed', collection=str(root), native_package_versions={'skia': '3.119.1', 'harfbuzz': '8.3.1.2'},
                          native_versions={'skia': '119.0', 'harfbuzz': '8.3.1'}, libraries=libraries,
                          pixels_verified=True, encoded_roundtrip_verified=True)
@@ -291,7 +292,7 @@ class EnvironmentAndIdentity(unittest.TestCase):
     def test_artifacts_exclude_native_and_compiled(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t) / 'installed'; output = Path(t) / 'evidence'; run = root / 'output/gpu-failed'
-            run.mkdir(parents=True); native = root / 'native/linux-x64'; native.mkdir(parents=True)
+            run.mkdir(parents=True); native = source_path(root, 'native/linux-x64'); native.mkdir(parents=True)
             for name in ('validation.failed.json', 'image.png', 'foo.zo', 'font.ttf', 'archive.nupkg'):
                 (run / name).write_bytes(b'test')
             for name in ('SOURCE.txt', 'package.nuspec', 'libSkiaSharp.so', 'font.otf'):
@@ -374,20 +375,22 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('__pycache__/', (HERE.parent / '.gitignore').read_text())
         self.assertIn('/chocopkg/', (HERE.parent / '.gitignore').read_text())
     def test_racket_package_metadata_is_canonical_and_complete(self):
-        text = (HERE.parent / 'info.rkt').read_text()
+        text = (source_path(HERE.parent, 'info.rkt')).read_text()
         self.assertIn('(define version "0.79")', text)
-        self.assertIn('(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")\n'
-                      '               "gui-lib" "rackunit-lib" "pict-lib" "plot-lib"\n'
-                      '               "scribble-lib" "racket-index"', text)
-        for name in ('skia-fonts-1', 'skia-native-macos-1', 'skia-native-x86_64-linux-1'):
+        for name in ('skia-native-macos-1', 'skia-native-x86_64-linux-1'):
             self.assertIn('("' + name + '" #:version "1.0"', text)
-        self.assertNotIn('skia-native-win32-x86_64-1', text)
-        self.assertIn('"pict-doc"', text)
-        self.assertNotIn('(define build-deps \'("rackunit-lib"))', text)
+        for name in ('skia-doc', 'skia-fonts-1', 'skia-native-win32-x86_64-1', 'scribble-lib', 'racket-index'):
+            self.assertNotIn('"' + name + '"', text)
+        doc = (HERE.parent / 'skia-doc/info.rkt').read_text()
+        meta = (HERE.parent / 'skia/info.rkt').read_text()
+        for name in ('skia-lib', 'scribble-lib', 'racket-index', 'pict-doc'):
+            self.assertIn('"' + name + '"', doc)
+        self.assertIn('("skia-lib" #:version "0.79")', meta)
+        self.assertIn('("skia-doc" #:version "0.79")', meta)
     def test_symbol_auditors_normalize_nm_formats(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            tools = root / 'tools'; private = root / 'private'; bin_dir = root / 'bin'
+            tools = root / 'tools'; private = source_path(root, 'private'); bin_dir = root / 'bin'
             tools.mkdir(); private.mkdir(); bin_dir.mkdir()
             for name in ('audit-symbols.sh', 'audit-harfbuzz-symbols.sh'):
                 shutil.copy2(HERE / name, tools / name)
@@ -409,7 +412,7 @@ class WorkflowAndIntegration(unittest.TestCase):
             env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ.get('PATH', ''))
             for script, library in (('audit-symbols.sh', 'libSkiaSharp.so'),
                                     ('audit-harfbuzz-symbols.sh', 'libHarfBuzzSharp.so')):
-                path = root / library; path.write_bytes(b'fake nm input only')
+                path = source_path(root, library); path.write_bytes(b'fake nm input only')
                 result = subprocess.run(['bash', str(tools / script), str(path)],
                                         cwd=root, env=env, text=True,
                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -431,13 +434,13 @@ class WorkflowAndIntegration(unittest.TestCase):
             self.assertNotIn('xvfb', jobs[name].lower())
             self.assertNotIn('--profile canvas', jobs[name])
     def test_gui_modules_are_explicitly_omitted_from_headless_tests(self):
-        info = (HERE.parent / 'info.rkt').read_text()
+        info = (source_path(HERE.parent, 'info.rkt')).read_text()
         start = info.index('(define test-omit-paths')
         omit = info[start:info.index('\n\n', start)]
         self.assertIn('"canvas.rkt"', omit)
         self.assertIn('"tests/canvas-gui-test.rkt"', omit)
         self.assertIn('"tests/canvas-text-load-order.rkt"', omit)
-        tests = (HERE.parent / 'run-tests.rkt').read_text()
+        tests = (source_path(HERE.parent, 'run-tests.rkt')).read_text()
         self.assertIn('tests/canvas-dc-pure-test.rkt', tests)
         self.assertIn('tests/canvas-dc-native-test.rkt', tests)
         self.assertNotIn('tests/canvas-gui-test.rkt', tests)
@@ -453,7 +456,7 @@ class WorkflowAndIntegration(unittest.TestCase):
         self.assertIn('tools/validate-gpu-headless.py', text)
         self.assertNotIn("GPU_STRESS_FRAMES='", text)
     def test_import_smoke_contract_matches_reader(self):
-        self.assertIn("'gui_instantiated #f", (HERE / 'ci-import-smoke.rkt').read_text())
+        self.assertIn("'gui_instantiated #f", (source_path(HERE.parent, 'tools/ci-import-smoke.rkt')).read_text())
         self.assertIn("imports.get('gui_instantiated') is False", (HERE / 'ci.py').read_text())
     def test_cmake_lists_all_mirrors(self):
         s = (HERE / 'ci-abi/CMakeLists.txt').read_text()
@@ -474,6 +477,11 @@ class Orchestration(unittest.TestCase):
     def simulate(self, profile='cpu', lane='linux-x64', fail=None):
         with tempfile.TemporaryDirectory() as t:
             temp = Path(t); root = fixture(temp / 'checkout'); output = temp / 'artifact'; output.mkdir()
+            for name in ('api', 'docs', 'plans', '.github', 'packaging'):
+                (root / name).mkdir(exist_ok=True)
+            for name in ('LICENSE', 'NOTICE.md', 'README.md', 'house-style.md'):
+                (root / name).write_text('synthetic maintenance fixture\n')
+            git(root, 'add', '--all')
             calls = []; saved_envs = []; seen_installed = []; report = {'checks': {}}
             row_profile, row_id = ('cpu', 'linux-x64') if profile == 'canvas' else (profile, lane)
             row = next(r for r in ci_matrix.load_matrix()[row_profile] if r['id'] == row_id)
@@ -486,7 +494,7 @@ class Orchestration(unittest.TestCase):
                     if a[1].endswith('ci-identity.rkt'): return json.dumps(identity)
                     if 'pkg' in a and 'install' in a:
                         home = Path(e['PLTUSERHOME']); installed = home / 'addon/pkgs/skia-for-racket'; installed.mkdir(parents=True)
-                        with zipfile.ZipFile(a[-1]) as z: z.extractall(installed)
+                        with zipfile.ZipFile(home.parent / 'skia source.zip') as z: z.extractall(installed)
                         seen_installed.append(installed)
                     if '(collection-path "skia")' in a[-1]: return json.dumps(str(seen_installed[0]))
                     if a[-1] == 'skia/tools/ci-import-smoke': return json.dumps(dict(status='passed', gui_instantiated=False))
@@ -508,7 +516,7 @@ class Orchestration(unittest.TestCase):
                         ci.write_json(candidate_output / 'report.json',
                                       dict(status='passed-investigation-candidate-rejected'))
                     if a[1].endswith('validate-gpu-headless.py'):
-                        headless_fixture(seen_installed[0] / 'output/gpu-0.46-headless-mock', row['surface'])
+                        headless_fixture(seen_installed[0].parent / 'output/gpu-0.46-headless-mock', row['surface'])
                     if any(v.endswith('validate-skia-canvas.py') for v in a):
                         canvas_fixture(Path(a[a.index('--output') + 1]))
                     return ''
@@ -627,7 +635,7 @@ class DriverResults(unittest.TestCase):
         self.assertIn('synthetic failure', result['error'])
         self.assertTrue((self.root / 'output/ci-source/commands.json').is_file())
     def test_source_mutation_blocks_success(self):
-        def mutate(runner, root, report): (root / 'main.rkt').write_text('mutated by simulated subprocess')
+        def mutate(runner, root, report): (source_path(root, 'main.rkt')).write_text('mutated by simulated subprocess')
         code, result = self.run_driver(mutate)
         self.assertEqual(code, 1); self.assertEqual(result['status'], 'failed')
     def test_stale_directory_is_not_reused(self):

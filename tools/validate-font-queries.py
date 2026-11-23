@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.68b acceptance: optional full regressions, font snapshot documents, optional required GPU/viewers."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
@@ -22,21 +23,21 @@ ROOT = Path(__file__).resolve().parents[1]
 def compile_targets(root, regressions='full'):
     if checked_mode(regressions) == 'none':
         # Compile feature roots only; do not traverse unrelated regression suites.
-        return [root / p for p in (
+        return [source_path(root, p) for p in (
             'main.rkt',
             'fonts.rkt',
             'tests/font-query-gpu-test.rkt',
             'tools/font-query-doctor.rkt',
             'examples/font-queries.rkt',
         )]
-    text = (root/'run-tests.rkt').read_text(encoding='utf-8')
+    text = (source_path(root, 'run-tests.rkt')).read_text(encoding='utf-8')
     dynamic = sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)', text)))
     if not dynamic:
         raise ValueError('no dynamic regression targets')
     for name in dynamic:
         if any(p in ('', '.', '..') for p in name.split('/')) or '\\' in name or ':' in name:
             raise ValueError('unsafe dynamic target')
-    return [root/p for p in dict.fromkeys(('main.rkt', 'fonts.rkt', 'run-tests.rkt', *dynamic,
+    return [source_path(root, p) for p in dict.fromkeys(('main.rkt', 'fonts.rkt', 'run-tests.rkt', *dynamic,
         'tests/font-query-gpu-test.rkt', 'tools/font-query-doctor.rkt', 'examples/font-queries.rkt'))]
 
 
@@ -66,8 +67,8 @@ def main(argv=None):
         if args.directory.exists(): parser.error('evidence directory already exists')
         args.directory.mkdir(parents=True); out = args.directory.resolve()
     else:
-        (ROOT/'output').mkdir(exist_ok=True)
-        out = Path(tempfile.mkdtemp(prefix='font-queries-0.68b-', dir=ROOT/'output'))
+        (ROOT / 'output').mkdir(exist_ok=True)
+        out = Path(tempfile.mkdtemp(prefix='font-queries-0.68b-', dir=ROOT / 'output'))
     (out/'logs').mkdir()
     token = uuid.uuid4().hex
     commands = []
@@ -90,12 +91,12 @@ def main(argv=None):
                 report.update(failed_command=command, failed_log=str(log)); raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable, ROOT/'tools/api-inventory.py', '--check'])
-        run([sys.executable, ROOT/'tools/test-font-queries.py'])
-        run([sys.executable, ROOT/'tools/test-font-query-documents.py'])
+        run([sys.executable, ROOT / 'tools/api-inventory.py', '--check'])
+        run([sys.executable, ROOT / 'tools/test-font-queries.py'])
+        run([sys.executable, ROOT / 'tools/test-font-query-documents.py'])
         run([racket, '-l', 'raco', '--', 'make', *compile_targets(ROOT, args.regressions)])
-        regressions.run(lambda: run([racket, ROOT/'run-tests.rkt']))
-        run([racket, ROOT/'tools/font-query-doctor.rkt', '--directory', out/'documents', '--token', token])
+        regressions.run(lambda: run([racket, source_path(ROOT, 'run-tests.rkt')]))
+        run([racket, ROOT / 'tools/font-query-doctor.rkt', '--directory', out/'documents', '--token', token])
         report['rendering_executed'] = True
         render = None
         if args.require_renderers:
@@ -113,7 +114,7 @@ def main(argv=None):
         (out/'inspection.json').write_text(json.dumps(inspection, indent=2)+'\n', encoding='utf-8')
         report.update(documents_passed=True, independent_renderers_passed=args.require_renderers)
         if args.require_gpu:
-            run([racket, ROOT/'tests/font-query-gpu-test.rkt', '--backend', backend, '--adapter', args.adapter,
+            run([racket, source_path(ROOT, 'tests/font-query-gpu-test.rkt'), '--backend', backend, '--adapter', args.adapter,
                  '--report', out/'gpu.json', '--token', token])
             fv.gpu_receipt(out/'gpu.json', token, backend, args.adapter)
             report.update(gpu_executed=True, gpu_passed=True, backend=backend, adapter=args.adapter)

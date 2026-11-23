@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Required 0.51 installed-package interop checks, additional to the 0.48/0.50 gates."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import os
 from pathlib import Path
 import subprocess

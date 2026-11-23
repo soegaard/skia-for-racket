@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic parser/viewer-oracle regressions. These files are NOT Skia output."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import io
 import json
@@ -96,9 +97,9 @@ class Documents(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
     def pdf(self,**kw):
-        p=self.root/'x.pdf';pdf_fixture(p,**kw);return g.inspect_pdf(p,'boolean')
+        p=self.root / 'x.pdf';pdf_fixture(p,**kw);return g.inspect_pdf(p,'boolean')
     def svg(self,**kw):
-        p=self.root/'x.svg';svg_fixture(p,**kw);return g.inspect_svg(p,'boolean')
+        p=self.root / 'x.svg';svg_fixture(p,**kw);return g.inspect_svg(p,'boolean')
     def test_vector_pdf(self):self.assertEqual(self.pdf()['painted_paths'],3)
     def test_nested_vector_pdf_form(self):self.assertEqual(self.pdf(form=True)['painted_paths'],3)
     def test_unused_pdf_image_resource_rejected(self):
@@ -131,22 +132,22 @@ class Documents(unittest.TestCase):
     def test_full_synthetic_fourteen_document_matrix(self):
         rows=[]
         for name in g.SCENES:
-            (self.root/f'{name}.rgba').write_bytes(synthetic_pixels(name).tobytes())
+            (source_path(self.root, f'{name}.rgba')).write_bytes(synthetic_pixels(name).tobytes())
             for fmt in ('pdf','svg'):
-                (pdf_fixture if fmt=='pdf' else svg_fixture)(self.root/f'{name}.{fmt}',name)
+                (pdf_fixture if fmt=='pdf' else svg_fixture)(source_path(self.root, f'{name}.{fmt}'),name)
                 rows.append(good_receipt(name,fmt))
-        (self.root/'documents.json').write_text(json.dumps(dict(schema=1,stage='0.67',run_token='synthetic',status='passed',documents=rows)))
+        (self.root / 'documents.json').write_text(json.dumps(dict(schema=1,stage='0.67',run_token='synthetic',status='passed',documents=rows)))
         report=g.inspect_documents(self.root,'synthetic')
         self.assertEqual(len(report['documents']),14)
         self.assertFalse(report['independent_rendering_executed'])
         # A supplied renderer here is a synthetic image factory, not an external
         # renderer. This tests plumbing and the oracle, never a Skia claim.
         def render(path,fmt):
-            out=self.root/(path.name+'.png');synthetic_page(path.stem).save(out);return out
+            out=source_path(self.root, path.name+'.png');synthetic_page(path.stem).save(out);return out
         checked=g.inspect_documents(self.root,'synthetic',render=render)
         self.assertTrue(checked['independent_rendering_executed'])
         rows[0]['audit']['vector_only']=False
-        (self.root/'documents.json').write_text(json.dumps(dict(schema=1,stage='0.67',run_token='synthetic',status='passed',documents=rows)))
+        (self.root / 'documents.json').write_text(json.dumps(dict(schema=1,stage='0.67',run_token='synthetic',status='passed',documents=rows)))
         with self.assertRaises(ValueError):g.inspect_documents(self.root,'synthetic')
 
 

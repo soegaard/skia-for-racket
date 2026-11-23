@@ -14,8 +14,8 @@
 ;; Actual native documents. Receipt completion is written only after ALL
 ;; authoring, byte generation, file writes and resource cleanup succeed.
 (require racket/class racket/cmdline racket/file racket/list json
-         (prefix-in sk: "../main.rkt") "../dc-output.rkt"
-         "../tests/dc-output-fixtures.rkt")
+         (prefix-in sk: "../skia-lib/main.rkt") "../skia-lib/dc-output.rkt"
+         "../skia-lib/tests/dc-output-fixtures.rkt")
 (provide generate-dc-output-evidence)
 
 ;;;

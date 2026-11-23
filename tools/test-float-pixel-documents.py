@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic document files test the inspector. They are NOT Skia rendering evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import base64
 import io
 import json
@@ -70,11 +71,11 @@ def synthetic_matrix(directory,token='token'):
     root=Path(directory);root.mkdir(parents=True,exist_ok=True);rows=[]
     for fmt,scene,kind in v.SPECS:
         row=synthetic_row(fmt,scene,kind);rows.append(row);prefix=fmt+'-'+scene
-        (synthetic_pdf if kind=='pdf' else synthetic_svg)(root/row['file'],prefix,scene)
-        (root/row['rgba']).write_bytes(rgba(scene));(root/row['raw']).write_bytes(raw(fmt,scene))
+        (synthetic_pdf if kind=='pdf' else synthetic_svg)(source_path(root, row['file']),prefix,scene)
+        (source_path(root, row['rgba'])).write_bytes(rgba(scene));(source_path(root, row['raw'])).write_bytes(raw(fmt,scene))
     value=dict(schema=1,stage='0.71',status='passed',run_token=token,rendering_executed=True,
                gpu_executed=False,hdr_verified=False,byte_order='little-endian',documents=rows)
-    (root/'documents.json').write_text(json.dumps(value),encoding='utf-8');return value
+    (root / 'documents.json').write_text(json.dumps(value),encoding='utf-8');return value
 
 class PDF(unittest.TestCase):
     def test_positive_float_document_structures(self):

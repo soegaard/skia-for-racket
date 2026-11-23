@@ -11,8 +11,8 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require ffi/unsafe "../main.rkt" "../private/color-filter-types.rkt"
-         "../tests/color-filter-fixtures.rkt")
+(require ffi/unsafe "../skia-lib/main.rkt" "../skia-lib/private/color-filter-types.rkt"
+         "../skia-lib/tests/color-filter-fixtures.rkt")
 (provide color-filter-doctor!)
 
 ;;;

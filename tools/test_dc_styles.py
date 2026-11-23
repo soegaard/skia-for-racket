@@ -1,5 +1,6 @@
 """Synthetic style-inspector tests: no claim of Racket/Skia rendering."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 from pathlib import Path
 import struct
@@ -42,10 +43,10 @@ class StyleInspector(unittest.TestCase):
         self.root=Path(self.tmp.name);self.raw=write_style_fixture(self.root)
     def reject(self, **changes):
         raw=copy.deepcopy(self.raw);raw.update(changes)
-        d.write_json(self.root/'dc-styles.json',raw)
+        d.write_json(self.root / 'dc-styles.json',raw)
         with self.assertRaises(ValueError): s.inspect_styles(self.root,IDENTITY)
     def alter(self, mode, x,y,rgba):
-        path=self.root/s.filename(mode);data=bytearray(d.png_rgba(path,s.SIZE))
+        path=source_path(self.root, s.filename(mode));data=bytearray(d.png_rgba(path,s.SIZE))
         data[4*(y*64+x):4*(y*64+x)+4]=bytes(rgba);path.write_bytes(png(data))
     def test_style_valid(self):
         r=s.inspect_styles(self.root,IDENTITY)
@@ -73,23 +74,23 @@ class StyleInspector(unittest.TestCase):
     def test_style_foreign_version(self): self.reject(racket_version='8.18')
     def test_style_foreign_architecture(self): self.reject(architecture='aarch64')
     def test_style_missing_report(self):
-        (self.root/'dc-styles.json').unlink()
+        (self.root / 'dc-styles.json').unlink()
         with self.assertRaises(ValueError): s.inspect_styles(self.root,IDENTITY)
     def test_style_missing_capture(self):
         for mode in s.MODES:
-            p=self.root/s.filename(mode);old=p.read_bytes();p.unlink()
+            p=source_path(self.root, s.filename(mode));old=p.read_bytes();p.unlink()
             try:
                 with self.assertRaises(ValueError): s.inspect_styles(self.root,IDENTITY)
             finally: p.write_bytes(old)
     def test_style_wrong_capture_order(self): self.reject(captures=list(reversed(self.raw['captures'])))
     def test_style_unsafe_name(self): self.reject(captures=['../x']+self.raw['captures'][1:])
     def test_style_symlink_capture(self):
-        p=self.root/s.filename('datum');p.unlink()
-        try: p.symlink_to(self.root/s.filename('direct'))
+        p=source_path(self.root, s.filename('datum'));p.unlink()
+        try: p.symlink_to(source_path(self.root, s.filename('direct')))
         except (OSError,NotImplementedError): self.skipTest('host does not permit test symlinks')
         with self.assertRaises(ValueError): s.inspect_styles(self.root,IDENTITY)
     def test_style_symlink_report(self):
-        p=self.root/'dc-styles.json';target=self.root/'copied.json';p.rename(target)
+        p=self.root / 'dc-styles.json';target=self.root / 'copied.json';p.rename(target)
         try: p.symlink_to(target)
         except (OSError,NotImplementedError): self.skipTest('host does not permit test symlinks')
         with self.assertRaises(ValueError): s.inspect_styles(self.root,IDENTITY)
@@ -130,10 +131,10 @@ class StyleInspector(unittest.TestCase):
         for mode in s.MODES:self.alter(mode,x,y,(want[0]-4,*want[1:]))
         with self.assertRaises(ValueError):s.inspect_styles(self.root,IDENTITY)
     def test_style_duplicate_json_key(self):
-        p=self.root/'dc-styles.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
+        p=self.root / 'dc-styles.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
         with self.assertRaises(ValueError):s.inspect_styles(self.root,IDENTITY)
     def test_style_nonfinite_json(self):
-        p=self.root/'dc-styles.json';p.write_text(p.read_text().replace('"math_cases": 45','"math_cases": NaN'))
+        p=self.root / 'dc-styles.json';p.write_text(p.read_text().replace('"math_cases": 45','"math_cases": NaN'))
         with self.assertRaises(ValueError):s.inspect_styles(self.root,IDENTITY)
 
 if __name__=='__main__': unittest.main(verbosity=2)

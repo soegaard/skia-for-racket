@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """DC oracle/PNG/runner tests. Synthetic fixtures never count as native execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import importlib.util
 import io
@@ -222,7 +223,7 @@ class Orchestration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t)/'source'; root.mkdir(); directory=Path(t)/'evidence'; directory.mkdir()
             for name in d.SOURCE_PATHS:
-                p=root/name; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('; synthetic source\n')
+                p=source_path(root, name); p.parent.mkdir(parents=True,exist_ok=True); p.write_text('; synthetic source\n')
             calls=[]
             class Fake:
                 def run(self, argv, *, cwd):
@@ -236,7 +237,7 @@ class Orchestration(unittest.TestCase):
                             child=d.read_json(directory/'dc-consumers.json')
                             child['native_failures']=1
                             d.write_json(directory/'dc-consumers.json',child)
-                        if mutate: (root/'dc.rkt').write_text('; changed by test')
+                        if mutate: (source_path(root, 'dc.rkt')).write_text('; changed by test')
                     return ''
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 result=v.execute(root,directory,'/selected/racket',runner=Fake())
@@ -275,33 +276,33 @@ class Orchestration(unittest.TestCase):
             root=Path(t); runner=v.Runner(root)
             with redirect_stdout(io.StringIO()), self.assertRaises(RuntimeError):
                 runner.run([sys.executable,'-c','print("before failure");raise SystemExit(7)'],cwd=root)
-            self.assertIn('before failure',(root/'logs/001.log').read_text())
-            self.assertEqual(d.read_json(root/'commands.json')[0]['returncode'],7)
+            self.assertIn('before failure',(root / 'logs/001.log').read_text())
+            self.assertEqual(d.read_json(root / 'commands.json')[0]['returncode'],7)
     def test_command_timeout_retains_log(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t); runner=v.Runner(root,timeout=0.1)
             with redirect_stdout(io.StringIO()), self.assertRaises(RuntimeError):
                 runner.run([sys.executable,'-c','import time;print("started",flush=True);time.sleep(5)'],cwd=root)
-            self.assertTrue(d.read_json(root/'commands.json')[0]['timed_out'])
+            self.assertTrue(d.read_json(root / 'commands.json')[0]['timed_out'])
 
 
 class Source(unittest.TestCase):
     def test_counts_match_racket_sources(self):
         for kind,count in [('pure',d.PURE_CASES),('native',d.NATIVE_CASES)]:
-            text=(ROOT/f'tests/dc-{kind}-test.rkt').read_text()
+            text=(source_path(ROOT, f'tests/dc-{kind}-test.rkt')).read_text()
             self.assertEqual(len(re.findall(r'\(test-case\s',text)),count)
             self.assertIn(f'(define dc-{kind}-test-count {count})',text)
     def test_public_opt_in(self):
-        text=(ROOT/'dc.rkt').read_text(); self.assertIn('skia-dc%',text); self.assertIn('exn:fail:skia-dc:unsupported',text)
+        text=(source_path(ROOT, 'dc.rkt')).read_text(); self.assertIn('skia-dc%',text); self.assertIn('exn:fail:skia-dc:unsupported',text)
     def test_no_private_draw_dependency(self):
         for name in ('dc.rkt','private/dc-class.rkt','private/dc-render.rkt','private/dc-geometry.rkt'):
-            text=(ROOT/name).read_text()
+            text=(source_path(ROOT, name)).read_text()
             self.assertNotIn('racket/draw/private/',text); self.assertNotIn('unsafe/cairo',text)
             self.assertNotIn('racket/gui/base',text)
     def test_only_skia_renderer_in_public_module(self):
-        text=(ROOT/'dc.rkt').read_text(); self.assertIn('(make-skia-dc-class skia-dc-renderer)',text)
+        text=(source_path(ROOT, 'dc.rkt')).read_text(); self.assertIn('(make-skia-dc-class skia-dc-renderer)',text)
     def test_alpha_default_override(self):
-        text=(ROOT/'private/dc-class.rkt').read_text()
+        text=(source_path(ROOT, 'private/dc-class.rkt')).read_text()
         marker='(class* implementation% (rd:dc<%>)'
         self.assertIn(marker,text)
         base,final=text.split(marker,1)
@@ -313,18 +314,18 @@ class Source(unittest.TestCase):
         self.assertIn('(define/override (start-alpha a)',final)
         self.assertIn('(define/override (end-alpha)',final)
     def test_interface_probe_uses_public_membership(self):
-        text=(ROOT/'tests/dc-pure-test.rkt').read_text()
+        text=(source_path(ROOT, 'tests/dc-pure-test.rkt')).read_text()
         self.assertIn('(check-true (is-a? dc rd:dc<%>))',text)
         self.assertNotIn('(object-interface dc)',text)
     def test_foundation_smoke_keeps_public_boundary_and_replay_is_separate(self):
-        native=(ROOT/'tests/dc-native-test.rkt').read_text()
-        docs=(ROOT/'docs/SKIA-DC.md').read_text()
+        native=(source_path(ROOT, 'tests/dc-native-test.rkt')).read_text()
+        docs=(ROOT / 'docs/SKIA-DC.md').read_text()
         self.assertNotIn('rd:record-dc%',native)
         self.assertIn('public drawing procedure can replay into a Skia dc',native)
         for term in ('record-dc%', 'do-set-pen!', 'do-set-brush!', '0.55'):
             self.assertIn(term,docs)
     def test_direct_public_path_conversion(self):
-        text=(ROOT/'private/dc-geometry.rkt').read_text(); self.assertIn('(send path get-datum)',text)
+        text=(source_path(ROOT, 'private/dc-geometry.rkt')).read_text(); self.assertIn('(send path get-datum)',text)
     def test_native_oracle_not_pairwise_only(self):
         text=(HERE/'dc_validation.py').read_text(); self.assertIn('pixels == oracle_rgba()',text)
     def test_doctor_encoding_after_close(self):
@@ -338,7 +339,7 @@ class Source(unittest.TestCase):
 class Integration(unittest.TestCase):
     """These checks intentionally require a COMPLETE applied checkout."""
     def test_racket_suites_in_main_runner(self):
-        text=(ROOT/'run-tests.rkt').read_text()
+        text=(source_path(ROOT, 'run-tests.rkt')).read_text()
         self.assertIn('"tests/dc-pure-test.rkt"',text); self.assertIn('(run-tests dc-pure-tests)',text)
         self.assertIn('"tests/dc-native-test.rkt"',text)
         self.assertIn("(dynamic-require dc-native-tests-file 'dc-native-tests)",text)
@@ -350,10 +351,10 @@ class Integration(unittest.TestCase):
         self.assertIn("(dynamic-require dc-replay-native-tests-file 'dc-replay-native-tests)",text)
         self.assertIn('(run-tests dc-style-pure-tests)',text)
         self.assertIn("(dynamic-require dc-style-native-tests-file 'dc-style-native-tests)",text)
-    def test_native_free_import_smoke(self): self.assertIn('skia/dc',(HERE/'ci-import-smoke.rkt').read_text())
+    def test_native_free_import_smoke(self): self.assertIn('skia/dc',(source_path(HERE.parent, 'tools/ci-import-smoke.rkt')).read_text())
     def test_required_installed_package_pixel_gate(self):
         text=(HERE/'ci.py').read_text()
-        self.assertIn("installed / 'tools/validate-dc.py'",text)
+        self.assertIn("workspace / 'tools/validate-dc.py'",text)
         self.assertIn("report['checks']['dc_foundation'] = True",text)
         self.assertIn("'--output', runner.output / 'dc-foundation'",text)
         self.assertNotIn("'--manifest-only'",text)
@@ -361,7 +362,7 @@ class Integration(unittest.TestCase):
         self.assertIn("'test-dc.py'",(HERE/'ci.py').read_text())
         self.assertIn("'tools/test-dc.py'",(HERE/'validate-gpu.py').read_text())
     def test_version_assertions_all_updated(self):
-        metadata=(ROOT/'info.rkt').read_text()
+        metadata=(source_path(ROOT, 'info.rkt')).read_text()
         self.assertIn('(define version "0.79")',metadata)
         self.assertIn('("base" #:version "8.18")',metadata)
         self.assertIn('("draw-lib" #:version "1.22")',metadata)
@@ -373,14 +374,14 @@ class Integration(unittest.TestCase):
             for obsolete in ('0.52','0.53','0.54','0.55'):
                 self.assertNotIn('(define version "'+obsolete+'")',text)
     def test_pin_and_gpu_workflow_preserved(self):
-        self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
-        workflow=(ROOT/'.github/workflows/ci.yml').read_text()
+        self.assertEqual((source_path(ROOT, 'private/native-default-version.txt')).read_text().strip(),'3.119.1')
+        workflow=(ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]',workflow)
         self.assertNotIn('continue-on-error:',workflow)
     def test_drawing_module_not_reexported_by_core(self):
-        self.assertNotIn('"dc.rkt"',(ROOT/'main.rkt').read_text())
+        self.assertNotIn('"dc.rkt"',(source_path(ROOT, 'main.rkt')).read_text())
     def test_docs_record_limits(self):
-        text=(ROOT/'docs/SKIA-DC.md').read_text()
+        text=(ROOT / 'docs/SKIA-DC.md').read_text()
         for term in ('0.55','0.56','immutable','aligned','snapshot','close'):
             self.assertIn(term,text)
 
@@ -393,21 +394,21 @@ class Compatibility(unittest.TestCase):
             self.assertFalse(v.supported_version(version))
     def test_compatibility_case_counts(self):
         for kind,count in [('pure',d.COMPAT_PURE_CASES),('native',d.COMPAT_NATIVE_CASES)]:
-            source=(ROOT/f'tests/dc-compat-{kind}-test.rkt').read_text()
+            source=(source_path(ROOT, f'tests/dc-compat-{kind}-test.rkt')).read_text()
             self.assertEqual(len(re.findall(r'\(test-case\s',source)),count)
             self.assertIn(f'(define dc-compat-{kind}-test-count {count})',source)
     def test_all_compatibility_sources_fingerprinted(self):
         for file in ('dc-region-adapter.rkt','dc-text-spec.rkt','dc-text.rkt','dc-bitmap.rkt','dc-native-util.rkt'):
             self.assertIn('private/'+file,d.SOURCE_PATHS)
     def test_private_region_dependency_is_isolated(self):
-        sources=list((ROOT/'private').glob('dc-*.rkt'))
+        sources=list((source_path(ROOT, 'private')).glob('dc-*.rkt'))
         private=[p.name for p in sources if 'racket/draw/private/' in p.read_text()]
         self.assertEqual(sorted(private),['dc-region-adapter.rkt','dc-replay-adapter.rkt'])
-        adapter=(ROOT/'private/dc-region-adapter.rkt').read_text()
+        adapter=(source_path(ROOT, 'private/dc-region-adapter.rkt')).read_text()
         self.assertIn('[get-clipping-matrix private-get-clipping-matrix]',adapter)
         self.assertNotIn('unsafe/cairo',adapter)
     def test_copy_uses_immutable_snapshot_and_source_blending(self):
-        source=(ROOT/'private/dc-render.rkt').read_text()
+        source=(source_path(ROOT, 'private/dc-render.rkt')).read_text()
         self.assertIn('(define (copy! snapshot surface',source)
         self.assertIn('([image (snapshot surface)]',source)
         self.assertIn('#:internal-snapshot [internal-snapshot snapshot]',source)
@@ -416,7 +417,7 @@ class Compatibility(unittest.TestCase):
         self.assertIn("#:blend-mode 'src",source)
         self.assertIn("#:tile-x 'decal #:tile-y 'decal",source)
     def test_text_is_skia_harfbuzz_not_reference_dc(self):
-        source=(ROOT/'private/dc-text.rkt').read_text()
+        source=(source_path(ROOT, 'private/dc-text.rkt')).read_text()
         for token in ('sk:layout-mixed-text','sk:draw-mixed-text-layout','sk:font-get-metrics'):
             self.assertIn(token,source)
         for token in ('bitmap-dc%','unsafe/pango','pango_cairo'):
@@ -437,22 +438,22 @@ class Compatibility(unittest.TestCase):
             root=Path(t);evidence(root)
             for key in ('compat_pure_cases','compat_native_cases','compat_pure_failures','compat_native_failures'):
                 for bad in (None,False,-1):
-                    value=report(root);value[key]=bad;d.write_json(root/'dc.diagnostic.json',value)
+                    value=report(root);value[key]=bad;d.write_json(root / 'dc.diagnostic.json',value)
                     with self.assertRaises(ValueError): d.inspect_directory(root)
     def test_compatibility_oracle_corruption_fails(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);evidence(root)
             b=bytearray(d.compatibility_oracle_rgba());b[4*(33*64+4)]=1
-            (root/'dc-compat-oracle.png').write_bytes(png(64,48,b))
+            (root / 'dc-compat-oracle.png').write_bytes(png(64,48,b))
             with self.assertRaisesRegex(ValueError,'independent oracle'): d.inspect_directory(root)
     def test_text_sample_blank_fails(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);evidence(root)
-            (root/'dc-text.skia.png').write_bytes(png(320,104,bytes((255,255,255,255))*320*104))
+            (root / 'dc-text.skia.png').write_bytes(png(320,104,bytes((255,255,255,255))*320*104))
             with self.assertRaisesRegex(ValueError,'red/blue ink'): d.inspect_directory(root)
     def test_missing_compatibility_capture_fails(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);evidence(root);(root/'dc-compat-oracle.png').unlink()
+            root=Path(t);evidence(root);(root / 'dc-compat-oracle.png').unlink()
             with self.assertRaises(ValueError):d.inspect_directory(root)
     def test_runner_compiles_new_tests_and_example(self):
         code,calls,_,_=Orchestration().simulate()
@@ -488,7 +489,7 @@ class StyleGate(unittest.TestCase):
             self.assertIn(name,d.SOURCE_PATHS)
     def test_style_suites_and_counts(self):
         for kind,n in [('pure',24),('native',40)]:
-            text=(ROOT/f'tests/dc-style-{kind}-test.rkt').read_text()
+            text=(source_path(ROOT, f'tests/dc-style-{kind}-test.rkt')).read_text()
             self.assertIn(f'(define dc-style-{kind}-test-count {n})',text)
             self.assertEqual(len(re.findall(r'\(test-case\s',text)),n)
         text=(HERE/'dc-style-doctor.rkt').read_text()
@@ -496,12 +497,12 @@ class StyleGate(unittest.TestCase):
         self.assertIn('(run-tests dc-style-native-tests)',text)
         self.assertIn('(dc-style-doctor! directory)',(HERE/'dc-doctor.rkt').read_text())
     def test_style_renderer_is_skia_not_cairo(self):
-        text=(ROOT/'private/dc-style-render.rkt').read_text()
+        text=(source_path(ROOT, 'private/dc-style-render.rkt')).read_text()
         for api in ('sk:make-linear-gradient-shader','sk:make-two-point-conical-gradient-shader',
                     'sk:make-image-shader','sk:shader-with-local-matrix','sk:make-dash-path-effect'):
             self.assertIn(api,text)
         self.assertNotIn('unsafe/cairo',text)
-        query=(ROOT/'private/dc-region-query.rkt').read_text()
+        query=(source_path(ROOT, 'private/dc-region-query.rkt')).read_text()
         self.assertNotIn('cairo_paint',query);self.assertNotIn('surface->rgba',query)
         self.assertIn('call-with-continuation-barrier',query)
     def test_style_runner_compiles_new_modules(self):
@@ -587,18 +588,18 @@ class ReplayAlpha(unittest.TestCase):
             self.assertIn(path,d.SOURCE_PATHS)
     def test_suite_counts_are_real_top_level_cases(self):
         for name in ('pure','native'):
-            text=(ROOT/'tests'/f'dc-replay-{name}-test.rkt').read_text()
+            text=(source_path(ROOT, 'tests')/f'dc-replay-{name}-test.rkt').read_text()
             self.assertEqual(len(re.findall(r'\(test-case\s',text)),28)
             self.assertIn(f'(define dc-replay-{name}-test-count 28)',text)
     def test_no_recording_format_decoder_or_cairo_draw_fallback(self):
-        text=(ROOT/'private/dc-replay-adapter.rkt').read_text()
+        text=(source_path(ROOT, 'private/dc-replay-adapter.rkt')).read_text()
         self.assertIn('[do-set-pen! replay-set-pen!]',text)
         self.assertIn('[do-set-brush! replay-set-brush!]',text)
         self.assertIn('adjust-lock',text)
         self.assertNotIn('cairo_create',text)
         self.assertNotIn('record-unconvert',text)
     def test_documentation_keeps_exception_and_scope_limits(self):
-        text=(ROOT/'docs/SKIA-DC.md').read_text()
+        text=(ROOT / 'docs/SKIA-DC.md').read_text()
         for phrase in ('normal completion','0.56','0.57','0.58','unfinished',
                        'same object','2 per 8-bit channel','root backing only'):
             self.assertIn(phrase,text.replace('\n',' ').replace('**',''))

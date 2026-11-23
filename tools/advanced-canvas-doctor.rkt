@@ -12,8 +12,8 @@
 ;;; Imports and Exports
 ;;;
 
-(require racket/cmdline racket/file racket/path json "../main.rkt"
-         "../tests/advanced-canvas-fixtures.rkt")
+(require racket/cmdline racket/file racket/path json "../skia-lib/main.rkt"
+         "../skia-lib/tests/advanced-canvas-fixtures.rkt")
 
 ;;;
 ;;; Advanced Canvas Evidence Run

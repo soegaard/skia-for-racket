@@ -6,6 +6,7 @@
 All Racket commands use one resolved interpreter. Selected gates cannot skip.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
@@ -54,7 +55,7 @@ def read_report(path: Path) -> dict:
 
 
 def fingerprint(root: Path) -> dict:
-    return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in SOURCES}
+    return {name: hashlib.sha256((source_path(root, name)).read_bytes()).hexdigest() for name in SOURCES}
 
 
 def validate_suite(text: str, name: str) -> None:
@@ -114,8 +115,8 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         directory = args.directory.resolve()
         directory.mkdir(parents=True, exist_ok=False)
     else:
-        (root / "output").mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix="dc-closure-0.64-", dir=root / "output"))
+        (root / 'output').mkdir(exist_ok=True)
+        directory = Path(tempfile.mkdtemp(prefix="dc-closure-0.64-", dir=root / 'output'))
     runner = base.Runner(directory, args.timeout)
     result = dict(schema=1, stage="0.64", status="failed", compiled=False, completed_suites=[],
                   document_baseline_passed=False, gui_baseline_passed=False,
@@ -129,20 +130,20 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         racket = str(Path(executable).resolve())
         result["racket_executable"] = racket
         before = fingerprint(root)
-        identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root), object_pairs_hook=unique))
+        identity = base.validate_identity(json.loads(runner.run([racket, root / 'tools/ci-identity.rkt'], root), object_pairs_hook=unique))
         result["identity"] = identity
         native, _ = base.select_backends(args.backend, identity)
         result["native_backend"] = native if args.require_gui else None
         require(args.adapter is None or native == "direct3d", "--adapter requires Direct3D")
-        runner.run([racket, "-l", "raco", "--", "make", *(root / name for name in MODULES)], root)
+        runner.run([racket, "-l", "raco", "--", "make", *(source_path(root, name) for name in MODULES)], root)
         result["compiled"] = True
         for name, n in COUNTS.items():
-            validate_suite(runner.run([racket, root / f"tests/{name}-test.rkt"], root), name)
+            validate_suite(runner.run([racket, source_path(root, f"tests/{name}-test.rkt")], root), name)
             result["completed_suites"].append(dict(name=name, cases=n))
         # Earlier validators remain responsible for their complete matrices,
         # resource checks, and independent oracles; they are not reimplemented.
         runner.timeout = args.timeout * 32
-        command = [sys.executable, root / "tools/validate-dc-output.py", "--racket", racket,
+        command = [sys.executable, root / 'tools/validate-dc-output.py', "--racket", racket,
                    "--directory", directory / "documents", "--timeout", args.timeout,
                    "--regressions", args.regressions]
         if args.require_renderers:
@@ -154,7 +155,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         result["document_baseline_passed"] = True
         result["independent_pixels_verified"] = args.require_renderers
         if args.require_gui:
-            command = [sys.executable, root / "tools/validate-gpu-frame-reuse.py", "--racket", racket,
+            command = [sys.executable, root / 'tools/validate-gpu-frame-reuse.py', "--racket", racket,
                        "--backend", native, "--require-gui", "--directory", directory / "gui", "--timeout", args.timeout]
             if args.adapter:
                 command += ["--adapter", args.adapter]

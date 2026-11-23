@@ -5,6 +5,7 @@ Temporary reports below are deliberately synthetic; they never count as GPU
 execution. Integration tests require the full source tree, without skip logic.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import hashlib
 import importlib.util
@@ -45,7 +46,7 @@ def present_event():
 
 def source_fixture(root):
     for name in parity.SOURCE_PATHS:
-        path=root/name; path.parent.mkdir(parents=True,exist_ok=True); path.write_text('; synthetic workload ' + name)
+        path=source_path(root, name); path.parent.mkdir(parents=True,exist_ok=True); path.write_text('; synthetic workload ' + name)
 
 
 def reports(root, directory, name, backend='direct3d', adapter='warp', index=0):
@@ -68,7 +69,7 @@ def reports(root, directory, name, backend='direct3d', adapter='warp', index=0):
                          embedded_svg_pixels_verified=True,pdf_structure_verified=True,
                          vector_surroundings_and_links_verified=True,pdf_rendered_pixels_verified=False)
     if name in ('performance','redraw'):
-        sources=[dict(path=p,sha1=hashlib.sha1((root/p).read_bytes()).hexdigest()) for p in parity.SOURCE_PATHS]
+        sources=[dict(path=p,sha1=hashlib.sha1((source_path(root, p)).read_bytes()).hexdigest()) for p in parity.SOURCE_PATHS]
         raw.update(config=parity.CONFIG.copy(),performance_measured=True,speedup_claimed=False,
                    display_latency_measured=False,workload_sources=sources)
         inspected.update(config=parity.CONFIG.copy(),resource_envelopes_verified=True)
@@ -189,7 +190,7 @@ class ReceiptTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);source_fixture(self.root)
-        self.directory=self.root/'unique-run';self.directory.mkdir()
+        self.directory=self.root / 'unique-run';self.directory.mkdir()
     def validate(self,name,change=None):
         raw,checked,identity=reports(self.root,self.directory,name)
         if change:change(raw,checked)
@@ -225,7 +226,7 @@ class ReceiptTests(unittest.TestCase):
 class RunnerTests(unittest.TestCase):
     def simulate(self,fail=None,change=None,scope='offscreen',identity_change=None):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);source_fixture(root);directory=root/'unique-run';directory.mkdir();calls=[]
+            root=Path(t);source_fixture(root);directory=root / 'unique-run';directory.mkdir();calls=[]
             current={}
             def run(argv):
                 a=[str(x) for x in argv];calls.append(a)
@@ -279,7 +280,7 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.simulate(change=lambda n,r,i,root:r.update(validation_run='other'))
     def test_reuse_rejected_without_deleting_evidence(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);source_fixture(root);e=root/'e';e.mkdir();(e/'old.txt').write_text('old')
+            root=Path(t);source_fixture(root);e=root / 'e';e.mkdir();(e/'old.txt').write_text('old')
             with self.assertRaises(ValueError):parity.execute(root,'racket',e,lambda _:self.fail('must not run'),
                                                                backend='direct3d',host='owned')
             self.assertEqual((e/'old.txt').read_text(),'old')
@@ -293,7 +294,7 @@ class RunnerTests(unittest.TestCase):
 class HookTests(unittest.TestCase):
     def test_installed_root_environment_and_pass_flag(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);installed=root/'installed';installed.mkdir();away=root/'away';away.mkdir()
+            root=Path(t);installed=root / 'installed';installed.mkdir();away=root / 'away';away.mkdir()
             calls=[];report=dict(racket_executable='selected-racket',checks={})
             runner=types.SimpleNamespace(run=lambda a,**kw:calls.append((a,kw)))
             env={'PLTADDONDIR':'isolated','GPU_MODE':'optional'}
@@ -345,25 +346,25 @@ class IntegrationTests(unittest.TestCase):
         for name,count in [('gpu-surface-native-test.rkt',33),('gpu-image-native-test.rkt',42),
                            ('gpu-output-native-test.rkt',42),('gpu-cache-native-test.rkt',20),
                            ('gpu-presenter-native-test.rkt',29)]:
-            self.assertEqual(len(re.findall(r'\(test-case\s', (ROOT/'tests'/name).read_text())),count)
+            self.assertEqual(len(re.findall(r'\(test-case\s', (source_path(ROOT, 'tests')/name).read_text())),count)
     def test_pure_tests_wired(self):
-        source=(ROOT/'run-tests.rkt').read_text()
+        source=(source_path(ROOT, 'run-tests.rkt')).read_text()
         self.assertIn('"tests/gpu-backends-pure-test.rkt"',source)
         self.assertIn('(run-tests gpu-backends-pure-tests)',source)
     def test_production_identity_after_native_pointer_check(self):
-        s=(ROOT/'private/gpu-surfaces.rkt').read_text()
+        s=(source_path(ROOT, 'private/gpu-surfaces.rkt')).read_text()
         start=s.index('(define (gpu-surface-info s)')
         part=s[start:s.index('(define (ready-for-read!',start)]
         self.assertLess(part.index('(pointer=?'),part.index('(gpu-surface-identity/validated'))
     def test_output_protocol_uses_registry(self):
-        s=(ROOT/'private/output-executor.rkt').read_text()
+        s=(source_path(ROOT, 'private/output-executor.rkt')).read_text()
         self.assertIn('(gpu-backend? (output-raster-plan-backend plan))',s)
         self.assertNotIn("'(raster opengl metal)",s)
     def test_all_shared_doctors_have_adapter_options(self):
         for name in ('gpu-offscreen-doctor.rkt','gpu-image-doctor.rkt','gpu-output-doctor.rkt','gpu-performance-options.rkt'):
             s=(HERE/name).read_text();self.assertIn('"--adapter"',s);self.assertIn('"--adapter-index"',s)
     def test_required_matrix_unchanged(self):
-        s=(ROOT/'.github/workflows/ci.yml').read_text()
+        s=(ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]',s)
         self.assertNotIn('continue-on-error',s)
     def test_source_ci_runs_this_suite(self):self.assertIn("'test-gpu-parity.py'",(HERE/'ci.py').read_text())
@@ -374,10 +375,10 @@ class IntegrationTests(unittest.TestCase):
             self.assertIn('extra_checks='+hook,s)
             self.assertIn("report['checks'].get('required_backend_parity_"+scope+"') is True",s)
     def test_version_and_pin(self):
-        self.assertIn('(define version "0.79")',(ROOT/'info.rkt').read_text())
-        self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
+        self.assertIn('(define version "0.79")',(source_path(ROOT, 'info.rkt')).read_text())
+        self.assertEqual((source_path(ROOT, 'private/native-default-version.txt')).read_text().strip(),'3.119.1')
     def test_no_native_probe_in_declaration(self):
-        s=(ROOT/'private/gpu-backends.rkt').read_text()
+        s=(source_path(ROOT, 'private/gpu-backends.rkt')).read_text()
         self.assertNotIn('ffi-lib',s);self.assertNotIn('dynamic-require',s)
         self.assertNotIn('runtime_availability',s)
 

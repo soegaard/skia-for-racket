@@ -7,6 +7,7 @@ embedded PNG pixels. PDF checks verify page/resources/placement/vector/links,
 not a rendered PDF screenshot or PDF/A/ICC/font certification.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import base64
 import copy
@@ -727,34 +728,34 @@ class Checks(unittest.TestCase):
     def test_nested_executor_not_silent_cpu(self):
         item=next(d for d in self.data['documents'] if d['variant']=='gpu' and d['name']=='nested')
         item['group']['captured_children'][0]['execution']['backend']='raster';self.reject()
-    def test_svg_link_preserved(self): (self.root/self.gpu()['file']).write_bytes(synthetic_svg(link='https://wrong.example/'));self.reject()
-    def test_svg_vector_surroundings_preserved(self): (self.root/self.gpu()['file']).write_bytes(synthetic_svg(vectors=False));self.reject()
-    def test_svg_image_placement(self): (self.root/self.gpu()['file']).write_bytes(synthetic_svg(placement='matrix(1 0 0 1 32 44)'));self.reject()
+    def test_svg_link_preserved(self): (source_path(self.root, self.gpu()['file'])).write_bytes(synthetic_svg(link='https://wrong.example/'));self.reject()
+    def test_svg_vector_surroundings_preserved(self): (source_path(self.root, self.gpu()['file'])).write_bytes(synthetic_svg(vectors=False));self.reject()
+    def test_svg_image_placement(self): (source_path(self.root, self.gpu()['file'])).write_bytes(synthetic_svg(placement='matrix(1 0 0 1 32 44)'));self.reject()
     def test_svg_corrupt_png(self):
-        p=self.root/self.gpu()['file'];text=p.read_text().replace('iVBOR','AAAAA');p.write_text(text);self.reject()
+        p=source_path(self.root, self.gpu()['file']);text=p.read_text().replace('iVBOR','AAAAA');p.write_text(text);self.reject()
     def test_exact_pattern_not_just_pairwise_similarity(self):
         pixels=bytearray(pattern_pixels());pixels[4*(60+60*210)]=0
-        for variant in ('cpu','gpu'): (self.root/f'pattern.{variant}.svg').write_bytes(synthetic_svg(pixels));
+        for variant in ('cpu','gpu'): (source_path(self.root, f'pattern.{variant}.svg')).write_bytes(synthetic_svg(pixels));
         self.reject()
     def test_orientation_marker(self):
         pixels=bytearray(pattern_pixels());offset=4*(15+18*210);pixels[offset:offset+4]=b'\0\0\0\0'
-        (self.root/'pattern.gpu.svg').write_bytes(synthetic_svg(pixels));self.reject()
-    def test_pdf_vector_surroundings_preserved(self): (self.root/'pattern.gpu.pdf').write_bytes(synthetic_pdf(vectors=False));self.reject()
-    def test_pdf_link_preserved(self): (self.root/'pattern.gpu.pdf').write_bytes(synthetic_pdf(link='https://wrong.example/'));self.reject()
-    def test_pdf_not_whole_page_raster(self): (self.root/'pattern.gpu.pdf').write_bytes(synthetic_pdf(size=(360,270)));self.reject()
-    def test_pdf_image_placement(self): (self.root/'pattern.gpu.pdf').write_bytes(synthetic_pdf(placement=(140,0,0,96,0,0)));self.reject()
+        (self.root / 'pattern.gpu.svg').write_bytes(synthetic_svg(pixels));self.reject()
+    def test_pdf_vector_surroundings_preserved(self): (self.root / 'pattern.gpu.pdf').write_bytes(synthetic_pdf(vectors=False));self.reject()
+    def test_pdf_link_preserved(self): (self.root / 'pattern.gpu.pdf').write_bytes(synthetic_pdf(link='https://wrong.example/'));self.reject()
+    def test_pdf_not_whole_page_raster(self): (self.root / 'pattern.gpu.pdf').write_bytes(synthetic_pdf(size=(360,270)));self.reject()
+    def test_pdf_image_placement(self): (self.root / 'pattern.gpu.pdf').write_bytes(synthetic_pdf(placement=(140,0,0,96,0,0)));self.reject()
     def test_pdf_xref_is_used(self):
-        p=self.root/'pattern.gpu.pdf';data=p.read_bytes().replace(b'0000000009',b'9999999999');p.write_bytes(data);self.reject()
-    def test_pdf_truncated(self): p=self.root/'pattern.gpu.pdf';p.write_bytes(p.read_bytes()[:-8]);self.reject()
+        p=self.root / 'pattern.gpu.pdf';data=p.read_bytes().replace(b'0000000009',b'9999999999');p.write_bytes(data);self.reject()
+    def test_pdf_truncated(self): p=self.root / 'pattern.gpu.pdf';p.write_bytes(p.read_bytes()[:-8]);self.reject()
     def test_publication_rechecks_files(self):
-        prefix=self.root/'output';Path(str(prefix)+'.diagnostic.json').write_text(json.dumps(self.data))
+        prefix=self.root / 'output';Path(str(prefix)+'.diagnostic.json').write_text(json.dumps(self.data))
         result=publish(prefix);self.assertEqual(result['status'],'passed')
-        (self.root/'pattern.gpu.pdf').write_bytes(b'corrupt')
+        (self.root / 'pattern.gpu.pdf').write_bytes(b'corrupt')
         with self.assertRaises(ValueError): publish(prefix)
         self.assertFalse(Path(str(prefix)+'.inspection.json').exists());self.assertFalse(Path(str(prefix)+'.review.html').exists())
     def test_review_escapes_renderer(self):
         self.data['initial_context']['renderer']='<script>alert(1)</script>'
-        prefix=self.root/'output';Path(str(prefix)+'.diagnostic.json').write_text(json.dumps(self.data));publish(prefix)
+        prefix=self.root / 'output';Path(str(prefix)+'.diagnostic.json').write_text(json.dumps(self.data));publish(prefix)
         text=Path(str(prefix)+'.review.html').read_text();self.assertNotIn('<script>',text)
 
 

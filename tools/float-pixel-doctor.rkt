@@ -11,8 +11,8 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require racket/cmdline racket/file racket/list json "../main.rkt"
-  "../tests/float-pixel-fixtures.rkt")
+(require racket/cmdline racket/file racket/list json "../skia-lib/main.rkt"
+  "../skia-lib/tests/float-pixel-fixtures.rkt")
 (provide generate-float-pixel-documents)
 
 ;;;

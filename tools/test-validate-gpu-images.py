@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validator orchestration tests. All subprocesses are mocked; no native pass."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import importlib.util
 import io
@@ -24,13 +25,13 @@ class Checks(unittest.TestCase):
         before = Path.cwd()
         with tempfile.TemporaryDirectory(prefix='skia-runner-test-') as temp:
             root = Path(temp)
-            (root/'tests').mkdir(); (root/'private').mkdir()
-            (root/'tests/gpu-image-native-test.rkt').write_text('#lang racket/base\n')
-            (root/'tests/gpu-image-pure-test.rkt').write_text('#lang racket/base\n')
-            (root/'private/gpu-images.rkt').write_text('#lang racket/base\n')
-            (root/'tests/gpu-presenter-pure-test.rkt').write_text('#lang racket/base\n')
-            (root/'tests/gpu-presenter-native-test.rkt').write_text('#lang racket/base\n')
-            (root/'private/gpu-presenter.rkt').write_text('#lang racket/base\n')
+            (source_path(root, 'tests')).mkdir(); (source_path(root, 'private')).mkdir()
+            (source_path(root, 'tests/gpu-image-native-test.rkt')).write_text('#lang racket/base\n')
+            (source_path(root, 'tests/gpu-image-pure-test.rkt')).write_text('#lang racket/base\n')
+            (source_path(root, 'private/gpu-images.rkt')).write_text('#lang racket/base\n')
+            (source_path(root, 'tests/gpu-presenter-pure-test.rkt')).write_text('#lang racket/base\n')
+            (source_path(root, 'tests/gpu-presenter-native-test.rkt')).write_text('#lang racket/base\n')
+            (source_path(root, 'private/gpu-presenter.rkt')).write_text('#lang racket/base\n')
             calls = []
             def fake_run(argv, **kwargs):
                 calls.append(argv)
@@ -48,7 +49,7 @@ class Checks(unittest.TestCase):
                      patch.object(validator.subprocess, 'run', side_effect=fake_run), \
                      contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                     result = validator.main()
-                directory, = (root/'output').iterdir()
+                directory, = (root / 'output').iterdir()
                 report_file = directory/('validation.json' if result == 0 else 'validation.failed.json')
                 report = json.loads(report_file.read_text())
                 return result, calls, report, directory.name

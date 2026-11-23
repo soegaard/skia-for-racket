@@ -5,6 +5,7 @@ Run with no arguments for synthetic regression tests, or --patch PATH to check
 an exported delivery. This does not replace git apply --check on its real base.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 from pathlib import Path
 import re
@@ -57,25 +58,25 @@ class Checks(unittest.TestCase):
         self.git('config', 'user.name', 'Synthetic validation')
         self.git('config', 'user.email', 'validation@example.invalid')
         self.before = '# Testing\n\n## Current revision: offscreen OpenGL (0.39)\n\n' + ''.join(f'Unchanged validation instruction {i}.\n' for i in range(32))
-        (self.root/'TESTING.md').write_text(self.before)
+        (self.root / 'TESTING.md').write_text(self.before)
         self.git('add', 'TESTING.md'); self.git('commit', '-qm', 'Synthetic baseline')
         self.after = self.before.replace('## Current revision: offscreen OpenGL (0.39)',
             '## Current revision: GPU images (0.40)\n\nKeep prior validation evidence.\n\n## Previous revision: offscreen OpenGL (0.39)')
-        (self.root/'TESTING.md').write_text(self.after)
+        (self.root / 'TESTING.md').write_text(self.after)
         self.patch = self.git('diff', '--no-ext-diff', '--full-index', '--unified=8').stdout
     def git(self, *args, check=True):
         return subprocess.run(['git', *args], cwd=self.root, capture_output=True, text=True, check=check)
     def write_patch(self, value):
-        p = self.root/'delivery.patch'; p.write_text(value); return str(p)
+        p = self.root / 'delivery.patch'; p.write_text(value); return str(p)
     def test_git_generated_counts(self): self.assertEqual(check_patch(self.patch), 1)
     def test_forward_application_without_relaxation(self):
         p = self.write_patch(self.patch); self.git('restore', 'TESTING.md')
         self.git('apply', '--check', p); self.git('apply', p)
-        self.assertEqual((self.root/'TESTING.md').read_text(), self.after)
+        self.assertEqual((self.root / 'TESTING.md').read_text(), self.after)
     def test_reverse_application_is_byte_exact(self):
         p = self.write_patch(self.patch)
         self.git('apply', '--reverse', '--check', p); self.git('apply', '--reverse', p)
-        self.assertEqual((self.root/'TESTING.md').read_text(), self.before)
+        self.assertEqual((self.root / 'TESTING.md').read_text(), self.before)
     def test_extra_postimage_line_count_is_rejected(self):
         bad = re.sub(r'(@@ -\d+,\d+ \+\d+,)(\d+)', lambda m:m[1]+str(int(m[2])+1), self.patch, count=1)
         with self.assertRaisesRegex(ValueError, 'declared'): check_patch(bad)
@@ -89,15 +90,15 @@ class Checks(unittest.TestCase):
         bad = 'diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1,4 +1,4 @@\n \n \n-a\n+b\n \n'
         with self.assertRaisesRegex(ValueError, 'context'): check_patch(bad)
     def test_new_file_is_supported(self):
-        (self.root/'new.rkt').write_text('#lang racket/base\n')
+        (source_path(self.root, 'new.rkt')).write_text('#lang racket/base\n')
         self.git('add', '-N', 'new.rkt')
         self.assertEqual(check_patch(self.git('diff', '--unified=8').stdout), 2)
     def test_surrounding_real_content_is_preserved(self):
         p = self.write_patch(self.patch); self.git('restore', 'TESTING.md')
         tail = '\nUnrelated later documentation must remain unchanged.\n'
-        (self.root/'TESTING.md').write_text(self.before+tail)
+        (self.root / 'TESTING.md').write_text(self.before+tail)
         self.git('apply', '--check', p); self.git('apply', p)
-        self.assertEqual((self.root/'TESTING.md').read_text(), self.after+tail)
+        self.assertEqual((self.root / 'TESTING.md').read_text(), self.after+tail)
     def test_whitespace_check_passes(self): self.git('diff', '--check')
 
 

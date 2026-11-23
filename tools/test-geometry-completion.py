@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Standard-library-only 0.67 source, receipt and orchestration regressions."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import importlib.util
 import json
@@ -13,7 +14,7 @@ import api_inventory as inv
 import geometry_completion_validation as gv
 
 ROOT=Path(__file__).resolve().parents[1]
-SPEC=importlib.util.spec_from_file_location('geometry_gate',ROOT/'tools/validate-geometry-completion.py')
+SPEC=importlib.util.spec_from_file_location('geometry_gate',ROOT / 'tools/validate-geometry-completion.py')
 GATE=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(GATE)
 CAPABILITIES={'paths.arc-authoring','paths.recognition','paths.operation-builder','paths.conics',
  'paths.remaining-convenience','paint.fill-query','paint.introspection','geometry.regions-extra','geometry.rrect-extra'}
@@ -76,7 +77,7 @@ SIGNATURES = {'sk_opbuilder_add': '_pointer _pointer _int -> _void',
  'sk_rrect_transform': '_pointer _pointer _pointer -> _stdbool'}
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_nine_groups_are_classified_with_real_public_anchors(self):
         c=inv.load_catalog(ROOT);summary=inv.validate_catalog(c)
         self.assertNotIn('0.67',summary['next_stages'])
@@ -147,7 +148,7 @@ class Sources(unittest.TestCase):
             self.assertIn(text,s)
         self.assertEqual(inv.load_catalog(ROOT)['upstream']['package_version'],'3.119.1')
     def test_no_stale_current_package_assertion(self):
-        for p in (ROOT/'tools').glob('*.py'):
+        for p in (ROOT / 'tools').glob('*.py'):
             # Test this source itself without containing the literal old clause.
             self.assertNotIn('(define version "'+'0.66'+'")',p.read_text(encoding='utf-8'),p.name)
     def test_source_job_registers_new_standard_library_tests(self):
@@ -239,16 +240,16 @@ class GPUReceipts(unittest.TestCase):
 class CompileGraph(unittest.TestCase):
     def test_static_runner_and_dynamic_native_targets_both_compiled(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'run-tests.rkt').write_text('(define-runtime-path a "tests/a.rkt")\n(define-runtime-path a "tests/a.rkt")')
+            root=Path(t);(source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path a "tests/a.rkt")\n(define-runtime-path a "tests/a.rkt")')
             targets=GATE.compile_targets(root)
-            self.assertIn(root/'run-tests.rkt',targets);self.assertEqual(targets.count(root/'tests/a.rkt'),1)
-            self.assertIn(root/'tests/geometry-completion-gpu-test.rkt',targets)
+            self.assertIn(source_path(root, 'run-tests.rkt'),targets);self.assertEqual(targets.count(source_path(root, 'tests/a.rkt')),1)
+            self.assertIn(source_path(root, 'tests/geometry-completion-gpu-test.rkt'),targets)
     def test_empty_dynamic_graph_rejected(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'run-tests.rkt').write_text('#lang racket/base')
+            root=Path(t);(source_path(root, 'run-tests.rkt')).write_text('#lang racket/base')
             with self.assertRaises(ValueError):GATE.compile_targets(root)
     def test_failure_log_path_is_reported(self):
-        s=(ROOT/'tools/validate-geometry-completion.py').read_text()
+        s=(ROOT / 'tools/validate-geometry-completion.py').read_text()
         self.assertIn("report['failed_log']=str(log)",s)
         self.assertIn("report['failed_command']=command",s)
     def test_timeout_rejects_nonfinite_values(self):

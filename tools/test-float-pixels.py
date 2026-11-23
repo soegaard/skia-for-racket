@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.71 source contracts and independent inspector regressions (standard library)."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import importlib.util
 import json
@@ -33,7 +34,7 @@ SIGNATURES={
 CAPABILITIES=('canvas.float-color','paint.float-color','shaders.float-gradients','pixels.float-pixmap')
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_reviewed_signatures_include_value_versus_pointer_boundary(self):
         import api_inventory as inv
         decl=[f for f in inv.forms(self.text('private/native.rkt')) if isinstance(f,list) and f and f[0]=='define-native']
@@ -215,8 +216,8 @@ class GPUReceipts(unittest.TestCase):
                     captures=[dict(scene=s,file=s+'.rgba') for s in fv.SCENES])
     def check(self,v):
         with tempfile.TemporaryDirectory() as tmp:
-            root=Path(tmp);(root/'gpu.json').write_text(json.dumps(v))
-            for s in fv.SCENES:(root/(s+'.rgba')).write_bytes(Pixels.data(s,False))
+            root=Path(tmp);(root / 'gpu.json').write_text(json.dumps(v))
+            for s in fv.SCENES:(source_path(root, s+'.rgba')).write_bytes(Pixels.data(s,False))
             return fv.inspect_gpu(root,'t','egl','hardware')
     def test_positive_synthetic_receipt(self):self.check(self.good())
     def test_incorrect_numeric_counters(self):
@@ -244,7 +245,7 @@ class GPUReceipts(unittest.TestCase):
 
 class Gate(unittest.TestCase):
     def load(self):
-        spec=importlib.util.spec_from_file_location('float_gate',ROOT/'tools/validate-float-pixels.py')
+        spec=importlib.util.spec_from_file_location('float_gate',ROOT / 'tools/validate-float-pixels.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
     def test_complete_dynamic_compile_graph(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -4,6 +4,7 @@ The synthetic fixtures used by test-codec-scanlines.py test this inspector only.
 Pillow decodes the native evidence files independently of Skia.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import io
 import json
@@ -60,7 +61,7 @@ def unique(pairs):
 def read(root, name, limit=1_048_576):
     need(type(name) is str and name and '/' not in name and '\\' not in name and ':' not in name
          and name not in ('.', '..'), 'unsafe evidence filename')
-    p = root / name
+    p = source_path(root, name)
     need(p.is_file() and not p.is_symlink(), 'missing/symlink evidence: ' + name)
     need(p.stat().st_size <= limit, 'evidence exceeds bounded fixture size: ' + name)
     return p.read_bytes()

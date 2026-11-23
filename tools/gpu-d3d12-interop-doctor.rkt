@@ -12,9 +12,9 @@
 ;;;
 
 (require racket/cmdline racket/file racket/path racket/list json rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt" "../unsafe/gpu-d3d12.rkt"
-         "../tests/gpu-interop-native-test.rkt" "../tests/d3d12-interop-fixture.rkt"
-         "../private/gpu-io-trace.rkt" "gpu-report.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/gpu-interop.rkt" "../skia-lib/unsafe/gpu-d3d12.rkt"
+         "../skia-lib/tests/gpu-interop-native-test.rkt" "../skia-lib/tests/d3d12-interop-fixture.rkt"
+         "../skia-lib/private/gpu-io-trace.rkt" "gpu-report.rkt")
 (provide gpu-d3d12-interop-doctor! gpu-d3d12-interop-timeout-doctor!)
 
 ;;;

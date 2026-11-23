@@ -4,6 +4,7 @@ No native library or Racket execution on import. Expected snapshots are never
 rewritten by source checks, runtime validation, or the observation probe.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import hashlib
 import json
@@ -35,7 +36,7 @@ def path_at(root: Path, name: str, *, exists: bool = True) -> Path:
          and all(x not in ('', '.', '..') for x in name.split('/'))
          and not any(ord(x) < 32 for x in name), 'unsafe source path: ' + repr(name))
     root = Path(root).resolve()
-    path = root.joinpath(*PurePosixPath(name).parts)
+    path = source_path(root, name)
     for part in (path, *path.parents):
         if part == root:
             break
@@ -261,7 +262,7 @@ def reflect_group(root: Path, policy_file: Path, group: str, racket: str,
     observation = directory / f'{group}.json'
     need(not observation.exists(), 'refusing stale observation')
     run_logged([racket, str((probe_root or root) / 'tools/public-api-probe.rkt'),
-                '--root', str(root), '--policy', str(policy_file), '--group', group,
+                '--root', str(library_root(root)), '--policy', str(policy_file), '--group', group,
                 '--output', str(observation), '--token', token],
                root=root, env=isolated_environment(directory, group), log=directory / f'{group}.log')
     policy = read_json(policy_file)
@@ -349,8 +350,8 @@ def example_import_audit(root: Path) -> dict:
     import api_inventory as inv
     public = set(inv.load_catalog(root)['features']['public_modules'])
     result = {}
-    for file in sorted((root / 'examples').rglob('*.rkt')):
-        relative = file.relative_to(root).as_posix()
+    for file in sorted((source_path(root, 'examples')).rglob('*.rkt')):
+        relative = file.relative_to(library_root(root)).as_posix()
         path_at(root, relative)
         nodes = inv.forms(file.read_text(encoding='utf-8'))
         refs = []
@@ -409,8 +410,8 @@ def example_import_audit(root: Path) -> dict:
                      'example imports implementation module: ' + relative + ': ' + ref)
             if ref.startswith('.') or ref.endswith('.rkt'):
                 resolved = (file.parent / ref).resolve()
-                need(resolved.is_relative_to(root.resolve()), 'example import escapes repository: ' + relative)
-                name = resolved.relative_to(root.resolve()).as_posix()
+                need(resolved.is_relative_to(library_root(root).resolve()), 'example import escapes repository: ' + relative)
+                name = resolved.relative_to(library_root(root).resolve()).as_posix()
                 need(not name.startswith('private/'), 'example imports private module: ' + relative + ': ' + name)
                 if relative.startswith('examples/public/'):
                     need(name in public, 'public tutorial imports a non-public file: ' + relative + ': ' + name)

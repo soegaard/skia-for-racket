@@ -1,5 +1,15 @@
 # Portability and evidence
 
+November 23 Git-layout amendment: the current source packages are `skia`,
+`skia-lib` and `skia-doc`, with two macOS/Linux native packages and the existing
+Windows NuGet exception. Fonts belong to `skia-doc`; there is no standalone font
+package. The old unsplit full gate passed at `7693d907` / run `45096827302`
+attempt 2. The split needs fresh CI and public Git-source checks. See
+[the current runbook](PACKAGE-PUBLICATION.md) and
+[local validation](GIT-PACKAGE-VALIDATION.md); earlier dated records below are
+historical. No publication is authorized by this implementation.
+
+
 ## Catalog candidate — 0.79
 
 Automatic native data targets are macOS ARM64/x86-64 and glibc

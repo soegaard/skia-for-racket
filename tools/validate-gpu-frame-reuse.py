@@ -7,6 +7,7 @@ including 0.60 consumers, and inspect its ordinary GPU/auto frame reuse ledgers.
 All commands use the selected interpreter; no failed backend becomes a skip.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import importlib.util
@@ -42,7 +43,7 @@ SOURCES = tuple(dict.fromkeys((*render.SOURCES, *consumer.SOURCES,
 
 
 def fingerprint(root):
-    return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in SOURCES}
+    return {name: hashlib.sha256((source_path(root, name)).read_bytes()).hexdigest() for name in SOURCES}
 
 
 def validate_measurements(output, backend):
@@ -148,8 +149,8 @@ def main(argv=None, *, root=ROOT):
         directory = args.directory.resolve()
         directory.mkdir(parents=True, exist_ok=False)
     else:
-        (root / "output").mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix="gpu-frame-reuse-0.62-", dir=root / "output"))
+        (root / 'output').mkdir(exist_ok=True)
+        directory = Path(tempfile.mkdtemp(prefix="gpu-frame-reuse-0.62-", dir=root / 'output'))
     runner = base.Runner(directory, args.timeout)
     result = dict(schema=1, stage="0.62", status="failed", gui_required=args.require_gui,
                   pure_passed=False, baseline_passed=False, native_reuse_passed=False,
@@ -161,20 +162,20 @@ def main(argv=None, *, root=ROOT):
         racket = str(Path(executable).resolve())
         result["racket_executable"] = racket
         before = fingerprint(root)
-        identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root),
+        identity = base.validate_identity(json.loads(runner.run([racket, root / 'tools/ci-identity.rkt'], root),
                                                      object_pairs_hook=gui_checks.pixels.unique_object))
         native, _ = base.select_backends(args.backend, identity)
         require(args.adapter is None or native == "direct3d", "--adapter requires Direct3D")
         result.update(identity=identity, native_backend=native)
         modules = ("private/gpu-frame-target-cache.rkt", "private/gpu-presenter.rkt", "private/gpu-dc-native.rkt",
                    "tests/gpu-frame-target-pure-test.rkt", "tests/gpu-frame-target-native-test.rkt")
-        runner.run([racket, "-l", "raco", "--", "make", *(root / p for p in modules)], root)
-        gui_checks.validate_suite(runner.run([racket, root / "tests/gpu-frame-target-pure-test.rkt"], root),
+        runner.run([racket, "-l", "raco", "--", "make", *(source_path(root, p) for p in modules)], root)
+        gui_checks.validate_suite(runner.run([racket, source_path(root, 'tests/gpu-frame-target-pure-test.rkt')], root),
                                   "gpu-frame-target-pure", PURE_CASES)
         result["pure_passed"] = True
         options = ["--backend", native] + (["--adapter", args.adapter] if args.adapter else [])
         baseline_name = "validate-render-canvas.py" if args.require_gui else "validate-gpu-dc-consumers.py"
-        baseline_cmd = [sys.executable, root / "tools" / baseline_name, "--racket", racket,
+        baseline_cmd = [sys.executable, root / 'tools' / baseline_name, "--racket", racket,
                         *options, "--directory", directory / "baseline", "--timeout", str(args.timeout)]
         if args.require_gui:
             baseline_cmd.append("--require-gpu")
@@ -186,7 +187,7 @@ def main(argv=None, *, root=ROOT):
         baseline = gui_checks.pixels.read_json(directory / "baseline/validation.json")
         validate_baseline(baseline, identity, native, args.require_gui)
         result["baseline_passed"] = True
-        output = runner.run([racket, root / "tests/gpu-frame-target-native-test.rkt", *options], root)
+        output = runner.run([racket, source_path(root, 'tests/gpu-frame-target-native-test.rkt'), *options], root)
         gui_checks.validate_suite(output, "gpu-frame-target-native", NATIVE_CASES)
         result["constructor_measurements"] = validate_measurements(output, native)
         result["native_reuse_passed"] = True

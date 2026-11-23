@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic 0.62 gate/receipt tests and source contracts; not GPU execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -123,8 +124,8 @@ class GuiReuse(unittest.TestCase):
             reports = {r: gui_report(r) for r in ("raster", "gpu", "auto")}
             change(reports)
             for request, report in reports.items():
-                (root / request).mkdir()
-                (root / request / "result.json").write_text(json.dumps(report))
+                (source_path(root, request)).mkdir()
+                (source_path(root, request) / "result.json").write_text(json.dumps(report))
             return v.inspect_gui_reuse(root, baseline(), FULL, None)
     def bad(self, change):
         with self.assertRaises((ValueError, KeyError, TypeError)): self.inspect(change)
@@ -157,8 +158,8 @@ def simulate(options=(), *, fail=None, corrupt=False, mutate=False, missing=Fals
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp); commands = []
         for name in v.SOURCES:
-            p = root / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text("synthetic fixture")
-        directory = root / "evidence"
+            p = source_path(root, name); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("synthetic fixture")
+        directory = root / 'evidence'
         def run(argv, working):
             args = list(map(str, argv)); commands.append(args)
             if any(x.endswith(fail or "NO-FAILURE") for x in args): raise RuntimeError("synthetic command failure")
@@ -173,7 +174,7 @@ def simulate(options=(), *, fail=None, corrupt=False, mutate=False, missing=Fals
                     for r in ("raster", "gpu", "auto"):
                         (out / r).mkdir(); (out / r / "result.json").write_text(json.dumps(gui_report(r)))
             if args[1].endswith("gpu-frame-target-native-test.rkt"):
-                if mutate: (root / "private/gpu-presenter.rkt").write_text("changed")
+                if mutate: (source_path(root, 'private/gpu-presenter.rkt')).write_text("changed")
                 rows = measurements()
                 if corrupt: rows[0]["creations"] = 32
                 return measurement_output(rows) + f.good_summary("gpu-frame-target-native", v.NATIVE_CASES)
@@ -219,7 +220,7 @@ class Runner(unittest.TestCase):
 
 
 class SourceContracts(unittest.TestCase):
-    def source(self, name): return (HERE.parent / name).read_text()
+    def source(self, name): return (source_path(HERE.parent, name)).read_text()
     def test_private_pool_keeps_no_canvas_or_dc(self):
         source = self.source("private/gpu-frame-target-cache.rkt")
         self.assertIn("(struct target-entry (width height configuration value dispose))", source)

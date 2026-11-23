@@ -6,6 +6,7 @@ selected backend wrapped a real target, submitted rendering, and requested
 presentation in order. It does not establish monitor contents or a frame rate.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import copy
 import html
@@ -393,7 +394,7 @@ class Checks(unittest.TestCase):
     def directory(self, root):
         for b in ('opengl','metal'):
             r=fixture(b); r['validation_run']=root.name
-            (root/f'presentation-{b}.diagnostic.json').write_text(json.dumps(r))
+            (source_path(root, f'presentation-{b}.diagnostic.json')).write_text(json.dumps(r))
     def test_combined_same_run(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); self.directory(root)
@@ -401,12 +402,12 @@ class Checks(unittest.TestCase):
     def test_combined_rejects_mixed_run(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); self.directory(root)
-            p=root/'presentation-metal.diagnostic.json'; r=load(p); r['validation_run']='different'; p.write_text(json.dumps(r))
+            p=root / 'presentation-metal.diagnostic.json'; r=load(p); r['validation_run']='different'; p.write_text(json.dumps(r))
             with self.assertRaises(ValueError): inspect_directory(root)
     def test_combined_rejects_mixed_architecture(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); self.directory(root)
-            p=root/'presentation-metal.diagnostic.json'; r=load(p); r['architecture']='x86_64'; p.write_text(json.dumps(r))
+            p=root / 'presentation-metal.diagnostic.json'; r=load(p); r['architecture']='x86_64'; p.write_text(json.dumps(r))
             with self.assertRaises(ValueError): inspect_directory(root)
     def test_atomic_publication(self):
         with tempfile.TemporaryDirectory() as tmp:

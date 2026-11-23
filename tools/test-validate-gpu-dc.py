@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic validator regressions. These tests do NOT execute Racket or a GPU."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import importlib.util
 import io
@@ -86,8 +87,8 @@ class Workflow(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             for name in v.SOURCES:
-                path = root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("fixture")
-            out = root / "evidence"
+                path = source_path(root, name); path.parent.mkdir(parents=True, exist_ok=True); path.write_text("fixture")
+            out = root / 'evidence'
             commands = []
             def run(args, root):
                 args = list(map(str, args)); commands.append(args)
@@ -95,7 +96,7 @@ class Workflow(unittest.TestCase):
                 for name in v.COUNTS:
                     if len(args) > 1 and args[1].endswith(f"/{name}-test.rkt"):
                         if name == fail: raise RuntimeError("selected suite failed")
-                        if mutate and name == "gpu-dc-native": (root / "gpu-dc.rkt").write_text("changed")
+                        if mutate and name == "gpu-dc-native": (source_path(root, 'gpu-dc.rkt')).write_text("changed")
                         return suite(name)
                 return ""
             with patch.object(v.shutil, "which", return_value="/selected/racket"), \
@@ -135,15 +136,15 @@ class Workflow(unittest.TestCase):
 class SourceContract(unittest.TestCase):
     def test_suite_counts_match_top_level_test_case_sources(self):
         for name, count in v.COUNTS.items():
-            text = (HERE.parent / f"tests/{name}-test.rkt").read_text()
+            text = (source_path(HERE.parent, f"tests/{name}-test.rkt")).read_text()
             self.assertEqual(text.count('(test-case "'), count, name)
     def test_no_cpu_factory_in_gpu_native_renderer(self):
-        source = (HERE.parent / "private/gpu-dc-native.rkt").read_text()
+        source = (source_path(HERE.parent, "private/gpu-dc-native.rkt")).read_text()
         self.assertNotRegex(source, r"\(sk:make-surface(?:\s|\))")
         self.assertIn("gpu:make-gpu-surface", source)
         self.assertIn("#:internal-snapshot gpu:gpu-surface-snapshot", source)
     def test_public_module_does_not_import_gui(self):
-        source = (HERE.parent / "gpu-dc.rkt").read_text()
+        source = (source_path(HERE.parent, "gpu-dc.rkt")).read_text()
         self.assertNotIn('"gpu-canvas.rkt"', source)
         self.assertNotIn("racket/gui", source)
 

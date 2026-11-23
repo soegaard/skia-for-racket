@@ -15,7 +15,8 @@ before treating a plan as the public API contract.
 | [Conceptual diagrams](skia-reference-conceptual-diagrams.md) | Editorial plan for explanatory Reference figures and the concepts each should teach. |
 | [Diagram progress](skia-reference-conceptual-diagrams-progress.md) | Implementation and verification notes for those figures. |
 | [Documentation navigation](skia-documentation-navigation.md) | Reference/Guide/Tutorial navigation, tutorial subject categories, and separate reading routes. |
-| [Package catalog publication](skia-package-catalog-publication.md) | Platform-specific native packages, catalog-equivalent validation, release sequencing, and implementation hand-off. |
+| [Git-based catalog publication](skia-package-catalog-git-publication.md) | Current publication plan: skia/skia-lib/skia-doc split, fonts inside skia-doc, ordinary Git sources, native packages, and implementation hand-off. |
+| [Original package catalog implementation](skia-package-catalog-publication.md) | Implemented native packaging and validation design; its archive-hosting requirement is superseded by the Git publication plan. |
 
 Maintainer procedures live in [docs/](../docs/README.md); runnable source and
 manual assets live in [examples/](../examples/README.md) and

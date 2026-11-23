@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.75b live port/consumer acceptance. Full global regressions remain the default."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -26,8 +27,8 @@ def main(argv=None,*,root=ROOT):
     if not math.isfinite(args.timeout) or args.timeout<=0:parser.error('positive finite timeout required')
     racket=shutil.which(args.racket)
     if not racket:parser.error('selected Racket executable not found')
-    root=Path(root).resolve();(root/'output').mkdir(exist_ok=True)
-    output=args.directory.resolve() if args.directory else Path(tempfile.mkdtemp(prefix='live-streams-0.75b-',dir=root/'output'))
+    root=Path(root).resolve();(root / 'output').mkdir(exist_ok=True)
+    output=args.directory.resolve() if args.directory else Path(tempfile.mkdtemp(prefix='live-streams-0.75b-',dir=root / 'output'))
     if args.directory:output.mkdir(parents=True,exist_ok=False)
     (output/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
     report=dict(schema=1,stage='0.75b',status='failed',run_token=token,pure_passed=False,native_passed=False,
@@ -45,20 +46,20 @@ def main(argv=None,*,root=ROOT):
         except (OSError,subprocess.SubprocessError):
             report.update(failed_command=command,failed_log=str(log));raise
     try:
-        run([sys.executable,root/'tools/api-inventory.py','--check'])
-        run([sys.executable,root/'tools/test-live-streams.py'])
-        run([racket,root/'tools/check-package-version.rkt'])
-        targets=[root/n for n in ('main.rkt','live-streams.rkt','file-streams.rkt',
+        run([sys.executable,root / 'tools/api-inventory.py','--check'])
+        run([sys.executable,root / 'tools/test-live-streams.py'])
+        run([racket,source_path(root, 'tools/check-package-version.rkt')])
+        targets=[source_path(root, n) for n in ('main.rkt','live-streams.rkt','file-streams.rkt',
                  'tests/live-stream-pure-test.rkt','tests/live-stream-native-test.rkt','tools/live-stream-doctor.rkt','examples/live-streams.rkt',
                  'tests/live-ffi-probe/probe.rkt','tools/live-stream-identity.rkt')]
         if args.regressions=='full':targets+=global_compile_targets(root)
         run([racket,'-l','raco','--','make',*dict.fromkeys(targets)])
-        gate.run(lambda:run([racket,root/'run-tests.rkt']))
+        gate.run(lambda:run([racket,source_path(root, 'run-tests.rkt')]))
         for kind,count in (('pure',checks.PURE_CASES),('native',checks.NATIVE_CASES)):
-            text=run([racket,root/f'tests/live-stream-{kind}-test.rkt'])
+            text=run([racket,source_path(root, f'tests/live-stream-{kind}-test.rkt')])
             checks.suite_output(text,'live-stream-'+kind,count);report[kind+'_passed']=True
-        run([racket,root/'examples/live-streams.rkt'])
-        run([racket,root/'tools/live-stream-doctor.rkt','--directory',output/'native','--token',token])
+        run([racket,source_path(root, 'examples/live-streams.rkt')])
+        run([racket,root / 'tools/live-stream-doctor.rkt','--directory',output/'native','--token',token])
         evidence=checks.inspect(output/'native',token,require_renderers=args.require_renderers,run=run)
         (output/'inspection.json').write_text(json.dumps(evidence,indent=2)+'\n',encoding='utf-8')
         report['evidence_passed']=True

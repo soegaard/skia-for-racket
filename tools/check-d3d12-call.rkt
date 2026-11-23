@@ -11,7 +11,7 @@
 ;;; Imports and Exports
 ;;;
 
-(require ffi/unsafe json "../private/gpu-d3d12-types.rkt")
+(require ffi/unsafe json "../skia-lib/private/gpu-d3d12-types.rkt")
 
 ;;;
 ;;; By-Value Call Probe

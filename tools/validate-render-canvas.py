@@ -7,6 +7,7 @@ and tests the common API with both explicit GPU and automatic renderer choice.
 All selected gates are mandatory. Every execution uses the chosen interpreter.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import importlib.util
@@ -37,7 +38,7 @@ SOURCES = tuple(dict.fromkeys((*base.SOURCES,
 
 
 def fingerprint(root: Path) -> dict[str, str]:
-    return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in SOURCES}
+    return {name: hashlib.sha256((source_path(root, name)).read_bytes()).hexdigest() for name in SOURCES}
 
 
 def validate_raster_baseline(value: dict, identity: dict) -> None:
@@ -84,8 +85,8 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         directory = args.directory.absolute()
         directory.mkdir(parents=True, exist_ok=False)
     else:
-        (root / "output").mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix="render-canvas-0.61-", dir=root / "output"))
+        (root / 'output').mkdir(exist_ok=True)
+        directory = Path(tempfile.mkdtemp(prefix="render-canvas-0.61-", dir=root / 'output'))
     runner = base.Runner(directory, args.timeout)
     token = uuid.uuid4().hex
     gui = args.require_gui or args.require_gpu
@@ -101,30 +102,30 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         racket = str(Path(racket).resolve())
         result["racket_executable"] = racket
         before = fingerprint(root)
-        identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root), object_pairs_hook=checks.pixels.unique_object))
+        identity = base.validate_identity(json.loads(runner.run([racket, root / 'tools/ci-identity.rkt'], root), object_pairs_hook=checks.pixels.unique_object))
         result["identity"] = identity
         native, gpu_backend = base.select_backends(args.backend, identity)
         if args.adapter and native != "direct3d":
             raise ValueError("--adapter requires Direct3D")
-        runner.run([racket, "-l", "raco", "--", "make", root / "tests/render-canvas-pure-test.rkt"], root)
-        checks.validate_suite(runner.run([racket, root / "tests/render-canvas-pure-test.rkt"], root), "render-canvas-pure", checks.PURE_CASES)
+        runner.run([racket, "-l", "raco", "--", "make", source_path(root, 'tests/render-canvas-pure-test.rkt')], root)
+        checks.validate_suite(runner.run([racket, source_path(root, 'tests/render-canvas-pure-test.rkt')], root), "render-canvas-pure", checks.PURE_CASES)
         result["pure_passed"] = True
         if gui:
             # Explicitly compile both the new module and interactive example.
             # An uncompiled example caused the 0.60 package-install failure.
-            runner.run([racket, "-l", "raco", "--", "make", root / "render-canvas.rkt",
-                        root / "tests/render-canvas-gui-test.rkt", root / "examples/render-canvas.rkt",
-                        root / "examples/gpu-dc-consumers.rkt"], root)
+            runner.run([racket, "-l", "raco", "--", "make", source_path(root, 'render-canvas.rkt'),
+                        source_path(root, 'tests/render-canvas-gui-test.rkt'), source_path(root, 'examples/render-canvas.rkt'),
+                        source_path(root, 'examples/gpu-dc-consumers.rkt')], root)
             runner.timeout = args.timeout * 24
             try:
-                runner.run([sys.executable, root / "tools/validate-skia-canvas.py", "--racket", racket,
+                runner.run([sys.executable, root / 'tools/validate-skia-canvas.py', "--racket", racket,
                             "--require-gui", "--output", directory / "raster-baseline"], root)
                 validate_raster_baseline(checks.pixels.read_json(directory / "raster-baseline/validation.json"), identity)
                 result["raster_baseline_passed"] = True
                 if args.require_gpu:
                     opts = ["--backend", native]
                     if args.adapter: opts += ["--adapter", args.adapter]
-                    runner.run([sys.executable, root / "tools/validate-gpu-dc-consumers.py", "--racket", racket,
+                    runner.run([sys.executable, root / 'tools/validate-gpu-dc-consumers.py', "--racket", racket,
                                 *opts, "--require-gui", "--directory", directory / "gpu-baseline", "--timeout", args.timeout], root)
                     validate_gpu_baseline(checks.pixels.read_json(directory / "gpu-baseline/validation.json"), identity, native)
                     result["gpu_baseline_passed"] = True
@@ -135,7 +136,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
                 backend = ("raster" if renderer == "raster" else
                            base.select_backends("auto", identity)[1] if renderer == "auto" else gpu_backend)
                 requested_backend = "auto" if renderer in ("raster", "auto") else gpu_backend
-                command = [racket, root / "tests/render-canvas-gui-test.rkt", "--renderer", renderer,
+                command = [racket, source_path(root, 'tests/render-canvas-gui-test.rkt'), "--renderer", renderer,
                            "--backend", requested_backend, "--directory", directory / renderer, "--run-token", token]
                 if renderer != "raster" and args.adapter: command += ["--adapter", args.adapter]
                 checks.validate_suite(runner.run(command, root), "render-canvas-gui", checks.GUI_CASES)

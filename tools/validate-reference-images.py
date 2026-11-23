@@ -2,6 +2,7 @@
 """Validate committed rendered results used by the Skia Reference."""
 
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import re
 import struct
@@ -9,7 +10,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REFERENCE = ROOT / "scribblings" / "reference"
+REFERENCE = source_path(ROOT, 'scribblings') / "reference"
 IMAGES = REFERENCE / "images"
 
 FIGURE_RE = re.compile(

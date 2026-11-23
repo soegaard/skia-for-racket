@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/list json
-         "../main.rkt" "../tests/geometry-completion-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/geometry-completion-fixtures.rkt")
 (provide generate-geometry-documents)
 
 ;;;

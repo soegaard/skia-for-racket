@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.68a standard-library tests. Synthetic evidence is not native execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -16,7 +17,7 @@ import api_inventory as inv
 import typeface_validation as tv
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('typeface_validator', ROOT/'tools/validate-typefaces.py')
+spec = importlib.util.spec_from_file_location('typeface_validator', ROOT / 'tools/validate-typefaces.py')
 validator = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(validator)
 ADDITIONS = {
@@ -31,7 +32,7 @@ NAMES = ('typefaces.rkt','private/typeface-util.rkt','tests/typeface-fixtures.rk
 
 
 class Sources(unittest.TestCase):
-    def text(self, name): return (ROOT/name).read_text(encoding='utf-8')
+    def text(self, name): return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_source_ci_registers_the_standard_library_suite(self):
         self.assertIn("'test-typefaces.py'", self.text('tools/ci.py'))
     def test_direct_native_calls_match_declared_arities(self):
@@ -143,7 +144,7 @@ class Sources(unittest.TestCase):
             self.assertIn(text, s)
         self.assertNotIn('continue-on-error', s)
     def test_no_obsolete_package_assertions(self):
-        for p in (ROOT/'tools').glob('*.py'):
+        for p in (ROOT / 'tools').glob('*.py'):
             self.assertNotIn('(define version "' + '0.67' + '")', p.read_text(encoding='utf-8'), p.name)
 
 
@@ -209,17 +210,17 @@ class Receipts(unittest.TestCase):
 class Runner(unittest.TestCase):
     def test_static_and_dynamic_regressions_compiled(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'run-tests.rkt').write_text('(define-runtime-path x "tests/native.rkt")\n')
+            root=Path(t);(source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path x "tests/native.rkt")\n')
             names=[p.relative_to(root).as_posix() for p in validator.compile_targets(root)]
             for name in ('run-tests.rkt','tests/native.rkt','typefaces.rkt','tools/typeface-doctor.rkt'):
                 self.assertIn(name,names)
     def test_missing_dynamic_graph_rejected(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'run-tests.rkt').write_text('')
+            root=Path(t);(source_path(root, 'run-tests.rkt')).write_text('')
             with self.assertRaises(ValueError):validator.compile_targets(root)
     def test_unsafe_dynamic_target_rejected(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'run-tests.rkt').write_text('(define-runtime-path x "tests/../evil.rkt")')
+            root=Path(t);(source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path x "tests/../evil.rkt")')
             with self.assertRaises(ValueError):validator.compile_targets(root)
     def test_invalid_timeout(self):
         for value in ('nan','inf','0','-1'):
@@ -227,7 +228,7 @@ class Runner(unittest.TestCase):
                 validator.main(['--timeout',value])
     def test_failed_subprocess_has_log_and_no_success_claim(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);out=root/'out'
+            root=Path(t);out=root / 'out'
             with patch.object(validator,'ROOT',root),patch.object(validator.shutil,'which',return_value='/selected/racket'),\
                  patch.object(validator.subprocess,'run',side_effect=subprocess.CalledProcessError(1,['fixture'])),\
                  contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):

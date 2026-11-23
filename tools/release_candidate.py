@@ -318,7 +318,9 @@ def source_archive(root, destination):
         for name in names:
             parts = PurePosixPath(name).parts
             need(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in parts), 'generated source archive member')
-            need(not name.lower().endswith(('.dll', '.so', '.dylib', '.exe', '.pyc', '.nupkg', '.zo', '.ttf', '.otf', '.ttc')), 'native/binary source archive member')
+            need(not name.lower().endswith(('.dll', '.so', '.dylib', '.exe', '.pyc', '.nupkg', '.zo')), 'native/binary source archive member')
+            if name.lower().endswith(('.ttf', '.otf', '.ttc')):
+                approved_documentation_font(root, name)
             file = relative(root, name)
             data = file.read_bytes()
             entry = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
@@ -330,33 +332,60 @@ def source_archive(root, destination):
     return {'file': destination.name, 'sha256': digest(destination), 'bytes': destination.stat().st_size, 'files': len(names)}
 
 
+def approved_documentation_font(root, name):
+    from native_packages import read_json, check_font_input
+    records = read_json(root / 'packaging/native-assets.json')['documentation_fonts']['files']
+    matches = [f for f in records if name == 'skia-doc/fonts/' + f['filename']]
+    need(len(matches) == 1, 'unapproved font or font outside skia-doc')
+    check_font_input(relative(root, name), matches[0])
+
+
 def retain_catalog_source(root, directory, destination, *, attempt, commit):
-    """Retain exactly the source ZIP exercised by every catalog lane, without rebuilding."""
-    from native_packages import zip_index
+    """Retain the exact three qualified source packages and their external receipt."""
+    from native_packages import zip_index, json_bytes
+    from repository_layout import SOURCE_PACKAGES
+    need(not destination.exists(), 'source package destination exists')
     index = read_json(directory / 'artifact-index.json')
     record = index['catalog-assets-' + str(attempt)]
-    with zipfile.ZipFile(directory / record['file']) as outer:
-        need(outer.getinfo('skia.zip').file_size <= MAX_ARTIFACT, 'oversized candidate source ZIP')
-        data = outer.read('skia.zip')
-        checksum = outer.read('skia.zip.CHECKSUM')
-    need(checksum == hashlib.sha1(data).hexdigest().encode('ascii'), 'candidate source Racket checksum differs')
     names = source_files(root)
-    generated = 'private/source-identity.json'
-    need(generated not in names, 'generated source identity must not be tracked')
-    with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        entries = zip_index(archive)
-        need(set(entries) == set(names) | {generated}, 'catalog source member set differs from committed source')
-        for name in names:
-            parts = PurePosixPath(name).parts
-            need(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in parts), 'generated candidate source member')
-            need(not name.lower().endswith(('.dll','.so','.dylib','.exe','.pyc','.nupkg','.zo','.ttf','.otf','.ttc')), 'native/font/binary candidate source member')
-            need(archive.read(name) == relative(root,name).read_bytes(), 'catalog source bytes differ: ' + name)
-        identity = json_data(archive.read(generated).decode('utf-8'))
-        need(identity == dict(schema=1, source_commit_observed=commit, source_worktree_clean=True), 'catalog source identity differs')
-    need(not destination.exists(), 'source ZIP destination exists')
-    destination.write_bytes(data)
-    destination.with_suffix('.zip.CHECKSUM').write_bytes(checksum)
-    return dict(file=destination.name, sha256=hashlib.sha256(data).hexdigest(), sha1=checksum.decode(), bytes=len(data), files=len(names)+1)
+    retained = {}
+    with zipfile.ZipFile(directory / record['file']) as outer:
+        source = json_data(outer.read('source-packages.json').decode('utf-8'))
+        rows = source.get('packages') or []
+        need(len(rows) == 3 and {r['package'] for r in rows} == set(SOURCE_PACKAGES), 'incomplete source set')
+        need(source.get('source_commit_observed') == commit and source.get('source_worktree_clean') is True
+             and hashlib.sha256(json_bytes(rows)).hexdigest() == source.get('sha256'), 'source-set identity differs')
+        for row in rows:
+            package = row['package']
+            archive_name = package + '.zip'
+            need(outer.getinfo(archive_name).file_size <= MAX_ARTIFACT, 'oversized candidate source package')
+            data = outer.read(archive_name)
+            checksum = outer.read(archive_name + '.CHECKSUM')
+            need(checksum == hashlib.sha1(data).hexdigest().encode('ascii')
+                 and hashlib.sha256(data).hexdigest() == row['sha256'] and len(data) == row['size'],
+                 'candidate source checksum differs')
+            expected = {n.removeprefix(package + '/'): n for n in names if n.startswith(package + '/')}
+            need(expected and 'info.rkt' in expected, 'missing committed source package')
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                entries = zip_index(archive)
+                need(set(entries) == set(expected) and 'private/source-identity.json' not in entries,
+                     'catalog package member set differs from committed Git directory')
+                for member, name in expected.items():
+                    need(not any(p in ('.git','compiled','__pycache__','output','downloads','doc','html')
+                                 for p in PurePosixPath(member).parts), 'generated source member')
+                    need(not member.lower().endswith(('.dll','.so','.dylib','.exe','.pyc','.nupkg','.zo')),
+                         'native/binary candidate source member')
+                    if member.lower().endswith(('.ttf','.otf','.ttc')):
+                        approved_documentation_font(root, name)
+                    need(archive.read(member) == relative(root, name).read_bytes(), 'catalog source bytes differ: ' + name)
+            retained[archive_name] = data
+            retained[archive_name + '.CHECKSUM'] = checksum
+    destination.mkdir()
+    for name, data in retained.items():
+        (destination / name).write_bytes(data)
+    (destination / 'source-packages.json').write_bytes(json_bytes(source))
+    return dict(directory=destination.name, sha256=source['sha256'], packages=rows,
+                generated_source_identity=False)
 
 
 def github_identity(env, source):

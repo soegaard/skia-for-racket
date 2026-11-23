@@ -96,7 +96,7 @@ jobs:
       - name: Verify source and install pinned native libraries
         run: |
           python -m pip install -r tools/dc-output-requirements.txt
-          python tools/install-native-windows.py --racket (Get-Command racket).Source --root .
+          python tools/install-native-windows.py --racket (Get-Command racket).Source --root skia-lib
       - name: Required context options and targeted lifecycle execution
         env:
           SKIA_REGRESSIONS_MODE: ${{ inputs.regressions }}

@@ -1,5 +1,6 @@
 """0.51 native handoff validation; synthetic fixtures are never native evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import html
 import json
@@ -234,7 +235,7 @@ def execute(root: Path, racket: str, directory: Path, run, *, selection='warp', 
     require(directory.is_dir() and not any(directory.iterdir()), 'fresh empty evidence directory required')
     out = directory / 'interop.inspection.json'
     try:
-        sources = {p: digest(root / p) for p in SOURCES}
+        sources = {p: digest(source_path(root, p)) for p in SOURCES}
         identity = json.loads(run([racket, root / 'tools/ci-identity.rkt']))
         require(identity.get('os') == 'windows' and identity.get('architecture') == 'x86_64'
                 and exact(identity.get('pointer_bytes'), 8), 'requires Windows x64 Racket')
@@ -253,7 +254,7 @@ def execute(root: Path, racket: str, directory: Path, run, *, selection='warp', 
         run(args)
         run([*args, '--timeout-case'])
         result = inspect(directory, selection, index)
-        require(sources == {p: digest(root / p) for p in SOURCES}, 'workload source changed during execution')
+        require(sources == {p: digest(source_path(root, p)) for p in SOURCES}, 'workload source changed during execution')
         raw = read_json(directory / 'interop.diagnostic.json')
         require(raw.get('racket_version') == identity.get('version') and raw.get('vm') == identity.get('vm'), 'selected interpreter changed')
         result.update(windows_sdk_verified=True, com_aggregate_return_verified=True,

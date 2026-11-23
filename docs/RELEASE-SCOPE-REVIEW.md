@@ -1,5 +1,52 @@
 # 0.78b — Review rationale and maintenance
 
+## November 23 Git package-boundary review
+
+The revised plan explicitly accepts three source packages and two native Git
+package directories. Public module paths stay `skia/...`; their physical source
+root is now `skia-lib`. `skia-doc` owns fonts, manuals, tutorial copying and
+Scribble/font-dependent tests. The standalone font package is eliminated.
+The runtime has no documentation build dependency. Installed doctor/acquisition
+helpers are retained and compared with their canonical maintenance sources.
+
+Review preserves all 140 capability decisions, the historical 0.78b/0.78c
+inventory stages, the existing public API captures, Racket 8.18/draw-lib 1.22
+minimums and SkiaSharp 3.119.1/HarfBuzzSharp 8.3.1.2 pins. All three current
+source-package version assertions are 0.79. No API capture or capability decision
+is regenerated. Concrete package files, font data/notices, new ownership guards,
+Git-source preparation, and the revised runbook join the frozen input set.
+
+The workflow comparison preserves the same 77 executing jobs and 84 artifact
+identities; only reviewed workflow source hashes change. Commands use concrete
+package paths and explicitly test `skia-lib` and `skia-doc`. Installed CI copies
+maintenance tools beside the installed package directories so their feature
+probes execute those installed libraries. Source verification covers all three
+source packages. Pages uses `skia-doc/doc` and the existing deployment policy. The sixteen
+Windows developer-installer calls explicitly target the `skia-lib` directory.
+The GPU source guard scans the concrete library tree and still requires its
+integration modules. Raster DC/canvas source fingerprints resolve the same
+concrete ownership; the CPU rehearsal exposed and corrected their remaining
+old-root lookup. Required source-set and pixel checks remain intact.
+
+Catalog receipts now bind three source archives plus two native archives. The
+archive-generated source identity is removed from installable packages; exact
+source-set identity lives in an external receipt. Copied-directory checks and
+fresh source/built/binary-library round trips retain network denial, managed
+provenance, ABI/loader negatives, updates, rollback, scopes and removal. Added
+checks enforce independent library installation, later documentation addition,
+independent removal, procedural AV/default-font coverage, mandatory Noto tests,
+and registered manual navigation. Racket deliberately omits manuals and their
+registrations in binary-library form; that format must instead preserve fonts,
+notices, all 43 editable assets and the copier. Source/built forms must build and
+link all 25 manuals. This tested distinction is recorded, with no metadata trick
+to bypass Racket's stripper.
+
+The prior successful `7693d907`/`45096827302` attempt-2 evidence is baseline only.
+The strict full manual gate must execute the changed committed layout. Ordinary
+Git `?path=` sources and resolved repository commits need an additional public
+fetch check after separately authorized repository publication. No new release
+framework, external publication or renewed licensing investigation is implied.
+
 ## Baseline and scope
 
 This integration starts at GitHub commit

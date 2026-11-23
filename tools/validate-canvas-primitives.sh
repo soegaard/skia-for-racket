@@ -16,10 +16,10 @@ done
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
 "$RACKET" -l raco -- make \
-  main.rkt canvas-primitives.rkt output-policy.rkt output-audit.rkt matrix.rkt output.rkt bitmap.rkt \
-  tools/doctor.rkt run-tests.rkt tests/*.rkt examples/canvas-primitives.rkt
-"$RACKET" tools/doctor.rkt
-"$RACKET" run-tests.rkt
+  skia-lib/main.rkt skia-lib/canvas-primitives.rkt skia-lib/output-policy.rkt skia-lib/output-audit.rkt skia-lib/matrix.rkt skia-lib/output.rkt skia-lib/bitmap.rkt \
+  skia-lib/tools/doctor.rkt skia-lib/run-tests.rkt tests/*.rkt skia-lib/examples/canvas-primitives.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
-"$RACKET" examples/canvas-primitives.rkt output/canvas-primitives-0.30
+"$RACKET" skia-lib/examples/canvas-primitives.rkt output/canvas-primitives-0.30
 python3 tools/inspect-canvas-primitives.py --probe-prefix output/canvas-primitives-0.30

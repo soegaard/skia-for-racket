@@ -4,6 +4,7 @@ Acquisition has no native execution. Setup and loaders never call it. The
 installer owns one paired directory; Racket package creation cannot collect it.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import json
 import os
@@ -160,7 +161,7 @@ def install(lock_path, inputs, directory, *, revision='1.0'):
     # upstream notices. This installer does not declare redistribution approval.
     for key, record in lock.get('supplemental_notices', {}).items():
         if key not in ('noto-ofl', 'cjk-ofl'):
-            path = ROOT / record['path']
+            path = source_path(ROOT, record['path'])
             data = path.read_bytes()
             need(len(data) == record['size'] and sha256(data) == record['sha256'], 'component notice drift: ' + key)
             members['licenses/components/' + key + '.txt'] = data

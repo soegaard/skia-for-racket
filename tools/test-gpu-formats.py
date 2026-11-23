@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """0.73 source/inspector tests; pure Python checks are not GPU execution."""
+from repository_layout import source_path, library_root, documentation_root
 from pathlib import Path
 import copy
 import json
@@ -106,7 +107,7 @@ class Reports(unittest.TestCase):
     def fixture(self,root):
         rows=[]
         for color,bpp in gv.FORMATS.items():
-            (root/(color+'.pixels')).write_bytes(capture(color))
+            (source_path(root, color+'.pixels')).write_bytes(capture(color))
             cap=dict(backend='opengl',context_generation=1,color_type_name=color,renderable=True,
                      max_sample_count=4)
             rows.append(dict(color_type=color,status='passed',capability=cap,width=8,height=6,
@@ -117,7 +118,7 @@ class Reports(unittest.TestCase):
         for color in ('rgba-8888','rgba-f16'):
             for kind in ('pdf','svg'):
                 row=receipt();row.update(color_type=color,format=kind,file=color+'.'+kind)
-                row['audit']['backend']=kind;docs.append(row);(root/row['file']).write_text('SYNTHETIC document parser mock input')
+                row['audit']['backend']=kind;docs.append(row);(source_path(root, row['file'])).write_text('SYNTHETIC document parser mock input')
         return dict(schema=1,stage='0.73',run_token='fixture',status='passed',backend='egl',adapter='hardware',
             cases=20,failures=0,context_closed=True,physical_display_verified=False,hdr_verified=False,
             drawing_readbacks=0,descriptor_symbols=[dict(name=n,available=True) for n in sorted(gv.DESCRIPTOR_SYMBOLS)],
@@ -127,7 +128,7 @@ class Reports(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);r=self.fixture(root)
             if mutate:mutate(r)
-            (root/'gpu.json').write_text(json.dumps(r))
+            (root / 'gpu.json').write_text(json.dumps(r))
             with patch.object(gv,'document_structure',return_value={'synthetic':True}):
                 return gv.inspect(root,'fixture','egl','hardware')
     def test_valid_synthetic_report(self):self.assertEqual(self.invoke()['status'],'passed')
@@ -163,7 +164,7 @@ class Reports(unittest.TestCase):
 
 class Sources(unittest.TestCase):
     """Complete checkout checks; absence is a failure, never a synthetic pass."""
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_canonical_version_and_pins(self):
         self.assertIn('(define version "0.79")',self.text('info.rkt'))
         for s in ('("base" #:version "8.18")','("draw-lib" #:version "1.22")'):self.assertIn(s,self.text('info.rkt'))
@@ -212,7 +213,7 @@ class Sources(unittest.TestCase):
             self.assertIn('checked-backend-resource/native',self.text('private/'+name))
         self.assertNotIn('checked-backend-resource/native',self.text('gpu.rkt'))
     def test_keep_three_automatic_workflows(self):
-        workflows=ROOT/'.github/workflows'
+        workflows=ROOT / '.github/workflows'
         auto={p.name for p in workflows.glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
         self.assertEqual(auto,{'ci.yml','api-inventory.yml','acceptance.yml','catalog-package.yml'})
         s=self.text('.github/workflows/gpu-formats.yml')

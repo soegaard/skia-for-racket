@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic 0.64 runner/source contracts. Not evidence of Racket execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -51,10 +52,10 @@ def simulate(options=(), *, fail=None, missing=False, identity=None, bad_suite=N
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         for name in v.SOURCES:
-            file = root / name
+            file = source_path(root, name)
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_text("synthetic", encoding="utf-8")
-        selected = str((root / "selected interpreter" / "racket").resolve())
+        selected = str((root / 'selected interpreter' / "racket").resolve())
         commands = []
         def run(argv, cwd):
             c = list(map(str, argv))
@@ -67,7 +68,7 @@ def simulate(options=(), *, fail=None, missing=False, identity=None, bad_suite=N
             for name in v.COUNTS:
                 if script == name + "-test.rkt":
                     if mutate:
-                        (root / "private/dc-font-name.rkt").write_text("changed", encoding="utf-8")
+                        (source_path(root, 'private/dc-font-name.rkt')).write_text("changed", encoding="utf-8")
                     return bad_suite if bad_suite is not None else summary(name)
             if script in ("validate-dc-output.py", "validate-gpu-frame-reuse.py"):
                 directory = Path(c[c.index("--directory") + 1]); directory.mkdir()
@@ -87,8 +88,8 @@ def simulate(options=(), *, fail=None, missing=False, identity=None, bad_suite=N
         with patch.object(v.shutil, "which", return_value=None if missing else selected), \
              patch.object(v.base.Runner, "run", side_effect=run), \
              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            code = v.main(["--racket", selected, "--directory", str(root / "out"), *options], root=root)
-        return code, json.loads((root / "out/validation.json").read_text()), commands, selected
+            code = v.main(["--racket", selected, "--directory", str(root / 'out'), *options], root=root)
+        return code, json.loads((root / 'out/validation.json').read_text()), commands, selected
 
 
 class SuiteCompletion(unittest.TestCase):
@@ -271,7 +272,7 @@ class Runner(unittest.TestCase):
 
 
 class Sources(unittest.TestCase):
-    def source(self, name): return (ROOT / name).read_text(encoding="utf-8")
+    def source(self, name): return (source_path(ROOT, name)).read_text(encoding="utf-8")
     def test_case_counts(self):
         for name, n in v.COUNTS.items():
             text = self.source(f"tests/{name}-test.rkt")

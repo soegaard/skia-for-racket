@@ -5,6 +5,7 @@ No missing device, occlusion-only run, malformed report, or failed subprocess
 may become a successful optional skip.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import html
 import json

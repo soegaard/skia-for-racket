@@ -1,5 +1,6 @@
 """Synthetic inspector regressions; these do not execute pict, plot, or Skia."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 from pathlib import Path
 import struct
@@ -154,26 +155,26 @@ class ConsumerInspector(unittest.TestCase):
             self.assertIn(path,d.SOURCE_PATHS)
     def test_consumer_real_public_clients_not_bitmap_detours(self):
         root=Path(__file__).resolve().parents[1]
-        text=(root/'tests/dc-consumer-fixtures.rkt').read_text()
+        text=(source_path(root, 'tests/dc-consumer-fixtures.rkt')).read_text()
         for name in ('p:draw-pict','plot:plot/dc','plot/no-gui','rd:recorded-datum->procedure','p:dc-for-text-size'):
             self.assertIn(name,text)
         for name in ('plot:plot-bitmap','plot:plot-pict','racket/gui/base','racket/draw/private'):
             self.assertNotIn(name,text)
     def test_consumer_legend_does_not_occlude_data_probes(self):
         root=Path(__file__).resolve().parents[1]
-        text=(root/'tests/dc-consumer-fixtures.rkt').read_text()
+        text=(source_path(root, 'tests/dc-consumer-fixtures.rkt')).read_text()
         self.assertIn("#:legend-anchor 'outside-top-right",text)
         self.assertNotIn("#:legend-anchor 'top-right",text)
         self.assertIn('platform font metrics',text)
     def test_consumer_count_matches_native_suite(self):
         import re
-        text=(Path(__file__).resolve().parents[1]/'tests/dc-consumer-native-test.rkt').read_text()
+        text=(source_path(Path(__file__).resolve().parents[1], 'tests/dc-consumer-native-test.rkt')).read_text()
         self.assertEqual(len(re.findall(r'\(test-case\s',text)),c.NATIVE_CASES)
         self.assertIn(f'(define dc-consumer-native-test-count {c.NATIVE_CASES})',text)
     def test_consumer_doctor_is_required_not_optional(self):
         root=Path(__file__).resolve().parents[1]
-        self.assertIn('(dc-consumer-doctor! directory)',(root/'tools/dc-doctor.rkt').read_text())
-        self.assertIn('consumers = inspect_consumers(directory, identity=',(root/'tools/dc_validation.py').read_text())
+        self.assertIn('(dc-consumer-doctor! directory)',(root / 'tools/dc-doctor.rkt').read_text())
+        self.assertIn('consumers = inspect_consumers(directory, identity=',(root / 'tools/dc_validation.py').read_text())
 
 
 if __name__=='__main__':

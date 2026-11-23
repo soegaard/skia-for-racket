@@ -15,11 +15,11 @@
 
 ;; Public value checks and explicitly private state-model tests. No native call.
 (require rackunit racket/list skia
-         (prefix-in buffer: "../private/stream-buffer.rkt")
-         (prefix-in query: "../private/codec-query-util.rkt")
-         (prefix-in scan: "../private/codec-scanline-util.rkt")
-         (prefix-in inc: "../private/codec-incremental-util.rkt")
-         (prefix-in input: "../private/codec-incremental-input.rkt"))
+         (prefix-in buffer: "../skia-lib/private/stream-buffer.rkt")
+         (prefix-in query: "../skia-lib/private/codec-query-util.rkt")
+         (prefix-in scan: "../skia-lib/private/codec-scanline-util.rkt")
+         (prefix-in inc: "../skia-lib/private/codec-incremental-util.rkt")
+         (prefix-in input: "../skia-lib/private/codec-incremental-input.rkt"))
 
 ;;;
 ;;; Stream and Codec Argument Checks

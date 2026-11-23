@@ -5,6 +5,7 @@ The default invocation includes mandatory complete-repository integration.
 Delivery environments may run explicitly named synthetic classes only.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import datetime as dt
 import hashlib
@@ -33,14 +34,14 @@ END = '2026-10-09T10:02:00Z'
 
 
 def write(root, name, value):
-    path = root / name
+    path = source_path(root, name)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(value, encoding='utf-8')
 
 
 def fixture_tree(root):
     # A complete SYNTHETIC workflow graph, not a reconstruction of the repo.
-    source = ROOT / graph.WORKFLOW
+    source = source_path(ROOT, graph.WORKFLOW)
     write(root, graph.WORKFLOW, source.read_text())
     write(root, 'tools/ci-matrix.json', json.dumps({'cpu': [dict(id='linux', runner='ubuntu-24.04', racket='8.18'),
                                                           dict(id='mac', runner='macos-15', racket='9.3')],
@@ -196,7 +197,7 @@ class Graph(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.p=fixture_tree(self.root)
     def edit(self, name, before, after):
-        p=self.root/name;p.write_text(p.read_text().replace(before,after))
+        p=source_path(self.root, name);p.write_text(p.read_text().replace(before,after))
     def test_every_matrix_job(self):self.assertEqual(len(self.p['jobs']),7)
     def test_artifacts_unique(self):self.assertEqual(len(self.p['artifact_names']),7)
     def test_nested_names(self):self.assertIn('Acceptance / Feature / Native',[j['name'] for j in self.p['jobs']])
@@ -246,11 +247,11 @@ class Graph(unittest.TestCase):
     def test_report_is_not_receipt(self):self.assertIn('Not a run receipt',graph.generated_report(self.p))
     def test_concurrency_collision(self):
         for name in ('ci','acceptance'):
-            p=self.root/f'.github/workflows/{name}.yml'
+            p=source_path(self.root, f'.github/workflows/{name}.yml')
             p.write_text('concurrency:\n  group: same-${{ github.workflow }}\n'+p.read_text())
         with self.assertRaisesRegex(ValueError,'collision'):graph.build_policy(self.root)
     def test_standalone_concurrency_collision(self):
-        p=self.root/'.github/workflows/acceptance.yml'
+        p=self.root / '.github/workflows/acceptance.yml'
         p.write_text('concurrency:\n  group: acceptance-${{ github.ref }}\n'+p.read_text())
         with self.assertRaisesRegex(ValueError,'collision'):graph.build_policy(self.root)
 
@@ -367,7 +368,7 @@ class Archives(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
     def archive(self, names=('result.json',)):
-        p=self.root/'evidence.zip'
+        p=self.root / 'evidence.zip'
         with zipfile.ZipFile(p,'w') as z:
             for name in names:z.writestr(name,'{"status":"synthetic"}')
         return p
@@ -394,7 +395,7 @@ class Archives(unittest.TestCase):
             warnings.simplefilter('ignore');p=self.archive(('same','same'))
         with self.assertRaises(ValueError):self.check(p)
     def test_symlink(self):
-        p=self.root/'link.zip'
+        p=self.root / 'link.zip'
         with zipfile.ZipFile(p,'w') as z:
             i=zipfile.ZipInfo('link');i.create_system=3;i.external_attr=(stat.S_IFLNK|0o777)<<16;z.writestr(i,'target')
         with self.assertRaises(ValueError):self.check(p)
@@ -454,25 +455,25 @@ class Orchestration(unittest.TestCase):
     def test_no_context(self):
         with self.assertRaises(ValueError):rc.github_identity({}, {'commit':SHA})
     def test_source_only_receipt(self):
-        spec=importlib.util.spec_from_file_location('release_cli_test',ROOT/'tools/validate-release-candidate.py')
+        spec=importlib.util.spec_from_file_location('release_cli_test',ROOT / 'tools/validate-release-candidate.py')
         cli=importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);write(root,graph.POLICY,'{}')
             with patch.object(rc,'source_contracts',return_value=policy()),patch.object(rc,'collect') as collect:
-                self.assertEqual(cli.main(['--source-only','--directory',str(root/'out')],root=root),0)
-            r=rc.read_json(root/'out/result.json')
+                self.assertEqual(cli.main(['--source-only','--directory',str(root / 'out')],root=root),0)
+            r=rc.read_json(root / 'out/result.json')
             self.assertEqual(r['status'],'source-only');self.assertFalse(r['release_candidate_validated'])
             self.assertFalse(r['release_ready']);collect.assert_not_called()
     def test_failure_writes_no_success(self):
-        spec=importlib.util.spec_from_file_location('release_cli_test2',ROOT/'tools/validate-release-candidate.py')
+        spec=importlib.util.spec_from_file_location('release_cli_test2',ROOT / 'tools/validate-release-candidate.py')
         cli=importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
         with tempfile.TemporaryDirectory() as t:
             root=Path(t)
             with patch.object(rc,'source_contracts',side_effect=ValueError('synthetic drift')):
-                self.assertEqual(cli.main(['--source-only','--directory',str(root/'out')],root=root),1)
-            self.assertFalse(rc.read_json(root/'out/result.json')['release_candidate_validated'])
+                self.assertEqual(cli.main(['--source-only','--directory',str(root / 'out')],root=root),1)
+            self.assertFalse(rc.read_json(root / 'out/result.json')['release_candidate_validated'])
     def test_existing_evidence_is_refused(self):
-        spec=importlib.util.spec_from_file_location('release_cli_test3',ROOT/'tools/validate-release-candidate.py')
+        spec=importlib.util.spec_from_file_location('release_cli_test3',ROOT / 'tools/validate-release-candidate.py')
         cli=importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(cli.main(['--source-only','--directory',t],root=Path(t)),1)
@@ -482,8 +483,8 @@ class Orchestration(unittest.TestCase):
 class Collection(unittest.TestCase):
     def exercise(self, *, fault=None):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);directory=root/'evidence';directory.mkdir()
-            archive=root/'fixture.zip'
+            root=Path(t);directory=root / 'evidence';directory.mkdir()
+            archive=root / 'fixture.zip'
             with zipfile.ZipFile(archive,'w') as z:z.writestr('result.json','{"synthetic":true}')
             raw=archive.read_bytes();metadata=artifacts();metadata[0].update(size_in_bytes=len(raw),digest='sha256:'+hashlib.sha256(raw).hexdigest())
             calls=[]
@@ -537,13 +538,13 @@ class SourcePackaging(unittest.TestCase):
         subprocess.run(['git','init','-q'],cwd=self.root,check=True)
         subprocess.run(['git','add','main.rkt'],cwd=self.root,check=True)
     def build(self,name):
-        return rc.source_archive(self.root,self.root/name)
+        return rc.source_archive(self.root,source_path(self.root, name))
     def test_reproducible_zip(self):
         self.assertEqual(self.build('a.zip')['sha256'],self.build('b.zip')['sha256'])
     def test_roundtrip_source_bytes(self):
         self.build('a.zip')
-        with zipfile.ZipFile(self.root/'a.zip') as z:
-            self.assertEqual(z.read('main.rkt'),(self.root/'main.rkt').read_bytes())
+        with zipfile.ZipFile(self.root / 'a.zip') as z:
+            self.assertEqual(z.read('main.rkt'),(source_path(self.root, 'main.rkt')).read_bytes())
             self.assertEqual(z.namelist(),['main.rkt'])
             self.assertTrue(all(i.date_time==(1980,1,1,0,0,0) for i in z.infolist()))
     def test_existing_zip_refused(self):
@@ -576,18 +577,18 @@ class RepositoryIntegration(unittest.TestCase):
                          {'minimum-racket','linux-x64','macos-arm64','macos-x64','windows-x64'})
         self.assertEqual(next(j for j in rows if j['matrix']['id']=='minimum-racket')['matrix']['racket'],'8.18')
     def test_source_ci_and_api_ci_require_the_new_tests(self):
-        self.assertIn("'test-release-candidate.py'",(ROOT/'tools/ci.py').read_text())
-        self.assertIn('python tools/test-release-candidate.py',(ROOT/'.github/workflows/api-inventory.yml').read_text())
+        self.assertIn("'test-release-candidate.py'",(ROOT / 'tools/ci.py').read_text())
+        self.assertIn('python tools/test-release-candidate.py',(ROOT / '.github/workflows/api-inventory.yml').read_text())
     def test_required_feature_families_not_omitted(self):
         p=graph.build_policy(ROOT)
         paths={j['workflow'] for j in p['jobs']}
         for name in ('dc-output','gpu-dc','render-canvas','float-pixels','gpu-context-controls','streams'):
             self.assertIn('.github/workflows/'+name+'.yml',paths)
     def test_snapshot_bytes_and_runtime_claims_remain_separate(self):
-        public=rc.read_json(ROOT/'api/public-api-policy.json')
+        public=rc.read_json(ROOT / 'api/public-api-policy.json')
         self.assertEqual(public['stage'],'0.78c')
         self.assertEqual(public['package_version'],'0.78')
-        self.assertFalse(rc.read_json(ROOT/graph.POLICY)['release_ready'])
+        self.assertFalse(rc.read_json(source_path(ROOT, graph.POLICY))['release_ready'])
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

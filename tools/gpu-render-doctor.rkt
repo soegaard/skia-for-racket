@@ -13,7 +13,7 @@
 
 (require racket/cmdline
          rackunit/text-ui
-         "../tests/gpu-render-native-test.rkt")
+         "../skia-lib/tests/gpu-render-native-test.rkt")
 
 ;;;
 ;;; One-Shot Rendering Check

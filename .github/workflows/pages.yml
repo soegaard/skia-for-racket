@@ -46,18 +46,18 @@ jobs:
           PLTUSERHOME: ${{ runner.temp }}/racket-user
         run: |
           raco pkg config --set catalogs "$GITHUB_WORKSPACE/output/pages-catalog/catalog" https://download.racket-lang.org/releases/9.3/catalog/
-          raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
-          raco setup --no-zo --pkgs skia-for-racket
+          raco pkg install --auto --no-setup "$GITHUB_WORKSPACE/skia-lib" "$GITHUB_WORKSPACE/skia-doc" "$GITHUB_WORKSPACE/skia"
+          raco setup --no-zo --pkgs skia-lib skia-doc skia
       - name: Collect the static site
         env:
           SITE: ${{ runner.temp }}/skia-for-racket-pages
         run: |
           set -euo pipefail
-          doc_dir="$GITHUB_WORKSPACE/doc"
+          doc_dir="$GITHUB_WORKSPACE/skia-doc/doc"
           mkdir -p "$SITE"
           racket tools/render-documentation-landing.rkt --output "$SITE/index.html"
-          cp scribblings/support/skia-doc-nav.css "$SITE/skia-doc-nav.css"
-          cp scribblings/support/skia-doc-nav.js "$SITE/skia-doc-nav.js"
+          cp skia-doc/scribblings/support/skia-doc-nav.css "$SITE/skia-doc-nav.css"
+          cp skia-doc/scribblings/support/skia-doc-nav.js "$SITE/skia-doc-nav.js"
           for asset in \
             scribble.css \
             racket.css \
@@ -146,15 +146,15 @@ jobs:
           PLTUSERHOME: ${{ runner.temp }}/racket-user
         run: |
           raco pkg config --set catalogs "$GITHUB_WORKSPACE/output/pages-catalog/catalog" https://download.racket-lang.org/releases/9.3/catalog/
-          raco pkg install --auto --no-setup --link --name skia-for-racket "$GITHUB_WORKSPACE"
-          raco setup --pkgs skia-for-racket
+          raco pkg install --auto --no-setup "$GITHUB_WORKSPACE/skia-lib" "$GITHUB_WORKSPACE/skia-doc" "$GITHUB_WORKSPACE/skia"
+          raco setup --pkgs skia-lib skia-doc skia
       - name: Check Reference coverage, bindings, and installed links
         env:
           PLTUSERHOME: ${{ runner.temp }}/racket-user
         run: |
           python3 -B tools/test-reference.py
           python3 -B tools/check-reference.py \
-            --installed "$GITHUB_WORKSPACE/doc" --native \
+            --installed "$GITHUB_WORKSPACE/skia-doc/doc" --native \
             --output "${{ runner.temp }}/reference-installed"
       - name: Retain Reference validation evidence
         if: always()

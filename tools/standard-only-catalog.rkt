@@ -5,7 +5,7 @@
 (module+ main
   (command-line #:args (source destination)
     (define base (path->url (path->directory-path (path->complete-path source))))
-    (define candidates '("skia" "skia-fonts-1" "skia-native-macos-1"
+    (define candidates '("skia" "skia-lib" "skia-doc" "skia-native-macos-1"
                          "skia-native-win32-x86_64-1" "skia-native-x86_64-linux-1"))
     (define all (file->value (build-path source "pkgs-all")))
     (define result

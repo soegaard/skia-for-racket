@@ -7,7 +7,7 @@
 ;; Prints the runtime and native-library identity needed for live-stream validation receipts.
 ;; The callback validation workflow uses this probe to attribute evidence to the loaded binaries.
 
-(require json ffi/unsafe/os-thread "../private/native.rkt")
+(require json ffi/unsafe/os-thread "../skia-lib/private/native.rkt")
 (module+ main
 
   ;;;

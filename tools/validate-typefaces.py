@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.68a typeface acceptance: optional full regressions and controlled PDF/SVG output."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
@@ -22,20 +23,20 @@ ROOT = Path(__file__).resolve().parents[1]
 def compile_targets(root, regressions='full'):
     if checked_mode(regressions) == 'none':
         # Compile feature roots only; do not traverse unrelated regression suites.
-        return [root / p for p in (
+        return [source_path(root, p) for p in (
             'main.rkt',
             'typefaces.rkt',
             'tools/typeface-doctor.rkt',
             'examples/typefaces.rkt',
         )]
-    text = (root/'run-tests.rkt').read_text(encoding='utf-8')
+    text = (source_path(root, 'run-tests.rkt')).read_text(encoding='utf-8')
     dynamic = sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)', text)))
     if not dynamic:
         raise ValueError('no dynamically required regression suites discovered')
     for name in dynamic:
         if any(p in ('', '.', '..') for p in name.split('/')) or '\\' in name or ':' in name:
             raise ValueError('unsafe regression target')
-    return [root/p for p in dict.fromkeys(('main.rkt', 'typefaces.rkt', 'run-tests.rkt', *dynamic,
+    return [source_path(root, p) for p in dict.fromkeys(('main.rkt', 'typefaces.rkt', 'run-tests.rkt', *dynamic,
                                           'tools/typeface-doctor.rkt', 'examples/typefaces.rkt'))]
 
 
@@ -59,8 +60,8 @@ def main(argv=None):
         args.directory.mkdir(parents=True)
         out = args.directory.resolve()
     else:
-        (ROOT/'output').mkdir(exist_ok=True)
-        out = Path(tempfile.mkdtemp(prefix='typefaces-0.68a-', dir=ROOT/'output'))
+        (ROOT / 'output').mkdir(exist_ok=True)
+        out = Path(tempfile.mkdtemp(prefix='typefaces-0.68a-', dir=ROOT / 'output'))
     (out/'logs').mkdir()
     token = uuid.uuid4().hex
     commands = []
@@ -83,12 +84,12 @@ def main(argv=None):
                 raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable, ROOT/'tools/api-inventory.py', '--check'])
-        run([sys.executable, ROOT/'tools/test-typefaces.py'])
-        run([sys.executable, ROOT/'tools/test-typeface-document-inspector.py'])
+        run([sys.executable, ROOT / 'tools/api-inventory.py', '--check'])
+        run([sys.executable, ROOT / 'tools/test-typefaces.py'])
+        run([sys.executable, ROOT / 'tools/test-typeface-document-inspector.py'])
         run([racket, '-l', 'raco', '--', 'make', *compile_targets(ROOT, args.regressions)])
-        regressions.run(lambda: run([racket, ROOT/'run-tests.rkt']))
-        run([racket, ROOT/'tools/typeface-doctor.rkt', '--directory', out/'documents', '--token', token])
+        regressions.run(lambda: run([racket, source_path(ROOT, 'run-tests.rkt')]))
+        run([racket, ROOT / 'tools/typeface-doctor.rkt', '--directory', out/'documents', '--token', token])
         report.update(native_generation_passed=True, rendering_executed=True)
         render = None
         if args.require_renderers:

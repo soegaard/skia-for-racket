@@ -12,13 +12,13 @@
 ;;; Imports and Exports
 ;;;
 (require racket/class racket/cmdline racket/file racket/path json rackunit/text-ui
-         (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
-         (only-in "../private/native.rkt" skia-native-version native-package-version)
-         "../tests/dc-pure-test.rkt" "../tests/dc-native-test.rkt"
-         "../examples/dc-primitives.rkt" "../examples/dc-compatibility.rkt"
-         "../tests/dc-compat-pure-test.rkt" "../tests/dc-compat-native-test.rkt"
-         "../tests/dc-replay-pure-test.rkt" "../tests/dc-replay-native-test.rkt"
-         "../tests/dc-alpha-test.rkt" "../examples/dc-replay.rkt"
+         (prefix-in rd: racket/draw) (prefix-in sk: "../skia-lib/main.rkt") "../skia-lib/dc.rkt"
+         (only-in "../skia-lib/private/native.rkt" skia-native-version native-package-version)
+         "../skia-lib/tests/dc-pure-test.rkt" "../skia-lib/tests/dc-native-test.rkt"
+         "../skia-lib/examples/dc-primitives.rkt" "../skia-lib/examples/dc-compatibility.rkt"
+         "../skia-lib/tests/dc-compat-pure-test.rkt" "../skia-lib/tests/dc-compat-native-test.rkt"
+         "../skia-lib/tests/dc-replay-pure-test.rkt" "../skia-lib/tests/dc-replay-native-test.rkt"
+         "../skia-lib/tests/dc-alpha-test.rkt" "../skia-lib/examples/dc-replay.rkt"
          "dc-consumer-doctor.rkt" "dc-style-doctor.rkt")
 (provide dc-doctor!)
 

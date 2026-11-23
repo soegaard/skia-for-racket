@@ -85,7 +85,9 @@
 
 ; root : path?
 ;   Locates .. relative to this module, independent of the invoking directory.
-(define-runtime-path root "..")
+(define-runtime-path repository "..")
+(define-runtime-path root "../skia-lib")
+(define-runtime-path documentation "../skia-doc")
 
 ; specs-file : (or/c path-string? #f)
 ;   Holds the required source-checker JSON input selected on the command line.
@@ -324,7 +326,7 @@
       [else (for-each walk datum)])))
 
 (for ([chapter (in-list (hash-ref source-report 'chapters))])
-  (walk (read-module (build-path root chapter))))
+  (walk (read-module (build-path documentation chapter))))
 (need (= (hash-count declarations) (length specifications))
       "native reader and source checker disagree on the definition count")
 
@@ -522,7 +524,7 @@
 (define tutorial-targets
   (if xref
       (for/list ([link (in-list (hash-ref source-report 'tutorial_links '()))])
-        (define module `(lib ,(string-append "skia/" (hash-ref link 'manual))))
+        (define module `(lib ,(string-append "skia-doc/" (hash-ref link 'manual))))
         (define tag
           (link-element-tag
            (seclink (hash-ref link 'tag) #:doc module (hash-ref link 'label))))
@@ -550,7 +552,7 @@
         (define tag
           (link-element-tag
            (seclink (hash-ref link 'tag)
-                    #:doc '(lib "skia/scribblings/reference/reference.scrbl")
+                    #:doc '(lib "skia-doc/scribblings/reference/reference.scrbl")
                     (hash-ref link 'label))))
         (define-values (path anchor) (xref-tag->path+anchor xref tag))
         (need (and path (file-exists? path))

@@ -5,6 +5,7 @@ The Python-authored inputs and mocked subprocess results below are synthetic,
 not native execution evidence. Native evidence is produced by the Racket doctor.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -62,21 +63,21 @@ def synthetic_evidence(root,token=TOKEN):
     matrices=[]
     for interlaced,name,height,count in ((False,'normal',6,6),(True,'adam7',8,7)):
         parts=synthetic_png_parts(interlaced);data=b''.join(parts)
-        (root/(name+'.png')).write_bytes(data)
+        (source_path(root, name+'.png')).write_bytes(data)
         steps=[]
         for i in range(1,count+1):
             final=i==count;file=f'{name}-{i}.pixels'
             # Deliberately synthetic partial pixels: only the real native gate
             # may assert what the interlaced decoder actually writes per pass.
-            (root/file).write_bytes(pixel_capture(height,height if final else i))
+            (source_path(root, file)).write_bytes(pixel_capture(height,height if final else i))
             steps.append(dict(state='complete' if final else 'needs-input',
                               result='success' if final else 'incomplete-input',
                               initialized_rows=height if interlaced else i,pixels=file,
                               statistics=stats(i,not final,44*height,len(b''.join(parts[:i+1])),final)))
         matrices.append(dict(name=name,width=8,height=height,row_bytes=44,steps=steps))
     normal=synthetic_png_parts(False);short=b''.join(normal[:3]);extent=len(b''.join(normal[:2]))
-    (root/'truncated.png').write_bytes(short);(root/'truncated.pixels').write_bytes(pixel_capture(6,2))
-    (root/'live-copy.bin').write_bytes(bytes(range(256)))
+    (root / 'truncated.png').write_bytes(short);(root / 'truncated.pixels').write_bytes(pixel_capture(6,2))
+    (root / 'live-copy.bin').write_bytes(bytes(range(256)))
     receipt=dict(schema=1,stage='0.76c',status='passed',run_token=token,native_version='119.0',
                  matrices=matrices,
                  truncated=dict(state='incomplete',result='incomplete-input',initialized_rows=2,
@@ -87,7 +88,7 @@ def synthetic_evidence(root,token=TOKEN):
                                 statistics=stats(1,False,0,extent,False)),
                  sessions_closed=True,registered_sources=0,incremental_decode_executed=True,
                  one_shot_fallback=False,compiler_required=False,gpu_executed=False)
-    (root/'incremental.json').write_text(json.dumps(receipt),encoding='utf-8')
+    (root / 'incremental.json').write_text(json.dumps(receipt),encoding='utf-8')
     return receipt
 
 
@@ -117,13 +118,13 @@ class Evidence(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.receipt=synthetic_evidence(self.root)
-    def write(self):(self.root/'incremental.json').write_text(json.dumps(self.receipt),encoding='utf-8')
+    def write(self):(self.root / 'incremental.json').write_text(json.dumps(self.receipt),encoding='utf-8')
     def rejects(self):
         self.write()
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def step(self,n=0,m=0):return self.receipt['matrices'][m]['steps'][n]
     def corrupt(self,name,at):
-        p=self.root/name;b=bytearray(p.read_bytes());b[at]^=127;p.write_bytes(b)
+        p=source_path(self.root, name);b=bytearray(p.read_bytes());b[at]^=127;p.write_bytes(b)
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_valid(self):self.assertEqual(v.inspect(self.root,TOKEN)['partial_captures'],11)
     def test_independent_normal_and_adam7_pixels(self):
@@ -166,14 +167,14 @@ class Evidence(unittest.TestCase):
     def test_wrong_visible_size(self):self.step()['statistics']['visible-input-bytes']-=1;self.rejects()
     def test_wrong_final_marker(self):self.step()['statistics']['input-final?']=True;self.rejects()
     def test_unsafe_file(self):self.step()['pixels']='../normal-1.pixels';self.rejects()
-    def test_short_capture(self):(self.root/'normal-1.pixels').write_bytes(b'x');self.rejects()
+    def test_short_capture(self):(self.root / 'normal-1.pixels').write_bytes(b'x');self.rejects()
     def test_changed_padding(self):self.corrupt('normal-1.pixels',32)
     def test_changed_pixels(self):self.corrupt('normal-1.pixels',4)
     def test_uninitialized_remainder(self):self.corrupt('normal-1.pixels',44)
     def test_encoded_crc(self):self.corrupt('normal.png',29)
     def test_interlace_flag(self):
-        b=bytearray((self.root/'adam7.png').read_bytes());b[28]=0;b[29:33]=struct.pack('>I',zlib.crc32(b[12:29]))
-        (self.root/'adam7.png').write_bytes(b);self.rejects()
+        b=bytearray((self.root / 'adam7.png').read_bytes());b[28]=0;b[29:33]=struct.pack('>I',zlib.crc32(b[12:29]))
+        (self.root / 'adam7.png').write_bytes(b);self.rejects()
     def test_truncated_marked_complete(self):self.receipt['truncated']['state']='complete';self.rejects()
     def test_truncated_rows(self):self.receipt['truncated']['initialized_rows']=6;self.rejects()
     def test_truncation_without_final(self):self.receipt['truncated']['statistics']['input-final?']=False;self.rejects()
@@ -182,19 +183,19 @@ class Evidence(unittest.TestCase):
     def test_cancelled_leaks_pixels(self):self.receipt['cancelled']['statistics']['pixel-bytes']=192;self.rejects()
     def test_cancelled_snapshot(self):self.receipt['cancelled']['pixels']='normal-1.pixels';self.rejects()
     def test_live_provider_changed(self):self.corrupt('live-copy.bin',100)
-    def test_missing_capture(self):(self.root/'adam7-7.pixels').unlink();self.rejects()
+    def test_missing_capture(self):(self.root / 'adam7-7.pixels').unlink();self.rejects()
     def test_duplicate_json_key(self):
-        p=self.root/'incremental.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
+        p=self.root / 'incremental.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
 
 
 class Orchestration(unittest.TestCase):
     def invoke(self,mode=None,failure=None,partial=False,mutate=False,bad_evidence=False,timeout=False):
-        spec=importlib.util.spec_from_file_location('incremental_validator_test',ROOT/'tools/validate-codec-incremental.py')
+        spec=importlib.util.spec_from_file_location('incremental_validator_test',ROOT / 'tools/validate-codec-incremental.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);commands=[]
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
-            (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command)
                 name=Path(command[1]).name if len(command)>1 else '';out=kwargs['stdout']
@@ -211,11 +212,11 @@ class Orchestration(unittest.TestCase):
                         receipt['one_shot_fallback']=True
                         (directory/'incremental.json').write_text(json.dumps(receipt))
                 out.flush();return subprocess.CompletedProcess(command,0)
-            args=['--racket',sys.executable,'--directory',str(root/'out')]
+            args=['--racket',sys.executable,'--directory',str(root / 'out')]
             if mode is not None:args+=['--regressions',mode]
             with patch.object(module.shutil,'which',return_value=sys.executable),patch.object(module.subprocess,'run',side_effect=execute),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 result=module.main(args,root=root)
-            report=json.loads((root/'out/validation.json').read_text())
+            report=json.loads((root / 'out/validation.json').read_text())
         return result,report,commands
     def test_default_full(self):
         rc,r,_=self.invoke();self.assertEqual(rc,0);self.assertEqual(r['regressions_status'],'passed');self.assertTrue(r['regressions_attempted'])
@@ -251,7 +252,7 @@ class Orchestration(unittest.TestCase):
 
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_case_counts(self):
         for kind,count in (('pure',v.PURE_CASES),('native',v.NATIVE_CASES)):
             s=self.text(f'tests/codec-incremental-{kind}-test.rkt');self.assertEqual(s.count('(test-case '),count)
@@ -287,7 +288,7 @@ class Sources(unittest.TestCase):
         self.assertIn('(incremental-session-record-handle v)',self.text('private/core.rkt'))
         self.assertIn('codec-incremental stream-input stream-output',self.text('private/lifetime.rkt'))
     def test_three_automatic_workflows(self):
-        auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
+        auto={p.name for p in (ROOT / '.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
         self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml','catalog-package.yml'})
         s=self.text('.github/workflows/codec-queries.yml')
         self.assertEqual(s.count('validate-codec-incremental.py --regressions none'),2)

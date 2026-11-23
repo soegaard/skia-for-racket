@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic PDF/SVG, pixel-oracle and runner tests. NOT Skia execution evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import base64
 import contextlib
 import copy
@@ -156,68 +157,68 @@ class Documents(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup); self.root = Path(temp.name)
     def test_pdf_native_text_and_vector(self):
-        path = self.root/"a.pdf"; synthetic_pdf(path)
+        path = self.root / 'a.pdf'; synthetic_pdf(path)
         s = c.inspect_pdf(path); self.assertIn(c.TEXT, s["text"]); self.assertGreater(s["geometry"], 0); self.assertEqual(s["image_sizes"], [])
     def test_pdf_nested_form_is_not_mistaken_for_flat_raster(self):
-        path = self.root/"a.pdf"; synthetic_pdf(path, form=True, images=((128, 64),))
+        path = self.root / 'a.pdf'; synthetic_pdf(path, form=True, images=((128, 64),))
         s = c.inspect_pdf(path); self.assertEqual(s["image_sizes"], [[128, 64]]); self.assertGreater(s["geometry"], 0)
         self.assertIn(c.TEXT, s["text"])
     def test_pdf_outlines_have_no_text_operations(self):
-        path = self.root/"a.pdf"; synthetic_pdf(path, native=False)
+        path = self.root / 'a.pdf'; synthetic_pdf(path, native=False)
         self.assertEqual(c.inspect_pdf(path)["text_operations"], 0)
     def test_pdf_links_and_named_destination(self):
-        path = self.root/"a.pdf"; synthetic_pdf(path, links=True, pages=2)
+        path = self.root / 'a.pdf'; synthetic_pdf(path, links=True, pages=2)
         s = c.inspect_pdf(path); self.assertEqual(s["pages"], 2); self.assertIn(c.URI, s["uris"]); self.assertIn(c.DEST, s["named_destinations"])
     def test_svg_native_text_and_gradient(self):
-        path = self.root/"a.svg"; synthetic_svg(path)
+        path = self.root / 'a.svg'; synthetic_svg(path)
         s = c.inspect_svg(path); self.assertIn(c.TEXT, s["text"]); self.assertEqual(s["gradient_operations"], 1)
     def test_svg_embedded_png(self):
-        path = self.root/"a.svg"; synthetic_svg(path, images=((128, 64),))
+        path = self.root / 'a.svg'; synthetic_svg(path, images=((128, 64),))
         self.assertEqual(c.inspect_svg(path)["image_sizes"], [[128, 64]])
     def test_svg_links(self):
-        path = self.root/"a.svg"; synthetic_svg(path, links=True)
+        path = self.root / 'a.svg'; synthetic_svg(path, links=True)
         s = c.inspect_svg(path); self.assertIn(c.URI, s["uris"]); self.assertIn("skia-"+c.DEST, s["named_destinations"])
     def test_external_svg_image_rejected(self):
-        path = self.root/"a.svg"; path.write_text('<svg width="10" height="10"><image href="remote.png"/></svg>')
+        path = self.root / 'a.svg'; path.write_text('<svg width="10" height="10"><image href="remote.png"/></svg>')
         with self.assertRaises(ValueError): c.inspect_svg(path)
     def test_svg_entity_rejected(self):
-        path = self.root/"a.svg"; path.write_text('<!DOCTYPE svg [<!ENTITY x "bad">]><svg width="10" height="10"/>')
+        path = self.root / 'a.svg'; path.write_text('<!DOCTYPE svg [<!ENTITY x "bad">]><svg width="10" height="10"/>')
         with self.assertRaises(ValueError): c.inspect_svg(path)
     def test_blank_vector_document_rejected(self):
-        row = c.SPECS["vector-pdf-native"]; path = self.root/row["file"]
+        row = c.SPECS["vector-pdf-native"]; path = source_path(self.root, row["file"])
         synthetic_pdf(path, geometry=False)
         with self.assertRaises(ValueError): c.inspect_document(path, row)
     def test_vector_raster_flattening_rejected(self):
-        row = c.SPECS["vector-pdf-native"]; path = self.root/row["file"]
+        row = c.SPECS["vector-pdf-native"]; path = source_path(self.root, row["file"])
         synthetic_pdf(path, images=((160, 120),))
         with self.assertRaises(ValueError): c.inspect_document(path, row)
     def test_native_text_loss_rejected(self):
-        row = c.SPECS["vector-pdf-native"]; path = self.root/row["file"]
+        row = c.SPECS["vector-pdf-native"]; path = source_path(self.root, row["file"])
         synthetic_pdf(path, native=False)
         with self.assertRaises(ValueError): c.inspect_document(path, row)
     def test_outline_text_leak_rejected(self):
-        row = c.SPECS["vector-svg-outline"]; path = self.root/row["file"]
+        row = c.SPECS["vector-svg-outline"]; path = source_path(self.root, row["file"])
         synthetic_svg(path, native=True)
         with self.assertRaises(ValueError): c.inspect_document(path, row)
     def test_full_synthetic_matrix_inspected(self):
         rows = c.validate_receipt(receipt(), TOKEN, IDENTITY)
         summaries = [c.inspect_document(create_document(self.root, row), row) for row in rows]
         c.write_review(self.root, rows, summaries)
-        self.assertEqual(len(summaries), 24); self.assertTrue((self.root/"review.html").is_file())
+        self.assertEqual(len(summaries), 24); self.assertTrue((self.root / 'review.html').is_file())
     def test_bad_pdf_rejected(self):
-        path = self.root/"a.pdf"; path.write_bytes(b"%PDF-incomplete")
+        path = self.root / 'a.pdf'; path.write_bytes(b"%PDF-incomplete")
         with self.assertRaises(Exception): c.inspect_pdf(path)
     def test_missing_file_rejected(self):
         with self.assertRaises(ValueError): c.safe_file(self.root, "missing.pdf")
     def test_symlink_file_rejected(self):
-        source = self.root/"real.pdf"; synthetic_pdf(source)
-        (self.root/"alias.pdf").symlink_to(source)
+        source = self.root / 'real.pdf'; synthetic_pdf(source)
+        (self.root / 'alias.pdf').symlink_to(source)
         with self.assertRaises(ValueError): c.safe_file(self.root, "alias.pdf")
     def test_duplicate_json_keys_rejected(self):
-        path = self.root/"receipt.json"; path.write_text('{"status":"failed","status":"passed"}')
+        path = self.root / 'receipt.json'; path.write_text('{"status":"failed","status":"passed"}')
         with self.assertRaises(ValueError): c.read_json(path)
     def test_nonfinite_json_rejected(self):
-        path = self.root/"receipt.json"; path.write_text('{"size":NaN}')
+        path = self.root / 'receipt.json'; path.write_text('{"size":NaN}')
         with self.assertRaises(ValueError): c.read_json(path)
 
 
@@ -286,9 +287,9 @@ def simulate(*, options=(), fail=None, missing=None, stale=False, mutate=False, 
     with tempfile.TemporaryDirectory() as t:
         root = Path(t); commands = []
         for name in v.SOURCES:
-            path = root/name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("synthetic")
-        selected = str((root/"selected racket/racket").resolve())
-        def which(name): return None if name == missing else selected if name == "racket" else str(root/"bin"/name)
+            path = source_path(root, name); path.parent.mkdir(parents=True, exist_ok=True); path.write_text("synthetic")
+        selected = str((root / 'selected racket/racket').resolve())
+        def which(name): return None if name == missing else selected if name == "racket" else str(root / 'bin'/name)
         def run(self, argv, cwd):
             command = list(map(str, argv)); commands.append(command)
             if fail and any(x.endswith(fail) for x in command): raise RuntimeError("synthetic selected command failure")
@@ -301,7 +302,7 @@ def simulate(*, options=(), fail=None, missing=None, stale=False, mutate=False, 
                 value = receipt(); value["run_token"] = "stale" if stale else token
                 (docs/"documents.json").write_text(json.dumps(value))
                 for row in value["documents"]: (docs/row["file"]).write_bytes(b"synthetic")
-                if mutate: (root/"dc-output.rkt").write_text("mutated")
+                if mutate: (source_path(root, 'dc-output.rkt')).write_text("mutated")
                 return "dc-output-documents: 24 documents; passed.\n"
             return ""
         def inspect(*args):
@@ -311,8 +312,8 @@ def simulate(*, options=(), fail=None, missing=None, stale=False, mutate=False, 
              patch.object(c, "inspect_document", side_effect=inspect), \
              patch.object(c, "inspect_pixels", return_value=dict(file="synthetic.png", semantic_pixels_passed=True)), \
              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            code = v.main(["--racket", "racket", "--directory", str(root/"out"), *options], root=root)
-        return code, json.loads((root/"out/validation.json").read_text()), commands, selected
+            code = v.main(["--racket", "racket", "--directory", str(root / 'out'), *options], root=root)
+        return code, json.loads((root / 'out/validation.json').read_text()), commands, selected
 
 
 class Completion(unittest.TestCase):
@@ -359,26 +360,26 @@ class Completion(unittest.TestCase):
 class Sources(unittest.TestCase):
     def test_case_counts(self):
         for name, n in v.COUNTS.items():
-            source = (HERE.parent/f"tests/{name}-test.rkt").read_text()
+            source = (source_path(HERE.parent, f"tests/{name}-test.rkt")).read_text()
             self.assertEqual(source.count("(test-case "), n)
             self.assertIn(f"(define {name}-test-count {n})", source)
     def test_replay_reuses_native_callbacks(self):
-        source = (HERE.parent/"private/dc-output-native.rkt").read_text()
+        source = (source_path(HERE.parent, "private/dc-output-native.rkt")).read_text()
         for term in ("draw-on-canvas!", "bitmap-on-canvas!", "dc-render-text-on-canvas!", "draw-output-group"):
             self.assertIn(term, source)
         self.assertNotIn("gpu-surface", source)
     def test_example_has_local_cli_state(self):
-        source = (HERE.parent/"examples/dc-output.rkt").read_text()
+        source = (source_path(HERE.parent, "examples/dc-output.rkt")).read_text()
         self.assertLess(source.index("(module+ main"), source.index("(define directory"))
         self.assertNotIn("racket/gui", source)
     def test_named_annotations_use_live_canvas(self):
-        source = (HERE.parent/"private/dc-output-native.rkt").read_text()
+        source = (source_path(HERE.parent, "private/dc-output-native.rkt")).read_text()
         self.assertIn("canvas-define-destination!", source); self.assertIn("relative-state destination", source)
     def test_identity_shader_map_is_not_serialization_baggage(self):
-        source = (HERE.parent/"private/dc-style-render.rkt").read_text()
+        source = (source_path(HERE.parent, "private/dc-style-render.rkt")).read_text()
         self.assertIn("dc-identity", source); self.assertIn("shader-with-local-matrix", source)
     def test_document_worker_uses_strict_export_audit(self):
-        source = (HERE.parent/"tools/dc-output-doctor.rkt").read_text()
+        source = (HERE.parent / 'tools/dc-output-doctor.rkt').read_text()
         self.assertIn("sk:output->bytes/audit pages fmt #:policy 'error", source)
         self.assertIn("'audit_policy \"error\"", source)
 

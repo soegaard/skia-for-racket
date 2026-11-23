@@ -10,7 +10,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require racket/list "../main.rkt")
+(require racket/list "../skia-lib/main.rkt")
 (provide portable-drawing-doctor!)
 
 ;;;

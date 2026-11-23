@@ -15,7 +15,7 @@
 ;; frame. Pixel captures describe the GPU DC backing, not physical scanout.
 (require racket/class racket/cmdline racket/file racket/list
          (prefix-in gui: racket/gui/base)
-         "../gpu-canvas.rkt" "../tests/gpu-dc-consumer-fixtures.rkt"
+         "../skia-lib/gpu-canvas.rkt" "../skia-lib/tests/gpu-dc-consumer-fixtures.rkt"
          "gpu-dc-consumer-common.rkt")
 
 ;;;

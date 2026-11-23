@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Index local candidate/rebuilt archives; never contact a public catalog."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import os
 import hashlib

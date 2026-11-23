@@ -16,10 +16,10 @@ done
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
 "$RACKET" -l raco -- make \
-  main.rkt annotations.rkt color-space.rkt matrix.rkt output.rkt bitmap.rkt \
-  tools/doctor.rkt run-tests.rkt tests/*.rkt examples/document-links.rkt
-"$RACKET" tools/doctor.rkt
-"$RACKET" run-tests.rkt
+  skia-lib/main.rkt skia-lib/annotations.rkt skia-lib/color-space.rkt skia-lib/matrix.rkt skia-lib/output.rkt skia-lib/bitmap.rkt \
+  skia-lib/tools/doctor.rkt skia-lib/run-tests.rkt tests/*.rkt skia-lib/examples/document-links.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
-"$RACKET" examples/document-links.rkt output/document-links-0.27
+"$RACKET" skia-lib/examples/document-links.rkt output/document-links-0.27
 python3 tools/inspect-document-links.py --probe-prefix output/document-links-0.27

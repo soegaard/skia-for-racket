@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pure/source and malformed-evidence regression tests, not native execution."""
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import contextlib
 import io
@@ -181,8 +182,8 @@ class Orchestration(unittest.TestCase):
     def simulate(self, *, fail=None):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
-            (root/'run-tests.rkt').write_text('(define-runtime-path native-file "tests/native-test.rkt")')
-            directory=root/'evidence'
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path native-file "tests/native-test.rkt")')
+            directory=root / 'evidence'
             commands=[]
             def execute(runner,command):
                 command=list(map(str,command));commands.append(command)
@@ -216,7 +217,7 @@ class Orchestration(unittest.TestCase):
         self.assertFalse(any('--adapter' in c for c in commands))
 class Sources(unittest.TestCase):
     """Require real integrated files. The bundle verifier runs other classes only."""
-    def source(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def source(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_version_and_registration(self):
         self.assertIn('(define version "0.79")',self.source('info.rkt'))
         self.assertIn("'test-advanced-canvases.py'",self.source('tools/ci.py'))
@@ -264,7 +265,7 @@ class Sources(unittest.TestCase):
         text=self.source('tools/advanced_canvas_validation.py')
         self.assertIn("['rsvg-convert', '--width', str(SIZE[0]), '--height', str(SIZE[1])",text)
     def test_three_workflows_remain(self):
-        paths=ROOT/'.github/workflows'
+        paths=ROOT / '.github/workflows'
         automatic={p.name for p in paths.glob('*.yml')
                    if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
         self.assertEqual(automatic,{'ci.yml','api-inventory.yml','acceptance.yml','catalog-package.yml'})

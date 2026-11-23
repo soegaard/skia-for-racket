@@ -12,8 +12,8 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/path racket/list rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../private/gpu-native.rkt"
-         "../tests/gpu-metal-native-test.rkt" "gpu-report.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/private/gpu-native.rkt"
+         "../skia-lib/tests/gpu-metal-native-test.rkt" "gpu-report.rkt")
 (provide gpu-metal-doctor!)
 ;; This process never imports/initializes a Racket GUI or OpenGL provider.
 

@@ -4,6 +4,7 @@ The observed-input report is deliberately different from a reviewed lock. No
 downloaded digest or upstream MIT nuspec grants redistribution approval.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import hashlib
 import json
@@ -67,7 +68,7 @@ def sha256(data):
 
 def native_pins(root=ROOT):
     from native_abi import default_version
-    hb = (root / 'private/harfbuzz-default-version.txt').read_text().strip()
+    hb = (source_path(root, 'private/harfbuzz-default-version.txt')).read_text().strip()
     need(re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+', hb), 'invalid HarfBuzz pin')
     return dict(skia=default_version(root), harfbuzz=hb)
 
@@ -387,7 +388,7 @@ def validate_distribution_lock(lock, root=ROOT):
             ('redistribution_review_document', 'packaging/REDISTRIBUTION-REVIEW.md')):
         evidence = lock.get(key, {})
         need(evidence.get('path') == expected_path, 'missing component build evidence: ' + key)
-        evidence_path = root / evidence['path']
+        evidence_path = source_path(root, evidence['path'])
         need(evidence_path.is_file() and not evidence_path.is_symlink()
              and evidence_path.stat().st_size <= MAX_METADATA, 'missing/unsafe component build evidence')
         data = evidence_path.read_bytes()
@@ -399,7 +400,7 @@ def validate_distribution_lock(lock, root=ROOT):
     need(configuration.get('path') == 'packaging/fontconfig/fonts.conf.in'
          and configuration.get('filename') == 'fontconfig/fonts.conf.in'
          and configuration.get('license') == 'MIT', 'unreviewed support configuration')
-    path = root / configuration['path']
+    path = source_path(root, configuration['path'])
     need(path.is_file() and not path.is_symlink() and path.stat().st_size <= 65536,
          'missing/unsafe support configuration')
     data = path.read_bytes()
@@ -418,15 +419,15 @@ def validate_distribution_lock(lock, root=ROOT):
     for name, record in notices.items():
         safe_name(record['path'])
         need(record['path'].startswith('packaging/licenses/'), 'notice outside reviewed license directory')
-        path = root / record['path']
+        path = source_path(root, record['path'])
         need(path.is_file() and not path.is_symlink() and path.stat().st_size <= MAX_METADATA,
              'missing/unsafe notice: ' + name)
         data = path.read_bytes()
         need(len(data) == record['size'] and sha256(data) == record['sha256'], 'supplemental notice drift: ' + name)
         need(record.get('source', '').startswith('https://') and record.get('license'), 'missing notice provenance')
-    fonts = lock.get('font_package', {})
-    need(fonts.get('name') == fonts.get('collection') == 'skia-fonts-1'
-         and fonts.get('version') == '1.0' and len(fonts.get('files', [])) == 4, 'invalid font package policy')
+    fonts = lock.get('documentation_fonts', {})
+    need(fonts.get('name') == fonts.get('collection') == 'skia-doc'
+         and fonts.get('version') == '0.79' and fonts.get('directory') == 'fonts' and len(fonts.get('files', [])) == 4, 'invalid documentation font policy')
     for f in fonts['files']:
         need(safe_name(f['filename']) == Path(f['filename']).name and f['license'] == 'OFL-1.1', 'unsafe font record')
         need(f['notice'] in ('noto-ofl', 'cjk-ofl') and 0 < f['size'] <= MAX_FONT

@@ -5,6 +5,7 @@ Full regressions are the standalone default. --regressions=none retains every
 stream-specific native test and byte oracle. No GPU or live-port claim is made.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -92,22 +93,22 @@ def main(argv=None, *, root=ROOT):
             raise
     try:
         before = source_fingerprint(root, output)
-        run([sys.executable, root/'tools/api-inventory.py', '--check'])
-        run([sys.executable, root/'tools/test-streams.py'])
-        run([racket, root/'tools/check-package-version.rkt'])
-        targets = [root/name for name in ('main.rkt', 'streams.rkt', 'stream-inputs.rkt',
+        run([sys.executable, root / 'tools/api-inventory.py', '--check'])
+        run([sys.executable, root / 'tools/test-streams.py'])
+        run([racket, source_path(root, 'tools/check-package-version.rkt')])
+        targets = [source_path(root, name) for name in ('main.rkt', 'streams.rkt', 'stream-inputs.rkt',
                    'tests/stream-pure-test.rkt', 'tests/stream-native-test.rkt',
                    'tools/stream-doctor.rkt', 'examples/streams.rkt')]
         if args.regressions == 'full':
             targets += global_compile_targets(root)
         run([racket, '-l', 'raco', '--', 'make', *dict.fromkeys(targets)])
-        regressions.run(lambda: run([racket, root/'run-tests.rkt']))
+        regressions.run(lambda: run([racket, source_path(root, 'run-tests.rkt')]))
         for name, count, flag in (('stream-pure', checks.PURE_CASES, 'pure_passed'),
                                   ('stream-native', checks.NATIVE_CASES, 'native_passed')):
-            checks.suite_output(run([racket, root/f'tests/{name}-test.rkt']), name, count)
+            checks.suite_output(run([racket, source_path(root, f'tests/{name}-test.rkt')]), name, count)
             report[flag] = True
-        run([racket, root/'examples/streams.rkt'])
-        run([racket, root/'tools/stream-doctor.rkt', '--directory', output/'native', '--token', token])
+        run([racket, source_path(root, 'examples/streams.rkt')])
+        run([racket, root / 'tools/stream-doctor.rkt', '--directory', output/'native', '--token', token])
         result = checks.inspect(output/'native', token)
         (output/'inspection.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         report['byte_oracles_passed'] = True

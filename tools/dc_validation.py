@@ -4,6 +4,7 @@ The tiny oracle is specified here, not derived from either renderer's pixels.
 The larger Racket/Skia comparison is a manual review, not a pixel-equality gate.
 """
 from __future__ import annotations
+from repository_layout import source_path
 
 import hashlib
 import html
@@ -82,7 +83,7 @@ def sha256(path):
 
 
 def source_fingerprint(root):
-    return {name: sha256(Path(root) / name) for name in SOURCE_PATHS}
+    return {name: sha256(source_path(root, name)) for name in SOURCE_PATHS}
 
 
 def png_rgba(path, expected_size):

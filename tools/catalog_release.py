@@ -1,15 +1,20 @@
 """Strict same-candidate catalog receipts; no execution, mutation or publication."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import zipfile
 from catalog_execution import PKG_BUILD_PROFILE, RUNTIME_ENVIRONMENTS, verify_drdr_child
+from repository_layout import SOURCE_PACKAGES
 from native_packages import ROOT, DISTRIBUTED_TARGETS, TARGETS, read_json, validate_distribution_lock
 from release_graph import need, json_data
 
-REQUIRED_CHECKS = ('ordinary_setup_with_documentation', 'package_dependencies_and_registered_manuals',
+REQUIRED_CHECKS = ('registered_manual_navigation', 'five_directory_sources_match_candidate_archives', 'library_only_without_documentation_or_fonts',
+                   'documentation_added_to_existing_library', 'independent_documentation_removal',
+                   'documentation_multilingual_tests', 'git_layout_without_generated_source_identity',
+                   'ordinary_setup_with_documentation', 'package_dependencies_and_registered_manuals',
                    'staged_dependency_snapshot_verified',
                    'lazy_imports_invalid_overrides', 'invalid_override_exclusive',
                    'bounded_cpu_catalog_tests', 'managed_payload_negative_cases', 'actual_drdr_traversal_under_600_seconds',
@@ -118,7 +123,7 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
         verify_drdr_child(report.get('drdr_child_runtime'), first['copied_runtime'],
                           version=identity['version'], target=identity['target'])
         drdr = [row for row in report.get('commands', [])
-                if row.get('command', [])[-4:] == ['test', '--drdr', '--package', 'skia']]
+                if row.get('command', [])[-5:] == ['test', '--drdr', '--package', 'skia-lib', 'skia-doc']]
         need(len(drdr) == 1 and drdr[0].get('exit_code') == 0 and
              drdr[0].get('runtime_child_environment') == {
                  'PLTCOMPILEDROOTS': str(PurePosixPath(first['copied_runtime']) / 'zo') + ':'},
@@ -163,6 +168,30 @@ def verify_lane(report, staging, *, source_sha256, artifacts, lock_sha256, commi
             need(re.fullmatch('[a-f0-9]{64}', smoke['skia'].get('support_library_sha256', '')) and
                  PurePosixPath(smoke['skia'].get('support_library', '')).is_absolute(),
                  'natipkg support-library provenance is missing')
+    need(set(report.get('rebuilt_documentation_smoke', {})) == {'source', 'built', 'binary-lib'},
+         'rebuilt documentation proof missing')
+    expected_fonts = {r['filename']: r['sha256'] for r in
+                      (native_lock or read_json(ROOT / 'packaging/native-assets.json'))['documentation_fonts']['files']}
+    docs = [report.get('documentation_smoke'), report.get('added_documentation_smoke')]
+    docs += list(report['rebuilt_documentation_smoke'].values())
+    need(all(isinstance(d, dict) and d.get('status') == 'passed' and len(d.get('shapes', [])) == 4 and
+             {r.get('font'): r.get('font_sha256') for r in d['shapes']} == expected_fonts and
+             all(r['glyphs'] and all(g > 0 for g in r['glyphs']) and r['advance'] > 0 for r in d['shapes'])
+             for d in docs), 'documentation font coverage/provenance missing')
+    need(all(s.get('source_identity') is False and len(s.get('shapes', [])) == 1 and
+             s['shapes'][0].get('font') == 'procedural-AV' and s['shapes'][0].get('glyphs') == [2, 3]
+             and s.get('default_font_verified') is True for s in [s for g in groups for s in g]),
+         'core test depends on documentation fonts or generated identity')
+    navigation = report.get('documentation_navigation') or {}
+    need(set(navigation) == {'source', 'rebuilt-source', 'rebuilt-built', 'rebuilt-binary-lib'} and
+         all(navigation[k].get('status') == 'passed' and navigation[k].get('tutorials') == 22
+             and navigation[k].get('landing_checked') is True
+             for k in ('source','rebuilt-source','rebuilt-built')), 'registered manual navigation proof missing')
+    binary = navigation['rebuilt-binary-lib']
+    need(binary.get('status') == 'racket-binary-lib-documentation-omitted' and binary.get('manuals') == 0
+         and binary.get('content_state', '').startswith('(binary-lib ')
+         and binary.get('fonts_and_editable_assets_checked_separately') is True,
+         'binary-library format semantics/retention proof missing')
     return identity['target'], identity['version']
 
 
@@ -173,10 +202,12 @@ def verify(root, directory, *, commit, attempt):
     need(assets is not None, 'catalog artifact set missing')
     with zipfile.ZipFile(directory / assets['file']) as archive:
         receipts = member_json(archive, 'native-artifacts.json')['artifacts']
-        expected = {TARGETS[name]['package'] + '.zip' for name in DISTRIBUTED_TARGETS} | {'skia-fonts-1.zip'}
+        expected = {TARGETS[name]['package'] + '.zip' for name in DISTRIBUTED_TARGETS}
         need(len(receipts) == len(expected) and {r.get('archive') for r in receipts} == expected,
              'catalog artifacts must exclude the Windows direct-download payload')
-        allowed = {'native-artifacts.json', 'skia.zip', 'skia.zip.CHECKSUM'}
+        allowed = {'native-artifacts.json', 'source-packages.json'}
+        for name in SOURCE_PACKAGES:
+            allowed.update((name + '.zip', name + '.zip.CHECKSUM'))
         for name in expected:
             allowed.update((name, name + '.CHECKSUM', name.removesuffix('.zip') + '.receipt.json'))
         need(set(archive.namelist()) == allowed, 'unexpected candidate payload or file in catalog artifact set')
@@ -190,8 +221,21 @@ def verify(root, directory, *, commit, attempt):
                  archive.read(name + '.CHECKSUM') == receipt['sha1'].encode('ascii'), 'catalog archive checksum differs')
             need(receipt['lock_sha256'] == digest and receipt['source_commit_observed'] == commit, 'catalog asset provenance differs')
             artifacts[name] = receipt['sha256']
-        need(len(artifacts) == 3, 'incomplete catalog native/font set')
-        source_sha = hashlib.sha256(archive.read('skia.zip')).hexdigest()
+        need(len(artifacts) == 2, 'incomplete native set')
+        source = member_json(archive, 'source-packages.json')
+        sources = source.get('packages') or []
+        need(len(sources) == 3 and {r.get('package') for r in sources} == set(SOURCE_PACKAGES), 'incomplete source set')
+        from native_packages import json_bytes
+        source_sha = hashlib.sha256(json_bytes(sources)).hexdigest()
+        need(source.get('sha256') == source_sha and source.get('source_worktree_clean') is True
+             and source.get('source_commit_observed') == commit, 'source-set identity differs')
+        for row in sources:
+            name = row['package'] + '.zip'
+            data = archive.read(name)
+            need(row.get('source_worktree_clean') is True and row.get('source_commit_observed') == commit
+                 and len(data) == row['size'] and hashlib.sha256(data).hexdigest() == row['sha256']
+                 and hashlib.sha1(data).hexdigest() == row['sha1']
+                 and archive.read(name + '.CHECKSUM') == row['sha1'].encode('ascii'), 'source archive identity differs')
     targets = set()
     for name, record in index.items():
         if name.startswith('catalog-') and not name.startswith('catalog-assets-'):

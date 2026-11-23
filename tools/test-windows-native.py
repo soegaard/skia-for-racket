@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Direct upstream Windows acquisition, ownership and transaction regressions."""
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import importlib.util
 import io

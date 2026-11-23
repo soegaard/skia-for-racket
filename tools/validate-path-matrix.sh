@@ -15,13 +15,13 @@ for NAME in codec pdf path-matrix; do
 done
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
-# Do not rely on raco make run-tests.rkt to discover dynamic-require targets.
+# Do not rely on raco make skia-lib/run-tests.rkt to discover dynamic-require targets.
 # -l raco dispatches the compiler within exactly this Racket installation.
 "$RACKET" -l raco -- make \
-  main.rkt matrix.rkt output.rkt bitmap.rkt tools/doctor.rkt run-tests.rkt \
-  tests/*.rkt examples/path-matrix.rkt
-"$RACKET" tools/doctor.rkt
-"$RACKET" run-tests.rkt
+  skia-lib/main.rkt skia-lib/matrix.rkt skia-lib/output.rkt skia-lib/bitmap.rkt skia-lib/tools/doctor.rkt skia-lib/run-tests.rkt \
+  tests/*.rkt skia-lib/examples/path-matrix.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
-"$RACKET" examples/path-matrix.rkt output/path-matrix-0.24
+"$RACKET" skia-lib/examples/path-matrix.rkt output/path-matrix-0.24
 python3 tools/inspect-path-matrix.py --probe-prefix output/path-matrix-0.24

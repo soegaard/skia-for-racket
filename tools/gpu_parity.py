@@ -5,6 +5,7 @@ any nonzero exit, launch failure or timeout. CI uses ci.Runner, with persistent
 logs and a private installed source package; the standalone CLI uses it too.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import json
 import os
@@ -132,7 +133,7 @@ def check_receipt(name, raw, inspected, *, root, run_id, identity, backend, adap
         sources = raw.get('workload_sources', [])
         require([s.get('path') for s in sources] == list(SOURCE_PATHS), 'missing source fingerprints')
         for item in sources:
-            source = root / item['path']
+            source = source_path(root, item['path'])
             require(source.is_file() and not source.is_symlink() and
                     hashlib.sha1(source.read_bytes()).hexdigest() == item['sha1'],
                     'timing workload source changed: ' + item['path'])
@@ -175,13 +176,13 @@ def execute(root, racket, directory, run, *, backend, host, adapter=None, adapte
                         backends=[declared_capabilities(b) for b in BACKEND_IDS])
         require(declaration == expected, 'Racket and Python backend declarations disagree')
         progress['wrapper_declarations_checked'] = True
-        doctors = [root / ('tools/' + SUITES[n][0]) for n in names]
+        doctors = [source_path(root, 'tools/' + SUITES[n][0]) for n in names]
         run([racket, '-l', 'raco', '--', 'make', *doctors])
         for name in names:
             doctor, inspector, _, _, _ = SUITES[name]
             prefix = directory / name
             selected_host = 'gui' if name == 'redraw' else host
-            args = [racket, root / ('tools/' + doctor), '--prefix', prefix,
+            args = [racket, source_path(root, 'tools/' + doctor), '--prefix', prefix,
                     '--backend', backend, '--host', selected_host]
             if backend == 'direct3d': args += ['--adapter', adapter, '--adapter-index', str(adapter_index)]
             if selected_host == 'egl':
@@ -189,7 +190,7 @@ def execute(root, racket, directory, run, *, backend, host, adapter=None, adapte
                          '--egl-surface', egl_surface]
             if name in ('performance', 'redraw'): args += TIMING_ARGS
             run(args)
-            run([sys.executable, root / ('tools/' + inspector), '--probe-prefix', prefix])
+            run([sys.executable, source_path(root, 'tools/' + inspector), '--probe-prefix', prefix])
             raw = read_json(str(prefix) + '.diagnostic.json')
             inspected = read_json(str(prefix) + '.inspection.json')
             progress['suites'].append(check_receipt(name, raw, inspected, root=root, run_id=directory.name,

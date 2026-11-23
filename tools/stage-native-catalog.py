@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Prepare exact unpublished source/native/font archives and a disposable catalog.
+"""Prepare exact unpublished source/native archives and a disposable catalog.
 
 Network preparation is explicit. --snapshot stages the selected platform's
 complete dependency closure from one released Racket catalog, for a subsequent
 network-denied validator. This never changes the normal user's catalog config.
 """
 from __future__ import annotations
+from repository_layout import source_path
 
 import argparse
 import hashlib
@@ -19,7 +20,8 @@ import sys
 import tempfile
 import zipfile
 
-from native_packages import ROOT, need, sha256, read_json, json_bytes, write_zip, zip_index
+from native_packages import ROOT, need, sha256, read_json, json_bytes, write_zip, zip_index, check_font_input
+from repository_layout import SOURCE_PACKAGES
 from catalog_snapshot import inventory
 from catalog_execution import racket_command, runtime_child_environment, runtime_profile
 
@@ -31,28 +33,52 @@ def module(name):
     return value
 
 
-def source_archive(root, destination, *, allow_dirty=False):
+def source_archive(root, destination, *, allow_dirty=False, package='skia'):
+    need(package in SOURCE_PACKAGES, 'unknown source package')
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root))
     need(allow_dirty or not dirty, 'candidate source must be clean/committed; use --allow-dirty only for labelled local validation')
-    args = ['git', 'ls-files', '--cached', '-z']
+    args = ['git', 'ls-files', '--cached', '-z', '--', package]
     if allow_dirty:
-        args = ['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z']
+        args = ['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', package]
     names = sorted(set(n for n in subprocess.check_output(args, cwd=root).decode().split('\0') if n))
+    fonts = {f['filename']: f for f in read_json(root / 'packaging/native-assets.json')['documentation_fonts']['files']}
     members = {}
     for name in names:
-        path = root / name
+        path = source_path(root, name)
+        if allow_dirty and not path.exists():
+            continue  # A tracked rename is represented by its new untracked path.
         need(path.is_file() and not path.is_symlink(), 'unsafe/missing source member: ' + name)
-        need(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in Path(name).parts)
-             and not name.lower().endswith(('.nupkg', '.so', '.dylib', '.dll', '.exe', '.zo', '.pyc', '.ttf', '.otf', '.ttc')),
+        relative = path.relative_to(source_path(root, package)).as_posix()
+        need(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in Path(relative).parts)
+             and not relative.lower().endswith(('.nupkg', '.so', '.dylib', '.dll', '.exe', '.zo', '.pyc')),
              'binary/generated file in source archive: ' + name)
-        members[name] = path.read_bytes()
+        need(relative != 'private/source-identity.json', 'Git sources must not require generated source identity')
+        if relative.lower().endswith(('.ttf', '.otf', '.ttc')):
+            need(package == 'skia-doc' and relative.startswith('fonts/') and Path(relative).name in fonts,
+                 'unapproved font or font outside documentation: ' + name)
+            check_font_input(path, fonts[Path(relative).name])
+        members[relative] = path.read_bytes()
+    need('info.rkt' in members and 'LICENSE' in members, 'incomplete source package: ' + package)
+    if package == 'skia-doc':
+        need({n for n in members if n.lower().endswith(('.ttf','.otf','.ttc'))} ==
+             {'fonts/' + f for f in fonts}, 'documentation must retain exactly four approved fonts')
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
-    members['private/source-identity.json'] = json_bytes(dict(schema=1, source_commit_observed=commit,
-                                                           source_worktree_clean=not dirty))
     identity = write_zip(destination, members)
-    return dict(**identity, source_worktree_clean=not dirty,
-                source_commit_observed=commit,
-                files=len(members), contains_native_binaries=False, contains_fonts=False)
+    return dict(**identity, package=package, archive=destination.name, source_worktree_clean=not dirty,
+                source_commit_observed=commit, files=len(members), contains_native_binaries=False,
+                contains_fonts=package == 'skia-doc', generated_source_identity=False)
+
+
+def source_archives(root, artifacts, *, allow_dirty=False):
+    rows = [source_archive(root, artifacts / (name + '.zip'), allow_dirty=allow_dirty, package=name)
+            for name in SOURCE_PACKAGES]
+    report = dict(schema=1, packages=rows, source_worktree_clean=all(r['source_worktree_clean'] for r in rows),
+                  source_commit_observed=rows[0]['source_commit_observed'])
+    # Bind the complete package set outside the installable packages. Ordinary
+    # Git installations have no archive-injected identity file.
+    report['sha256'] = sha256(json_bytes(rows))
+    (artifacts / 'source-packages.json').write_bytes(json_bytes(report))
+    return report
 
 
 def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base_catalog=None):
@@ -72,11 +98,12 @@ def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base
         module('prepare-native-packages').prepare(lock, cache)
     artifacts = output / 'artifacts'
     module('build-native-packages').build(lock, cache, artifacts, local_candidate=True)
-    source = source_archive(ROOT, artifacts / 'skia.zip', allow_dirty=allow_dirty)
+    source = source_archives(ROOT, artifacts, allow_dirty=allow_dirty)
     native = read_json(artifacts / 'native-artifacts.json')
     metadata = output / 'metadata'
     metadata.mkdir()
-    rows = [dict(name='skia', archive=str(artifacts / 'skia.zip'), metadata_directory=str(ROOT), sha1=source['sha1'])]
+    rows = [dict(name=r['package'], archive=str(artifacts / r['archive']),
+                 metadata_directory=str(source_path(ROOT, r['package'])), sha1=r['sha1']) for r in source['packages']]
     for receipt in native['artifacts']:
         name = receipt['package']
         folder = metadata / name
@@ -99,7 +126,7 @@ def stage(racket, output, *, cache=None, snapshot=False, allow_dirty=False, base
     (output / 'staging-receipt.json').write_bytes(json_bytes(report))
     if snapshot:
         target = output / 'snapshot'
-        command = [*prefix, '-l', 'raco', 'pkg', 'catalog-archive', '--include', 'skia', '--include-deps',
+        command = [*prefix, '-l', 'raco', 'pkg', 'catalog-archive', '--fast-file-copy', '--include', 'skia', '--include-deps',
                    '--include-deps-platform', identity['os'], identity['target'], '--relative',
                    '--version', identity['version'], str(target), str(output / 'catalog'),
                    str(base_catalog or ('https://download.racket-lang.org/releases/' + identity['version'] + '/catalog/'))]

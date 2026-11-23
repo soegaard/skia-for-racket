@@ -5,6 +5,7 @@ run. A caller must deliberately opt out of the global run-tests.rkt suite.
 A skipped suite is recorded as not-run, never as a successful regression run.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 from collections.abc import Callable
@@ -32,7 +33,7 @@ def add_regression_argument(parser: argparse.ArgumentParser) -> None:
 
 def global_compile_targets(root: Path) -> list[Path]:
     """Compile the full runner and its dynamically loaded native suites."""
-    text = (root / 'run-tests.rkt').read_text(encoding='utf-8')
+    text = (source_path(root, 'run-tests.rkt')).read_text(encoding='utf-8')
     names = sorted(set(re.findall(
         r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)', text)))
     if not names:
@@ -40,7 +41,7 @@ def global_compile_targets(root: Path) -> list[Path]:
     for name in names:
         if any(p in ('', '.', '..') for p in name.split('/')) or '\\' in name or ':' in name:
             raise ValueError('unsafe regression compile target')
-    return [root / 'run-tests.rkt', *(root / name for name in names)]
+    return [source_path(root, 'run-tests.rkt'), *(source_path(root, name) for name in names)]
 
 
 class RegressionGate:

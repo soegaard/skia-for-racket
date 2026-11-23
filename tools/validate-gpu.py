@@ -6,6 +6,7 @@ software/unclassified backend names. An explicit render/cleanup failure
 always fails, even in optional mode. SKIP_C_ABI=1 explicitly omits C mirrors.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import json
 import os
 from pathlib import Path
@@ -25,10 +26,10 @@ def main() -> int:
     if mode not in ('required', 'optional', 'off'):
         raise ValueError('GPU_MODE must be required, optional, or off')
     hardware = os.environ.get('REQUIRE_HARDWARE', '0') == '1'
-    (ROOT/'output').mkdir(exist_ok=True)
+    (ROOT / 'output').mkdir(exist_ok=True)
     # Fresh directories prevent a failure or optional skip from leaving an old
     # successful image/inspection report looking like the current result.
-    directory = Path(tempfile.mkdtemp(prefix='gpu-0.46-', dir=ROOT/'output'))
+    directory = Path(tempfile.mkdtemp(prefix='gpu-0.46-', dir=ROOT / 'output'))
     os.environ['SKIA_GPU_VALIDATION_RUN'] = directory.name
     metal_rendering = False
     backend_parity = False
@@ -110,17 +111,17 @@ def main() -> int:
                     'examples/dc-compatibility.rkt']
         modules += ['gpu-interop.rkt', 'unsafe/gpu-d3d12.rkt', 'tools/gpu-d3d12-interop-doctor.rkt',
                     'unsafe/gpu-metal.rkt', 'tools/gpu-metal-interop-doctor.rkt']
-        modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))]
-        modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu*.rkt'))]
-        run([racket,'-l','raco','--','make',*modules])
+        modules += [str(p.relative_to(ROOT)) for p in sorted((source_path(ROOT, 'tests')).glob('*.rkt'))]
+        modules += [str(p.relative_to(ROOT)) for p in sorted((source_path(ROOT, 'private')).glob('gpu*.rkt'))]
+        run([racket,'-l','raco','--','make',*(source_path(ROOT, m).relative_to(ROOT) for m in modules)])
         # Portable native checks; CPU symbol requirements are unchanged.
-        run([racket,'-e','(require "main.rkt") (skia-check!) (harfbuzz-check!) (displayln "CPU Skia and HarfBuzz symbol resolution passed; GPU symbols are separate.")'])
+        run([racket,'-e','(require "skia-lib/main.rkt") (skia-check!) (harfbuzz-check!) (displayln "CPU Skia and HarfBuzz symbol resolution passed; GPU symbols are separate.")'])
         if os.name != 'nt':
             run(['bash','tools/audit-symbols.sh'])
             run(['bash','tools/audit-harfbuzz-symbols.sh'])
         for doctor in ('doctor','portable-drawing-doctor','color-filter-doctor','raster-buffer-doctor'):
-            run([racket,f'tools/{doctor}.rkt'])
-        run([racket,'run-tests.rkt'])
+            run([racket,source_path(ROOT, f'tools/{doctor}.rkt').relative_to(ROOT)])
+        run([racket,source_path(ROOT, 'run-tests.rkt').relative_to(ROOT)])
         if mode == 'off':
             skips.append('Live GPU checks explicitly not run (GPU_MODE=off)')
             print(skips[-1])

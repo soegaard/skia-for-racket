@@ -12,7 +12,7 @@ Technical review: November 20, 2026, Codex implementation audit. On November 22,
 the maintainer approved redistributing the unmodified upstream binaries in
 reliance on the [SkiaSharp project's licensing](https://github.com/mono/SkiaSharp).
 Original and collected component notices remain included.
-The maintainer approved retaining the existing four-file `skia-fonts-1`
+The maintainer approved retaining the existing four-file Noto payload in `skia-doc`
 dependency and OFL notices on November 21, 2026. This fixes the font-package
 design decision. The font files and their notices remain unchanged.
 
@@ -43,7 +43,7 @@ Supplemental source texts in `licenses/` are locked by hash and source URL:
 | VulkanMemoryAllocator | MIT | Linux/Windows Vulkan-enabled upstream recipe; notice retained conservatively |
 | D3D12MemoryAllocator | MIT | Windows D3D12 upstream recipe |
 | GCC libstdc++ / libgcc runtime | GPL-3.0-or-later WITH GCC-exception-3.1 | Linux recipe uses static runtime flags; full GPL and runtime exception retained |
-| Noto Latin / Arabic / Hebrew / CJK JP | OFL-1.1 | Separate universal `skia-fonts-1` data package, unmodified fonts, complete OFL and name-table copyright records |
+| Noto Latin / Arabic / Hebrew / CJK JP | OFL-1.1 | Documentation-owned `skia-doc/fonts` data, unmodified fonts, complete OFL and name-table copyright records |
 
 ANGLE, ICU, sfntly, legacy Mozilla GIF, imgui, jsoncpp, libmicrohttpd and SDL
 remain in the verbatim combined notice. The library targets and platform flags

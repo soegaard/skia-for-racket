@@ -11,7 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require "../main.rkt" "../private/picture-util.rkt")
+(require "../skia-lib/main.rkt" "../skia-lib/private/picture-util.rkt")
 (provide picture-doctor!)
 
 ;;;

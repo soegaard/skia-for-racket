@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/list json
-         "../main.rkt" "../tests/image-operation-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/image-operation-fixtures.rkt")
 (provide generate-image-operation-documents)
 
 ;;;

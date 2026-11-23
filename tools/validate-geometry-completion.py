@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.67 geometry gate: regression graph, vector documents, optional GPU and independent viewers."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
@@ -21,19 +22,19 @@ ROOT=Path(__file__).resolve().parents[1]
 def compile_targets(root, regressions='full'):
     if checked_mode(regressions) == 'none':
         # Compile feature roots only; do not traverse unrelated regression suites.
-        return [root / p for p in (
+        return [source_path(root, p) for p in (
             'main.rkt',
             'geometry.rkt',
             'tests/geometry-completion-gpu-test.rkt',
             'tools/geometry-completion-doctor.rkt',
             'examples/geometry.rkt',
         )]
-    runner=root/'run-tests.rkt'
+    runner=source_path(root, 'run-tests.rkt')
     dynamic=sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"]+\.rkt)"\)', runner.read_text(encoding='utf-8'))))
     if not dynamic:raise ValueError('no dynamically required regression suites discovered')
     targets=['main.rkt','geometry.rkt','run-tests.rkt',*dynamic,'tests/geometry-completion-gpu-test.rkt',
              'tools/geometry-completion-doctor.rkt','examples/geometry.rkt']
-    return [root/n for n in dict.fromkeys(targets)]
+    return [source_path(root, n) for n in dict.fromkeys(targets)]
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
@@ -52,8 +53,8 @@ def main(argv=None):
         if args.directory.exists():p.error('evidence directory already exists')
         args.directory.mkdir(parents=True);out=args.directory.resolve()
     else:
-        (ROOT/'output').mkdir(exist_ok=True)
-        out=Path(tempfile.mkdtemp(prefix='geometry-completion-0.67-',dir=ROOT/'output'))
+        (ROOT / 'output').mkdir(exist_ok=True)
+        out=Path(tempfile.mkdtemp(prefix='geometry-completion-0.67-',dir=ROOT / 'output'))
     (out/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
     report=dict(schema=1,stage='0.67',run_token=token,status='failed',regressions_passed=False,
                 documents_passed=False,gpu_required=args.require_gpu,gpu_passed=False,
@@ -73,12 +74,12 @@ def main(argv=None):
                 raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
-        run([sys.executable,ROOT/'tools/test-geometry-completion.py'])
-        run([sys.executable,ROOT/'tools/test-geometry-document-inspector.py'])
+        run([sys.executable,ROOT / 'tools/api-inventory.py','--check'])
+        run([sys.executable,ROOT / 'tools/test-geometry-completion.py'])
+        run([sys.executable,ROOT / 'tools/test-geometry-document-inspector.py'])
         run([racket,'-l','raco','--','make',*compile_targets(ROOT, args.regressions)])
-        regressions.run(lambda: run([racket,ROOT/'run-tests.rkt']))
-        run([racket,ROOT/'tools/geometry-completion-doctor.rkt','--directory',out/'documents','--token',token])
+        regressions.run(lambda: run([racket,source_path(ROOT, 'run-tests.rkt')]))
+        run([racket,ROOT / 'tools/geometry-completion-doctor.rkt','--directory',out/'documents','--token',token])
         render=None
         if args.require_renderers:
             poppler=shutil.which('pdftoppm');rsvg=shutil.which('rsvg-convert')
@@ -95,7 +96,7 @@ def main(argv=None):
         if args.require_gpu:
             backend=args.backend
             if backend=='auto':backend='metal' if sys.platform=='darwin' else 'direct3d' if os.name=='nt' else 'egl'
-            run([racket,ROOT/'tests/geometry-completion-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
+            run([racket,source_path(ROOT, 'tests/geometry-completion-gpu-test.rkt'),'--backend',backend,'--adapter',args.adapter,
                  '--report',out/'gpu.json','--token',token])
             gpu_receipt(out/'gpu.json',token,backend,args.adapter)
             report.update(gpu_passed=True,backend=backend)

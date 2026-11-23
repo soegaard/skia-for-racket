@@ -5,6 +5,7 @@ Mocked command tests establish fail-closed orchestration, not Racket/native exec
 The default invocation includes RepositoryIntegration; it must not be skipped in CI.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import contextlib
 import importlib.util
@@ -52,14 +53,14 @@ class Completion(unittest.TestCase):
 
 class Orchestration(unittest.TestCase):
     def invoke(self, *, source_only=False, failed=None, malformed=False, drift=False, existing=False):
-        spec = importlib.util.spec_from_file_location("small_gap_driver_test", ROOT / "tools/validate-small-gaps.py")
+        spec = importlib.util.spec_from_file_location("small_gap_driver_test", ROOT / 'tools/validate-small-gaps.py')
         driver = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(driver)
         calls = []
         audits = []
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            directory = root / "evidence"
+            directory = root / 'evidence'
             if existing:
                 directory.mkdir()
                 (directory / "keep").write_text("unchanged")
@@ -131,12 +132,12 @@ class RepositoryIntegration(unittest.TestCase):
         self.assertTrue(result["in_scope_gaps_closed"])
         self.assertFalse(result["release_ready"])
     def test_no_new_native_layout_or_raw_null_binding(self):
-        native = (ROOT / "private/native.rkt").read_text()
+        native = (source_path(ROOT, 'private/native.rkt')).read_text()
         for name in v.NATIVE_SYMBOLS:
             self.assertEqual(native.count("(define-native " + name + " "), 1)
         self.assertNotIn("(define-native sk_surface_new_null ", native)
     def test_exclusion_documents_snapshot_boundary(self):
-        doc = (ROOT / "docs/SMALL-GAPS.md").read_text()
+        doc = (ROOT / 'docs/SMALL-GAPS.md').read_text()
         for word in ("intentionally excluded", "call-with-nodraw-canvas", "snapshot", "0.78c", "0.78d"):
             self.assertIn(word, doc)
 

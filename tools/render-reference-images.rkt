@@ -39,7 +39,7 @@
 ; output-directory : path?
 ;   Locates ../scribblings/reference/images relative to this module, independent of the invoking
 ;   directory.
-(define-runtime-path output-directory "../scribblings/reference/images")
+(define-runtime-path output-directory "../skia-doc/scribblings/reference/images")
 
 
 ; device-scale : exact-positive-integer?

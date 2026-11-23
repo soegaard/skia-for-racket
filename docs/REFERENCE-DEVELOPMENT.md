@@ -682,7 +682,7 @@ RACKET="/Applications/Racket v9.3.0.2/bin/racket"
 "$RACKET" tools/reference-render.rkt +m --htmls \
   --dest ../reference-r3f1-preview --dest-name skia-reference \
   --redirect-main https://docs.racket-lang.org/ \
-  --lib skia/scribblings/reference/reference.scrbl
+  --lib skia-doc/scribblings/reference/reference.scrbl
 ```
 
 Label such output as an editing preview. `check-reference.py --render` retains
@@ -1725,13 +1725,14 @@ bundle nor this scoped inspection certifies the full installed or hosted site.
 
 ## Installed documentation and publication
 
-Use the actual installed package name. With the existing repository convention:
+Use the split package names and the documentation package's generated directory.
+The following paths assume the checkout is installed in a disposable environment:
 
 ```sh
-"$RACKET" -l raco -- setup --no-zo --pkgs skia-for-racket
-python3 -B tools/check-reference.py --installed "$PWD/doc" --racket "$RACKET" \
+"$RACKET" -l raco -- setup --no-zo --pkgs skia-lib skia-doc skia
+python3 -B tools/check-reference.py --installed "$PWD/skia-doc/doc" --racket "$RACKET" \
   --output ../reference-r3a-installed
-python3 -B tools/check-reference.py --site ../site --site-source "$PWD/doc" \
+python3 -B tools/check-reference.py --site ../site --site-source "$PWD/skia-doc/doc" \
   --targets ../reference-r3a-installed/runtime.json --output ../reference-r3a-site
 ```
 

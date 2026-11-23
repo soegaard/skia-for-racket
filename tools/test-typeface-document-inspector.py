@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic 0.68a document/visual-oracle tests, NOT native Skia execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import json
 from pathlib import Path
 import tempfile
@@ -95,9 +96,9 @@ class Documents(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
     def pdf(self,mode='native',**kw):
-        p=self.root/'x.pdf';pdf(p,mode=mode,**kw);return tv.inspect_pdf(p,'regular',mode)
+        p=self.root / 'x.pdf';pdf(p,mode=mode,**kw);return tv.inspect_pdf(p,'regular',mode)
     def svg(self,**kw):
-        p=self.root/'x.svg';svg(p,**kw);return tv.inspect_svg(p,'regular')
+        p=self.root / 'x.svg';svg(p,**kw);return tv.inspect_svg(p,'regular')
     def test_native_embedding_and_extraction(self):self.assertEqual(self.pdf()['extracted'],'AV')
     def test_native_text_in_nested_form(self):self.assertEqual(self.pdf(form=True)['extracted'],'AV')
     def test_outline_pdf(self):self.assertFalse(self.pdf(mode='outline')['native_text'])
@@ -135,11 +136,11 @@ class Documents(unittest.TestCase):
         rows=[]
         for spec in tv.SPECS:
             f,fmt,mode=spec;r=receipt(spec);rows.append(r)
-            if fmt=='pdf':pdf(self.root/r['file'],f,mode)
-            else:svg(self.root/r['file'],f)
-            pixels(f).save(self.root/(r['file']+'.png'))
-            (self.root/r['rgba']).write_bytes(pixels(f).tobytes())
-        (self.root/'documents.json').write_text(json.dumps(dict(schema=1,stage='0.68a',run_token='synthetic',
+            if fmt=='pdf':pdf(source_path(self.root, r['file']),f,mode)
+            else:svg(source_path(self.root, r['file']),f)
+            pixels(f).save(source_path(self.root, r['file']+'.png'))
+            (source_path(self.root, r['rgba'])).write_bytes(pixels(f).tobytes())
+        (self.root / 'documents.json').write_text(json.dumps(dict(schema=1,stage='0.68a',run_token='synthetic',
              status='passed',rendering_executed=True,gpu_executed=False,gui_executed=False,documents=rows,typefaces=metadata())))
         report=tv.inspect_documents(self.root,'synthetic',render=lambda path,fmt:path.with_name(path.name+'.png'))
         self.assertEqual(len(report['documents']),6)

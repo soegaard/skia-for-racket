@@ -16,10 +16,10 @@ done
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
 "$RACKET" -l raco -- make \
-  main.rkt matrix.rkt color-space.rkt output.rkt annotations.rkt runtime-effects.rkt \
-  bitmap.rkt tools/doctor.rkt run-tests.rkt tests/*.rkt examples/runtime-effects.rkt
-"$RACKET" tools/doctor.rkt
-"$RACKET" run-tests.rkt
+  skia-lib/main.rkt skia-lib/matrix.rkt skia-lib/color-space.rkt skia-lib/output.rkt skia-lib/annotations.rkt skia-lib/runtime-effects.rkt \
+  skia-lib/bitmap.rkt skia-lib/tools/doctor.rkt skia-lib/run-tests.rkt tests/*.rkt skia-lib/examples/runtime-effects.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
-"$RACKET" examples/runtime-effects.rkt output/runtime-effects-0.28
+"$RACKET" skia-lib/examples/runtime-effects.rkt output/runtime-effects-0.28
 python3 tools/inspect-runtime-effects.py --probe-prefix output/runtime-effects-0.28

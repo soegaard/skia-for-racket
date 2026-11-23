@@ -793,8 +793,9 @@
     "macos": "racket-package",
     "win32": "direct-nuget"
   },
-  "font_package": {
-    "collection": "skia-fonts-1",
+  "documentation_fonts": {
+    "collection": "skia-doc",
+    "directory": "fonts",
     "files": [
       {
         "filename": "NotoSans-Regular.ttf",
@@ -905,9 +906,9 @@
         "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf"
       }
     ],
-    "name": "skia-fonts-1",
+    "name": "skia-doc",
     "purpose": "Declared Latin/Arabic/Hebrew/CJK input for executable manuals and catalog validation; no system-font API replacement",
-    "version": "1.0"
+    "version": "0.79"
   },
   "generation": 1,
   "native_license": {
@@ -930,8 +931,8 @@
   },
   "redistribution_review_document": {
     "path": "packaging/REDISTRIBUTION-REVIEW.md",
-    "sha256": "d4afccc9c676ab805aa3833496a2b0f7d90f1cb9c9a72a67deba94329081a49c",
-    "size": 1235
+    "sha256": "f7332e590d6b95e1ea0a6810bf551dfbe787794ebfca98574ebc048c3d90fd62",
+    "size": 1492
   },
   "review": {
     "authenticity_basis": "HTTPS NuGet archives checked against package ID/version and repository commit; exact source revisions inspected via GitHub/Gitiles. No claim of NuGet signature verification.",

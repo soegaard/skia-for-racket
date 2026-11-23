@@ -97,7 +97,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install pinned native libraries
         run: |
-          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source -Root (Get-Location).Path
+          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source -Root (Join-Path (Get-Location).Path 'skia-lib')
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require D3D12 effect pixels, affinity and document structure
         run: |

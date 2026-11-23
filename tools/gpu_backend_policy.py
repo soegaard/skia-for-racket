@@ -4,6 +4,7 @@ The JSON registry is declarative and performs no native probing. These checks
 validate native diagnostic evidence separately; they do not attest hardware.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import json
 from pathlib import Path
@@ -67,7 +68,7 @@ def validate_catalog(value):
     return copy.deepcopy(value)
 
 
-_CATALOG = validate_catalog(read_json(ROOT / 'private/gpu-backends.json'))
+_CATALOG = validate_catalog(read_json(source_path(ROOT, 'private/gpu-backends.json')))
 BACKEND_IDS = MappingProxyType({r['backend']: r['native_backend'] for r in _CATALOG['backends']})
 
 

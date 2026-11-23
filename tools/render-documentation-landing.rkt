@@ -23,7 +23,7 @@
          racket/list
          racket/runtime-path
          racket/string
-         "../scribblings/support/documentation-catalog.rkt")
+         "../skia-doc/scribblings/support/documentation-catalog.rkt")
 
 
 ;;;
@@ -33,7 +33,7 @@
 ; landing-template : path?
 ;   Locates ../scribblings/tutorials/pages-index.html relative to this module, independent of the
 ;   invoking directory.
-(define-runtime-path landing-template "../scribblings/tutorials/pages-index.html")
+(define-runtime-path landing-template "../skia-doc/scribblings/tutorials/pages-index.html")
 
 ; template-marker : string?
 ;   Marks the single insertion point for shared documentation navigation in the landing template.

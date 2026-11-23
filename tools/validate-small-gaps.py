@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Require 0.78b numerical/native no-draw acceptance, or explicitly audit source only."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 import json
@@ -24,7 +25,7 @@ def main(argv=None, *, root=ROOT):
     parser.add_argument("--directory", type=Path, help="new evidence directory; existing directories are refused")
     args = parser.parse_args(argv)
     token = uuid.uuid4().hex
-    directory = (args.directory or root / "output" / ("small-gaps-" + token)).resolve()
+    directory = (args.directory or root / 'output' / ("small-gaps-" + token)).resolve()
     # Do not replace an earlier evidence receipt or leave an old successful one.
     try:
         directory.mkdir(parents=True, exist_ok=False)
@@ -63,23 +64,23 @@ def main(argv=None, *, root=ROOT):
     try:
         report["summary"] = source_contracts(root)
         report["source_audit_passed"] = True
-        run([sys.executable, root / "tools/test-small-gaps.py"])
+        run([sys.executable, root / 'tools/test-small-gaps.py'])
         if args.racket:
             racket = shutil.which(args.racket)
             if not racket:
                 raise ValueError("Racket executable not found: " + args.racket)
-            run([racket, root / "tools/check-package-version.rkt"])
-            run([racket, "-l", "raco", "--", "make", root / "main.rkt",
-                 root / "tests/small-gap-pure-test.rkt", root / "tests/small-gap-native-test.rkt",
-                 root / "examples/small-gaps.rkt"])
-            text = run([racket, root / "tests/small-gap-pure-test.rkt"])
+            run([racket, source_path(root, 'tools/check-package-version.rkt')])
+            run([racket, "-l", "raco", "--", "make", source_path(root, 'main.rkt'),
+                 source_path(root, 'tests/small-gap-pure-test.rkt'), source_path(root, 'tests/small-gap-native-test.rkt'),
+                 source_path(root, 'examples/small-gaps.rkt')])
+            text = run([racket, source_path(root, 'tests/small-gap-pure-test.rkt')])
             suite_output(text, "small-gap-pure", PURE_CASES)
             report["pure_executed"] = True
             report["native_attempted"] = True
-            text = run([racket, root / "tests/small-gap-native-test.rkt"])
+            text = run([racket, source_path(root, 'tests/small-gap-native-test.rkt')])
             suite_output(text, "small-gap-native", NATIVE_CASES)
             report["native_executed"] = True
-            run([racket, root / "examples/small-gaps.rkt"])
+            run([racket, source_path(root, 'examples/small-gaps.rkt')])
         source_contracts(root)
         report["status"] = "passed"
     except Exception as exc:

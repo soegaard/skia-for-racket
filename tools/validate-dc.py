@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Required raster skia-dc% regression, independent pixels and review runner."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import os
 import re
@@ -64,7 +65,7 @@ def execute(root, directory, racket, *, runner=None):
                  full_drop_in_compatibility=False)
     try:
         before = validation.source_fingerprint(root)
-        identity_text = runner.run([racket, root/'tools/ci-identity.rkt'], cwd=root)
+        identity_text = runner.run([racket, root / 'tools/ci-identity.rkt'], cwd=root)
         identity = validation.json.loads(identity_text)
         validation.require(exact_identity(identity), 'unsupported Racket identity')
         state['identity'] = identity
@@ -78,9 +79,9 @@ def execute(root, directory, racket, *, runner=None):
                    'examples/dc-consumers.rkt', 'tools/dc-style-doctor.rkt',
                    'examples/dc-styles.rkt', 'tests/dc-style-math-test.rkt',
                    'tests/dc-style-pure-test.rkt', 'tests/dc-style-native-test.rkt']
-        runner.run([racket, '-l', 'raco', '--', 'make', *[root/name for name in modules]], cwd=root)
+        runner.run([racket, '-l', 'raco', '--', 'make', *[source_path(root, name) for name in modules]], cwd=root)
         checks['racket_compilation'] = True
-        runner.run([racket, root/'tools/dc-doctor.rkt', '--directory', directory], cwd=root)
+        runner.run([racket, root / 'tools/dc-doctor.rkt', '--directory', directory], cwd=root)
         inspected = validation.inspect_directory(directory, identity=identity)
         checks['native_dc_and_pixels'] = True
         validation.require(before == validation.source_fingerprint(root), 'source changed during DC validation')
@@ -135,7 +136,7 @@ def main(argv=None):
         except OSError as exc:
             parser.error(f'evidence directory must be new: {exc}')
     else:
-        parent = ROOT/'output'; parent.mkdir(exist_ok=True)
+        parent = ROOT / 'output'; parent.mkdir(exist_ok=True)
         directory = Path(tempfile.mkdtemp(prefix='dc-0.57-', dir=parent))
     return execute(ROOT, directory, str(Path(executable).resolve()))
 

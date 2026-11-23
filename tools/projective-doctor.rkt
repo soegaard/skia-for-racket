@@ -11,7 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require ffi/unsafe "../main.rkt" "../private/types.rkt")
+(require ffi/unsafe "../skia-lib/main.rkt" "../skia-lib/private/types.rkt")
 (provide projective-doctor!)
 
 ;;;

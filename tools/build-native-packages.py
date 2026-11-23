@@ -6,6 +6,7 @@ component-license and transitive-library review. --local-candidate is only for
 disposable validation; its receipt can never certify a release candidate.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 from pathlib import Path
@@ -61,9 +62,6 @@ def build(lock_path, inputs, output, *, local_candidate=False):
     for name, record in records.items():
         need(Path(name).name == name, 'unsafe input filename')
         check_locked_input(inputs / name, record)
-    font_members = {}
-    for f in lock['font_package']['files']:
-        font_members['fonts/' + f['filename']] = check_font_input(inputs / f['filename'], f)
     # Validate all inputs before writing the first payload.
     output.mkdir(parents=True)
     lock_digest = sha256(lock_path.read_bytes())
@@ -96,14 +94,14 @@ def build(lock_path, inputs, output, *, local_candidate=False):
                         support_dependencies=lock['support_dependencies'].get(name, []))
         if name == 'linux':
             configuration = lock['configurations']['linux-fontconfig']
-            members['skia-native-1/' + configuration['filename']] = (ROOT / configuration['path']).read_bytes()
+            members['skia-native-1/' + configuration['filename']] = (source_path(ROOT, configuration['path'])).read_bytes()
             manifest['support_configuration'] = {k:configuration[k] for k in ('filename','sha256','size','license')}
         for key, record in lock['supplemental_notices'].items():
             if key not in ('noto-ofl', 'cjk-ofl'):
-                members['licenses/components/' + key + '.txt'] = (ROOT / record['path']).read_bytes()
+                members['licenses/components/' + key + '.txt'] = (source_path(ROOT, record['path'])).read_bytes()
         members['licenses/COMPONENTS.json'] = json_bytes(lock['component_inventory'])
-        members['licenses/BUILD-EVIDENCE.json'] = (ROOT / lock['component_build_evidence']['path']).read_bytes()
-        members['licenses/REDISTRIBUTION-REVIEW.md'] = (ROOT / lock['redistribution_review_document']['path']).read_bytes()
+        members['licenses/BUILD-EVIDENCE.json'] = (source_path(ROOT, lock['component_build_evidence']['path'])).read_bytes()
+        members['licenses/REDISTRIBUTION-REVIEW.md'] = (source_path(ROOT, lock['redistribution_review_document']['path'])).read_bytes()
         members['licenses/skia-for-racket-MIT.txt'] = (ROOT / 'LICENSE').read_bytes()
         members['skia-native-1/manifest.json'] = json_bytes(manifest)
         members['info.rkt'] = native_info(dict(target, id=name), lock['native_package_version'], reviewed=reviewed, lock=lock)
@@ -129,34 +127,6 @@ def build(lock_path, inputs, output, *, local_candidate=False):
                        catalog_candidate_validated=False, redistribution_approved=reviewed)
         (output / (target['package'] + '.receipt.json')).write_bytes(json_bytes(receipt))
         receipts.append(receipt)
-    fonts = lock['font_package']
-    for key in ('noto-ofl', 'cjk-ofl'):
-        font_members['licenses/' + key + '.txt'] = (ROOT / lock['supplemental_notices'][key]['path']).read_bytes()
-    font_members['licenses/COPYRIGHTS.json'] = json_bytes({f['filename']:f['names'] for f in fonts['files']})
-    font_members['manifest.json'] = json_bytes(dict(schema=1, lock_sha256=lock_digest, fonts=fonts['files']))
-    font_members['README.md'] = b'Declared unmodified Noto fonts for executable Skia manuals and catalog checks. See licenses/.\n'
-    font_members['info.rkt'] = f'''#lang info
-(define collection "{fonts['collection']}")
-(define version "{fonts['version']}")
-(define deps '(("base" #:version "8.18")))
-(define pkg-authors '(soegaard))
-(define pkg-desc "Declared Noto font data for Skia documentation and tests")
-(define license 'OFL-1.1)
-(define compile-omit-paths '("fonts" "licenses"))
-(define test-omit-paths '("fonts" "licenses"))
-(define source-keep-files '("fonts" "licenses" "manifest.json" "README.md"))
-(define binary-keep-files '("fonts" "licenses" "manifest.json" "README.md"))
-(define binary-lib-keep-files '("fonts" "licenses" "manifest.json" "README.md"))
-(define distribution-preference 'binary)
-'''.encode()
-    archive = output / (fonts['name'] + '.zip')
-    identity = write_zip(archive, font_members)
-    receipt = dict(schema=1, package=fonts['name'], archive=archive.name, **identity,
-                   generator_version=GENERATOR_VERSION, generator_sha256=generator_digest,
-                   lock_sha256=lock_digest, font_inputs=fonts['files'], source_commit_observed=source_commit,
-                   catalog_candidate_validated=False, redistribution_approved=reviewed)
-    (output / (fonts['name'] + '.receipt.json')).write_bytes(json_bytes(receipt))
-    receipts.append(receipt)
     (output / 'native-artifacts.json').write_bytes(json_bytes(dict(
         schema=1, artifacts=receipts, catalog_candidate_validated=False)))
     return receipts

@@ -5,6 +5,7 @@ RepositoryIntegration is mandatory in the real source CI. The delivery verifier
 runs the other classes only and reports that complete-checkout limitation.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -19,7 +20,7 @@ from unittest.mock import patch
 
 import release_scope as r
 ROOT = Path(__file__).resolve().parents[1]
-POLICY = r.read_json(ROOT / r.POLICY)
+POLICY = r.read_json(source_path(ROOT, r.POLICY))
 # These are hypothetical pending scenarios, not the current repository status.
 # Keeping them exercises rejection/closure gates after real 0.78b closure.
 POLICY = copy.deepcopy(POLICY)
@@ -241,20 +242,20 @@ class Files(unittest.TestCase):
                 with self.subTest(name=name),self.assertRaises(ValueError):r.path_at(Path(t),name,exists=False)
     def test_symlink_rejected(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'real').write_text('x')
-            try:(root/'alias').symlink_to(root/'real')
+            root=Path(t);(root / 'real').write_text('x')
+            try:(root / 'alias').symlink_to(root / 'real')
             except (OSError,NotImplementedError):self.skipTest('host does not allow symlink creation')
             with self.assertRaises(ValueError):r.path_at(root,'alias')
-            with self.assertRaises(ValueError):r.atomic_text(root/'alias','y')
+            with self.assertRaises(ValueError):r.atomic_text(root / 'alias','y')
     def test_report_check_does_not_rewrite(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'docs').mkdir();p=root/r.REPORT;p.write_text('old')
+            root=Path(t);(root / 'docs').mkdir();p=source_path(root, r.REPORT);p.write_text('old')
             with self.assertRaisesRegex(ValueError,'report drift'):r.check_report(root,'new',write=False)
             self.assertEqual(p.read_text(),'old')
     def test_atomic_report_write(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);r.check_report(root,'new\n',write=True);r.check_report(root,'new\n',write=False)
-            self.assertEqual((root/r.REPORT).read_bytes(),b'new\n')
+            self.assertEqual((source_path(root, r.REPORT)).read_bytes(),b'new\n')
 
 
 class Completion(unittest.TestCase):
@@ -276,7 +277,7 @@ class Orchestration(unittest.TestCase):
         c,h,v,p=fixture();summary=r.validate_review(c,h,v,p)
         calls=[];audits=[]
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);out=root/'evidence'
+            root=Path(t);out=root / 'evidence'
             def audit(root,**kw):
                 audits.append(kw)
                 if failed=='audit' or drift and len(audits)>1:raise ValueError('synthetic source drift')
@@ -330,18 +331,18 @@ class RepositoryIntegration(unittest.TestCase):
     """Mandatory in source CI; never mocked or auto-skipped in a checkout."""
     def test_current_review_and_full_source_graph(self):r.audit(ROOT)
     def test_pure_source_count_and_registration(self):
-        source=(ROOT/'tests/release-scope-pure-test.rkt').read_text(encoding='utf-8')
+        source=(source_path(ROOT, 'tests/release-scope-pure-test.rkt')).read_text(encoding='utf-8')
         self.assertEqual(source.count('(test-case '),r.PURE_CASES)
-        run=(ROOT/'run-tests.rkt').read_text(encoding='utf-8')
+        run=(source_path(ROOT, 'run-tests.rkt')).read_text(encoding='utf-8')
         self.assertIn('(run-tests release-scope-pure-tests)',run)
         self.assertIn('"tests/release-scope-pure-test.rkt"',run)
     def test_required_ci_and_reviewed_catalog_workflow(self):
-        ci=(ROOT/'tools/ci.py').read_text(encoding='utf-8');self.assertIn("'test-release-scope.py'",ci)
-        workflow=(ROOT/'.github/workflows/api-inventory.yml').read_text(encoding='utf-8')
+        ci=(ROOT / 'tools/ci.py').read_text(encoding='utf-8');self.assertIn("'test-release-scope.py'",ci)
+        workflow=(ROOT / '.github/workflows/api-inventory.yml').read_text(encoding='utf-8')
         self.assertIn('python tools/validate-release-scope.py --require-no-open-gaps --racket',workflow)
         self.assertIn('output/release-scope-ci/',workflow)
         self.assertNotIn('continue-on-error:',workflow)
-        auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
+        auto={p.name for p in (ROOT / '.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
         self.assertEqual(auto,{'ci.yml','api-inventory.yml','acceptance.yml','catalog-package.yml'})
 
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -14,7 +14,10 @@
        (unless info (error 'write-staging-catalog "missing candidate metadata"))
        (define name (hash-ref row 'name))
        (define data
-         (hash 'name name 'source (url->string (path->url (string->path (hash-ref row 'archive))))
+         (hash 'name name 'source
+               (cond [(hash-ref row 'source #f) => values]
+                     [(hash-ref row 'directory #f) (hash-ref row 'archive)]
+                     [else (url->string (path->url (string->path (hash-ref row 'archive))))])
                'checksum (hash-ref row 'sha1) 'description (info 'pkg-desc (lambda () name))
                ;; Racket catalogs put build and runtime dependencies together;
                ;; catalog-archive otherwise omits registered manual references.

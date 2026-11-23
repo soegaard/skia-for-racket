@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify the 0.78c API baseline; source-only/headless-only are explicit partial checks."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import json
 from pathlib import Path
@@ -42,9 +43,9 @@ def main(argv=None, *, root=ROOT) -> int:
         scope = release_scope.audit(root)
         api.need(scope['in_scope_gaps_closed'] and not scope['release_ready'], 'release scope is not closed')
         result['source_verified'] = True
-        policy = api.read_json(root / api.POLICY)
+        policy = api.read_json(source_path(root, api.POLICY))
         frozen_paths = [api.POLICY, api.REPORT, api.CONTRACT, *api.SNAPSHOTS.values()]
-        frozen = {p: api.file_hash(root / p) for p in frozen_paths}
+        frozen = {p: api.file_hash(source_path(root, p)) for p in frozen_paths}
         if args.source_only:
             result['status'] = 'source-only'
         else:
@@ -58,14 +59,14 @@ def main(argv=None, *, root=ROOT) -> int:
                 result['racket_executed'] = True
                 return text
             execute('compile-runner-and-probe', [racket, '-l', 'raco', '--', 'make',
-                    str(root / 'run-tests.rkt'), str(root / 'tools/public-api-probe.rkt'),
-                    str(root / 'tests/public-api-pure-test.rkt'),
-                    str(root / 'examples/public/value-basics.rkt'),
-                    str(root / 'examples/public/raster-lifetime.rkt')])
-            text = execute('reflection-fixtures', [racket, str(root / 'tests/public-api-pure-test.rkt')])
+                    str(source_path(root, 'run-tests.rkt')), str(root / 'tools/public-api-probe.rkt'),
+                    str(source_path(root, 'tests/public-api-pure-test.rkt')),
+                    str(source_path(root, 'examples/public/value-basics.rkt')),
+                    str(source_path(root, 'examples/public/raster-lifetime.rkt'))])
+            text = execute('reflection-fixtures', [racket, str(source_path(root, 'tests/public-api-pure-test.rkt'))])
             api.checked_pure_output(text)
             result['reflection_tests_passed'] = True
-            text = execute('aggregate-pure', [racket, str(root / 'run-tests.rkt'), '--pure'])
+            text = execute('aggregate-pure', [racket, str(source_path(root, 'run-tests.rkt')), '--pure'])
             api.need('Native rendering tests NOT RUN (--pure).' in text, 'aggregate pure runner did not complete')
             # RackUnit can report failures without a nonzero result in a broken
             # runner. Inspect every suite summary as well as the process exit.
@@ -75,12 +76,12 @@ def main(argv=None, *, root=ROOT) -> int:
                      'aggregate pure result reported an incomplete/failed suite')
             api.need(not re.search(r'\b(?:ERROR|FAILURE)\b', text), 'aggregate pure failure output')
             result['aggregate_pure_passed'] = True
-            text = execute('public-value-example', [racket, str(root / 'examples/public/value-basics.rkt')])
+            text = execute('public-value-example', [racket, str(source_path(root, 'examples/public/value-basics.rkt'))])
             api.need(text.strip() == 'public-value-example: passed', 'public example did not complete')
             groups = ('headless',) if args.headless_only else api.GROUPS
             for group in groups:
-                observation = api.reflect_group(root, root / api.POLICY, group, racket, directory, token)
-                expected = api.checked_snapshot(api.read_json(root / api.SNAPSHOTS[group]), policy, group)
+                observation = api.reflect_group(root, source_path(root, api.POLICY), group, racket, directory, token)
+                expected = api.checked_snapshot(api.read_json(source_path(root, api.SNAPSHOTS[group])), policy, group)
                 actual = api.snapshot_from_observation(observation, policy, group, token)
                 changes = api.differences(expected, actual)
                 (directory / f'{group}-diff.json').write_text(api.json_text(changes), encoding='utf-8')
@@ -88,7 +89,7 @@ def main(argv=None, *, root=ROOT) -> int:
                 result['groups_verified'].append(group)
             result['api_signatures_verified'] = result['groups_verified'] == list(api.GROUPS)
             result['status'] = 'passed' if result['api_signatures_verified'] else 'headless-only'
-        api.need(frozen == {p: api.file_hash(root / p) for p in frozen_paths}, 'API baseline changed while validating')
+        api.need(frozen == {p: api.file_hash(source_path(root, p)) for p in frozen_paths}, 'API baseline changed while validating')
         # Reflection must not bless changes to the source graph it just ran.
         api.source_contracts(root)
         release_scope.audit(root)

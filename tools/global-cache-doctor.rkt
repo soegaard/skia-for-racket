@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require json racket/cmdline racket/file racket/list
-         "../main.rkt" "../tests/global-cache-support.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/global-cache-support.rkt")
 (provide generate-cache-evidence)
 
 ;;;

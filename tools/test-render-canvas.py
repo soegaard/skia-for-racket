@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic validator tests and source contracts; not Racket/GPU execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -182,14 +183,14 @@ def simulate(options=(), *, missing=False, fail=None, stale=False, mutate=False,
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp); commands=[]
         for name in r.SOURCES:
-            path=root/name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("synthetic")
+            path=source_path(root, name); path.parent.mkdir(parents=True, exist_ok=True); path.write_text("synthetic")
         def run(argv, root):
             c=list(map(str,argv)); commands.append(c)
             if len(c)>1 and c[1].endswith(fail or "NO-FAIL"):
                 raise RuntimeError("selected command failed")
             if c[1].endswith("ci-identity.rkt"): return json.dumps(FULL)
             if c[1].endswith("render-canvas-pure-test.rkt"):
-                if mutate: (root/"render-canvas.rkt").write_text("mutated")
+                if mutate: (source_path(root, 'render-canvas.rkt')).write_text("mutated")
                 return good_summary("render-canvas-pure", v.PURE_CASES)
             if c[1].endswith("render-canvas-gui-test.rkt"): return good_summary("render-canvas-gui", v.GUI_CASES)
             if c[1].endswith("validate-skia-canvas.py"):
@@ -211,8 +212,8 @@ def simulate(options=(), *, missing=False, fail=None, stale=False, mutate=False,
         with patch.object(r.shutil,"which",return_value=None if missing else "/selected/racket"), \
              patch.object(r.base.Runner,"run",side_effect=run), patch.object(r.checks,"inspect_directory",side_effect=inspect), \
              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            code=r.main(["--racket","/selected/racket","--directory",str(root/"out"),*options],root=root)
-        return code,json.loads((root/"out/validation.json").read_text()),commands
+            code=r.main(["--racket","/selected/racket","--directory",str(root / 'out'),*options],root=root)
+        return code,json.loads((root / 'out/validation.json').read_text()),commands
 
 
 class PixelsAndFiles(unittest.TestCase):
@@ -252,7 +253,7 @@ class PixelsAndFiles(unittest.TestCase):
 
 
 class SourceContracts(unittest.TestCase):
-    def source(self, name): return (HERE.parent/name).read_text()
+    def source(self, name): return (source_path(HERE.parent, name)).read_text()
     def test_only_selected_renderer_is_loaded(self):
         source=self.source("render-canvas.rkt")
         self.assertIn("dynamic-require raster-module",source)

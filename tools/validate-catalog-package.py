@@ -7,6 +7,7 @@ bytes and standard dependencies come exclusively from the supplied catalogs.
 Never changes the original runtime, real user home, or public catalog.
 """
 from __future__ import annotations
+from repository_layout import source_path
 import argparse
 import errno
 import hashlib
@@ -23,6 +24,7 @@ import sys
 import time
 import tempfile
 import zipfile
+from repository_layout import SOURCE_PACKAGES
 from native_packages import ROOT, DISTRIBUTED_TARGETS, TARGETS, need, json_bytes, read_json, sha256, write_zip
 from catalog_snapshot import inventory
 from catalog_execution import (RUNTIME_ENVIRONMENTS, preserved_package_files,
@@ -91,7 +93,7 @@ class Validator:
     def environment(self, name):
         need(name in RUNTIME_ENVIRONMENTS,
              'unregistered disposable runtime; add its network-denial coverage before use')
-        directory = self.root / name
+        directory = source_path(self.root, name)
         directory.mkdir()
         runtime = directory / 'Racket runtime'
         shutil.copytree(self.runtime, runtime, symlinks=True)
@@ -127,7 +129,7 @@ class Validator:
         inherited = {} if python else runtime_child_environment(executable)
         start = time.monotonic()
         number = len(self.report['commands']) + 1
-        log = self.root / f'{number:03}.log'
+        log = source_path(self.root, f'{number:03}.log')
         print(f'[{number:03}] ' + ' '.join(map(str, arguments[:7])), flush=True)
         with log.open('wb') as stream:
             process = subprocess.Popen(command, cwd=self.away, env={**env, **(extra_env or {}), **inherited},
@@ -185,20 +187,131 @@ class Validator:
         self.report.setdefault('windows_installer_actions', []).append(dict(scope=scope, operation='remove' if remove else 'install'))
         self.save()
 
-    def install(self, environment, catalog, *, windows_scope='user'):
+    def install(self, environment, catalog, *, windows_scope='user', package='skia'):
         self.raco(environment, 'pkg', 'config', '--set', 'catalogs', catalog, self.base_catalog)
-        if self.windows:
+        if self.windows and package != 'skia-doc':
             # The explicitly approved exception stages source/dependencies,
             # invokes the upstream installer, then runs normal docs-enabled setup.
-            self.raco(environment, 'pkg', 'install', '--no-setup', '--auto', '--batch', 'skia', timeout=3600)
+            self.raco(environment, 'pkg', 'install', '--no-setup', '--auto', '--batch', '--copy', package, timeout=3600)
             message = self.run(environment, '-e', '(begin (require skia) (skia-check!))', failure=True)
             need('install-native-windows.py' in message, 'missing Windows pair did not explain the explicit installer')
             self.windows_installer(environment, scope=windows_scope)
-            self.raco(environment, 'setup', '--pkgs', 'skia', timeout=3600)
+            self.raco(environment, 'setup', '--pkgs', 'skia-lib', *(['skia-doc', 'skia'] if package == 'skia' else [package]), timeout=3600)
             self.report['checks']['windows_explicit_installer_before_offline_setup'] = True
             return
         # Intentionally ordinary dependency-driven setup, INCLUDING manuals.
-        self.raco(environment, 'pkg', 'install', '--auto', '--batch', 'skia', timeout=3600)
+        self.raco(environment, 'pkg', 'install', '--auto', '--batch', '--copy', package, timeout=3600)
+
+    def directory_catalog(self, environment):
+        need(self.owned_stage is not None, 'directory-copy qualification requires an owned candidate stage')
+        catalog = self.root / 'directory-candidates'
+        catalog.mkdir()
+        rows = []
+        comparisons = []
+        staging = read_json(self.owned_stage / 'staging-receipt.json')
+        from native_packages import zip_index, bounded_member
+        for name, identity in staging['snapshot_candidates'].items():
+            archive_path = self.owned_stage / 'snapshot/pkgs' / (name + '.zip')
+            need(sha256(archive_path.read_bytes()) == identity['sha256'], 'directory source archive identity differs')
+            destination = catalog / 'packages' / name
+            destination.mkdir(parents=True)
+            with zipfile.ZipFile(archive_path) as archive:
+                index = zip_index(archive, max_entries=8192)
+                for member, info in index.items():
+                    if info.is_dir(): continue
+                    data = bounded_member(archive, index, member)
+                    path = destination / member
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(data)
+                    comparisons.append(dict(package=name, member=member, sha256=sha256(data)))
+            rows.append(dict(name=name, archive=str(destination), metadata_directory=str(destination),
+                             directory=True, sha1=False))
+        need({r['name'] for r in rows} == set(SOURCE_PACKAGES) | set(TARGETS[t]['package'] for t in DISTRIBUTED_TARGETS),
+             'directory catalog must map all five candidates')
+        request = catalog / 'request.json'
+        request.write_bytes(json_bytes(rows))
+        self.run(environment, ROOT / 'tools/write-staging-catalog.rkt', request, catalog / 'catalog')
+        self.report['directory_sources'] = comparisons
+        self.report['checks']['five_directory_sources_match_candidate_archives'] = True
+        return catalog / 'catalog'
+
+    def documentation_smoke(self, environment):
+        report = json.loads(self.run(environment, '-l', 'skia-doc/tools/catalog-smoke'))
+        lock = read_json(ROOT / 'packaging/native-assets.json')
+        expected = {r['filename']: r['sha256'] for r in lock['documentation_fonts']['files']}
+        need(report.get('status') == 'passed' and len(report.get('shapes', [])) == 4 and
+             {r['font']: r['font_sha256'] for r in report['shapes']} == expected,
+             'documentation multilingual coverage/provenance differs')
+        need(all(r['glyphs'] and all(g > 0 for g in r['glyphs']) and r['advance'] > 0
+                 for r in report['shapes']), 'documentation shaping produced missing/unpositioned glyphs')
+        return report
+
+    def documentation_navigation(self, environment, label):
+        collection = Path(self.run(environment, '-e', '(display (collection-path "skia-doc"))'))
+        need(collection.resolve().is_relative_to(environment[2]), 'documentation escaped disposable installation')
+        state = json.loads(self.run(environment, '-e',
+            "(begin (require json setup/getinfo) (define i (get-info/full (collection-path \"skia-doc\"))) (write-json (hasheq 'manuals (length (i 'scribblings (lambda () null))) 'content_state (format \"~s\" (i 'package-content-state (lambda () #f))))))"))
+        if label == 'rebuilt-binary-lib':
+            need(state['manuals'] == 0 and state['content_state'].startswith('(binary-lib ')
+                 and not (collection / 'doc').exists(), 'unexpected Racket binary-library documentation semantics')
+            self.report.setdefault('documentation_navigation', {})[label] = dict(
+                status='racket-binary-lib-documentation-omitted', **state,
+                fonts_and_editable_assets_checked_separately=True)
+            self.save()
+            return
+        need(state['manuals'] == 25, 'registered manual inventory changed')
+        original = collection / 'doc'
+        need(original.is_dir(), 'registered documentation was not built')
+        site = self.root / ('documentation-site-' + label)
+        shutil.copytree(original, site)
+        self.run(environment, ROOT / 'tools/render-documentation-landing.rkt', '--output', site / 'index.html')
+        for name in ('skia-doc-nav.css', 'skia-doc-nav.js'):
+            shutil.copyfile(collection / 'scribblings/support' / name, site / name)
+        from reference_support import prepare_site
+        prepare_site(site, source_root=original)
+        receipt = self.root / ('documentation-navigation-' + label + '.json')
+        self.run(environment, ROOT / 'tools/check-documentation-navigation.py', site,
+                 '--catalog', collection / 'scribblings/tutorials/support/catalog.json', '--output', receipt, python=True)
+        report = read_json(receipt)
+        need(report.get('status') == 'passed' and report.get('tutorials') == 22 and report.get('landing_checked') is True,
+             'registered manual navigation is incomplete')
+        shutil.rmtree(site)
+        self.report.setdefault('documentation_navigation', {})[label] = report
+        self.save()
+
+    def library_only(self, catalog=None):
+        environment = self.environment('library-only installation')
+        self.prepared_directory_catalog = catalog if catalog is not None else self.directory_catalog(environment)
+        self.install(environment, self.prepared_directory_catalog, package='skia-lib')
+        absent = "(begin (require pkg/lib) (for ([p (list \"skia\" \"skia-doc\" \"skia-fonts-1\")]) (when (pkg-directory p) (error 'library-only \"unexpected package: ~a\" p))))"
+        self.run(environment, '-e', absent)
+        reports = self.smoke(environment)
+        collection = Path(reports[0]['collection'])
+        need(not any(p.suffix.lower() in ('.ttf', '.otf', '.ttc') for p in collection.rglob('*')),
+             'runtime package contains documentation fonts')
+        need(not (collection / 'scribblings').exists() and
+             all(r.get('source_identity') is False for r in reports),
+             'library-only installation depends on docs/generated identity')
+        self.raco(environment, 'setup', '--check-pkg-deps', '--pkgs', 'skia-lib', timeout=3600)
+        self.raco(environment, 'test', '--drdr', '--package', 'skia-lib', timeout=600)
+        self.report['library_only_smoke'] = reports
+        self.report['checks']['library_only_without_documentation_or_fonts'] = True
+        # Adding documentation performs ordinary dependency checking and builds all manuals.
+        self.install(environment, self.prepared_directory_catalog, package='skia-doc')
+        self.raco(environment, 'setup', '--check-pkg-deps', '--pkgs', 'skia-lib', 'skia-doc', timeout=3600)
+        self.report['added_documentation_smoke'] = self.documentation_smoke(environment)
+        self.raco(environment, 'test', '--drdr', '--package', 'skia-doc', timeout=600)
+        self.raco(environment, 'skia-examples', 'shaping', self.away / 'added documentation shaping')
+        self.report['checks']['documentation_added_to_existing_library'] = True
+        self.raco(environment, 'pkg', 'remove', '--batch', 'skia-doc', timeout=1800)
+        self.run(environment, '-e', absent)
+        self.report['after_documentation_removal_smoke'] = self.smoke(environment)
+        self.report['checks']['independent_documentation_removal'] = True
+        if self.windows:
+            self.windows_installer(environment, remove=True)
+        self.raco(environment, 'pkg', 'remove', '--auto', '--batch', 'skia-lib', timeout=1800)
+        self.remove_environment(environment, required=True)
+        self.save()
 
     def smoke(self, environment):
         reports = []
@@ -415,7 +528,7 @@ class Validator:
              'Windows user removal did not restore installation-scope selection')
         self.windows_installer(scopes, scope='installation', remove=True)
         need(not install_directory.exists() and sentinel.read_text() == 'retain me\n', 'Windows removal changed unrelated libraries')
-        self.raco(scopes, 'pkg', 'remove', '--batch', 'skia', 'skia-fonts-1', timeout=1800)
+        self.raco(scopes, 'pkg', 'remove', '--batch', *SOURCE_PACKAGES, timeout=1800)
         self.remove_environment(scopes)
         self.report['windows_upstream_lifecycle'] = dict(compatible_revision='1.1', rollback_revision='1.0',
             user_scope_removed=True, installation_scope_removed=True, partial_shadow_rejected=True,
@@ -441,9 +554,10 @@ class Validator:
             for name, record in records(lock).items():
                 checked_input(self.windows_inputs / name, record)
             self.report['windows_upstream_acquisition'] = read_json(self.windows_inputs / 'acquisition.json')
-        self.install(first, self.catalog)
+        self.library_only()
+        self.install(first, self.prepared_directory_catalog)
         self.report['checks']['ordinary_setup_with_documentation'] = True
-        self.raco(first, 'setup', '--check-pkg-deps', '--pkgs', 'skia', timeout=3600)
+        self.raco(first, 'setup', '--check-pkg-deps', '--pkgs', 'skia-lib', 'skia-doc', 'skia', timeout=3600)
         self.report['checks']['package_dependencies_and_registered_manuals'] = True
         self.qualify_installed(first)
 
@@ -478,7 +592,7 @@ class Validator:
         self.save()
 
     def check_drdr_child(self, environment):
-        script = self.root / 'drdr-child-profile.rkt'
+        script = source_path(self.root, 'drdr-child-profile.rkt')
         receipt = self.root / 'drdr-child-runtime.json'
         script.write_text('''#lang racket/base
 (require json)
@@ -508,6 +622,12 @@ class Validator:
 
     def qualify_installed(self, first):
         self.report['smoke'] = self.smoke(first)
+        self.report['documentation_smoke'] = self.documentation_smoke(first)
+        self.documentation_navigation(first, 'source')
+        self.report['checks']['registered_manual_navigation'] = True
+        self.report['checks']['documentation_multilingual_tests'] = True
+        need(all(r.get('source_identity') is False for r in self.report['smoke']), 'generated source identity was installed')
+        self.report['checks']['git_layout_without_generated_source_identity'] = True
         collection = Path(self.report['smoke'][0]['collection'])
         native = None if self.windows else self.report['smoke'][0]['skia']['loader']['manifest']['package']
         self.negatives(first, self.report['smoke'][0])
@@ -526,7 +646,7 @@ class Validator:
             if self.report.get('runtime_profile'):
                 self.check_drdr_child(first)
             start = time.monotonic()
-            self.raco(first, 'test', '--drdr', '--package', 'skia', timeout=600)
+            self.raco(first, 'test', '--drdr', '--package', 'skia-lib', 'skia-doc', timeout=600)
             self.report['drdr_seconds'] = round(time.monotonic()-start, 3)
             self.report['checks']['actual_drdr_traversal_under_600_seconds'] = True
         else:
@@ -554,15 +674,16 @@ class Validator:
             spec.loader.exec_module(maker)
             catalogs = {}
             expected = {}
-            tutorial_catalog = json.loads((collection / 'scribblings/tutorials/support/catalog.json').read_text())
+            doc_collection = Path(self.run(first, '-e', '(display (collection-path "skia-doc"))'))
+            tutorial_catalog = json.loads((doc_collection / 'scribblings/tutorials/support/catalog.json').read_text())
             example_paths = {'scribblings/' + (name if name.startswith('quick/') else 'tutorials/' + name)
                              for tutorial in tutorial_catalog['tutorials'] for name in tutorial['files']}
             need(all(not Path(name).is_absolute() and '..' not in Path(name).parts for name in example_paths),
                  'unsafe advertised tutorial source path')
-            example_hashes = {name:sha256((collection / name).read_bytes()) for name in example_paths}
+            example_hashes = {name:sha256((doc_collection / name).read_bytes()) for name in example_paths}
             original_directories = {}
             metadata_checks = []
-            for name in ([native] if native else []) + ['skia-fonts-1']:
+            for name in ([native] if native else []):
                 directory = Path(self.run(first, '-e', f'(begin (require pkg/lib) (display (pkg-directory "{name}")))'))
                 original_directories[name] = directory
                 # Payload may be moved in binary forms; at this point it is a source install.
@@ -570,20 +691,25 @@ class Validator:
             for form in ('source', 'built', 'binary-lib'):
                 artifacts = self.root / 'rebuilt' / form
                 artifacts.mkdir(parents=True)
-                for package in ['skia'] + ([native] if native else []) + ['skia-fonts-1']:
+                for package in list(SOURCE_PACKAGES) + ([native] if native else []):
                     self.raco(first, 'pkg', 'create', '--from-install', '--' + form, '--dest', artifacts, package)
                 for name, members in expected.items():
                     with zipfile.ZipFile(artifacts / (name + '.zip')) as archive:
                         for member, digest in members.items():
                             need(sha256(archive.read(member)) == digest, form + ' dropped/changed notice or payload: ' + member)
-                with zipfile.ZipFile(artifacts / 'skia.zip') as archive:
+                with zipfile.ZipFile(artifacts / 'skia-lib.zip') as archive:
                     need(not any(name.lower().endswith(('.dll', '.nupkg', '.so', '.dylib', '.exe'))
                                  for name in archive.namelist()), 'rebuilt Skia package bundled a downloaded native payload')
+                    need(not any(name.lower().endswith(('.ttf', '.otf', '.ttc')) for name in archive.namelist()), 'runtime bundled documentation fonts')
+                    need('private/source-identity.json' not in archive.namelist(), 'rebuilt runtime requires generated identity')
+                with zipfile.ZipFile(artifacts / 'skia-doc.zip') as archive:
+                    for font in read_json(ROOT / 'packaging/native-assets.json')['documentation_fonts']['files']:
+                        need(sha256(archive.read('fonts/' + font['filename'])) == font['sha256'], form + ' dropped/changed documentation font')
                     for name, digest in example_hashes.items():
                         need(name in archive.namelist() and sha256(archive.read(name)) == digest,
                              form + ' stripped/changed advertised editable example: ' + name)
                 # Raco CHECKSUM files deliberately have no newline; enforce that here too.
-                catalogs[form] = maker.create(first[0], artifacts, self.root / ('catalog-' + form))
+                catalogs[form] = maker.create(first[0], artifacts, source_path(self.root, 'catalog-' + form))
                 for name, original in original_directories.items():
                     metadata_checks.append(dict(original=str(original),
                                                 rebuilt=str(catalogs[form].parent / 'metadata' / name), form=form))
@@ -596,7 +722,7 @@ class Validator:
             if self.windows:
                 self.report['checks']['windows_rebuilt_packages_exclude_downloaded_payload'] = True
                 self.windows_installer(first, remove=True)
-            self.raco(first, 'pkg', 'remove', '--batch', *(['skia'] + ([native] if native else []) + ['skia-fonts-1']), timeout=1800)
+            self.raco(first, 'pkg', 'remove', '--batch', *(list(SOURCE_PACKAGES) + ([native] if native else [])), timeout=1800)
             loader = self.report['smoke'][0]['skia']['loader']
             managed = Path(loader['download_directory'] if self.windows else loader['managed_directory'])
             need(not managed.exists(), 'native removal left its generation directory')
@@ -605,6 +731,7 @@ class Validator:
             self.base_catalog = standard
             self.remove_environment(first, required=True)
             if self.owned_stage:
+                shutil.rmtree(self.prepared_directory_catalog.parent)
                 removed = []
                 for directory in (self.owned_stage / 'artifacts', self.owned_stage / 'snapshot/pkgs'):
                     for path in directory.glob('skia*.zip*'):
@@ -620,10 +747,12 @@ class Validator:
                 current = self.environment('reinstalled ' + form)
                 self.install(current, catalog)
                 self.report.setdefault('rebuilt_smoke', {})[form] = self.smoke(current)
+                self.report.setdefault('rebuilt_documentation_smoke', {})[form] = self.documentation_smoke(current)
+                self.documentation_navigation(current, 'rebuilt-' + form)
                 self.raco(current, 'skia-examples', 'shaping', self.away / ('copied ' + form))
                 if self.windows:
                     self.windows_installer(current, remove=True)
-                self.raco(current, 'pkg', 'remove', '--batch', *(['skia'] + ([native] if native else []) + ['skia-fonts-1']), timeout=1800)
+                self.raco(current, 'pkg', 'remove', '--batch', *(list(SOURCE_PACKAGES) + ([native] if native else [])), timeout=1800)
                 smoke = self.report['rebuilt_smoke'][form][0]
                 loader = smoke['skia']['loader']
                 need(not Path(loader['download_directory'] if self.windows else loader['managed_directory']).exists()

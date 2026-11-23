@@ -7,6 +7,7 @@ a disposable process. --skia-source/--skiasharp-source verify exact upstream pin
 Existing native/rendering suites remain independent acceptance requirements.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import math
 from pathlib import Path
@@ -34,8 +35,8 @@ def main(argv=None, *, root=inventory.ROOT):
         args.directory.mkdir(parents=True)
         out = args.directory.resolve()
     else:
-        (root / "output").mkdir(exist_ok=True)
-        out = Path(tempfile.mkdtemp(prefix="api-inventory-0.75-", dir=root / "output"))
+        (root / 'output').mkdir(exist_ok=True)
+        out = Path(tempfile.mkdtemp(prefix="api-inventory-0.75-", dir=root / 'output'))
     report = {"schema": 1, "stage": "0.75", "status": "failed", "run_token": uuid.uuid4().hex,
               "catalog_passed": False, "source_passed": False, "upstream_required": bool(args.skia_source),
               "upstream_passed": False, "native_required": bool(args.native_library), "native_observed": False,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic DXGI inspector/orchestration tests. They do not execute Windows/GPU code."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import ast
 import copy
 import importlib.util
@@ -240,7 +241,7 @@ class Inspector(unittest.TestCase):
 class Runner(unittest.TestCase):
     def simulate(self, fail=None, identity=None, sdk_change=None, layout_change=None, change=None):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t); directory=root/'probe'; directory.mkdir(); calls=[]
+            root=Path(t); directory=root / 'probe'; directory.mkdir(); calls=[]
             def run(args):
                 a=[str(v) for v in args]; calls.append(a)
                 if fail and any(fail in v for v in a): raise RuntimeError('synthetic subprocess failure')
@@ -307,7 +308,7 @@ class Runner(unittest.TestCase):
 
 class Source(unittest.TestCase):
     def test_guids(self):
-        text=(HERE.parent/'private/gpu-dxgi-types.rkt').read_text()
+        text=(source_path(HERE.parent, 'private/gpu-dxgi-types.rkt')).read_text()
         ids={'swapchain3':'94d99bdb-f1f8-4ab0-b236-7da0170edab1','resource':'696442be-a72e-4059-bc79-5b5c98040fad',
              'allocator':'6102dee4-af59-4b09-b999-b44d73f09b24','command-list':'5b160d0f-ac1b-4185-8ba8-b3ae42a5a455',
              'fence':'0a753dcf-c4d8-4b91-adf6-be5a60d95a76'}
@@ -321,17 +322,17 @@ class Source(unittest.TestCase):
         for name in ('ID3D12GraphicsCommandListVtbl','CopyTextureRegion','ResourceBarrier','IDXGISwapChain3Vtbl','GetCurrentBackBufferIndex'):
             self.assertIn(name,text)
     def test_queue_tail_transition_and_fence(self):
-        text=(HERE.parent/'private/gpu-dxgi-system.rkt').read_text()
+        text=(source_path(HERE.parent, 'private/gpu-dxgi-system.rkt')).read_text()
         self.assertIn('d3d12-state-render-target d3d12-state-present',text)
         self.assertIn('queue-signal-slot',text); self.assertIn('swapchain-current-buffer-slot',text)
         self.assertIn("'buffer-reuse",text); self.assertIn('release-buffers! h',text)
     def test_no_raw_target_publication(self):
-        text=(HERE.parent/'private/gpu-presenter-d3d12.rkt').read_text()
+        text=(source_path(HERE.parent, 'private/gpu-presenter-d3d12.rkt')).read_text()
         self.assertIn('(module* testing #f (provide current-dxgi-capture-hook))',text)
         self.assertIn('(retire-target!)\n                      (define-values',text)
         self.assertIn('(canvas-restore-to-count! canvas 1)',text)
     def test_production_target_metadata_names_backend(self):
-        text=(HERE.parent/'private/gpu-presenter-d3d12.rkt').read_text()
+        text=(source_path(HERE.parent, 'private/gpu-presenter-d3d12.rkt')).read_text()
         self.assertRegex(
             text,
             r'\(hasheq\s+\'backend "direct3d"\s+\'storage "gpu"\s+\'target_kind "dxgi-back-buffer"')
@@ -380,40 +381,40 @@ class CIEntry(unittest.TestCase):
 class Integration(unittest.TestCase):
     """These tests require the real complete source checkout; do not silently skip."""
     def test_required_job_aggregate(self):
-        text=(HERE.parent/'.github/workflows/ci.yml').read_text()
+        text=(HERE.parent / '.github/workflows/ci.yml').read_text()
         self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]',text)
         self.assertIn('DXGI_RESULT: ${{ needs.dxgi.result }}',text)
         self.assertIn('test "$DXGI_RESULT" = success',text)
         self.assertIn('run: python tools/ci-d3d12.py',text); self.assertIn('run: python tools/ci-dxgi.py',text)
         self.assertNotIn('continue-on-error:',text)
     def test_gui_uses_shared_platform_selection_and_explicit_direct3d(self):
-        text=(HERE.parent/'gpu-gui.rkt').read_text()
+        text=(source_path(HERE.parent, 'gpu-gui.rkt')).read_text()
         self.assertIn("(resolve-render-canvas-policy 'gpu backend adapter adapter-index sync-interval",text)
-        policy=(HERE.parent/'private/render-canvas-policy.rkt').read_text()
+        policy=(source_path(HERE.parent, 'private/render-canvas-policy.rkt')).read_text()
         self.assertIn("[(and (eq? os 'windows) (eq? arch 'x86_64)) 'direct3d]",policy)
         self.assertIn("[else backend]",policy)
         for term in ('[adapter #f]','[adapter-index #f]','[sync-interval #f]','make-d3d12-presentation-adapter'):
             self.assertIn(term,text)
     def test_pure_suite_wired(self):
-        text=(HERE.parent/'run-tests.rkt').read_text()
+        text=(source_path(HERE.parent, 'run-tests.rkt')).read_text()
         self.assertIn('"tests/gpu-dxgi-pure-test.rkt"',text); self.assertIn('(run-tests gpu-dxgi-pure-tests)',text)
-        self.assertEqual(len(re.findall(r'\(test-case\s',(HERE.parent/'tests/gpu-dxgi-pure-test.rkt').read_text())),34)
+        self.assertEqual(len(re.findall(r'\(test-case\s',(source_path(HERE.parent, 'tests/gpu-dxgi-pure-test.rkt')).read_text())),34)
     def test_shared_live_cases_unchanged(self):
-        text=(HERE.parent/'tests/gpu-presenter-native-test.rkt').read_text()
+        text=(source_path(HERE.parent, 'tests/gpu-presenter-native-test.rkt')).read_text()
         self.assertEqual(len(re.findall(r'\(test-case\s',text)),d.NATIVE_CASES)
         self.assertIn('presentation_context_children',text)
     def test_source_ci_runs_test(self):
         self.assertIn("'test-dxgi.py'",(HERE/'ci.py').read_text())
     def test_default_native_and_crash_hotfix_preserved(self):
-        self.assertEqual((HERE.parent/'private/native-default-version.txt').read_text().strip(),'3.119.1')
+        self.assertEqual((source_path(HERE.parent, 'private/native-default-version.txt')).read_text().strip(),'3.119.1')
         text=(HERE/'test-native-abi.py').read_text()
         self.assertIn('test_signal_termination_is_failure',text); self.assertNotIn('def test_crash_is_failure',text)
     def test_occlusion_not_passed(self):
-        text=(HERE.parent/'private/gpu-presenter.rkt').read_text()
+        text=(source_path(HERE.parent, 'private/gpu-presenter.rkt')).read_text()
         self.assertIn("[(eq? outcome 'occluded) (set! result 'skipped)]",text)
     def test_version_and_docs(self):
-        self.assertIn('(define version "0.79")',(HERE.parent/'info.rkt').read_text())
-        text=(HERE.parent/'docs/GPU-DXGI.md').read_text()
+        self.assertIn('(define version "0.79")',(source_path(HERE.parent, 'info.rkt')).read_text())
+        text=(HERE.parent / 'docs/GPU-DXGI.md').read_text()
         for name in ('sync-interval','gpu-window%','gpu-canvas%','WARP','buffer-reuse','visible'):
             self.assertIn(name,text)
 

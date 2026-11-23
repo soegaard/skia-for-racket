@@ -6,6 +6,7 @@ compressed streams. Tolerances are deliberately explicit initial acceptance
 bounds, not a claim that all backends render identically.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import copy
 import html
@@ -484,29 +485,29 @@ class Checks(unittest.TestCase):
     def test_bad_filename(self): self.data['scenes'][0]['gpu_image']='../outside.png'; self.reject()
     def test_pending_release(self): self.data['closed_context']['pending_releases']=1; self.reject()
     def test_missing_symbol(self): self.data['surface_symbol_inventory'].pop(); self.reject()
-    def test_detached_pixel(self): (self.root/'detached.png').write_bytes(png_bytes(bytes(256),(8,8))); self.reject()
+    def test_detached_pixel(self): (self.root / 'detached.png').write_bytes(png_bytes(bytes(256),(8,8))); self.reject()
     def test_png_crc(self):
-        p=self.root/'paths.gpu.png'; v=bytearray(p.read_bytes()); v[-1]^=1; p.write_bytes(v); self.reject()
+        p=self.root / 'paths.gpu.png'; v=bytearray(p.read_bytes()); v[-1]^=1; p.write_bytes(v); self.reject()
     def test_png_truncated(self):
-        p=self.root/'paths.gpu.png'; p.write_bytes(p.read_bytes()[:-10]); self.reject()
+        p=self.root / 'paths.gpu.png'; p.write_bytes(p.read_bytes()[:-10]); self.reject()
     def test_png_wrong_size(self):
-        (self.root/'paths.gpu.png').write_bytes(png_bytes(bytes(256),(8,8))); self.reject()
+        (self.root / 'paths.gpu.png').write_bytes(png_bytes(bytes(256),(8,8))); self.reject()
     def test_orientation_pixels(self):
-        p=bytearray(fixture_pixels()); p[0:4]=bytes([0,0,255,255]); (self.root/'paths.gpu.png').write_bytes(png_bytes(p)); self.reject()
+        p=bytearray(fixture_pixels()); p[0:4]=bytes([0,0,255,255]); (self.root / 'paths.gpu.png').write_bytes(png_bytes(p)); self.reject()
     def test_alpha_margin(self):
-        p=bytearray(fixture_pixels()); p[4*(10+10*420)+3]=255; (self.root/'paths.gpu.png').write_bytes(png_bytes(p)); self.reject()
+        p=bytearray(fixture_pixels()); p[4*(10+10*420)+3]=255; (self.root / 'paths.gpu.png').write_bytes(png_bytes(p)); self.reject()
     def test_color_error(self):
         p=bytearray(fixture_pixels())
         for y in range(65,222):
             for x in range(35,385): p[4*(y*420+x)]=240
-        (self.root/'paths.gpu.png').write_bytes(png_bytes(p)); self.reject()
+        (self.root / 'paths.gpu.png').write_bytes(png_bytes(p)); self.reject()
     def test_hardware_requirement(self):
         self.data['require_hardware']=True;self.data['initial_context']['renderer_class']='software'; self.reject()
     def test_software_is_labelled_not_globally_rejected(self):
         self.data['initial_context']['renderer_class']='software'
         self.assertEqual(offscreen(self.data,self.root)['renderer_class'],'software')
     def test_no_publication_on_error(self):
-        self.data['status']='error'; prefix=self.root/'probe'
+        self.data['status']='error'; prefix=self.root / 'probe'
         Path(str(prefix)+'.diagnostic.json').write_text(json.dumps(self.data))
         with self.assertRaises(ValueError): inspect(prefix)
         self.assertFalse(Path(str(prefix)+'.inspection.json').exists())
@@ -527,7 +528,7 @@ class Checks(unittest.TestCase):
         d = fixture_window(); d.update(stage='0.41', backend='metal')
         with self.assertRaises(ValueError): window(d)
     def test_failed_reinspection_removes_stale_success(self):
-        prefix = self.root/'probe'
+        prefix = self.root / 'probe'
         for suffix in ('.inspection.json', '.review.html'):
             Path(str(prefix)+suffix).write_text('STALE')
         Path(str(prefix)+'.diagnostic.json').write_text('{}')

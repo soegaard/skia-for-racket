@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Adversarial input checks and the Racket archive checksum protocol."""
+from repository_layout import source_path, library_root, documentation_root
 import importlib.util
 import io
 from pathlib import Path

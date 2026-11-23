@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.77c required GPU gate. Full global regressions remain the local default."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -32,8 +33,8 @@ def main(argv=None,*,root=ROOT):
     if args.directory:
         out=args.directory.resolve();out.mkdir(parents=True,exist_ok=False)
     else:
-        (root/'output').mkdir(exist_ok=True)
-        out=Path(tempfile.mkdtemp(prefix='gpu-diagnostics-0.77c-',dir=root/'output'))
+        (root / 'output').mkdir(exist_ok=True)
+        out=Path(tempfile.mkdtemp(prefix='gpu-diagnostics-0.77c-',dir=root / 'output'))
     logs=out/'logs';logs.mkdir();(out/'gpu').mkdir()
     token=uuid.uuid4().hex
     report=dict(schema=1,stage='0.77c',status='failed',run_token=token,backend=backend,adapter=args.adapter,
@@ -60,26 +61,26 @@ def main(argv=None,*,root=ROOT):
         if not racket and Path(args.racket).is_file():racket=str(Path(args.racket).resolve())
         v.need(bool(racket),'Racket interpreter not found')
         for tool, extra in [('api-inventory.py',['--check']),('test-gpu-diagnostics.py',[])]:
-            run([sys.executable,root/'tools'/tool,*extra])
-        run([racket,root/'tools/check-package-version.rkt'])
+            run([sys.executable,root / 'tools'/tool,*extra])
+        run([racket,source_path(root, 'tools/check-package-version.rkt')])
         roots=['main.rkt','gpu.rkt','gpu-egl.rkt','gpu-diagnostics.rkt',
                'tests/gpu-diagnostics-pure-test.rkt','tests/gpu-diagnostics-native-test.rkt',
                'tests/gpu-diagnostics-gpu-test.rkt','examples/gpu-diagnostics.rkt']
         if args.regressions=='full':
             roots.append('run-tests.rkt')
-            roots+=re.findall(r'"(tests/[^"\n]+-native-test\.rkt)"',(root/'run-tests.rkt').read_text(encoding='utf-8'))
-        run([racket,'-l','raco','--','make',*[root/p for p in dict.fromkeys(roots)]])
+            roots+=re.findall(r'"(tests/[^"\n]+-native-test\.rkt)"',(source_path(root, 'run-tests.rkt')).read_text(encoding='utf-8'))
+        run([racket,'-l','raco','--','make',*[source_path(root, p) for p in dict.fromkeys(roots)]])
         if args.regressions=='full':
             report.update(regressions_attempted=True,regressions_status='running')
-            run([racket,root/'run-tests.rkt'])
+            run([racket,source_path(root, 'run-tests.rkt')])
             report.update(regressions_passed=True,regressions_status='passed')
         else:print('Global regressions: NOT RUN (--regressions=none).')
         for suite,count,key in [('gpu-diagnostics-pure',v.PURE_CASES,'pure_passed'),('gpu-diagnostics-native',v.NATIVE_CASES,'native_passed')]:
-            text=run([racket,root/'tests'/(suite+'-test.rkt')]);v.suite_output(text,suite,count);report[key]=True
-        run([racket,root/'examples/gpu-diagnostics.rkt','--backend',backend,'--adapter',args.adapter])
+            text=run([racket,source_path(root, 'tests')/(suite+'-test.rkt')]);v.suite_output(text,suite,count);report[key]=True
+        run([racket,source_path(root, 'examples/gpu-diagnostics.rkt'),'--backend',backend,'--adapter',args.adapter])
         receipt=out/'gpu/gpu.json'
         report['gpu_attempted']=True
-        run([racket,root/'tests/gpu-diagnostics-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,'--report',receipt,'--token',token])
+        run([racket,source_path(root, 'tests/gpu-diagnostics-gpu-test.rkt'),'--backend',backend,'--adapter',args.adapter,'--report',receipt,'--token',token])
         result=v.inspect(receipt,token,backend,args.adapter)
         report.update(gpu_executed=True,byte_oracles_passed=True,inspection=result)
         report['status']='passed'

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.66 effect gate: regressions, real document capture, optional GPU and independent renderers."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
@@ -38,8 +39,8 @@ def main(argv=None):
         args.directory.mkdir(parents=True)
         out=args.directory.resolve()
     else:
-        (ROOT/'output').mkdir(exist_ok=True)
-        out=Path(tempfile.mkdtemp(prefix='effects-0.66-',dir=ROOT/'output'))
+        (ROOT / 'output').mkdir(exist_ok=True)
+        out=Path(tempfile.mkdtemp(prefix='effects-0.66-',dir=ROOT / 'output'))
     (out/'logs').mkdir()
     token=uuid.uuid4().hex
     report={'schema':1,'stage':'0.66','run_token':token,'status':'failed',
@@ -57,27 +58,27 @@ def main(argv=None):
                            timeout=args.timeout,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
-        run([sys.executable,ROOT/'tools/test-effects.py'])
+        run([sys.executable,ROOT / 'tools/api-inventory.py','--check'])
+        run([sys.executable,ROOT / 'tools/test-effects.py'])
         if args.regressions == 'full':
             # Recompile the complete regression graph before running it. Pure tests
             # are reached transitively from run-tests.rkt; native suites are loaded
             # dynamically, so compile every define-runtime-path test target too.
             # This prevents stale .zo linklets after an implementation module changes
             # without deleting compiled directories or hiding real compile failures.
-            run_tests=ROOT/'run-tests.rkt'
+            run_tests=source_path(ROOT, 'run-tests.rkt')
             dynamic_targets=sorted(set(re.findall(
                 r'\(define-runtime-path\s+\S+\s+"(tests/[^"]+\.rkt)"\)',
                 run_tests.read_text(encoding='utf-8'))))
-            modules=[ROOT/'main.rkt',ROOT/'effects.rkt',run_tests,
-                     *[ROOT/name for name in dynamic_targets],
-                     ROOT/'tests/effects-gpu-test.rkt',ROOT/'tools/effects-doctor.rkt',ROOT/'examples/effects.rkt']
+            modules=[source_path(ROOT, 'main.rkt'),source_path(ROOT, 'effects.rkt'),run_tests,
+                     *[source_path(ROOT, name) for name in dynamic_targets],
+                     source_path(ROOT, 'tests/effects-gpu-test.rkt'),ROOT / 'tools/effects-doctor.rkt',source_path(ROOT, 'examples/effects.rkt')]
         else:
-            modules = [ROOT/'main.rkt', ROOT/'effects.rkt', ROOT/'tests/effects-gpu-test.rkt',
-                       ROOT/'tools/effects-doctor.rkt', ROOT/'examples/effects.rkt']
+            modules = [source_path(ROOT, 'main.rkt'), source_path(ROOT, 'effects.rkt'), source_path(ROOT, 'tests/effects-gpu-test.rkt'),
+                       ROOT / 'tools/effects-doctor.rkt', source_path(ROOT, 'examples/effects.rkt')]
         run([racket,'-l','raco','--','make',*modules])
-        regressions.run(lambda: run([racket,ROOT/'run-tests.rkt']))
-        run([racket,ROOT/'tools/effects-doctor.rkt','--directory',out/'documents','--token',token])
+        regressions.run(lambda: run([racket,source_path(ROOT, 'run-tests.rkt')]))
+        run([racket,ROOT / 'tools/effects-doctor.rkt','--directory',out/'documents','--token',token])
         render=None
         if args.require_renderers:
             poppler=shutil.which('pdftoppm');rsvg=shutil.which('rsvg-convert')
@@ -98,7 +99,7 @@ def main(argv=None):
             backend=args.backend
             if backend=='auto':
                 backend='metal' if sys.platform=='darwin' else 'direct3d' if os.name=='nt' else 'egl'
-            run([racket,ROOT/'tests/effects-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
+            run([racket,source_path(ROOT, 'tests/effects-gpu-test.rkt'),'--backend',backend,'--adapter',args.adapter,
                  '--report',out/'gpu.json','--token',token])
             gpu_receipt(out/'gpu.json',token,backend)
             report['gpu_passed']=True; report['backend']=backend

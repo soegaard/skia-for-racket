@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Query evidence and orchestration tests. Python-authored fixtures are synthetic."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -28,10 +29,10 @@ def synthetic_evidence(root, token=TOKEN):
         if name=='jpeg':image.convert('RGB').save(data,format='JPEG',quality=100,subsampling=0)
         elif name=='webp':image.save(data,format='WEBP',lossless=True)
         else:image.save(data,format='PNG')
-        (root/(name+'.encoded')).write_bytes(data.getvalue())
+        (source_path(root, name+'.encoded')).write_bytes(data.getvalue())
         pixels=v.fixture_pixels()
-        (root/(name+'-before.rgba')).write_bytes(pixels)
-        (root/(name+'-after.rgba')).write_bytes(pixels)
+        (source_path(root, name+'-before.rgba')).write_bytes(pixels)
+        (source_path(root, name+'-after.rgba')).write_bytes(pixels)
         dims=[(16,12),(8,6),(4,3),(2,2),(16,12)] if name!='png' else [(16,12)]*5
         rows.append(dict(format=name, source_size=[16,12],
                          scaled=[[s,*d] for s,d in zip(v.SCALES,dims)],
@@ -41,7 +42,7 @@ def synthetic_evidence(root, token=TOKEN):
     receipt=dict(schema=1,stage='0.76a',status='passed',run_token=token,native_version='119.0',
                  query_coordinates='encoded-pixels',oriented_jpeg_half=[8,6],formats=rows,
                  scaled_decode_executed=False,subset_decode_executed=False,gpu_executed=False)
-    (root/'queries.json').write_text(json.dumps(receipt),encoding='utf-8')
+    (root / 'queries.json').write_text(json.dumps(receipt),encoding='utf-8')
     return receipt
 
 
@@ -67,7 +68,7 @@ class Evidence(unittest.TestCase):
     def setUp(self):
         self.temporary=tempfile.TemporaryDirectory();self.addCleanup(self.temporary.cleanup)
         self.root=Path(self.temporary.name);self.receipt=synthetic_evidence(self.root)
-    def write(self): (self.root/'queries.json').write_text(json.dumps(self.receipt),encoding='utf-8')
+    def write(self): (self.root / 'queries.json').write_text(json.dumps(self.receipt),encoding='utf-8')
     def rejects(self):
         self.write()
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
@@ -90,33 +91,33 @@ class Evidence(unittest.TestCase):
     def test_missing_subset_decode_claim(self):self.receipt.pop('subset_decode_executed');self.rejects()
     def test_decode_stability_false(self):self.receipt['formats'][0]['decode_unchanged']=False;self.rejects()
     def test_pixel_corruption(self):
-        p=self.root/'png-after.rgba';p.write_bytes(b'\0'+p.read_bytes()[1:2]+b'\0'+p.read_bytes()[3:])
+        p=self.root / 'png-after.rgba';p.write_bytes(b'\0'+p.read_bytes()[1:2]+b'\0'+p.read_bytes()[3:])
         # First pixel begins black; modify a definitely nonzero pixel instead.
         data=bytearray(p.read_bytes());data[4]^=255;p.write_bytes(data)
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_short_pixels(self):
-        (self.root/'jpeg-after.rgba').write_bytes(b'x')
+        (self.root / 'jpeg-after.rgba').write_bytes(b'x')
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_missing_capture(self):
-        (self.root/'webp.encoded').unlink()
+        (self.root / 'webp.encoded').unlink()
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_wrong_encoded_dimensions(self):
         from PIL import Image
-        Image.new('RGB',(8,6)).save(self.root/'jpeg.encoded',format='JPEG')
+        Image.new('RGB',(8,6)).save(self.root / 'jpeg.encoded',format='JPEG')
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_duplicate_json_key(self):
-        p=self.root/'queries.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'),encoding='utf-8')
+        p=self.root / 'queries.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'),encoding='utf-8')
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
 
 
 class Orchestration(unittest.TestCase):
     def invoke(self,mode=None,failure=None,partial=False,mutate=False):
-        spec=importlib.util.spec_from_file_location('codec_query_driver_test',ROOT/'tools/validate-codec-queries.py')
+        spec=importlib.util.spec_from_file_location('codec_query_driver_test',ROOT / 'tools/validate-codec-queries.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         commands=[]
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
-            (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command)
                 name=Path(command[1]).name if len(command)>1 else ''
@@ -128,11 +129,11 @@ class Orchestration(unittest.TestCase):
                 if name=='codec-query-doctor.rkt':
                     synthetic_evidence(Path(command[command.index('--directory')+1]),command[command.index('--token')+1])
                 out.flush();return subprocess.CompletedProcess(command,0)
-            args=['--racket',sys.executable,'--directory',str(root/'out')]
+            args=['--racket',sys.executable,'--directory',str(root / 'out')]
             if mode is not None:args+=['--regressions',mode]
             with patch.object(module.shutil,'which',return_value=sys.executable),patch.object(module.subprocess,'run',side_effect=execute),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 rc=module.main(args,root=root)
-            report=json.loads((root/'out/validation.json').read_text())
+            report=json.loads((root / 'out/validation.json').read_text())
         return rc,report,commands
     def test_default_is_full(self):
         rc,r,c=self.invoke();self.assertEqual(rc,0);self.assertEqual(r['regressions_status'],'passed');self.assertTrue(r['regressions_attempted'])
@@ -162,7 +163,7 @@ class Orchestration(unittest.TestCase):
 
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_source_case_counts(self):
         for kind,count in (('pure',v.PURE_CASES),('native',v.NATIVE_CASES)):
             s=self.text('tests/codec-query-'+kind+'-test.rkt');self.assertEqual(s.count('(test-case '),count)
@@ -183,7 +184,7 @@ class Sources(unittest.TestCase):
         self.assertIn("dynamic-require codec-query-native-tests-file 'codec-query-native-tests",s)
         self.assertIn("'test-codec-queries.py'",self.text('tools/ci.py'))
     def test_no_automatic_workflow_added(self):
-        auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
+        auto={p.name for p in (ROOT / '.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
         self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml','catalog-package.yml'})
         self.assertIn('test "$CODEC_QUERIES_RESULT" = success',self.text('.github/workflows/acceptance.yml'))
     def test_query_docs_and_numeric_version(self):

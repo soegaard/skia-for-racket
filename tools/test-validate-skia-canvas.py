@@ -5,6 +5,7 @@ These cases do not render Skia pixels or initialize a GUI. Their purpose is to
 prevent missing, failed or skipped GUI execution from becoming a green gate.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import contextlib
 import importlib.util
@@ -43,7 +44,7 @@ class FakeRunner:
         if self.failure and any(Path(arg).name == self.failure for arg in argv):
             raise RuntimeError('injected command failure: ' + self.failure)
         if self.mutate and filename == 'canvas-dc-native-test.rkt':
-            (self.root / 'canvas.rkt').write_text('changed during validation\n', encoding='utf-8')
+            (source_path(self.root, 'canvas.rkt')).write_text('changed during validation\n', encoding='utf-8')
         if filename == 'ci-identity.rkt':
             return json.dumps(self.identity)
         if filename == 'canvas-text-load-order.rkt':
@@ -69,7 +70,7 @@ class CanvasValidationTests(unittest.TestCase):
             root.mkdir()
             output.mkdir()
             for name in validation.SOURCE_PATHS:
-                file = root / name
+                file = source_path(root, name)
                 file.parent.mkdir(parents=True, exist_ok=True)
                 file.write_text('synthetic source fixture\n', encoding='utf-8')
             runner = FakeRunner(root, **options)

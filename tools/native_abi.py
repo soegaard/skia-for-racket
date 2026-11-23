@@ -5,6 +5,7 @@ scalar version functions and, for the reviewed candidate milestone only, the
 Graphite compiled-backend query. No context or versioned structure is created.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -38,21 +39,21 @@ MAX_NATIVE = 256 * 1024 * 1024
 
 
 def catalog(root: Path = ROOT) -> dict:
-    data = json.loads((root / 'private/native-abi.json').read_text(encoding='utf-8'))
+    data = json.loads((source_path(root, 'private/native-abi.json')).read_text(encoding='utf-8'))
     if data.get('schema') != 1 or not data.get('profiles'):
         raise ValueError('invalid native ABI catalog')
     return data
 
 
 def default_version(root: Path = ROOT) -> str:
-    value = (root / 'private/native-default-version.txt').read_text(encoding='utf-8').strip()
+    value = (source_path(root, 'private/native-default-version.txt')).read_text(encoding='utf-8').strip()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', value):
         raise ValueError('invalid default native package version')
     return value
 
 
 def harfbuzz_default_version(root: Path = ROOT) -> str:
-    value = (root / 'private/harfbuzz-default-version.txt').read_text(encoding='utf-8').strip()
+    value = (source_path(root, 'private/harfbuzz-default-version.txt')).read_text(encoding='utf-8').strip()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+', value):
         raise ValueError('invalid default HarfBuzz package version')
     return value
@@ -155,7 +156,7 @@ def source_inventory(root: Path = ROOT) -> dict[str, list[str]]:
     groups = {}
     for relative, macro, index, group in BINDINGS:
         names = []
-        for form in forms((root / relative).read_text(encoding='utf-8')):
+        for form in forms((source_path(root, relative)).read_text(encoding='utf-8')):
             if isinstance(form, list) and form and form[0] == macro:
                 if len(form) <= index or not isinstance(form[index], str) or not SYMBOL.fullmatch(form[index]):
                     raise ValueError(f'unrecognized {macro} declaration in {relative}')
@@ -331,7 +332,7 @@ def reject_with_racket(racket: str, library: Path, milestone: int, output: Path,
     if not resolved: raise ValueError('selected Racket executable not found')
     env = clean_probe_environment()
     env['RACKET_SKIA_LIBRARY'] = str(library.resolve())
-    command = [resolved, str(ROOT / 'tools/native-abi-reject.rkt'), str(milestone)]
+    command = [resolved, str(source_path(ROOT, 'tools/native-abi-reject.rkt')), str(milestone)]
     try:
         result = subprocess.run(command, env=env, capture_output=True, text=True, encoding='utf-8', timeout=timeout)
     except subprocess.TimeoutExpired as exc:
@@ -373,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
         report['default_package_version'] = default_version()
         groups = source_inventory()
         groups['graphite-candidate'] = data['candidate']['graphite_probe_symbols']
-        report['binding_sources_sha256'] = {p: digest(ROOT / p) for p, _, _, _ in BINDINGS}
+        report['binding_sources_sha256'] = {p: digest(source_path(ROOT, p)) for p, _, _, _ in BINDINGS}
         with tempfile.TemporaryDirectory(prefix='skia native ABI ') as temporary:
             work = Path(temporary)
             if args.candidate:

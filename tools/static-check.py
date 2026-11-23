@@ -1,3 +1,4 @@
+from repository_layout import source_path, library_root, documentation_root
 # Optional Python 3 source/installer checks; not a Racket compiler.
 from pathlib import Path
 import re, subprocess, tempfile, shutil, zipfile, json, platform
@@ -57,17 +58,17 @@ for f,var in [('native-abi-pure-test.rkt','native-abi-pure-tests'),
               ('color-filter-native-test.rkt','color-filter-native-tests'),
               ('raster-buffer-pure-test.rkt','raster-buffer-pure-tests'),
               ('raster-buffer-native-test.rkt','raster-buffer-native-tests')]:
-    ast=sexps((R/'tests'/f).read_text())
+    ast=sexps((source_path(R, 'tests')/f).read_text())
     defs=[x for x in ast if isinstance(x,list) and len(x)>2 and x[:2]==['define',var]]
     assert len(defs)==1
     body=defs[0][2];assert body[0]=='test-suite'
     cases=body[2:]
     assert all(isinstance(t,list) and t and t[0]=='test-case' for t in cases),(f,cases[-1:])
     count=len(cases);counts[f]=count
-    assert count==len(re.findall(r'\(test-case\s', (R/'tests'/f).read_text()))
+    assert count==len(re.findall(r'\(test-case\s', (source_path(R, 'tests')/f).read_text()))
 # Check that every explicitly exported core name has a definition or a
 # struct-generated binding, or is the imported byte-limit parameter.
-ast=sexps((R/'private/core.rkt').read_text()); defined={'current-skia-byte-limit'}; exports=[]
+ast=sexps((source_path(R, 'private/core.rkt')).read_text()); defined={'current-skia-byte-limit'}; exports=[]
 for f in ast:
     if not isinstance(f,list) or not f:continue
     if f[0]=='provide':exports+=f[1:]
@@ -84,11 +85,11 @@ def require_documented(module, names, text, document):
     missing=sorted(set(name for name in names if name not in text))
     assert not missing, f'{document}: missing exports from {module}: {", ".join(missing)}'
 
-api=(R/'docs/API.md').read_text()
+api=(R / 'docs/API.md').read_text()
 require_documented('private/core.rkt', exports, api, 'docs/API.md')
 # The common page layer is a separate public module with local definitions.
 output_defined=set();output_exports=[]
-for f in sexps((R/'output.rkt').read_text()):
+for f in sexps((source_path(R, 'output.rkt')).read_text()):
     if not isinstance(f,list) or not f:continue
     if f[0]=='provide':output_exports+=f[1:]
     elif f[0] in ('define','define-syntax','define-syntax-rule'):
@@ -105,7 +106,7 @@ require_documented('output.rkt', output_exports, api, 'docs/API.md')
 # No binding from core's path-matrix-internals submodule is exported by main.
 for module in ['pictures.rkt', 'projective-matrix.rkt', 'canvas-matrix.rkt', 'matrix.rkt', 'private/path-matrix.rkt', 'private/filter-graph.rkt', 'color-space.rkt', 'annotations.rkt', 'runtime-effects.rkt']:
     local=set(); public=[]
-    for form in sexps((R/module).read_text()):
+    for form in sexps((source_path(R, module)).read_text()):
         if not isinstance(form,list) or not form: continue
         if form[0]=='provide': public+=form[1:]
         elif form[0] in ('define','define-syntax','define-syntax-rule'):
@@ -117,46 +118,46 @@ for module in ['pictures.rkt', 'projective-matrix.rkt', 'canvas-matrix.rkt', 'ma
             if '#:constructor-name' in form: local.add(form[form.index('#:constructor-name')+1])
     assert not set(public)-local, (module, sorted(set(public)-local))
     require_documented(module, public, api, 'docs/API.md')
-subprocess.run(['bash','-n',str(R/'tools/validate-path-matrix.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-filter-graphs.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-color-output.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-document-links.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-runtime-effects.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-output-audit.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-path-matrix.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-filter-graphs.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-color-output.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-document-links.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-runtime-effects.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-output-audit.sh')],check=True)
 # Audit modules contain deliberate re-exports and inherited exception structs.
 # Check every named public binding against the API text; the Racket compiler
 # validates the actual module/re-export bindings in the validation script.
 for module in ['output-policy.rkt', 'output-audit.rkt', 'canvas-primitives.rkt', 'geometry-primitives.rkt']:
-    for form in sexps((R/module).read_text()):
+    for form in sexps((source_path(R, module)).read_text()):
         if isinstance(form,list) and form and form[0]=='provide':
             public=[x for x in form[1:] if isinstance(x,str)]
             require_documented(module, public, api, 'docs/API.md')
-subprocess.run(['bash','-n',str(R/'tools/validate-canvas-primitives.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-geometry-primitives.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-projective-matrices.sh')],check=True)
-subprocess.run(['bash','-n',str(R/'tools/validate-persistent-pictures.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-canvas-primitives.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-geometry-primitives.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-projective-matrices.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-persistent-pictures.sh')],check=True)
 # Portable drawing re-exports checked immutable plan values from its helper.
-portable_api=(R/'docs/PORTABLE-DRAWING.md').read_text()
-for form in sexps((R/'portable-drawing.rkt').read_text()):
+portable_api=(R / 'docs/PORTABLE-DRAWING.md').read_text()
+for form in sexps((source_path(R, 'portable-drawing.rkt')).read_text()):
     if isinstance(form,list) and form and form[0]=='provide':
         public=[x for x in form[1:] if isinstance(x,str)]
         require_documented('portable-drawing.rkt', public, portable_api, 'docs/PORTABLE-DRAWING.md')
-subprocess.run(['bash','-n',str(R/'tools/validate-portable-drawing.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-portable-drawing.sh')],check=True)
 # CPU color-filter additions keep their detailed reference in a separate guide.
-color_filter_api=(R/'docs/CPU-COLOR-FILTERS.md').read_text()
-for form in sexps((R/'color-filters.rkt').read_text()):
+color_filter_api=(R / 'docs/CPU-COLOR-FILTERS.md').read_text()
+for form in sexps((source_path(R, 'color-filters.rkt')).read_text()):
     if isinstance(form,list) and form and form[0]=='provide':
         public=[x for x in form[1:] if isinstance(x,str)]
         require_documented('color-filters.rkt', public, color_filter_api, 'docs/CPU-COLOR-FILTERS.md')
-subprocess.run(['bash','-n',str(R/'tools/validate-color-filters.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-color-filters.sh')],check=True)
 # Raster storage keeps its public ownership/borrow contract in its own guide.
-raster_buffer_api=(R/'docs/RASTER-BUFFERS.md').read_text()+(R/'docs/INTEGER-PIXELS.md').read_text()+(R/'docs/FLOAT-PIXELS.md').read_text()
-for form in sexps((R/'raster-buffers.rkt').read_text()):
+raster_buffer_api=(R / 'docs/RASTER-BUFFERS.md').read_text()+(R / 'docs/INTEGER-PIXELS.md').read_text()+(R / 'docs/FLOAT-PIXELS.md').read_text()
+for form in sexps((source_path(R, 'raster-buffers.rkt')).read_text()):
     if isinstance(form,list) and form and form[0]=='provide':
         public=[x for x in form[1:] if isinstance(x,str)]
         require_documented('raster-buffers.rkt', public, raster_buffer_api,
                            'docs/RASTER-BUFFERS.md + docs/INTEGER-PIXELS.md + docs/FLOAT-PIXELS.md')
-subprocess.run(['bash','-n',str(R/'tools/validate-raster-buffers.sh')],check=True)
+subprocess.run(['bash','-n',str(R / 'tools/validate-raster-buffers.sh')],check=True)
 # Check literal local module paths only inside require forms. Quoted .rkt
 # strings used as data (for example collection-file-path arguments) are not
 # source-relative dependencies, and (lib ...) / (planet ...) paths name
@@ -189,14 +190,14 @@ for f in racket_files:
     for ref in local_require_refs(sexps(f.read_text())):
         assert (f.parent/ref).exists(),(f,ref)
 for shell in ['install-native.sh','install-harfbuzz.sh','audit-symbols.sh','audit-harfbuzz-symbols.sh']:
-    subprocess.run(['bash','-n',str(R/'tools'/shell)],check=True)
+    subprocess.run(['bash','-n',str(R / 'tools'/shell)],check=True)
 # Exercise installer in a separate temporary project with synthetic data.
 # No fake shared library is created in the deliverable.
 with tempfile.TemporaryDirectory(prefix='skia-installer-check-') as temp:
     t=Path(temp); project=t/'project with spaces'; (project/'tools').mkdir(parents=True)
-    target=project/'tools/install-native.sh';shutil.copy2(R/'tools/install-native.sh',target)
+    target=project/'tools/install-native.sh';shutil.copy2(R / 'tools/install-native.sh',target)
     (project/'private').mkdir()
-    shutil.copy2(R/'private/native-default-version.txt', project/'private/native-default-version.txt')
+    shutil.copy2(source_path(R, 'private/native-default-version.txt'), project/'private/native-default-version.txt')
     if platform.system() == 'Darwin':
         pkg='SkiaSharp.NativeAssets.macOS'; rid='osx'; lib='libSkiaSharp.dylib'
     elif platform.system() == 'Linux' and platform.machine() in ('x86_64','aarch64','arm64'):
@@ -224,9 +225,9 @@ with tempfile.TemporaryDirectory(prefix='skia-installer-check-') as temp:
 # Exercise the HarfBuzz installer with the same create-only synthetic archive strategy.
 with tempfile.TemporaryDirectory(prefix='harfbuzz-installer-check-') as temp:
     t=Path(temp); project=t/'project with spaces'; (project/'tools').mkdir(parents=True)
-    target=project/'tools/install-harfbuzz.sh';shutil.copy2(R/'tools/install-harfbuzz.sh',target)
+    target=project/'tools/install-harfbuzz.sh';shutil.copy2(R / 'tools/install-harfbuzz.sh',target)
     (project/'private').mkdir()
-    shutil.copy2(R/'private/harfbuzz-default-version.txt',project/'private/harfbuzz-default-version.txt')
+    shutil.copy2(source_path(R, 'private/harfbuzz-default-version.txt'),project/'private/harfbuzz-default-version.txt')
     if platform.system() == 'Darwin':
         hpkg='HarfBuzzSharp.NativeAssets.macOS'; hrid='osx'; hlib='libHarfBuzzSharp.dylib'
     elif platform.system() == 'Linux' and platform.machine() in ('x86_64','aarch64','arm64'):

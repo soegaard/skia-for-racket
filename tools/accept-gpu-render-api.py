@@ -5,6 +5,7 @@ This is a narrow maintainer migration, not an auto-approve mode for the API
 validator. Expected snapshots are written only from a fresh Racket observation.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 import copy
@@ -82,7 +83,7 @@ def verify_source_edits(root: Path, declaration: dict) -> tuple[dict, dict]:
         relative = Path(name)
         if relative.is_absolute() or '..' in relative.parts or '\\' in name:
             raise ValueError('unsafe reviewed path')
-        path = root / relative
+        path = source_path(root, relative)
         if path.is_symlink() or not path.is_file():
             raise ValueError('missing or symlink reviewed file: ' + name)
         base = baseline_bytes(root, commit, name)
@@ -123,25 +124,25 @@ def main(argv=None) -> int:
         declaration_path = root / 'api/gpu-render-addition.json'
         declaration = api.read_json(declaration_path)
         old_sources, reviewed_sources = verify_source_edits(root, declaration)
-        policy = api.read_json(root / api.POLICY)
-        snapshots = {g: api.checked_snapshot(api.read_json(root / path), policy, g)
+        policy = api.read_json(source_path(root, api.POLICY))
+        snapshots = {g: api.checked_snapshot(api.read_json(source_path(root, path)), policy, g)
                      for g, path in api.SNAPSHOTS.items()}
-        api.need((root / api.REPORT).read_text(encoding='utf-8') ==
+        api.need((source_path(root, api.REPORT)).read_text(encoding='utf-8') ==
                  api.generated_report(policy, snapshots), 'existing generated API index has drifted')
         protected = [api.POLICY, api.REPORT, *api.SNAPSHOTS.values(),
                      scope.POLICY, scope.REVIEW, scope.REPORT, 'api/gpu-render-addition.json']
-        frozen = {p: api.file_hash(root / p) for p in protected}
+        frozen = {p: api.file_hash(source_path(root, p)) for p in protected}
         catalog = inventory.load_catalog(root)
         inventory.validate_catalog(catalog)
         source_graph = inventory.validate_sources(root, catalog)
         inventory.check_report(root, catalog)
         hashes = scope.review_inputs(root, catalog, source_graph['source_hashes'])
-        review = scope.read_json(root / scope.REVIEW)
-        release_policy = scope.read_json(root / scope.POLICY)
+        review = scope.read_json(source_path(root, scope.REVIEW))
+        release_policy = scope.read_json(source_path(root, scope.POLICY))
         token = uuid.uuid4().hex
         directory = root / 'output' / ('gpu-render-api-' + token)
         directory.mkdir(parents=True, exist_ok=False)
-        observation = api.reflect_group(root, root / api.POLICY, 'headless', racket,
+        observation = api.reflect_group(root, source_path(root, api.POLICY), 'headless', racket,
                                         directory, token)
         actual = api.snapshot_from_observation(observation, policy, 'headless', token)
         changes = api.differences(snapshots['headless'], actual)
@@ -150,7 +151,7 @@ def main(argv=None) -> int:
                    for e in m['exports'] if e['name'] == ENTRY['name'] and e['phase'] == '0']
         api.need(len(entries) == 1, 'the requested public function was not observed exactly once')
         api_update = validate_changes(changes, entries[0])
-        api.need(frozen == {p: api.file_hash(root / p) for p in protected},
+        api.need(frozen == {p: api.file_hash(source_path(root, p)) for p in protected},
                  'API or release baseline changed during reflection')
         api.need(reviewed_sources == verify_source_edits(root, declaration)[1],
                  'reviewed source changed during reflection')
@@ -192,15 +193,15 @@ def main(argv=None) -> int:
             print('Only the intended addition and its reviewed source changes were observed.')
             print('Review the diffs, then rerun with --accept. No expected files changed.')
             return 0
-        originals = {name: (root / name).read_text(encoding='utf-8') for name in outputs}
+        originals = {name: (source_path(root, name)).read_text(encoding='utf-8') for name in outputs}
         try:
             for name, text in outputs.items():
-                atomic_text(root / name, text)
+                atomic_text(source_path(root, name), text)
         except Exception:
             # Ordinary write failures roll back the pair of baselines and reports.
             # A power loss is not a multi-file transaction; the checker detects drift.
             for name, text in originals.items():
-                atomic_text(root / name, text)
+                atomic_text(source_path(root, name), text)
             raise
         print('Updated the reflected API snapshot/index and the reviewed source ledger/report.')
         print('tools/validate-public-api.py for the full headless + GUI check.')

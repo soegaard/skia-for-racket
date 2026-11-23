@@ -11,8 +11,8 @@
 ;;; Imports and Exports
 ;;;
 (require racket/class racket/list racket/path
-         "../main.rkt" "../gpu.rkt" "../private/gpu-performance-util.rkt"
-         "../private/gpu-io-trace.rkt" "../examples/gpu-presentation-scene.rkt"
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/private/gpu-performance-util.rkt"
+         "../skia-lib/private/gpu-io-trace.rkt" "../skia-lib/examples/gpu-presentation-scene.rkt"
          "gpu-performance-options.rkt" "gpu-presentation-host.rkt" "gpu-report.rkt")
 (provide gpu-redraw-doctor!)
 

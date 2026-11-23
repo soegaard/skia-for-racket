@@ -1,5 +1,6 @@
 """0.66 evidence checks. Parsing/inspection is not a substitute for native execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import base64
 import hashlib
 import io
@@ -35,7 +36,7 @@ def evidence_file(root: Path, name: str) -> Path:
     need(isinstance(name,str) and name and Path(name).name == name
          and name not in ('.','..') and ':' not in name and '\\' not in name
          and not any(ord(c)<32 for c in name), 'unsafe evidence filename')
-    p = root/name
+    p = source_path(root, name)
     need(p.is_file() and not p.is_symlink() and p.stat().st_size <= 8*1024*1024,
          'missing/symlink/oversized evidence file: ' + name)
     return p

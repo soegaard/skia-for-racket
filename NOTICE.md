@@ -5,12 +5,12 @@ The native packages redistribute unmodified binaries from the
 third-party notices are included, together with the component notices in
 `packaging/licenses/` and the inventory in `packaging/COMPONENTS.md`.
 
-The source ZIP contains the Racket bindings and no native library or font files.
+The `skia` and `skia-lib` source packages contain no native library or font files.
 macOS/Linux use separate native data packages. The Windows installer downloads
 the pinned upstream binaries directly from NuGet; Windows DLLs are excluded
 from our package and release archives.
 
-The separate `skia-fonts-1` package contains unmodified Noto fonts, SIL OFL
+The `skia-doc` package contains unmodified Noto fonts, SIL OFL
 notices and font copyright records. The binding's MIT license does not replace
 the licenses of these third-party assets.
 

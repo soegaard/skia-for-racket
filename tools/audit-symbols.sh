@@ -2,13 +2,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -f "$ROOT/skia-lib/info.rkt" ]]; then ROOT="$ROOT/skia-lib"; fi
 NATIVE_RKT="$ROOT/private/native.rkt"
 
 usage() {
   cat <<'EOF'
 Usage: tools/audit-symbols.sh [LIBRARY]
 
-Compare every (define-native ...) declaration in private/native.rkt with
+Compare every (define-native ...) declaration in skia-lib/private/native.rkt with
 symbols exported by libSkiaSharp. If LIBRARY is omitted, use
 RACKET_SKIA_LIBRARY when set, otherwise the project's native/<platform>/ copy.
 

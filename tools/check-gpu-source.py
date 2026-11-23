@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Conservative source-structure checks; NOT Racket expansion or execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import json
 import pathlib
@@ -101,11 +102,14 @@ def read_forms(text: str):
     return forms
 
 def check(root: pathlib.Path, *, require_integration=False):
-    files = sorted([*root.glob('gpu*.rkt'), *root.glob('private/gpu*.rkt'),
-                    *root.glob('private/native-platform.rkt'), *root.glob('private/output-executor.rkt'),
-                    *root.glob('output-groups.rkt'), *root.glob('private/audit-trace.rkt'), *root.glob('private/lifetime.rkt'),
-                    *root.glob('tests/gpu*.rkt'),
-                    *root.glob('tools/gpu*.rkt'), *root.glob('examples/gpu*.rkt')])
+    library = library_root(root)
+    patterns = ('gpu*.rkt', 'private/gpu*.rkt', 'private/native-platform.rkt',
+                'private/output-executor.rkt', 'output-groups.rkt', 'private/audit-trace.rkt',
+                'private/lifetime.rkt', 'tests/gpu*.rkt', 'tools/gpu*.rkt', 'examples/gpu*.rkt')
+    files = sorted({path for pattern in patterns for path in library.glob(pattern)} |
+                   set((root / 'tools').glob('gpu*.rkt')))
+    if not (library / 'gpu.rkt').is_file() or not (library / 'private/gpu-native.rkt').is_file():
+        raise ValueError('GPU source collection root is missing')
     results = {}
     for file in files:
         try:
@@ -127,7 +131,7 @@ def check(root: pathlib.Path, *, require_integration=False):
             arities(form)
         results[str(file.relative_to(root))] = len(forms)
     def suite_cases(path, name, *, factory=False):
-        source = (root/path).read_text()
+        source = (source_path(root, path)).read_text()
         forms = read_forms(source)
         definitions = [f for f in forms if isinstance(f,list) and len(f)>=3 and f[0]=='define'
                        and ((isinstance(f[1],list) and f[1] and f[1][0]==name) if factory else f[1]==name)]
@@ -163,43 +167,43 @@ def check(root: pathlib.Path, *, require_integration=False):
         'performance_pure':suite_cases('tests/gpu-performance-pure-test.rkt','gpu-performance-pure-tests'),
         'cache_live':suite_cases('tests/gpu-cache-native-test.rkt','make-gpu-cache-native-tests',factory=True)}
     count = counts['cache_live']
-    if f'(define gpu-cache-native-test-count {count})' not in (root/'tests/gpu-cache-native-test.rkt').read_text():
+    if f'(define gpu-cache-native-test-count {count})' not in (source_path(root, 'tests/gpu-cache-native-test.rkt')).read_text():
         raise ValueError('Cache native coverage mismatch')
-    if f'NATIVE_CACHE_CASES = {count}' not in (root/'tools/inspect-gpu-performance.py').read_text():
+    if f'NATIVE_CACHE_CASES = {count}' not in (root / 'tools/inspect-gpu-performance.py').read_text():
         raise ValueError('Performance inspector native coverage mismatch')
     count = counts['output_live']
-    if f'(define gpu-output-native-test-count {count})' not in (root/'tests/gpu-output-native-test.rkt').read_text():
+    if f'(define gpu-output-native-test-count {count})' not in (source_path(root, 'tests/gpu-output-native-test.rkt')).read_text():
         raise ValueError('GPU output doctor coverage mismatch')
-    if f'NATIVE_TEST_CASES = {count}' not in (root/'tools/inspect-gpu-output.py').read_text():
+    if f'NATIVE_TEST_CASES = {count}' not in (root / 'tools/inspect-gpu-output.py').read_text():
         raise ValueError('GPU output inspector coverage mismatch')
     for key, name, constant in [('egl_live','egl','EGL_NATIVE_CASES'),
                                 ('interop_live','gl-interop','INTEROP_NATIVE_CASES')]:
         n = counts[key]
-        if f'(define gpu-{name}-native-test-count {n})' not in (root/f'tests/gpu-{name}-native-test.rkt').read_text():
+        if f'(define gpu-{name}-native-test-count {n})' not in (source_path(root, f'tests/gpu-{name}-native-test.rkt')).read_text():
             raise ValueError(f'{name}: wrong advertised native suite coverage')
-        if f'{constant} = {n}' not in (root/'tools/inspect-gpu-headless.py').read_text():
+        if f'{constant} = {n}' not in (root / 'tools/inspect-gpu-headless.py').read_text():
             raise ValueError(f'{name}: inspector coverage mismatch')
     for key, name, constant in [('metal_live','metal','METAL_NATIVE_CASES'),
                                 ('cross_backend_live','cross-backend','CROSS_NATIVE_CASES')]:
         n = counts[key]
-        if f'(define gpu-{name}-native-test-count {n})' not in (root/f'tests/gpu-{name}-native-test.rkt').read_text():
+        if f'(define gpu-{name}-native-test-count {n})' not in (source_path(root, f'tests/gpu-{name}-native-test.rkt')).read_text():
             raise ValueError(f'{name}: source suite coverage disagrees with doctor count')
-        if f'{constant} = {n}' not in (root/'tools/inspect-gpu-parity.py').read_text():
+        if f'{constant} = {n}' not in (root / 'tools/inspect-gpu-parity.py').read_text():
             raise ValueError(f'{name}: inspector coverage disagrees with executable source')
     count = counts['image_live']
-    if f'(define gpu-image-native-test-count {count})' not in (root/'tests/gpu-image-native-test.rkt').read_text():
+    if f'(define gpu-image-native-test-count {count})' not in (source_path(root, 'tests/gpu-image-native-test.rkt')).read_text():
         raise ValueError('GPU image native suite count differs from the doctor advertisement')
-    if f'NATIVE_TEST_CASES = {count}' not in (root/'tools/inspect-gpu-images.py').read_text():
+    if f'NATIVE_TEST_CASES = {count}' not in (root / 'tools/inspect-gpu-images.py').read_text():
         raise ValueError('GPU image inspector expects different suite coverage')
     count = counts['presenter_live']
-    if f'(define gpu-presenter-native-test-count {count})' not in (root/'tests/gpu-presenter-native-test.rkt').read_text():
+    if f'(define gpu-presenter-native-test-count {count})' not in (source_path(root, 'tests/gpu-presenter-native-test.rkt')).read_text():
         raise ValueError('Presenter doctor coverage differs from executable source suite')
-    if f'NATIVE_TEST_CASES = {count}' not in (root/'tools/inspect-gpu-presentation.py').read_text():
+    if f'NATIVE_TEST_CASES = {count}' not in (root / 'tools/inspect-gpu-presentation.py').read_text():
         raise ValueError('Presenter inspector coverage differs from executable source suite')
-    public = (root/'gpu.rkt').read_text()
+    public = (source_path(root, 'gpu.rkt')).read_text()
     if re.search(r'\(require[^)]*racket/gui',public,re.S):
         raise ValueError('GUI dependency leaked into optional GPU module')
-    if 'sk_surface_new_render_target' not in (root/'private/gpu-smoke.rkt').read_text():
+    if 'sk_surface_new_render_target' not in (source_path(root, 'private/gpu-smoke.rkt')).read_text():
         raise ValueError('foundation probe lost its real GPU constructor')
     for module, guide in (('private/gpu-surfaces.rkt','GPU-OFFSCREEN.md'),
                           ('private/gpu-images.rkt','GPU-IMAGES.md'),
@@ -208,9 +212,9 @@ def check(root: pathlib.Path, *, require_integration=False):
                           ('gpu-gl-interop.rkt','GPU-INTEROP.md'),
                           ('gpu-output.rkt','GPU-OUTPUT.md'),
                           ('private/gpu-cache.rkt','GPU-CACHE.md')):
-        forms = read_forms((root/module).read_text())
+        forms = read_forms((source_path(root, module)).read_text())
         names = [n for f in forms if isinstance(f,list) and f and f[0]=='provide' for n in f[1:] if isinstance(n,str)]
-        doc = (root/'docs'/guide).read_text()
+        doc = (root / 'docs'/guide).read_text()
         if any(n not in doc for n in names): raise ValueError(f'{module}: undocumented public binding')
     integration = {}
     for path, required in {
@@ -233,7 +237,7 @@ def check(root: pathlib.Path, *, require_integration=False):
                          'tests/gpu-performance-pure-test.rkt','(run-tests gpu-performance-pure-tests)'],
         'docs/API.md':['surface-backend','canvas-execution-backend'],
     }.items():
-        file = root/path
+        file = source_path(root, path)
         if not file.exists():
             if require_integration: raise ValueError(f'missing full-repository integration file: {path}')
             integration[path] = 'not present in source-only bundle'

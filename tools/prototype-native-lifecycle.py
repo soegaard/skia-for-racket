@@ -6,6 +6,7 @@ or catalog configuration. It is a native-directory feasibility probe, not full
 rendering, documentation, Linux ABI, or catalog qualification.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 import hashlib

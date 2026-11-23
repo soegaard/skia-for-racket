@@ -4,12 +4,13 @@ The main include/c inventory and the Xamarin callback-table extension are kept
 separate. No native execution is inferred from this declaration check.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import json
 from pathlib import Path
 
 def checked_imports(root: Path, forms, String):
-    source=root/'private/live-port-native.rkt'
-    manifest=json.loads((root/'api/live-stream-ffi.json').read_text(encoding='utf-8'))
+    source=source_path(root, 'private/live-port-native.rkt')
+    manifest=json.loads((root / 'api/live-stream-ffi.json').read_text(encoding='utf-8'))
     if manifest.get('schema') != 1 or manifest.get('native_version') != '119.0':
         raise ValueError('wrong live-FFI manifest version')
     expected=manifest['standard'] | manifest['xamarin']
@@ -25,7 +26,7 @@ def checked_imports(root: Path, forms, String):
             raise ValueError('live-FFI signature drift: '+name)
     if set(actual)!=set(expected):
         raise ValueError('unclassified live-FFI imports: '+repr(sorted(set(actual)^set(expected))))
-    upstream=root/'api/upstream-m119.json'
+    upstream=root / 'api/upstream-m119.json'
     if upstream.is_file():
         symbols=set().union(*(set(v) for v in json.loads(upstream.read_text())['headers'].values()))
         if not set(manifest['standard']) <= symbols:

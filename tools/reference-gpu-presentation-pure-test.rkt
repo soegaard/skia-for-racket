@@ -16,8 +16,8 @@
 ;; Presenter state-machine checks with a synthetic adapter. No GUI, native GPU,
 ;; window, pixel readback, or physical presentation is created by this suite.
 (require rackunit racket/list
-         "../private/gpu-presenter.rkt"
-         (submod "../private/gpu-presenter.rkt" adapter-internals))
+         "../skia-lib/private/gpu-presenter.rkt"
+         (submod "../skia-lib/private/gpu-presenter.rkt" adapter-internals))
 
 
 ;;;

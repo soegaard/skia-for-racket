@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Required installed-package Windows DXGI/WARP lane; offscreen CI stays independent."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import json
 import os
 from pathlib import Path

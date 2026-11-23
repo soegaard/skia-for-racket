@@ -11,8 +11,8 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require racket/runtime-path "../gpu.rkt"
-         (only-in "../private/gpu-d3d12-util.rkt" d3d12-selection!))
+(require racket/runtime-path "../skia-lib/gpu.rkt"
+         (only-in "../skia-lib/private/gpu-d3d12-util.rkt" d3d12-selection!))
 (provide call-with-gpu-backend-host)
 
 ;;;
@@ -25,7 +25,7 @@
 
 ; egl-module : path?
 ;   Locates ../gpu-egl.rkt relative to this module, independent of the invoking directory.
-(define-runtime-path egl-module "../gpu-egl.rkt")
+(define-runtime-path egl-module "../skia-lib/gpu-egl.rkt")
 ;; Supply a context maker, not a raw backend handle. Metal needs no host;
 ;; creating each context owns a new command queue. GL borrows its GUI host.
 

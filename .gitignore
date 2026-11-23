@@ -17,3 +17,10 @@ TODO.md
 .#*
 \#*#
 *~
+
+# Package-local developer artifacts and generated manuals
+/skia-lib/native/*/
+/skia-lib/doc/
+/skia-lib/html/
+/skia-doc/doc/
+/skia-doc/html/

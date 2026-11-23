@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Catalog evidence must reject partial, mismatched and fabricated receipts."""
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import hashlib
 import importlib.util
@@ -40,13 +41,24 @@ def fixtures():
                   managed_directory='/home/test/lib/skia-native-1', installed_sha256=SHA,
                   manifest=dict(lock_sha256=SHA, files={k:dict(sha256=SHA) for k in ('skia','harfbuzz')}))
     smokes = [dict(status='passed', source_version='0.79', text_load_order=order,
-                   skia=dict(loader=copy.deepcopy(native)), harfbuzz=copy.deepcopy(native))
+                   skia=dict(loader=copy.deepcopy(native)), harfbuzz=copy.deepcopy(native),
+                   source_identity=False, default_font_verified=True,
+                   shapes=[dict(font='procedural-AV', glyphs=[2,3], advance=20)])
               for order in ('skia-first','draw-first')]
     report = dict(status='passed-local-selected-checks', checks={key:True for key in c.REQUIRED_CHECKS},
                   execution_uid=1001,
                   identity=dict(version='9.3', target='x86_64-linux'), drdr_seconds=37.4,
                   network_denial=[dict(address=address,errno=101) for address in ('1.1.1.1','8.8.8.8')],
                   smoke=smokes, rebuilt_smoke={form:copy.deepcopy(smokes) for form in ('source','built','binary-lib')})
+    fonts = n.read_json(n.ROOT / 'packaging/native-assets.json')['documentation_fonts']['files']
+    doc = dict(status='passed', shapes=[dict(font=f['filename'], font_sha256=f['sha256'],
+                                           glyphs=[1,2], advance=20) for f in fonts])
+    report['documentation_navigation'] = {k:dict(status='passed', tutorials=22, landing_checked=True)
+                                          for k in ('source','rebuilt-source','rebuilt-built','rebuilt-binary-lib')}
+    report['documentation_navigation']['rebuilt-binary-lib'] = dict(status='racket-binary-lib-documentation-omitted',
+        manuals=0, content_state='(binary-lib \"9.3\")', fonts_and_editable_assets_checked_separately=True)
+    report.update(documentation_smoke=copy.deepcopy(doc), added_documentation_smoke=copy.deepcopy(doc),
+                  rebuilt_documentation_smoke={form:copy.deepcopy(doc) for form in ('source','built','binary-lib')})
     staging = dict(lock_sha256=SHA, snapshot_candidates_preserved=True, source=dict(sha256=SHA, source_worktree_clean=True, source_commit_observed=COMMIT),
                    dependency_snapshot=dict(packages=[dict(package='base', sha256=SHA)], catalog_racket_datum='#hash()',
                                             catalog_sha256=hashlib.sha256(b'#hash()').hexdigest()),
@@ -69,7 +81,7 @@ def cache_fixture(report):
         running_machine='ta6le', compile_target_machine='ta6le', executable=str(first / 'bin/racket'),
         compiled_roots=[str(first / 'zo'), 'same'], compiled_roots_environment=str(first / 'zo') + ':')
     report['commands'] = [dict(command=[str(first / 'bin/racket'), '-MCR', str(first / 'zo') + ':',
-                                       '-l', 'raco', 'test', '--drdr', '--package', 'skia'],
+                                       '-l', 'raco', 'test', '--drdr', '--package', 'skia-lib', 'skia-doc'],
                               exit_code=0, runtime_child_environment={
                                   'PLTCOMPILEDROOTS': str(first / 'zo') + ':'})]
 
@@ -245,8 +257,8 @@ class Evidence(unittest.TestCase):
     def test_partial_review_cannot_approve_this_checkout(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            shutil.copytree(n.ROOT/'packaging',root/'packaging')
-            path = root/'packaging/native-assets.json'
+            shutil.copytree(n.ROOT/'packaging',root / 'packaging')
+            path = root / 'packaging/native-assets.json'
             lock = n.read_json(path)
             lock['review']['redistribution_approved']=False
             path.write_text(json.dumps(lock))
@@ -276,7 +288,7 @@ class Lock(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'notice set'): n.validate_distribution_lock(lock)
     def test_unpinned_font_source_is_rejected(self):
         lock = n.read_json(n.ROOT/'packaging/native-assets.json')
-        lock['font_package']['files'][0]['url']='https://example.com/latest.ttf'
+        lock['documentation_fonts']['files'][0]['url']='https://example.com/latest.ttf'
         with self.assertRaisesRegex(ValueError,'not immutable'): n.validate_distribution_lock(lock)
 
 
@@ -290,7 +302,7 @@ class WindowsNetworkCoverage(unittest.TestCase):
                      'reinstalled source', 'reinstalled built', 'reinstalled binary-lib'):
             for executable in ('Racket.exe', 'racket.exe'):
                 self.assertIn(output / 'execution' / name / 'Racket runtime' / executable, programs)
-        self.assertEqual(len(programs), 13)
+        self.assertEqual(len(programs), 1 + 2 * len(RUNTIME_ENVIRONMENTS))
 
     def test_unregistered_runtime_is_rejected_before_filesystem_changes(self):
         spec = importlib.util.spec_from_file_location('catalog_validator_network_test',
@@ -319,7 +331,7 @@ class CatalogRuntime(unittest.TestCase):
             self.assertEqual(runtime_child_environment(executable, profile=PKG_BUILD_PROFILE),
                              {'PLTCOMPILEDROOTS': str(root / 'zo') + os.pathsep})
             (root / 'etc').mkdir(parents=True)
-            (root / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+            (source_path(root, PROFILE_FILE)).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
             moved = root.with_name('copied runtime with spaces æ')
             shutil.copytree(root, moved)
             self.assertEqual(runtime_child_environment(moved / 'bin/racket'),
@@ -330,7 +342,7 @@ class CatalogRuntime(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / 'etc').mkdir()
-            (root / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+            (source_path(root, PROFILE_FILE)).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
             instance = object.__new__(validator.Validator)
             instance.root = instance.away = root
             instance.report = dict(commands=[])
@@ -393,7 +405,7 @@ class CatalogRuntime(unittest.TestCase):
             (root / 'etc').mkdir(parents=True)
             executable = root / 'bin/racket'
             self.assertEqual(racket_command(executable), [str(executable)])
-            (root / PROFILE_FILE).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
+            (source_path(root, PROFILE_FILE)).write_bytes(n.json_bytes(PKG_BUILD_PROFILE))
             self.assertEqual(racket_command(executable),
                              [str(executable), '-MCR', str(root / 'zo') + os.pathsep])
             moved = root.with_name('copied Racket runtime æ')
@@ -405,7 +417,7 @@ class CatalogRuntime(unittest.TestCase):
             root = Path(temporary)
             (root / 'etc').mkdir()
             profile = dict(PKG_BUILD_PROFILE, arguments=['--no-docs'])
-            (root / PROFILE_FILE).write_bytes(n.json_bytes(profile))
+            (source_path(root, PROFILE_FILE)).write_bytes(n.json_bytes(profile))
             with self.assertRaisesRegex(ValueError, 'unreviewed catalog runtime execution profile'):
                 racket_command(root / 'bin/racket')
             with self.assertRaisesRegex(ValueError, 'unreviewed catalog runtime execution profile'):
@@ -633,7 +645,7 @@ class ReceiptOnlyAssets(unittest.TestCase):
         folder = root / 'artifacts'
         folder.mkdir()
         rows = []
-        names = [n.TARGETS[name]['package'] for name in n.DISTRIBUTED_TARGETS] + ['skia-fonts-1']
+        names = [n.TARGETS[name]['package'] for name in n.DISTRIBUTED_TARGETS]
         for name in names:
             archive = folder / (name + '.zip')
             identity = n.write_zip(archive, {'payload/private-library.dll': b'NATIVE-PAYLOAD-SENTINEL'})
@@ -642,10 +654,14 @@ class ReceiptOnlyAssets(unittest.TestCase):
             (folder / (name + '.receipt.json')).write_bytes(n.json_bytes(row))
             rows.append(row)
         (folder / 'native-artifacts.json').write_bytes(n.json_bytes(dict(schema=1, artifacts=rows)))
-        n.write_zip(folder / 'skia.zip', {
-            'private/source-identity.json': n.json_bytes(dict(
-                schema=1, source_commit_observed=source_commit, source_worktree_clean=clean)),
-            'source.rkt': b'#lang racket/base\n'})
+        sources = []
+        for name in ('skia', 'skia-lib', 'skia-doc'):
+            identity = n.write_zip(folder / (name + '.zip'), {'info.rkt': b'#lang info\n'})
+            sources.append(dict(identity, package=name, archive=name + '.zip',
+                                source_commit_observed=source_commit, source_worktree_clean=clean))
+        source = dict(schema=1, packages=sources, source_commit_observed=source_commit,
+                      source_worktree_clean=clean, sha256=n.sha256(n.json_bytes(sources)))
+        (folder / 'source-packages.json').write_bytes(n.json_bytes(source))
         return folder
 
     def test_only_receipts_and_digests_leave_the_artifact_directory(self):
@@ -658,11 +674,11 @@ class ReceiptOnlyAssets(unittest.TestCase):
             report = asset_evidence.collect(artifacts, output)
             self.assertEqual({p.name for p in output.iterdir()}, {
                 'skia-native-macos-1.receipt.json', 'skia-native-x86_64-linux-1.receipt.json',
-                'skia-fonts-1.receipt.json', 'native-artifacts.json', 'artifact-digests.json'})
+                'source-packages.json', 'native-artifacts.json', 'artifact-digests.json'})
             self.assertTrue(all(p.suffix == '.json' for p in output.iterdir()))
             self.assertFalse((output / 'extra.json').exists())
             self.assertFalse(any(b'NATIVE-PAYLOAD-SENTINEL' in p.read_bytes() for p in output.iterdir()))
-            self.assertEqual(len(report['archives']), 4)
+            self.assertEqual(len(report['archives']), 5)
             self.assertNotIn('skia-native-win32-x86_64-1.zip', {row['archive'] for row in report['archives']})
             self.assertEqual(report['source']['source_commit_observed'], COMMIT)
             self.assertFalse(report['catalog_candidate_validated'])

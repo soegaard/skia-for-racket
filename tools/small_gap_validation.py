@@ -1,5 +1,6 @@
 """0.78b focused acceptance helpers; source support is not runtime evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import re
 from pathlib import Path
@@ -52,20 +53,20 @@ def source_contracts(root: Path) -> dict:
         need("sk_colorspace_xyz_concat" not in names and "sk_colorspace_xyz_invert" not in names,
              "raw XYZ pointers leaked through public exports")
     for kind, count in (("pure", PURE_CASES), ("native", NATIVE_CASES)):
-        text = (root / f"tests/small-gap-{kind}-test.rkt").read_text(encoding="utf-8")
+        text = (source_path(root, f"tests/small-gap-{kind}-test.rkt")).read_text(encoding="utf-8")
         need(text.count("(test-case ") == count, "test source count drift: " + kind)
         need(f"(define small-gap-{kind}-test-count {count})" in text, "test completion count drift")
         inv.forms(text)
-    runner = (root / "run-tests.rkt").read_text(encoding="utf-8")
+    runner = (source_path(root, 'run-tests.rkt')).read_text(encoding="utf-8")
     need('"tests/small-gap-pure-test.rkt"' in runner and "(run-tests small-gap-pure-tests)" in runner,
          "pure suite missing from aggregate tests")
     need('"tests/small-gap-native-test.rkt"' in runner and
          "(dynamic-require small-gap-native-tests-file 'small-gap-native-tests)" in runner,
          "native suite missing from aggregate tests")
-    ci = (root / "tools/ci.py").read_text(encoding="utf-8")
+    ci = (root / 'tools/ci.py').read_text(encoding="utf-8")
     need("'test-small-gaps.py'" in ci, "source CI must run the 0.78b contracts")
-    example = (root / "examples/small-gaps.rkt").read_text(encoding="utf-8")
+    example = (source_path(root, 'examples/small-gaps.rkt')).read_text(encoding="utf-8")
     need('"../main.rkt"' in example and "private/" not in example, "example must use public APIs")
     # The current package advances independently of the frozen 0.78b decisions.
-    need('"0.79"' in (root / "info.rkt").read_text(encoding="utf-8"), "wrong package version")
+    need('"0.79"' in (source_path(root, 'info.rkt')).read_text(encoding="utf-8"), "wrong package version")
     return summary

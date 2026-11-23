@@ -5,6 +5,7 @@ real build outputs before copying and rechecks the extracted ZIP before publishi
 Companion-page diagnostics never stand in for complete-site acceptance.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import hashlib
 from html.parser import HTMLParser
@@ -28,7 +29,9 @@ FONT_SUFFIXES = {'.ttf', '.otf', '.ttc', '.otc', '.woff', '.woff2'}
 
 def source_hashes(root: Path, *, review_inputs: bool = False) -> dict[str, str]:
     paths = {MANIFEST, Path('info.rkt'), Path('docs/REFERENCE-DEVELOPMENT.md')}
-    paths.update(path.relative_to(root) for path in (root / REFERENCE).rglob('*')
+    if documentation_root(root) != root:
+        paths.update((Path('skia-doc/info.rkt'), Path('skia/info.rkt')))
+    paths.update(path.relative_to(documentation_root(root)) for path in (source_path(root, REFERENCE)).rglob('*')
                  if path.is_file() and path.suffix in {'.rkt', '.scrbl'}
                  and 'compiled' not in path.relative_to(root).parts)
     paths.update(path.relative_to(root) for path in (root / 'tools').glob('*reference*')
@@ -40,7 +43,7 @@ def source_hashes(root: Path, *, review_inputs: bool = False) -> dict[str, str]:
         paths.update(Path(row['manual']) for row in manifest.get('tutorial_links', []))
         # These are the actual imports of the ordinary non-native checker.
         paths.update(Path('tools') / name for name in
-                     ('check-reference.py', 'reference_support.py', 'reference_review.py'))
+                     ('check-reference.py', 'reference_support.py', 'reference_review.py', 'repository_layout.py'))
         # The shared navigation is rendered by every manual and by the Pages
         # landing. Keep these real inputs in review snapshots rather than
         # silently relying on a neighboring checkout.
@@ -62,13 +65,13 @@ def source_hashes(root: Path, *, review_inputs: bool = False) -> dict[str, str]:
             'tools/test-documentation-navigation.py',
             'tools/render-documentation-landing.rkt',
         )
-        paths.update(Path(name) for name in navigation_inputs if (root / name).is_file())
-        catalog_path = root / 'scribblings/tutorials/support/catalog.json'
+        paths.update(Path(name) for name in navigation_inputs if (source_path(root, name)).is_file())
+        catalog_path = source_path(root, 'scribblings/tutorials/support/catalog.json')
         if catalog_path.is_file():
             catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
             paths.update(Path(row['manual']) for row in catalog.get('tutorials', [])
-                         if (root / row['manual']).is_file())
-    return {path.as_posix(): hashlib.sha256(safe_file(root, path.as_posix()).read_bytes()).hexdigest()
+                         if (source_path(root, row['manual'])).is_file())
+    return {source_path(root, path).relative_to(root).as_posix(): hashlib.sha256(safe_file(root, path.as_posix()).read_bytes()).hexdigest()
             for path in sorted(paths)}
 
 

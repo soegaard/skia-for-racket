@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/list json
-         "../main.rkt" "../tests/font-query-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/font-query-fixtures.rkt")
 (provide generate-font-query-documents)
 
 ;;;

@@ -12,8 +12,8 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/path racket/runtime-path racket/list
-         json "../gpu.rkt" "../main.rkt" "../private/gpu-native.rkt"
-         "../private/gpu-provider.rkt")
+         json "../skia-lib/gpu.rkt" "../skia-lib/main.rkt" "../skia-lib/private/gpu-native.rkt"
+         "../skia-lib/private/gpu-provider.rkt")
 (provide gpu-doctor!)
 
 ;;;
@@ -27,7 +27,7 @@
 ; metal-module : path?
 ;   Locates ../private/gpu-metal-probe.rkt relative to this module, independent of the invoking
 ;   directory.
-(define-runtime-path metal-module "../private/gpu-metal-probe.rkt")
+(define-runtime-path metal-module "../skia-lib/private/gpu-metal-probe.rkt")
 
 ; write-json-atomically : path? any/c -> void?
 ;   Publishes JSON through a sibling temporary file and cleans up failed writes.

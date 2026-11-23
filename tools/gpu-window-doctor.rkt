@@ -14,10 +14,10 @@
 ;; All GPU work runs on the creating Racket thread. Event callbacks never draw
 ;; with this domain and normal Racket DC drawing is never mixed into the GL DC.
 (require racket/class (only-in racket/draw gl-config%) racket/cmdline racket/path racket/list
-         "../main.rkt" "../gpu.rkt" "../gpu-racket-gl.rkt"
-         "../private/gpu-provider.rkt" "../private/gpu-window.rkt"
-         "../private/gpu-surface-native.rkt" "../private/gpu-io-trace.rkt"
-         "../examples/gpu-scenes.rkt" "gpu-report.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/gpu-racket-gl.rkt"
+         "../skia-lib/private/gpu-provider.rkt" "../skia-lib/private/gpu-window.rkt"
+         "../skia-lib/private/gpu-surface-native.rkt" "../skia-lib/private/gpu-io-trace.rkt"
+         "../skia-lib/examples/gpu-scenes.rkt" "gpu-report.rkt")
 (provide gpu-window-doctor!)
 
 ;;;

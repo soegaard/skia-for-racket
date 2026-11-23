@@ -5,6 +5,7 @@ Default: check sources against pinned export inventories. --documents-only is a
 limited check for a partial source fixture. No mode silently skips requested Racket work.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 import json
@@ -210,9 +211,9 @@ def main(argv=None):
                 [racket, '-l', 'raco', '--', 'test',
                  ROOT / 'tools/reference-dc-integration-pure-test.rkt'])
             run('pict-pure-tests', [racket, '-l', 'raco', '--', 'test',
-                                    ROOT / 'tests/pict-pure-test.rkt'])
+                                    source_path(ROOT, 'tests/pict-pure-test.rkt')])
             run('racket-draw-pure-tests', [racket, '-l', 'raco', '--', 'test',
-                                           ROOT / 'tests/racket-draw-pure-test.rkt'])
+                                           source_path(ROOT, 'tests/racket-draw-pure-test.rkt')])
             run('matrix-tests', [racket, '-l', 'raco', '--', 'test',
                                  ROOT / 'tools/reference-matrix-test.rkt'])
             if args.render or args.installed:
@@ -228,7 +229,7 @@ def main(argv=None):
                     reference_command = [*scribble, '--htmls', '--dest', output,
                                          '--dest-name', 'skia-reference', '--redirect-main',
                                          'https://docs.racket-lang.org/']
-                    document = 'skia/scribblings/reference/reference.scrbl'
+                    document = 'skia-doc/scribblings/reference/reference.scrbl'
                     run('reference-seed', [*reference_command, '--info-out', seed, '--lib', document])
                     for link in source['tutorial_links']:
                         name = link['directory']
@@ -254,7 +255,7 @@ def main(argv=None):
                 run('link-probe', [*scribble, *inputs, '--html', '--dest', probe,
                                    '--dest-name', 'links',
                                    '--redirect-main', 'https://docs.racket-lang.org/', '--lib',
-                                   'skia/scribblings/reference/tests/links.scrbl'])
+                                   'skia-doc/scribblings/reference/tests/links.scrbl'])
                 evidence = output / 'runtime.json'
                 options = (['--installed'] if args.installed else
                            ['--xref-file', xref, *[arg for file in tutorial_xrefs
@@ -267,7 +268,7 @@ def main(argv=None):
                     run('quick', [*scribble, *inputs, '--html', '--dest', quick.parent,
                                   '--dest-name', 'index', '--redirect-main',
                                   'https://docs.racket-lang.org/', '--lib',
-                                  'skia/scribblings/quick/quick.scrbl'])
+                                  'skia-doc/scribblings/quick/quick.scrbl'])
                     report['quick_rendered'] = True
                 targets = json.loads(evidence.read_text())
                 check_evidence(source, targets, installed=bool(args.installed))
@@ -287,9 +288,9 @@ def main(argv=None):
                                     ROOT / 'tools/reference-io-test.rkt',
                                     ROOT / 'tools/reference-geometry-test.rkt',
                                     ROOT / 'tools/reference-raster-test.rkt',
-                                    ROOT / 'tests/pict-native-test.rkt',
-                                    ROOT / 'tests/racket-draw-native-test.rkt',
-                                    ROOT / 'tests/racket-draw-consumer-test.rkt'])
+                                    source_path(ROOT, 'tests/pict-native-test.rkt'),
+                                    source_path(ROOT, 'tests/racket-draw-native-test.rkt'),
+                                    source_path(ROOT, 'tests/racket-draw-consumer-test.rkt')])
                 report['native_executed'] = True
             if args.gpu_context_backend:
                 gpu_output = output / 'gpu-context.json'
@@ -339,7 +340,7 @@ def main(argv=None):
             if args.render:
                 rendered = set(report['tutorial_manuals_rendered'])
                 catalog = json.loads(
-                    (ROOT / 'scribblings/tutorials/support/catalog.json').read_text(encoding='utf-8'))
+                    (source_path(ROOT, 'scribblings/tutorials/support/catalog.json')).read_text(encoding='utf-8'))
                 all_destinations = {'skia-tutorials',
                                     *(f'skia-tutorial-{entry["id"]}'
                                       for entry in catalog['tutorials'])}

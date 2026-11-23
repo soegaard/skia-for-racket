@@ -4,7 +4,7 @@
 ;; before the production managed loader exists. This is NOT catalog discovery.
 (require json racket/cmdline racket/file racket/path
          (only-in file/sha1 bytes->hex-string)
-         "../main.rkt" "../tests/typeface-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/typeface-fixtures.rkt")
 
 (module+ main
   (define-values (skia-path harfbuzz-path)

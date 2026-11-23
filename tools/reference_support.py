@@ -4,6 +4,7 @@ The source reader deliberately supports the native definition forms used by this
 It rejects unsupported signatures rather than treating a guessed arity as evidence.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 from collections import Counter
 import base64
@@ -37,7 +38,7 @@ def safe_file(root: Path, relative: str) -> Path:
     need(relative and not name.is_absolute() and '\\' not in relative
          and ':' not in relative and all(p not in ('', '.', '..') for p in relative.split('/')),
          f'unsafe source path: {relative!r}')
-    path = root / relative
+    path = source_path(root, relative)
     need(path.resolve().is_relative_to(root.resolve()), f'path escapes root: {relative}')
     need(not path.is_symlink(), f'symlink in source inventory: {relative}')
     return path
@@ -568,18 +569,18 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
         need(re.fullmatch(r'skia-tutorials|skia-tutorial-[a-z-]+', directory),
              'invalid tutorial output directory')
         need(isinstance(tag, str) and tag and link['label'].strip(), 'invalid tutorial link')
-        key = ('skia/' + manual, tag)
+        key = ('skia-doc/' + manual, tag)
         need(key not in tutorial_keys, 'duplicate tutorial link declaration')
         tutorial_keys.add(key)
     found_links = set()
     for chapter in chapters:
-        for form, header, _ in commands((root / chapter).read_text(encoding='utf-8'), recursive=True):
+        for form, header, _ in commands((source_path(root, chapter)).read_text(encoding='utf-8'), recursive=True):
             if form != 'seclink' or not header or '#:doc' not in header:
                 continue
             doc = header[header.index('#:doc') + 1]
             if (isinstance(doc, list) and len(doc) == 2 and doc[0] == 'quote'
                 and isinstance(doc[1], list) and len(doc[1]) == 2 and doc[1][0] == 'lib'
-                and str(doc[1][1]).startswith('skia/scribblings/tutorials/')):
+                and str(doc[1][1]).startswith('skia-doc/scribblings/tutorials/')):
                 found_links.add((str(doc[1][1]), str(header[0])))
     need(found_links == tutorial_keys, 'tutorial link/source coverage mismatch')
     section_links = manifest.get('section_links', [])
@@ -618,7 +619,7 @@ def check_source(root: Path, *, documents_only=False, require_complete=False):
                 if len(tags[1]) > 1:
                     aliases.update((chapter, str(tag)) for tag in tags[1])
     need(aliases <= section_keys, 'chapter aliases are missing from the section-link manifest')
-    info = (root / 'info.rkt').read_text(encoding='utf-8')
+    info = (documentation_root(root) / 'info.rkt').read_text(encoding='utf-8')
     need('"scribblings/reference/reference.scrbl" (multi-page)' in info, 'manual not registered')
     return dict(status='passed', documents_only=documents_only, definitions=specs,
                 tutorial_links=tutorial_links, section_links=section_links, chapters=sorted(chapters),

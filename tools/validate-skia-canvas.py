@@ -7,6 +7,7 @@ windows and eventspace callbacks. A missing display is a failure in that mode.
 Neither mode claims independent screen pixel equivalence or GPU execution.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 import os
@@ -33,7 +34,7 @@ SOURCE_PATHS = tuple(dict.fromkeys((*common.SOURCE_PATHS,
 
 
 def source_fingerprint(root):
-    return {name: common.sha256(Path(root) / name) for name in SOURCE_PATHS}
+    return {name: common.sha256(source_path(root, name)) for name in SOURCE_PATHS}
 
 
 def supported_identity(identity):
@@ -137,25 +138,25 @@ def execute(root, directory, racket, *, require_gui=False, runner=None):
         state['identity'] = identity
         modules = ('dc.rkt', 'private/canvas-backing.rkt', 'tests/canvas-dc-pure-test.rkt',
                    'tests/canvas-dc-native-test.rkt')
-        runner.run([racket, '-l', 'raco', '--', 'make', *[root / name for name in modules]], cwd=root)
+        runner.run([racket, '-l', 'raco', '--', 'make', *[source_path(root, name) for name in modules]], cwd=root)
         checks['headless_compilation'] = True
         for filename, marker, count, check in (
                 ('canvas-dc-pure-test.rkt', 'canvas-dc-pure', PURE_CASES, 'pure_lifecycle'),
                 ('canvas-dc-native-test.rkt', 'canvas-dc-native', NATIVE_CASES, 'native_pixels_and_bitmap_bridge')):
-            output = runner.run([racket, root / 'tests' / filename], cwd=root)
+            output = runner.run([racket, source_path(root, 'tests') / filename], cwd=root)
             validate_suite_output(output, marker, count)
             checks[check] = True
         state['pure_cases'] = PURE_CASES
         state['native_cases'] = NATIVE_CASES
         if require_gui:
             gui['status'] = 'running'
-            runner.run([racket, '-l', 'raco', '--', 'make', root / 'canvas.rkt',
-                        root / 'tests/canvas-gui-test.rkt', root / 'tests/canvas-text-load-order.rkt'], cwd=root)
+            runner.run([racket, '-l', 'raco', '--', 'make', source_path(root, 'canvas.rkt'),
+                        source_path(root, 'tests/canvas-gui-test.rkt'), source_path(root, 'tests/canvas-text-load-order.rkt')], cwd=root)
             gui['executed'] = True
-            output = runner.run([racket, root / 'tests/canvas-gui-test.rkt'], cwd=root)
+            output = runner.run([racket, source_path(root, 'tests/canvas-gui-test.rkt')], cwd=root)
             validate_suite_output(output, 'canvas-gui', GUI_CASES)
             for order in ('gtk-first', 'skia-first'):
-                output = runner.run([racket, root / 'tests/canvas-text-load-order.rkt', order], cwd=root)
+                output = runner.run([racket, source_path(root, 'tests/canvas-text-load-order.rkt'), order], cwd=root)
                 gui['text_load_orders'].append(validate_load_order_output(output, order))
             checks['text_load_orders'] = True
             gui.update(status='passed', cases=GUI_CASES)

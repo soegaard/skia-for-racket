@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.72 source and fail-closed evidence tests. Synthetic fixtures are not native execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import json
 from pathlib import Path
@@ -60,7 +61,7 @@ def synthetic_capture(scene):
     return bytes(data)
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_native_signatures_in_existing_CPU_registry(self):
         import api_inventory as inv
         rows=[f for f in inv.forms(self.text('private/native.rkt')) if type(f) is list and f and f[0]=='define-native']

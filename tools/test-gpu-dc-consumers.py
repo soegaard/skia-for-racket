@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic acceptance/runner regressions. Never evidence of Racket/GPU execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -119,7 +120,7 @@ class JsonAndFiles(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
     def read(self, text):
-        p = self.root / "a.json"; p.write_text(text); return d.read_json(p)
+        p = self.root / 'a.json'; p.write_text(text); return d.read_json(p)
     def test_json_positive(self): self.assertEqual(self.read('{"a":1}'), {"a": 1})
     def test_duplicate_json(self):
         with self.assertRaises(ValueError): self.read('{"a":1,"a":2}')
@@ -127,22 +128,22 @@ class JsonAndFiles(unittest.TestCase):
         for token in ("NaN", "Infinity", "-Infinity"):
             with self.assertRaises(ValueError): self.read('{"a":' + token + '}')
     def test_missing_json(self):
-        with self.assertRaises(ValueError): d.read_json(self.root / "missing")
+        with self.assertRaises(ValueError): d.read_json(self.root / 'missing')
     def test_json_symlink(self):
-        (self.root / "target").write_text('{}'); (self.root / "a.json").symlink_to(self.root / "target")
-        with self.assertRaises(ValueError): d.read_json(self.root / "a.json")
+        (self.root / 'target').write_text('{}'); (self.root / 'a.json').symlink_to(self.root / 'target')
+        with self.assertRaises(ValueError): d.read_json(self.root / 'a.json')
     def test_missing_capture(self):
         with self.assertRaises(ValueError): d.capture_bytes(self.root, report()["captures"][0])
     def test_short_capture(self):
-        row = report()["captures"][0]; (self.root / row["file"]).write_bytes(b"short")
+        row = report()["captures"][0]; (source_path(self.root, row["file"])).write_bytes(b"short")
         with self.assertRaises(ValueError): d.capture_bytes(self.root, row)
     def test_symlink_capture(self):
-        row = report()["captures"][0]; target = self.root / "data"
-        target.write_bytes(b"\xff" * (320 * 240 * 4)); (self.root / row["file"]).symlink_to(target)
+        row = report()["captures"][0]; target = self.root / 'data'
+        target.write_bytes(b"\xff" * (320 * 240 * 4)); (source_path(self.root, row["file"])).symlink_to(target)
         with self.assertRaises(ValueError): d.capture_bytes(self.root, row)
     def test_valid_capture(self):
         row = report()["captures"][0]; data = b"\xff" * (320 * 240 * 4)
-        (self.root / row["file"]).write_bytes(data)
+        (source_path(self.root, row["file"])).write_bytes(data)
         self.assertEqual(d.capture_bytes(self.root, row), data)
 
 
@@ -286,8 +287,8 @@ def simulate(options=(), *, fail=None, inspect_fail=False, mutate=False, missing
     with tempfile.TemporaryDirectory() as t:
         root = Path(t); commands = []
         for name in v.SOURCES:
-            p = root / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text("synthetic")
-        out = root / "evidence"
+            p = source_path(root, name); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("synthetic")
+        out = root / 'evidence'
         def run(argv, root):
             c = list(map(str, argv)); commands.append(c)
             if len(c) > 1 and c[1].endswith(fail or "NO-FAILURE"):
@@ -303,7 +304,7 @@ def simulate(options=(), *, fail=None, inspect_fail=False, mutate=False, missing
                 (directory / "validation.json").write_text(json.dumps(data))
             for suite, n in d.COUNTS.items():
                 if c[1].endswith(f"consumer-{suite}.rkt"):
-                    if mutate: (root / "gpu-dc.rkt").write_text("changed")
+                    if mutate: (source_path(root, 'gpu-dc.rkt')).write_text("changed")
                     return f"gpu-dc-consumers-{suite}: {n} captures; passed.\n"
             return ""
         def inspect(directory, suite, *args):
@@ -325,13 +326,13 @@ class EndToEnd(unittest.TestCase):
                 root = Path(t); value = report(suite)
                 for row in value["captures"]:
                     data, _ = pixels_fixture(row["scene"], row["extent"])
-                    (root / row["file"]).write_bytes(data)
-                (root / (suite + ".json")).write_text(json.dumps(value))
+                    (source_path(root, row["file"])).write_bytes(data)
+                (source_path(root, suite + ".json")).write_text(json.dumps(value))
                 result = d.inspect_directory(root, suite, TOKEN, value["backend"], IDENTITY)
                 self.assertEqual(len(result["captures"]), d.COUNTS[suite])
                 self.assertEqual(len(result["bounded_comparisons"]), 96 if suite == "native" else 16)
                 self.assertEqual(len(list(root.glob("*.png"))), d.COUNTS[suite])
-                self.assertTrue((root / "review.html").is_file())
+                self.assertTrue((root / 'review.html').is_file())
 
     def test_premultiplied_png_is_unpremultiplied(self):
         png = d.png_bytes(bytes((128, 0, 0, 128, 0, 0, 0, 0)), 2, 1)
@@ -345,7 +346,7 @@ class EndToEnd(unittest.TestCase):
 
 class SourceContracts(unittest.TestCase):
     def test_real_public_consumer_fixtures(self):
-        source = (HERE.parent / "tests/gpu-dc-consumer-fixtures.rkt").read_text()
+        source = (source_path(HERE.parent, "tests/gpu-dc-consumer-fixtures.rkt")).read_text()
         for term in ('"dc-consumer-fixtures.rkt"', 'make-consumer-pict', 'draw-consumer-plot',
                      'style:style-oracle', 'rd:record-dc%', '(write (send recorder get-recorded-datum)',
                      '(define datum (read in))', '(rd:recorded-datum->procedure datum)'):
@@ -365,14 +366,14 @@ class SourceContracts(unittest.TestCase):
         self.assertIn('(check-consumer-expired! normal-dc)', source)
         self.assertIn('(check-consumer-expired! observed-dc)', source)
     def test_workflow_keeps_required_software_paths(self):
-        source = (HERE.parent / ".github/workflows/gpu-dc.yml").read_text()
+        source = (HERE.parent / '.github/workflows/gpu-dc.yml').read_text()
         self.assertIn("racket: ['8.18', '9.3']", source)
         self.assertIn('--backend egl --require-gui', source)
         self.assertIn('--backend direct3d --adapter warp', source)
         self.assertIn('tools/validate-gpu-dc-consumers.py', source)
         self.assertNotIn('continue-on-error:', source)
     def test_example_is_dispatched_to_handler(self):
-        source = (HERE.parent / "examples/gpu-dc-consumers.rkt").read_text()
+        source = (source_path(HERE.parent, "examples/gpu-dc-consumers.rkt")).read_text()
         self.assertIn("(define backend (make-parameter 'auto))", source)
         self.assertIn("[backend (backend)]", source)
         self.assertIn("(backend (string->symbol name))", source)

@@ -13,10 +13,10 @@
 ;;;
 ;; Mandatory when selected. No optional backend skip and no CPU fallback.
 (require racket/class racket/cmdline racket/file racket/list
-         (prefix-in sk: "../main.rkt") (prefix-in gpu: "../gpu.rkt")
-         "../gpu-egl.rkt" "../gpu-dc.rkt"
-         (submod "../private/gpu-presenter.rkt" adapter-internals)
-         "../tests/gpu-dc-consumer-fixtures.rkt" "gpu-dc-consumer-common.rkt")
+         (prefix-in sk: "../skia-lib/main.rkt") (prefix-in gpu: "../skia-lib/gpu.rkt")
+         "../skia-lib/gpu-egl.rkt" "../skia-lib/gpu-dc.rkt"
+         (submod "../skia-lib/private/gpu-presenter.rkt" adapter-internals)
+         "../skia-lib/tests/gpu-dc-consumer-fixtures.rkt" "gpu-dc-consumer-common.rkt")
 
 ;;;
 ;;; Diagnostic Operations

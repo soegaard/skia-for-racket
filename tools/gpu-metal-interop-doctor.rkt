@@ -12,10 +12,10 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/path racket/list rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../gpu-interop.rkt" "../unsafe/gpu-metal.rkt"
-         "../private/gpu-io-trace.rkt" "../private/gpu-metal-interop-policy.rkt"
-         "../private/gpu-metal-interop-native.rkt"
-         "../tests/metal-interop-fixture.rkt" "../tests/gpu-metal-interop-native-test.rkt"
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/gpu-interop.rkt" "../skia-lib/unsafe/gpu-metal.rkt"
+         "../skia-lib/private/gpu-io-trace.rkt" "../skia-lib/private/gpu-metal-interop-policy.rkt"
+         "../skia-lib/private/gpu-metal-interop-native.rkt"
+         "../skia-lib/tests/metal-interop-fixture.rkt" "../skia-lib/tests/gpu-metal-interop-native-test.rkt"
          "gpu-report.rkt")
 (provide gpu-metal-interop-doctor!)
 

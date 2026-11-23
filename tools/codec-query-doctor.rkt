@@ -11,7 +11,7 @@
 ;;; Imports and Exports
 ;;;
 (require json racket/cmdline racket/file
-         "../main.rkt" "../tests/codec-query-fixtures.rkt" "../tests/codec-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/codec-query-fixtures.rkt" "../skia-lib/tests/codec-fixtures.rkt")
 (provide generate-codec-query-evidence)
 
 ;;;

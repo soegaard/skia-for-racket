@@ -5,6 +5,7 @@ Run the actual validator main functions, not replicas of their control flow.
 No synthetic worker output in these tests is counted as native/GPU evidence.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 import ast
@@ -52,7 +53,7 @@ class Harness:
         self.commands = []
         self.inspections = []
         self.modules = {}
-        (root/'run-tests.rkt').write_text(
+        (source_path(root, 'run-tests.rkt')).write_text(
             '#lang racket/base\n(define-runtime-path other "tests/unrelated-native-test.rkt")\n')
 
     def inspect(self, *args, **kw):
@@ -63,8 +64,8 @@ class Harness:
         if render is None and args and callable(args[-1]):
             render = args[-1]
         if callable(render):
-            render(self.root/'mock.pdf', 'pdf')
-            render(self.root/'mock.svg', 'svg')
+            render(self.root / 'mock.pdf', 'pdf')
+            render(self.root / 'mock.svg', 'svg')
         elif render is True and kw.get('runner'):
             kw['runner'].run(['pdftoppm', 'mock.pdf'])
             kw['runner'].run(['rsvg-convert', 'mock.svg'])
@@ -122,7 +123,7 @@ class Harness:
 
         with patch.dict(sys.modules, self.dependencies()), \
              patch.object(importlib.util, 'spec_from_file_location', side_effect=spec_for):
-            spec = real_spec('scope_test_' + name.replace('-', '_').replace('.', '_'), ROOT/'tools'/name)
+            spec = real_spec('scope_test_' + name.replace('-', '_').replace('.', '_'), ROOT / 'tools'/name)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
         module.ROOT = self.root
@@ -180,7 +181,7 @@ class Harness:
 
     def invoke(self, name, mode=None, extra=(), missing=None):
         module = self.load(name)
-        out = self.root/('evidence-' + str(len(list(self.root.glob('evidence-*')))))
+        out = source_path(self.root, 'evidence-' + str(len(list(self.root.glob('evidence-*')))))
         args = ['--racket', 'racket', '--directory', str(out)]
         if mode is not None:
             args += ['--regressions', mode]
@@ -251,7 +252,7 @@ class GateTests(unittest.TestCase):
     def test_unsafe_dynamic_path_rejects(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            (root/'run-tests.rkt').write_text('(define-runtime-path bad "tests/../bad.rkt")')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path bad "tests/../bad.rkt")')
             with self.assertRaises(ValueError): global_compile_targets(root)
 
 
@@ -352,7 +353,7 @@ class OrchestrationTests(unittest.TestCase):
     def test_existing_closure_mock_reports_both_scopes(self):
         # Inspect the existing independent fixture without importing its entire
         # source/native test graph into this command-plan test process.
-        tree = ast.parse((ROOT/'tools/test-dc-closure.py').read_text())
+        tree = ast.parse((ROOT / 'tools/test-dc-closure.py').read_text())
         function = next(n for n in tree.body if isinstance(n, ast.FunctionDef)
                         and n.name == 'document_report')
         namespace = {'IDENTITY': IDENTITY}
@@ -370,13 +371,13 @@ class OrchestrationTests(unittest.TestCase):
 
 class WorkflowTests(unittest.TestCase):
     def test_all_child_modes_and_safe_shell_arguments(self):
-        umbrella = (ROOT/'.github/workflows/acceptance.yml').read_text()
+        umbrella = (ROOT / '.github/workflows/acceptance.yml').read_text()
         names = re.findall(r'uses: \./\.github/workflows/([\w-]+\.yml)', umbrella)
         self.assertTrue(names); self.assertEqual(len(set(names)), len(names))
         self.assertEqual(umbrella.count('regressions: ${{ needs.regression-scope.outputs.regressions }}'), len(names))
         self.assertEqual(umbrella.count('    needs: regression-scope\n'), len(names))
         for name in names:
-            text = (ROOT/'.github/workflows'/name).read_text()
+            text = (ROOT / '.github/workflows'/name).read_text()
             with self.subTest(workflow=name):
                 self.assertIn("default: 'full'", text)
                 self.assertIn("options: ['full', 'none']", text)
@@ -392,7 +393,7 @@ class WorkflowTests(unittest.TestCase):
                     if 'run-tests.rkt' in step:
                         self.assertIn("if: inputs.regressions != 'none'", step)
     def test_required_gate_still_requires_all_children(self):
-        text = (ROOT/'.github/workflows/acceptance.yml').read_text()
+        text = (ROOT / '.github/workflows/acceptance.yml').read_text()
         self.assertIn('name: Acceptance required\n    if: always()', text)
         names = re.findall(r'uses: \./\.github/workflows/([\w-]+)\.yml', text)
         self.assertIn('needs: [regression-scope, ' + ', '.join(names) + ']', text)
@@ -421,14 +422,14 @@ class WorkflowTests(unittest.TestCase):
                 actual = automatic_regression_mode(event, ref, manual)
                 self.assertEqual(actual, expected)
     def test_scope_selector_matches_central_automatic_triggers(self):
-        text = (ROOT/'.github/workflows/ci.yml').read_text()
+        text = (ROOT / '.github/workflows/ci.yml').read_text()
         match = re.search(r'(?ms)^on:\n(.*?)(?=^\S)', text)
         self.assertIsNotNone(match)
         self.assertEqual(match[1].strip(),
                          "  push:\n    branches: [main, 'codex/catalog-ci']\n    tags: ['v*']\n"
                          "  pull_request:\n  workflow_dispatch:\n  workflow_call:".strip())
     def test_scope_job_uses_checked_selector(self):
-        text = (ROOT/'.github/workflows/acceptance.yml').read_text()
+        text = (ROOT / '.github/workflows/acceptance.yml').read_text()
         self.assertIn('run: python3 tools/validation_regressions.py --github-output', text)
         self.assertIn('SKIA_REQUESTED_REGRESSIONS: ${{ inputs.regressions }}', text)
         self.assertIn('regressions: ${{ steps.scope.outputs.regressions }}', text)
@@ -437,7 +438,7 @@ class WorkflowTests(unittest.TestCase):
             output = Path(d)/'github-output'
             env = dict(os.environ, GITHUB_OUTPUT=str(output), GITHUB_EVENT_NAME='push',
                        GITHUB_REF='refs/heads/main', SKIA_REQUESTED_REGRESSIONS='')
-            process = subprocess.run([sys.executable, ROOT/'tools/validation_regressions.py',
+            process = subprocess.run([sys.executable, ROOT / 'tools/validation_regressions.py',
                                       '--github-output'], env=env, capture_output=True, text=True, timeout=30)
             self.assertEqual(process.returncode, 0, process.stderr)
             self.assertEqual(output.read_text(), 'regressions=none\n')
@@ -446,12 +447,12 @@ class WorkflowTests(unittest.TestCase):
             output = Path(d)/'github-output'
             env = dict(os.environ, GITHUB_OUTPUT=str(output), GITHUB_EVENT_NAME='workflow_dispatch',
                        GITHUB_REF='refs/heads/main', SKIA_REQUESTED_REGRESSIONS='none\nforged=pass')
-            process = subprocess.run([sys.executable, ROOT/'tools/validation_regressions.py',
+            process = subprocess.run([sys.executable, ROOT / 'tools/validation_regressions.py',
                                       '--github-output'], env=env, capture_output=True, text=True, timeout=30)
             self.assertNotEqual(process.returncode, 0)
             self.assertFalse(output.exists())
     def test_registered_in_source_gate(self):
-        self.assertIn("'test-validation-regressions.py'", (ROOT/'tools/ci.py').read_text())
+        self.assertIn("'test-validation-regressions.py'", (ROOT / 'tools/ci.py').read_text())
 
 
 if __name__ == '__main__':

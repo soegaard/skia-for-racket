@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic inspector/runner regressions plus full-checkout integration checks."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import importlib.util
 import json
@@ -179,7 +180,7 @@ class Runner(unittest.TestCase):
         self.root=Path(self.temp.name)/'source';self.directory=Path(self.temp.name)/'evidence'
         self.directory.mkdir();self.root.mkdir()
         for name in m.SOURCES:
-            p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('synthetic source '+name)
+            p=source_path(self.root, name);p.parent.mkdir(parents=True,exist_ok=True);p.write_text('synthetic source '+name)
         self.commands=[];self.fail=None;self.os='macosx';self.sdk_bad=False;self.mutate=False
     def fake_run(self,argv):
         xs=[str(x) for x in argv];self.commands.append(xs)
@@ -191,7 +192,7 @@ class Runner(unittest.TestCase):
                                    bool_bytes=1,swizzle_bytes=8 if self.sdk_bad else 4,gpu_execution_verified=False))
         if any(x.endswith('gpu-metal-interop-doctor.rkt') for x in xs) and 'make' not in xs:
             fixture(self.directory)
-            if self.mutate:(self.root/m.SOURCES[0]).write_text('mutated')
+            if self.mutate:(source_path(self.root, m.SOURCES[0])).write_text('mutated')
         return ''
     def go(self):return m.execute(self.root,'/selected/racket',self.directory,self.fake_run)
     def test_complete_sequence(self):
@@ -226,26 +227,26 @@ for label,fragment in [('cmake','cmake'),('ctest','ctest'),('compile','make'),('
 
 class Source(unittest.TestCase):
     def test_production_uses_generic_handoff(self):
-        s=(ROOT/'private/gpu-metal-interop.rkt').read_text()
+        s=(source_path(ROOT, 'private/gpu-metal-interop.rkt')).read_text()
         self.assertIn("(make-external-texture 'metal",s);self.assertIn('gpu-surface-snapshot',s)
         self.assertIn('call-with-canvas-state',s);self.assertIn('domain-request-shutdown!',s)
     def test_same_queue_not_exposed(self):
-        s=(ROOT/'private/gpu-metal-interop.rkt').read_text()
+        s=(source_path(ROOT, 'private/gpu-metal-interop.rkt')).read_text()
         self.assertIn('(lambda (device _queue)',s);self.assertIn('(proc device)',s)
         self.assertNotIn('(proc device _queue)',s)
     def test_per_call_native_pool(self):
-        s=(ROOT/'private/gpu-metal-interop-system.rkt').read_text()
+        s=(source_path(ROOT, 'private/gpu-metal-interop-system.rkt')).read_text()
         self.assertIn('call-with-gpu-native-scope',s);self.assertNotIn('(sleep ',s)
         self.assertIn('class_getMethodImplementation',s);self.assertIn('-> _mtl-swizzle',s)
     def test_no_unbounded_production_wait(self):
-        s=(ROOT/'private/gpu-metal-interop-system.rkt').read_text()
+        s=(source_path(ROOT, 'private/gpu-metal-interop-system.rkt')).read_text()
         self.assertNotIn('waitUntilCompleted',s);self.assertNotIn('waitUntilScheduled',s)
         self.assertNotIn('getBytes:',s);self.assertNotIn('replaceRegion:',s)
     def test_native_case_count(self):
-        s=(ROOT/'tests/gpu-metal-interop-native-test.rkt').read_text()
+        s=(source_path(ROOT, 'tests/gpu-metal-interop-native-test.rkt')).read_text()
         self.assertEqual(len(re.findall(r'\(test-case\s',s)),m.NATIVE_CASES)
     def test_pure_case_count(self):
-        self.assertEqual(len(re.findall(r'\(test-case\s',(ROOT/'tests/gpu-metal-interop-pure-test.rkt').read_text())),49)
+        self.assertEqual(len(re.findall(r'\(test-case\s',(source_path(ROOT, 'tests/gpu-metal-interop-pure-test.rkt')).read_text())),49)
     def test_fixture_is_independent(self):
         s=(HERE/'metal-interop-fixture/fixture.mm').read_text()
         self.assertIn('producer_queue',s);self.assertIn('consumer_queue',s)
@@ -269,28 +270,28 @@ class Source(unittest.TestCase):
 
 class Integration(unittest.TestCase):
     def test_version_pin_and_registry(self):
-        self.assertIn('(define version "0.79")',(ROOT/'info.rkt').read_text())
-        self.assertEqual((ROOT/'private/native-default-version.txt').read_text().strip(),'3.119.1')
-        data=json.loads((ROOT/'private/gpu-backends.json').read_text())
+        self.assertIn('(define version "0.79")',(source_path(ROOT, 'info.rkt')).read_text())
+        self.assertEqual((source_path(ROOT, 'private/native-default-version.txt')).read_text().strip(),'3.119.1')
+        data=json.loads((source_path(ROOT, 'private/gpu-backends.json')).read_text())
         self.assertTrue(all(b['features']['external_resource_interop'] for b in data['backends']))
     def test_pure_suite_wired(self):
-        s=(ROOT/'run-tests.rkt').read_text()
+        s=(source_path(ROOT, 'run-tests.rkt')).read_text()
         self.assertIn('"tests/gpu-metal-interop-pure-test.rkt"',s)
         self.assertIn('(run-tests gpu-metal-interop-pure-tests)',s)
-    def test_native_free_import(self):self.assertIn('skia/unsafe/gpu-metal',(HERE/'ci-import-smoke.rkt').read_text())
+    def test_native_free_import(self):self.assertIn('skia/unsafe/gpu-metal',(source_path(HERE.parent, 'tools/ci-import-smoke.rkt')).read_text())
     def test_source_and_local_checks(self):
         self.assertIn("'test-metal-interop.py'",(HERE/'ci.py').read_text())
         self.assertIn("'tools/test-metal-interop.py'",(HERE/'validate-gpu.py').read_text())
     def test_sdk_ci_inside_existing_macos_cpu_lanes(self):
-        s=(ROOT/'.github/workflows/ci.yml').read_text();cpu=s.split('\n  cpu:',1)[1].split('\n  egl:',1)[0]
+        s=(ROOT / '.github/workflows/ci.yml').read_text();cpu=s.split('\n  cpu:',1)[1].split('\n  egl:',1)[0]
         self.assertIn("if: runner.os == 'macOS'",cpu)
         self.assertIn('check-metal-interop-sdk.py',cpu)
         self.assertNotIn('validate-metal-interop.py',cpu) # SDK is not GPU evidence
         self.assertIn('needs: [source, cpu, egl, d3d12, dxgi, canvas]',s)
     def test_shared_cleanup_reused_by_d3d12(self):
-        self.assertIn('(require "gpu-interop-cleanup.rkt")',(ROOT/'private/gpu-d3d12-interop-policy.rkt').read_text())
+        self.assertIn('(require "gpu-interop-cleanup.rkt")',(source_path(ROOT, 'private/gpu-d3d12-interop-policy.rkt')).read_text())
     def test_roadmap_targets_dc_not_new_backends(self):
-        s=(ROOT/'docs/GANESH-CLOSEOUT.md').read_text()
+        s=(ROOT / 'docs/GANESH-CLOSEOUT.md').read_text()
         for name in ('skia-dc%','skia-canvas%','0.53','0.57','deferred'):self.assertIn(name,s)
 
 

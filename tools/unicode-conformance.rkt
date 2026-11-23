@@ -12,7 +12,7 @@
 ;;;
 
 (require racket/cmdline
-         "../private/unicode-conformance.rkt")
+         "../skia-lib/private/unicode-conformance.rkt")
 
 
 ;;;

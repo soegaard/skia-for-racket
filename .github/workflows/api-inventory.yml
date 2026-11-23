@@ -72,12 +72,12 @@ jobs:
           python tools/validate-api-inventory.py \
             --skia-source output/api-upstream/skia \
             --skiasharp-source output/api-upstream/skiasharp \
-            --native-library native/linux-x64/libSkiaSharp.so \
+            --native-library skia-lib/native/linux-x64/libSkiaSharp.so \
             --directory output/api-inventory-ci
       - name: Require XYZ-D50 and native no-draw acceptance
         run: python tools/validate-small-gaps.py --racket "$(command -v racket)" --directory output/small-gaps-ci
       - name: Require public raster lifetime example
-        run: racket examples/public/raster-lifetime.rkt
+        run: racket skia-lib/examples/public/raster-lifetime.rkt
       - name: Retain source hashes, symbol observations and gate result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

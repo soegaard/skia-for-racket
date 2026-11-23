@@ -9,13 +9,13 @@ python3 tools/static-check.py
 python3 tools/inspect-output-groups.py --self-test
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
-# run-tests.rkt dynamically requires the native suites. Compile every test
+# skia-lib/run-tests.rkt dynamically requires the native suites. Compile every test
 # with the selected Racket so stale .zo files from another Racket version
 # cannot be loaded later by dynamic-require.
-"$RACO" make main.rkt output-groups.rkt run-tests.rkt tests/*.rkt tools/doctor.rkt examples/output-groups.rkt
-"$RACKET" tools/doctor.rkt
-"$RACKET" run-tests.rkt
+"$RACO" make skia-lib/main.rkt skia-lib/output-groups.rkt skia-lib/run-tests.rkt tests/*.rkt skia-lib/tools/doctor.rkt skia-lib/examples/output-groups.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
-"$RACKET" examples/output-groups.rkt output/output-groups-0.34
+"$RACKET" skia-lib/examples/output-groups.rkt output/output-groups-0.34
 python3 tools/inspect-output-groups.py --probe-prefix output/output-groups-0.34 \
   | tee output/output-groups-0.34.inspection.json

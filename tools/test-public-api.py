@@ -6,6 +6,7 @@ checkout. A delivery environment may select other classes explicitly and must
 report that restriction rather than claiming repository validation.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -249,16 +250,16 @@ class JsonAndPaths(unittest.TestCase):
 
 class Orchestration(unittest.TestCase):
     def invoke(self, *, source=False, headless=False, fail=None, drift=False, mutation=False):
-        spec=importlib.util.spec_from_file_location('api_validator_fixture',ROOT/'tools/validate-public-api.py')
+        spec=importlib.util.spec_from_file_location('api_validator_fixture',ROOT / 'tools/validate-public-api.py')
         validator=importlib.util.module_from_spec(spec);spec.loader.exec_module(validator)
         calls=[]
         with tempfile.TemporaryDirectory(prefix='api fixture ') as t:
             root=Path(t)
             for p in [api.POLICY,api.REPORT,api.CONTRACT,*api.SNAPSHOTS.values()]:
-                target=root/p;target.parent.mkdir(parents=True,exist_ok=True);target.write_text('fixture\n')
-            (root/api.POLICY).write_text(api.json_text(policy()))
-            for group,path in api.SNAPSHOTS.items():(root/path).write_text(api.json_text(snapshot(group)))
-            before={p:(root/p).read_bytes() for p in [api.POLICY,*api.SNAPSHOTS.values()]}
+                target=source_path(root, p);target.parent.mkdir(parents=True,exist_ok=True);target.write_text('fixture\n')
+            (source_path(root, api.POLICY)).write_text(api.json_text(policy()))
+            for group,path in api.SNAPSHOTS.items():(source_path(root, path)).write_text(api.json_text(snapshot(group)))
+            before={p:(source_path(root, p)).read_bytes() for p in [api.POLICY,*api.SNAPSHOTS.values()]}
             scope=types.ModuleType('release_scope')
             scope.audit=lambda _:dict(in_scope_gaps_closed=True,release_ready=False)
             def command(args,**kwargs):
@@ -273,9 +274,9 @@ class Orchestration(unittest.TestCase):
                 if group==fail:raise RuntimeError('synthetic probe failure')
                 value=observation(group,token)
                 if drift:value['modules'][0]['exports'][0]['arity_mask']='4'
-                if mutation:(root/api.REPORT).write_text('mutated\n')
+                if mutation:(source_path(root, api.REPORT)).write_text('mutated\n')
                 return value
-            args=['--directory',str(root/'evidence')]+(['--source-only'] if source else ['--racket','racket'])
+            args=['--directory',str(root / 'evidence')]+(['--source-only'] if source else ['--racket','racket'])
             if headless:args.append('--headless-only')
             def check(_):
                 if fail=='source':raise ValueError('synthetic source failure')
@@ -285,8 +286,8 @@ class Orchestration(unittest.TestCase):
                  patch.object(validator.shutil,'which',return_value='/synthetic/racket'),\
                  contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 code=validator.main(args,root=root)
-            result=api.read_json(root/'evidence/result.json')
-            self.assertEqual(before,{p:(root/p).read_bytes() for p in before})
+            result=api.read_json(root / 'evidence/result.json')
+            self.assertEqual(before,{p:(source_path(root, p)).read_bytes() for p in before})
             return code,result,calls
     def test_all_required(self):
         code,r,c=self.invoke();self.assertEqual(code,0);self.assertEqual(r['status'],'passed')
@@ -325,9 +326,9 @@ class ExampleImports(unittest.TestCase):
         inv.forms=lambda source:strings(nodes if source=='candidate' else [['require',('../../main.rkt',)]])
         with tempfile.TemporaryDirectory() as t:
             root=Path(t)
-            candidate=root/('examples/public/candidate.rkt' if tutorial else 'examples/candidate.rkt')
+            candidate=source_path(root, 'examples/public/candidate.rkt' if tutorial else 'examples/candidate.rkt')
             candidate.parent.mkdir(parents=True,exist_ok=True);candidate.write_text('candidate')
-            public=root/'examples/public/value.rkt';public.parent.mkdir(parents=True,exist_ok=True);public.write_text('public')
+            public=source_path(root, 'examples/public/value.rkt');public.parent.mkdir(parents=True,exist_ok=True);public.write_text('public')
             with patch.dict(sys.modules,{'api_inventory':inv}):
                 return api.example_import_audit(root)
     def test_public_relative_api(self):self.audit([['require',('../../main.rkt',)]],tutorial=True)
@@ -378,7 +379,7 @@ class ExampleImports(unittest.TestCase):
 class RepositoryIntegration(unittest.TestCase):
     def test_complete_source_contracts(self):
         result=api.source_contracts(ROOT)
-        self.assertEqual(result['public_modules'],len(api.checked_policy(api.read_json(ROOT/api.POLICY))))
+        self.assertEqual(result['public_modules'],len(api.checked_policy(api.read_json(source_path(ROOT, api.POLICY)))))
         self.assertFalse(result['api_signatures_verified'])
     def test_existing_release_ledger_includes_api_inputs(self):
         import release_scope
@@ -390,8 +391,8 @@ class RepositoryIntegration(unittest.TestCase):
             self.assertIn(name,hashes)
         release_scope.audit(ROOT)
     def test_required_native_public_example(self):
-        workflow=(ROOT/'.github/workflows/api-inventory.yml').read_text(encoding='utf-8')
-        self.assertIn('racket examples/public/raster-lifetime.rkt',workflow)
+        workflow=(ROOT / '.github/workflows/api-inventory.yml').read_text(encoding='utf-8')
+        self.assertIn('racket skia-lib/examples/public/raster-lifetime.rkt',workflow)
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

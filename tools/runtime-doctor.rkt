@@ -11,7 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require ffi/unsafe "../main.rkt" "../private/types.rkt" "../tests/runtime-fixtures.rkt")
+(require ffi/unsafe "../skia-lib/main.rkt" "../skia-lib/private/types.rkt" "../skia-lib/tests/runtime-fixtures.rkt")
 (provide runtime-doctor!)
 
 ;;;

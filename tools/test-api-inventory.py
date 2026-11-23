@@ -5,6 +5,7 @@ RepositoryIntegration deliberately requires the complete checkout. The other
 classes exercise fail-closed behavior using explicitly synthetic source trees.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -33,14 +34,14 @@ spec.loader.exec_module(validator)
 def synthetic_tree(root: Path):
     """Construct a synthetic complete *scope*, not a copy of the real project."""
     for file in inv.CATALOG_FILES:
-        dest = root / file; dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text((ROOT / file).read_text(), encoding="utf-8")
+        dest = source_path(root, file); dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text((source_path(ROOT, file)).read_text(), encoding="utf-8")
     caps = CATALOG["features"]["capabilities"]
     required = set(CATALOG["features"]["public_modules"])
     for cap in caps:
         required.update(cap["implementation_files"] + cap["test_sources"])
     for name in required:
-        file = root / name; file.parent.mkdir(parents=True, exist_ok=True)
+        file = source_path(root, name); file.parent.mkdir(parents=True, exist_ok=True)
         refs = sorted({r["name"] for cap in caps for r in cap["public_equivalents"] if r["module"] == name})
         file.write_text("#lang racket/base\n; SYNTHETIC test source, not an implementation.\n(provide " + " ".join(refs) + ")\n", encoding="utf-8")
     expected = set(CATALOG["bindings"]["symbols"])
@@ -48,22 +49,22 @@ def synthetic_tree(root: Path):
     gpu = sorted(expected - cpu)
     for i, (file, macro, index, _group) in enumerate(inv.REGISTRIES):
         selected = sorted(cpu) if i == 0 else gpu[i-1::8]
-        path = root / file; path.parent.mkdir(parents=True, exist_ok=True)
+        path = source_path(root, file); path.parent.mkdir(parents=True, exist_ok=True)
         lines = ["#lang racket/base", "; SYNTHETIC registry"]
         for symbol in selected:
             params = " ".join(["placeholder"] * (index-1))
             lines.append(f"({macro} {params} {symbol} (_fun -> _void))")
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     # Real declaration text only; this is still a synthetic source tree.
-    shutil.copyfile(ROOT / "private/graphics-trace-native.rkt", root / "private/graphics-trace-native.rkt")
-    shutil.copyfile(ROOT / "api/global-cache-ffi.json", root / "api/global-cache-ffi.json")
-    shutil.copyfile(ROOT / "tools/global_cache_ffi.py", root / "tools/global_cache_ffi.py")
-    shutil.copyfile(ROOT / "private/live-port-native.rkt", root / "private/live-port-native.rkt")
-    shutil.copyfile(ROOT / "api/live-stream-ffi.json", root / "api/live-stream-ffi.json")
-    (root / "private/native-default-version.txt").write_text("3.119.1\n")
-    (root / "info.rkt").write_text('#lang info\n(define version "0.79")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
+    shutil.copyfile(source_path(ROOT, 'private/graphics-trace-native.rkt'), source_path(root, 'private/graphics-trace-native.rkt'))
+    shutil.copyfile(ROOT / 'api/global-cache-ffi.json', root / 'api/global-cache-ffi.json')
+    shutil.copyfile(ROOT / 'tools/global_cache_ffi.py', root / 'tools/global_cache_ffi.py')
+    shutil.copyfile(source_path(ROOT, 'private/live-port-native.rkt'), source_path(root, 'private/live-port-native.rkt'))
+    shutil.copyfile(ROOT / 'api/live-stream-ffi.json', root / 'api/live-stream-ffi.json')
+    (source_path(root, 'private/native-default-version.txt')).write_text("3.119.1\n")
+    (source_path(root, 'info.rkt')).write_text('#lang info\n(define version "0.79")\n(define deps \'(("base" #:version "8.18") ("draw-lib" #:version "1.22")))\n')
     inv.check_report(root, CATALOG, write=True)
-    (root / "tools").mkdir(exist_ok=True)
+    (root / 'tools').mkdir(exist_ok=True)
 
 
 def mutate_cap(c, ident, field, value):
@@ -244,70 +245,70 @@ class Sources(unittest.TestCase):
         self.assertEqual(len(r['binding_locations']),678);self.assertEqual(r['registry_count'],9)
         self.assertFalse(r['rendering_executed'])
     def test_missing_registry_fails(self):
-        (self.root/'private/gpu-metal-interop-native.rkt').unlink()
+        (source_path(self.root, 'private/gpu-metal-interop-native.rkt')).unlink()
         with self.assertRaises(ValueError): inv.validate_sources(self.root,CATALOG)
     def test_duplicate_declaration_fails(self):
-        p=self.root/'private/native.rkt';s=p.read_text();p.write_text(s+s[s.index('(define-native'):s.index('\n',s.index('(define-native'))+1])
+        p=source_path(self.root, 'private/native.rkt');s=p.read_text();p.write_text(s+s[s.index('(define-native'):s.index('\n',s.index('(define-native'))+1])
         with self.assertRaises(ValueError): inv.scan_bindings(self.root)
     def test_added_binding_fails(self):
-        p=self.root/'private/native.rkt';p.write_text(p.read_text()+'(define-native sk_unreviewed_new (_fun -> _void))\n')
+        p=source_path(self.root, 'private/native.rkt');p.write_text(p.read_text()+'(define-native sk_unreviewed_new (_fun -> _void))\n')
         with self.assertRaisesRegex(ValueError,'binding drift'): inv.validate_sources(self.root,CATALOG)
     def test_removed_binding_fails(self):
-        p=self.root/'private/native.rkt';s=p.read_text().splitlines();p.write_text('\n'.join(s[:2]+s[3:])+'\n')
+        p=source_path(self.root, 'private/native.rkt');s=p.read_text().splitlines();p.write_text('\n'.join(s[:2]+s[3:])+'\n')
         with self.assertRaisesRegex(ValueError,'binding drift'): inv.validate_sources(self.root,CATALOG)
     def test_new_registry_fails(self):
-        (self.root/'private/surprise.rkt').write_text('(define-my-binding sk_new (_fun -> _void))')
+        (source_path(self.root, 'private/surprise.rkt')).write_text('(define-my-binding sk_new (_fun -> _void))')
         with self.assertRaisesRegex(ValueError,'unregistered'): inv.scan_bindings(self.root)
     def test_raw_native_library_binder_fails(self):
-        (self.root/'private/surprise.rkt').write_text('(require (only-in "native.rkt" skia-native-library-handle))\n(define x (get-ffi-obj \'sk_x (skia-native-library-handle) _pointer))')
+        (source_path(self.root, 'private/surprise.rkt')).write_text('(require (only-in "native.rkt" skia-native-library-handle))\n(define x (get-ffi-obj \'sk_x (skia-native-library-handle) _pointer))')
         with self.assertRaisesRegex(ValueError,'unregistered'): inv.scan_bindings(self.root)
     def test_macro_template_not_counted(self):
-        p=self.root/'private/native.rkt';p.write_text(p.read_text()+'\n(define-syntax-rule (not-a-call name) (define-native sk_fake name))\n')
+        p=source_path(self.root, 'private/native.rkt');p.write_text(p.read_text()+'\n(define-syntax-rule (not-a-call name) (define-native sk_fake name))\n')
         self.assertNotIn('sk_fake', inv.scan_bindings(self.root)['symbols'])
     def test_comment_string_and_quote_not_counted(self):
-        p=self.root/'private/native.rkt';p.write_text(p.read_text()+'\n; (define-native sk_fake _)\n#;(define-native sk_fake _)\n(define s "(define-native sk_fake _)")\n\'(define-native sk_fake _)\n')
+        p=source_path(self.root, 'private/native.rkt');p.write_text(p.read_text()+'\n; (define-native sk_fake _)\n#;(define-native sk_fake _)\n(define s "(define-native sk_fake _)")\n\'(define-native sk_fake _)\n')
         self.assertNotIn('sk_fake', inv.scan_bindings(self.root)['symbols'])
     def test_bad_registry_position_fails(self):
-        p=self.root/'private/gpu-image-native.rkt';p.write_text('(define-image-native safe "sk_x" _)\n')
+        p=source_path(self.root, 'private/gpu-image-native.rkt');p.write_text('(define-image-native safe "sk_x" _)\n')
         with self.assertRaisesRegex(ValueError,'unrecognized'): inv.scan_bindings(self.root)
     def test_missing_public_export(self):
-        p=self.root/'annotations.rkt';p.write_text('#lang racket/base\n; canvas-annotate-url!\n')
+        p=source_path(self.root, 'annotations.rkt');p.write_text('#lang racket/base\n; canvas-annotate-url!\n')
         with self.assertRaisesRegex(ValueError,'public declaration not found'): inv.validate_sources(self.root,CATALOG)
     def test_new_public_module(self):
-        (self.root/'unreviewed.rkt').write_text('#lang racket/base\n')
+        (source_path(self.root, 'unreviewed.rkt')).write_text('#lang racket/base\n')
         with self.assertRaisesRegex(ValueError,'public module inventory'): inv.validate_sources(self.root,CATALOG)
     def test_missing_test_source(self):
-        (self.root/'tests/native-test.rkt').unlink()
+        (source_path(self.root, 'tests/native-test.rkt')).unlink()
         with self.assertRaisesRegex(ValueError,'missing file'): inv.validate_sources(self.root,CATALOG)
     def test_plans_are_not_scanned_or_changed(self):
-        p=self.root/'plans/local.rkt';p.parent.mkdir();p.write_text('private local plan, not parseable as Racket ((((')
+        p=self.root / 'plans/local.rkt';p.parent.mkdir();p.write_text('private local plan, not parseable as Racket ((((')
         old=p.read_bytes();inv.validate_sources(self.root,CATALOG);self.assertEqual(p.read_bytes(),old)
     def test_changed_package_minimum(self):
-        p=self.root/'info.rkt';p.write_text(p.read_text().replace('8.18','9.3'))
+        p=source_path(self.root, 'info.rkt');p.write_text(p.read_text().replace('8.18','9.3'))
         with self.assertRaisesRegex(ValueError,'minimum'): inv.validate_sources(self.root,CATALOG)
     def test_changed_native_pin(self):
-        (self.root/'private/native-default-version.txt').write_text('4.153.1\n')
+        (source_path(self.root, 'private/native-default-version.txt')).write_text('4.153.1\n')
         with self.assertRaisesRegex(ValueError,'native pin'): inv.validate_sources(self.root,CATALOG)
     def test_reexport_through_private_file(self):
-        (self.root/'private/exports.rkt').write_text('(provide marker (rename-out [old renamed]))')
-        (self.root/'facade.rkt').write_text('(provide (all-from-out "private/exports.rkt"))')
+        (source_path(self.root, 'private/exports.rkt')).write_text('(provide marker (rename-out [old renamed]))')
+        (source_path(self.root, 'facade.rkt')).write_text('(provide (all-from-out "private/exports.rkt"))')
         self.assertEqual(inv.source_exports(self.root,'facade.rkt'),{'marker','renamed'})
     def test_nested_submodule_not_public(self):
-        (self.root/'facade.rkt').write_text('(module* internal #f (provide hidden)) (provide real)')
+        (source_path(self.root, 'facade.rkt')).write_text('(module* internal #f (provide hidden)) (provide real)')
         self.assertEqual(inv.source_exports(self.root,'facade.rkt'),{'real'})
     def test_reexport_cycle_fails(self):
-        (self.root/'a.rkt').write_text('(provide (all-from-out "b.rkt"))')
-        (self.root/'b.rkt').write_text('(provide (all-from-out "a.rkt"))')
+        (source_path(self.root, 'a.rkt')).write_text('(provide (all-from-out "b.rkt"))')
+        (source_path(self.root, 'b.rkt')).write_text('(provide (all-from-out "a.rkt"))')
         with self.assertRaises(ValueError): inv.source_exports(self.root,'a.rkt')
     def test_report_drift_fails(self):
-        p=self.root/inv.REPORT;p.write_text(p.read_text()+'wrong\n')
+        p=source_path(self.root, inv.REPORT);p.write_text(p.read_text()+'wrong\n')
         with self.assertRaisesRegex(ValueError,'report drift'): inv.check_report(self.root,CATALOG)
     def test_write_is_deterministic(self):
-        before=(self.root/inv.REPORT).read_bytes();inv.check_report(self.root,CATALOG,write=True)
-        self.assertEqual((self.root/inv.REPORT).read_bytes(),before)
+        before=(source_path(self.root, inv.REPORT)).read_bytes();inv.check_report(self.root,CATALOG,write=True)
+        self.assertEqual((source_path(self.root, inv.REPORT)).read_bytes(),before)
     def test_source_mutation_changes_fingerprint(self):
         first=inv.validate_sources(self.root,CATALOG)
-        p=self.root/'private/core.rkt';p.write_text(p.read_text()+'; change\n')
+        p=source_path(self.root, 'private/core.rkt');p.write_text(p.read_text()+'; change\n')
         second=inv.validate_sources(self.root,CATALOG)
         self.assertNotEqual(first['source_hashes'],second['source_hashes'])
 
@@ -315,7 +316,7 @@ class Sources(unittest.TestCase):
 class Upstream(unittest.TestCase):
     def test_full_synthetic_upstream_scope(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);skia=root/'skia';sharp=root/'sharp';u=CATALOG['upstream']
+            root=Path(t);skia=root / 'skia';sharp=root / 'sharp';u=CATALOG['upstream']
             hpaths=sorted(set(u['headers'])|set(u['non_function_headers'])|set(u['excluded_headers']))
             for path in hpaths:
                 file=skia/path;file.parent.mkdir(parents=True,exist_ok=True)
@@ -409,8 +410,8 @@ class Runner(unittest.TestCase):
                  patch.object(validator,'observe',side_effect=ValueError('native failed') if native_error else None,
                               return_value={'symbols':{'sk_a':True,'sk_b':False},'library_sha256':'c'*64}) as obs, \
                  contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
-                code=validator.main(['--directory',str(root/'output/test'),*args],root=root)
-            report=inv.read_json(root/'output/test/validation.json')
+                code=validator.main(['--directory',str(root / 'output/test'),*args],root=root)
+            report=inv.read_json(root / 'output/test/validation.json')
             return code, report, up.call_count, obs.call_count
     def test_offline_gate(self):
         code,r,u,n=self.simulate();self.assertEqual(code,0);self.assertFalse(r['rendering_executed']);self.assertEqual((u,n),(0,0))
@@ -424,10 +425,10 @@ class Runner(unittest.TestCase):
         code,r,_,_=self.simulate(['--native-library','lib'],native_error=True)
         self.assertEqual(code,1);self.assertEqual(r['status'],'failed')
     def test_source_failure_stops_optional_gates(self):
-        code,r,u,n=self.simulate(['--native-library','lib'],change=lambda root:(root/'private/native.rkt').unlink())
+        code,r,u,n=self.simulate(['--native-library','lib'],change=lambda root:(source_path(root, 'private/native.rkt')).unlink())
         self.assertEqual(code,1);self.assertFalse(r['source_passed']);self.assertEqual(n,0)
     def test_report_drift_fails(self):
-        code,r,_,_=self.simulate(change=lambda root:(root/inv.REPORT).write_text('stale'))
+        code,r,_,_=self.simulate(change=lambda root:(source_path(root, inv.REPORT)).write_text('stale'))
         self.assertEqual(code,1);self.assertIn('drift',r['error'])
     def test_existing_directory_refused(self):
         with tempfile.TemporaryDirectory() as t,self.assertRaises(FileExistsError):validator.main(['--directory',t])
@@ -439,11 +440,11 @@ class Runner(unittest.TestCase):
 class CommandLine(unittest.TestCase):
     def test_cli_write_checks_full_sources_first(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);synthetic_tree(root);old=(root/inv.REPORT).read_bytes()
-            p=root/'private/native.rkt';p.write_text(p.read_text()+'(define-native sk_unclassified (_fun -> _void))\n')
+            root=Path(t);synthetic_tree(root);old=(source_path(root, inv.REPORT)).read_bytes()
+            p=source_path(root, 'private/native.rkt');p.write_text(p.read_text()+'(define-native sk_unclassified (_fun -> _void))\n')
             with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 code=inv.main(['--write'],root=root)
-            self.assertEqual(code,1);self.assertEqual((root/inv.REPORT).read_bytes(),old)
+            self.assertEqual(code,1);self.assertEqual((source_path(root, inv.REPORT)).read_bytes(),old)
     def test_cli_check_and_write(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);synthetic_tree(root)
@@ -459,13 +460,13 @@ class RepositoryIntegration(unittest.TestCase):
     def test_complete_project_source_and_anchors(self): inv.validate_sources(ROOT,CATALOG)
     def test_generated_report_current(self): inv.check_report(ROOT,CATALOG)
     def test_ci_checks_pinned_upstream_and_native(self):
-        text=(ROOT/'.github/workflows/api-inventory.yml').read_text()
+        text=(ROOT / '.github/workflows/api-inventory.yml').read_text()
         for token in (inv.SKIA_COMMIT, inv.SHARP_COMMIT,'--native-library','--skia-source','--skiasharp-source',"racket: ['8.18', '9.3']"):
             self.assertIn(token,text)
         self.assertNotIn('continue-on-error:',text)
-        self.assertIn("'test-api-inventory.py'",(ROOT/'tools/ci.py').read_text())
+        self.assertIn("'test-api-inventory.py'",(ROOT / 'tools/ci.py').read_text())
     def test_design_decisions_cover_lifetimes_and_precision(self):
-        text=re.sub(r'\s+', ' ', (ROOT/'docs/API-DESIGN-DECISIONS.md').read_text())
+        text=re.sub(r'\s+', ' ', (ROOT / 'docs/API-DESIGN-DECISIONS.md').read_text())
         for token in ('D1.', 'D2.', 'D3.', 'D4.', 'D5.', 'D6.', 'D7.', 'D8.', 'D9.', 'D10.',
                       '1/255','placement offset','lease','not sample','SkiaSharp 3.119.1'):
             self.assertIn(token,text)

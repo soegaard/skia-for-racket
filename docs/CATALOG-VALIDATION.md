@@ -1,5 +1,17 @@
 # Catalog candidate validation — 0.79
 
+Current status, November 23, 2026: the unsplit candidate at `7693d907` passed
+Release candidate run `45096827302`, attempt 2. The retained baseline verification
+is `output/catalog/manual-45096827302-attempt-2-20261123/VERIFIED-CANDIDATE.md`.
+That evidence does not qualify the revised three-source-package Git layout.
+The split's local execution record is [GIT-PACKAGE-VALIDATION.md](GIT-PACKAGE-VALIDATION.md).
+Five ordinary Git catalog sources replace the archive-host proposal; see
+[PACKAGE-PUBLICATION.md](PACKAGE-PUBLICATION.md). No package is registered and no
+new public native repository has been created by this implementation.
+
+The dated records below describe earlier candidates and remain historical.
+
+
 Status on November 22, 2026: all four automatic workflows and all ten catalog
 lanes passed at `cc9bb58545c55297b6c050cc77eb0b268e638247`, including the Windows
 direct NuGet installer. The maintainer approved the upstream licensing basis

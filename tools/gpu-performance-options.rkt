@@ -13,9 +13,9 @@
 ;;; Imports and Exports
 ;;;
 
-(require "../private/gpu-backends.rkt" (only-in "../private/gpu-d3d12-util.rkt" d3d12-selection!))
+(require "../skia-lib/private/gpu-backends.rkt" (only-in "../skia-lib/private/gpu-d3d12-util.rkt" d3d12-selection!))
 (require racket/cmdline racket/runtime-path racket/file file/sha1
-  "../private/gpu-performance-util.rkt")
+  "../skia-lib/private/gpu-performance-util.rkt")
 (provide read-performance-options clear-performance-results! performance-source-fingerprints)
 
 ;;;

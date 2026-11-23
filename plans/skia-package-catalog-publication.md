@@ -1,5 +1,14 @@
 # Implementation plan: publish Skia with platform-specific native packages
 
+Publication-route amendment, November 23, 2026: follow the
+[Git-based publication plan](skia-package-catalog-git-publication.md) for the
+remaining work. It supersedes this document's required immutable ZIP hosting,
+single-source-package layout, separate font package, and associated publication
+evidence policy. Fonts now belong in the proposed `skia-doc` package, alongside
+`skia-lib` and the `skia` meta-package. The implemented native packaging, accepted
+licensing decisions, and successful full validation remain baseline evidence;
+the changed package boundaries require fresh qualification.
+
 Status: proposal and implementation hand-off. No catalog registration, release
 upload, package installation, or runtime implementation is performed by this
 document.

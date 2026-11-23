@@ -52,10 +52,10 @@ jobs:
         run: |
           python tools/test-render-canvas.py
           python tools/test-gpu-frame-reuse.py
-          racket -l raco -- make render-canvas.rkt examples/render-canvas.rkt examples/gpu-dc-consumers.rkt
+          racket -l raco -- make skia-lib/render-canvas.rkt skia-lib/examples/render-canvas.rkt skia-lib/examples/gpu-dc-consumers.rkt
       - name: Global pure regressions (standalone mode)
         if: inputs.regressions != 'none'
-        run: racket run-tests.rkt --pure
+        run: racket skia-lib/run-tests.rkt --pure
       - name: Install pinned native libraries
         run: |
           bash tools/install-native.sh
@@ -100,12 +100,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test-gpu-frame-reuse.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          racket -l raco -- make render-canvas.rkt examples/render-canvas.rkt
+          racket -l raco -- make skia-lib/render-canvas.rkt skia-lib/examples/render-canvas.rkt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install pinned native libraries
         shell: pwsh
         run: |
-          ./tools/install-native-windows.ps1 -Racket racket -Python python -Root (Get-Location).Path
+          ./tools/install-native-windows.ps1 -Racket racket -Python python -Root (Join-Path (Get-Location).Path 'skia-lib')
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require common API and staging reuse using explicit WARP
         shell: pwsh

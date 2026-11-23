@@ -5,6 +5,7 @@ Standard-library-only. --self-test uses synthetic fixtures, never a real GPU.
 Metal presentation and performance are deliberately outside this acceptance gate.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import html
 import importlib.util
@@ -238,11 +239,11 @@ class Checks(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='skia-metal-parity-synthetic-')
         self.addCleanup(self.temp.cleanup); self.root = Path(self.temp.name); self.raw = fixture(self.root)
     def edit(self, name, proc):
-        proc(self.raw[name]); (self.root/(name+'.diagnostic.json')).write_text(json.dumps(self.raw[name]))
+        proc(self.raw[name]); (source_path(self.root, name+'.diagnostic.json')).write_text(json.dumps(self.raw[name]))
     def reject(self):
         with self.assertRaises((ValueError, OSError)): parity(self.root)
-    def test_individual_lifecycle(self): self.assertEqual(inspect_single(self.root/'metal-lifecycle')['cycles_checked'], 3)
-    def test_individual_cross_backend(self): self.assertEqual(inspect_single(self.root/'cross-backend')['native_test_cases'], CROSS_NATIVE_CASES)
+    def test_individual_lifecycle(self): self.assertEqual(inspect_single(self.root / 'metal-lifecycle')['cycles_checked'], 3)
+    def test_individual_cross_backend(self): self.assertEqual(inspect_single(self.root / 'cross-backend')['native_test_cases'], CROSS_NATIVE_CASES)
     def test_valid(self): self.assertEqual(parity(self.root)['comparisons_checked'], 10)
     def test_mislabeled_backend(self): self.edit('offscreen-metal', lambda d:d.update(backend='opengl')); self.reject()
     def test_false_backend_id(self): self.edit('offscreen-metal', lambda d:d['initial_context'].update(native_backend=False)); self.reject()
@@ -255,7 +256,7 @@ class Checks(unittest.TestCase):
     def test_missing_cycle(self): self.edit('metal-lifecycle', lambda d:d['cycles'].pop()); self.reject()
     def test_reused_generation(self): self.edit('metal-lifecycle', lambda d:d['cycles'][1]['initial_context'].update(generation=1)); self.reject()
     def test_cycle_not_encoded_after_close(self): self.edit('metal-lifecycle', lambda d:d['cycles'][0].update(encoded_after_teardown=False)); self.reject()
-    def test_bad_smoke_pixels(self): (self.root/'metal-lifecycle.cycle-1.png').write_bytes(shared.png_bytes(bytes(256),(8,8))); self.reject()
+    def test_bad_smoke_pixels(self): (self.root / 'metal-lifecycle.cycle-1.png').write_bytes(shared.png_bytes(bytes(256),(8,8))); self.reject()
     def test_metal_is_not_presentation(self): self.edit('metal-lifecycle', lambda d:d.update(presentation_tested=True)); self.reject()
     def test_cycle_failure_count(self): self.edit('metal-lifecycle', lambda d:d.update(native_test_failures=1)); self.reject()
     def test_resident_readback(self): self.edit('images-metal', lambda d:d['scenes'][0]['reuse_events'].append({'kind':'readback'})); self.reject()
@@ -267,21 +268,21 @@ class Checks(unittest.TestCase):
     def test_no_metal_queue(self): self.edit('images-metal', lambda d:d['initial_context'].update(owns_command_queue=False)); self.reject()
     def test_failed_teardown(self): self.edit('images-metal', lambda d:d['closed_context'].update(pending_releases=1)); self.reject()
     def test_cpu_references_differ(self):
-        row=self.raw['offscreen-metal']['scenes'][0]; p=self.root/row['cpu_image']
+        row=self.raw['offscreen-metal']['scenes'][0]; p=source_path(self.root, row['cpu_image'])
         pixels=bytearray(shared.png(p.read_bytes(), shared.SIZE)); pixels[4*(100*420+100)]+=1
         p.write_bytes(shared.png_bytes(pixels)); self.reject()
     def test_no_success_from_forged_inspection(self):
-        (self.root/'images-metal.inspection.json').write_text('{"status":"passed"}')
+        (self.root / 'images-metal.inspection.json').write_text('{"status":"passed"}')
         self.edit('images-metal', lambda d:d.update(status='unavailable')); self.reject()
     def test_atomic_failure_clears_stale_results(self):
-        for name in ('parity.inspection.json', 'parity.review.html'): (self.root/name).write_text('STALE')
+        for name in ('parity.inspection.json', 'parity.review.html'): (source_path(self.root, name)).write_text('STALE')
         self.edit('cross-backend', lambda d:d.update(status='error'))
         with self.assertRaises(ValueError): inspect(self.root)
-        self.assertFalse((self.root/'parity.inspection.json').exists())
-        self.assertFalse((self.root/'parity.review.html').exists())
+        self.assertFalse((self.root / 'parity.inspection.json').exists())
+        self.assertFalse((self.root / 'parity.review.html').exists())
     def test_review_publication(self):
         self.assertEqual(inspect(self.root)['status'], 'passed')
-        self.assertIn('Offscreen OpenGL / Metal parity', (self.root/'parity.review.html').read_text())
+        self.assertIn('Offscreen OpenGL / Metal parity', (self.root / 'parity.review.html').read_text())
 
 
 if __name__ == '__main__':

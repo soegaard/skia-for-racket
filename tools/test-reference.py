@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Source/HTML regressions with synthetic inventories and HTML, not native rendering."""
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import contextlib
 import importlib.util
@@ -293,10 +294,10 @@ class Fixtures(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        shutil.copytree(ROOT / checks.REFERENCE, self.root / checks.REFERENCE)
-        shutil.copy(ROOT / 'info.rkt', self.root / 'info.rkt')
+        shutil.copytree(source_path(ROOT, checks.REFERENCE), source_path(self.root, checks.REFERENCE))
+        shutil.copy(documentation_root(ROOT) / 'info.rkt', source_path(self.root, 'info.rkt'))
         (self.root / 'api').mkdir()
-        self.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        self.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         # The synthetic inventory already contains the later procedure. Keep the
         # real source supplement separate from these deliberately synthetic fixtures.
         self.manifest.pop('source_verified_additions', None)
@@ -309,15 +310,15 @@ class Fixtures(unittest.TestCase):
     def write_inventory(self):
         for expected, data in zip(self.manifest['snapshots'], self.snapshots):
             raw = (json.dumps(data, indent=2) + '\n').encode()
-            (self.root / expected['file']).write_bytes(raw)
+            (source_path(self.root, expected['file'])).write_bytes(raw)
             expected['git_blob'] = checks.git_blob(raw)
         self.write_manifest()
 
     def write_manifest(self):
-        (self.root / checks.MANIFEST).write_text(json.dumps(self.manifest) + '\n')
+        (source_path(self.root, checks.MANIFEST)).write_text(json.dumps(self.manifest) + '\n')
 
     def change(self, file, before, after):
-        path = self.root / checks.REFERENCE / file
+        path = source_path(self.root, checks.REFERENCE) / file
         text = path.read_text()
         self.assertIn(before, text)
         path.write_text(text.replace(before, after, 1))
@@ -364,13 +365,13 @@ class Fixtures(unittest.TestCase):
             self.check()
 
     def test_extra_definition(self):
-        path = self.root / checks.REFERENCE / 'drawing.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@defproc[(invented) void?]{No public export.}\n')
         with self.assertRaises(checks.CheckError):
             self.check()
 
     def test_duplicate_definition(self):
-        path = self.root / checks.REFERENCE / 'drawing.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@defproc[(draw-rect) void?]{Duplicate.}\n')
         with self.assertRaises(checks.CheckError):
             self.check()
@@ -420,18 +421,18 @@ class Fixtures(unittest.TestCase):
         self.assertTrue(any(r['module'] == 'skia/other' for r in result['deferred']))
 
     def test_snapshot_change_requires_review(self):
-        path = self.root / self.manifest['snapshots'][0]['file']
+        path = source_path(self.root, self.manifest['snapshots'][0]['file'])
         path.write_bytes(path.read_bytes() + b'\n')
         with self.assertRaisesRegex(checks.CheckError, 'snapshot changed'):
             self.check()
 
     def test_missing_snapshot_fails(self):
-        (self.root / self.manifest['snapshots'][1]['file']).unlink()
+        (source_path(self.root, self.manifest['snapshots'][1]['file'])).unlink()
         with self.assertRaises(FileNotFoundError):
             self.check()
 
     def test_documents_only_discloses_missing_inventory(self):
-        (self.root / self.manifest['snapshots'][1]['file']).unlink()
+        (source_path(self.root, self.manifest['snapshots'][1]['file'])).unlink()
         self.assertFalse(self.check(documents_only=True)['inventory_checked'])
 
     def test_complete_mode_rejects_deferrals(self):
@@ -461,7 +462,7 @@ class Fixtures(unittest.TestCase):
             self.check()
 
     def test_unregistered_manual(self):
-        (self.root / 'info.rkt').write_text('#lang info\n')
+        (source_path(self.root, 'info.rkt')).write_text('#lang info\n')
         with self.assertRaisesRegex(checks.CheckError, 'not registered'):
             self.check()
 
@@ -471,17 +472,17 @@ class Fixtures(unittest.TestCase):
             self.check()
 
     def test_no_fake_definition_inside_examples(self):
-        path = self.root / checks.REFERENCE / 'drawing.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@defproc[(fake) any/c]"]\n')
         self.assertEqual(len(self.check()['definitions']), 1275)
 
     def test_scribble_comments_are_not_definitions(self):
-        path = self.root / checks.REFERENCE / 'drawing.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@;{@defproc[(fake) any/c]{No.}}\n')
         self.assertEqual(len(self.check()['definitions']), 1275)
 
     def test_cyclic_chapter_include(self):
-        path = self.root / checks.REFERENCE / 'drawing.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@include-section["reference.scrbl"]\n')
         with self.assertRaisesRegex(checks.CheckError, 'cyclic'):
             self.check()
@@ -513,7 +514,7 @@ class Fixtures(unittest.TestCase):
         self.assertNotIn('arity_mask', descriptor)
 
     def test_no_separate_duplicate_predicate(self):
-        path = self.root / checks.REFERENCE / 'colors.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'colors.scrbl'
         path.write_text(path.read_text() + '\n@defproc[(rgba? [v any/c]) boolean?]{Duplicate.}\n')
         with self.assertRaisesRegex(checks.CheckError, 'duplicate canonical'):
             self.check()
@@ -567,7 +568,7 @@ class Fixtures(unittest.TestCase):
             self.check()
 
     def test_tutorial_link_in_example_is_not_counted(self):
-        path = self.root / checks.REFERENCE / 'drawing.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n@racketblock["@seclink[\\\"top\\\"]"]\n')
         self.assertEqual(self.check()['status'], 'passed')
 
@@ -577,7 +578,7 @@ class Fixtures(unittest.TestCase):
         self.assertEqual(spec['exports'], ['skia'])
 
     def test_no_temporary_edition_language(self):
-        text = (self.root / checks.REFERENCE / 'reference.scrbl').read_text()
+        text = (source_path(self.root, checks.REFERENCE) / 'reference.scrbl').read_text()
         self.assertNotIn('first edition', text)
 
 
@@ -817,7 +818,7 @@ class BuildPlanTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.output = Path(self.temporary.name) / 'evidence'
-        links = json.loads((ROOT / checks.MANIFEST).read_text())['tutorial_links']
+        links = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())['tutorial_links']
         self.source = dict(definitions=[], deferred=[], tutorial_links=links)
         self.commands = []
 
@@ -852,7 +853,7 @@ class BuildPlanTests(unittest.TestCase):
         self.assertIn('--lib', steps['reference'])
         self.assertTrue(any(arg.endswith('reference-render.rkt') for arg in steps['reference']))
         self.assertIn('render-driver-tests', steps)
-        self.assertIn('skia/scribblings/reference/reference.scrbl', steps['reference'])
+        self.assertIn('skia-doc/scribblings/reference/reference.scrbl', steps['reference'])
         for row in self.source['tutorial_links']:
             command = steps[row['directory']]
             self.assertIn('skia/' + row['manual'], command)
@@ -989,12 +990,12 @@ class EditorialRevisionTests(unittest.TestCase):
                 self.assertEqual(spec['arguments'][0]['name'], 'v', spec['name'])
 
     def test_coordinate_prose_is_not_an_application(self):
-        text = (ROOT / checks.REFERENCE / 'drawing.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'drawing.scrbl').read_text()
         self.assertNotIn('@racket[(x y)]', text)
         self.assertIn('@racket[x] and @racket[y]', text)
 
     def test_complete_drawing_manages_both_resources(self):
-        text = (ROOT / checks.REFERENCE / 'drawing.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'drawing.scrbl').read_text()
         blocks = [header for form, header, _ in checks.commands(text, recursive=True)
                   if form == 'racketblock']
         self.assertEqual(len(blocks), 12)
@@ -1011,7 +1012,7 @@ class EditorialRevisionTests(unittest.TestCase):
         self.assertEqual(spec['form'], 'defproc*')
         self.assertEqual(spec['arity_mask'], '264')
         self.assertEqual([len(case) for case in spec['cases']], [3, 8])
-        text = (ROOT / checks.REFERENCE / 'drawing.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'drawing.scrbl').read_text()
         self.assertIn('(draw-rounded-rect canvas x y width height radius-x radius-y paint)', text)
         self.assertIn('@racketblock0[\n(draw-rounded-rect', text)
         self.assertIn('@secref["skia-rounded-rectangles"]', text)
@@ -1030,20 +1031,20 @@ class EditorialRevisionTests(unittest.TestCase):
                          [2, 7])
         self.assertEqual([[arg['keyword'] for arg in case if arg['keyword'] is not None]
                           for case in spec['cases']], [['direction', 'start-index'], ['direction']])
-        text = (ROOT / checks.REFERENCE / 'paths.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'paths.scrbl').read_text()
         self.assertIn('(path-add-rounded-rect! path x y width height radius-x radius-y', text)
         self.assertIn('@racketblock0[\n(path-add-rounded-rect!', text)
         self.assertIn('@seclink["skia-rounded-rectangles"]', text)
 
     def test_icc_responsibility_and_validation_are_distinct(self):
-        text = ' '.join((ROOT / checks.REFERENCE / 'encoding.scrbl').read_text().split())
+        text = ' '.join((source_path(ROOT, checks.REFERENCE) / 'encoding.scrbl').read_text().split())
         self.assertIn('The caller is responsible', text)
         self.assertIn('does not verify that it agrees with those samples', text)
         self.assertIn("checks the profile's format", text)
         self.assertIn('Attaching a profile does not convert the samples', text)
 
     def test_supported_color_names_are_indexed_once(self):
-        text = (ROOT / checks.REFERENCE / 'colors.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'colors.scrbl').read_text()
         indexed = re.findall(r"@indexed-racket\['([a-z-]+)\]", text)
         names = ('transparent black white red green blue yellow cyan magenta gray grey orange purple'
                  .split())
@@ -1051,7 +1052,7 @@ class EditorialRevisionTests(unittest.TestCase):
         self.assertEqual(len(indexed), len(set(indexed)))
 
     def test_every_blend_symbol_has_an_authoritative_description(self):
-        text = (ROOT / checks.REFERENCE / 'paints.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'paints.scrbl').read_text()
         signature = next(header for form, header, _ in checks.commands(text)
                          if form == 'defproc' and header[0][0] == 'make-paint')
         blend = next(row for row in signature[0] if isinstance(row, list)
@@ -1063,7 +1064,7 @@ class EditorialRevisionTests(unittest.TestCase):
         self.assertIn('@secref["skia-blend-modes"]', text)
 
     def test_blend_alpha_and_scope_are_explicit(self):
-        text = (ROOT / checks.REFERENCE / 'paints.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'paints.scrbl').read_text()
         for phrase in ('fully covered pixels', 'premultiplied', 'Ralpha = a + b - a b',
                        "@racket['modulate] mode instead gives alpha @math{a b}",
                        'extended-range floating-point storage'):
@@ -1084,12 +1085,12 @@ class ReviewArchiveTests(unittest.TestCase):
         base = Path(self.temporary.name)
         self.root, self.site = base / 'sources', base / 'rendered'
         self.root.mkdir()
-        shutil.copytree(ROOT / checks.REFERENCE, self.root / checks.REFERENCE)
+        shutil.copytree(source_path(ROOT, checks.REFERENCE), source_path(self.root, checks.REFERENCE))
         for name in ('info.rkt', str(checks.MANIFEST), 'docs/REFERENCE-DEVELOPMENT.md'):
-            destination = self.root / name
+            destination = source_path(self.root, name)
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(ROOT / name, destination)
-        self.manifest = json.loads((self.root / checks.MANIFEST).read_text())
+            shutil.copy((documentation_root(ROOT) / 'info.rkt') if name == 'info.rkt' else source_path(ROOT, name), destination)
+        self.manifest = json.loads((source_path(self.root, checks.MANIFEST)).read_text())
         # The synthetic inventory already contains the later procedure. Keep the
         # real source supplement separate from these deliberately synthetic fixtures.
         self.manifest.pop('source_verified_additions', None)
@@ -1099,14 +1100,15 @@ class ReviewArchiveTests(unittest.TestCase):
         self.snapshots = synthetic_inventory()
         for expected, data in zip(self.manifest['snapshots'], self.snapshots):
             raw = (json.dumps(data, indent=2) + '\n').encode()
-            (self.root / expected['file']).write_bytes(raw)
+            (source_path(self.root, expected['file'])).write_bytes(raw)
             expected['git_blob'] = checks.git_blob(raw)
-        (self.root / checks.MANIFEST).write_text(json.dumps(self.manifest) + '\n')
+        (source_path(self.root, checks.MANIFEST)).write_text(json.dumps(self.manifest) + '\n')
         for row in self.manifest['tutorial_links']:
-            path = self.root / row['manual']
+            path = source_path(self.root, row['manual'])
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('#lang scribble/manual\n@title{Synthetic companion}\n')
         (self.root / 'tools').mkdir()
+        shutil.copy(ROOT / 'tools/repository_layout.py', self.root / 'tools/repository_layout.py')
         for path in (ROOT / 'tools').glob('*reference*'):
             if path.suffix in {'.py', '.rkt'}:
                 shutil.copy(path, self.root / 'tools' / path.name)
@@ -1171,7 +1173,7 @@ class ReviewArchiveTests(unittest.TestCase):
         self.assertEqual(self.archive.read_bytes(), b'keep')
 
     def test_sources_changed_after_build_rejected(self):
-        path = self.root / checks.REFERENCE / 'drawing.scrbl'
+        path = source_path(self.root, checks.REFERENCE) / 'drawing.scrbl'
         path.write_text(path.read_text() + '\n')
         with self.assertRaisesRegex(checks.CheckError, 'changed during the build'):
             self.package()
@@ -1486,7 +1488,7 @@ class R2CoverageTests(unittest.TestCase):
 
 class R2ProseTests(unittest.TestCase):
     def text(self, name):
-        return (ROOT / checks.REFERENCE / name).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / name).read_text()
 
     def test_antialiasing_has_one_definition_in_foundations(self):
         self.assertIn('@include-section["notation.scrbl"]', self.text('foundations.scrbl'))
@@ -1496,7 +1498,7 @@ class R2ProseTests(unittest.TestCase):
         self.assertIn('@deftech{Antialiasing}', notation)
         self.assertIn('Antialiasing is distinct from image sampling', notation)
         definitions = []
-        for path in (ROOT / checks.REFERENCE).rglob('*.scrbl'):
+        for path in (source_path(ROOT, checks.REFERENCE)).rglob('*.scrbl'):
             definitions.extend(path.name for _ in
                                re.finditer(r'@deftech\{antialiasing\}', path.read_text(), re.I))
         self.assertEqual(definitions, ['notation.scrbl'])
@@ -1534,7 +1536,7 @@ class R2ProseTests(unittest.TestCase):
             self.assertIn(phrase, notation)
         # Projective matrices deliberately use a wider range than the general rule.
         exceptions = {'notation.scrbl', 'projective-matrices.scrbl'}
-        for path in (ROOT / checks.REFERENCE).rglob('*.scrbl'):
+        for path in (source_path(ROOT, checks.REFERENCE)).rglob('*.scrbl'):
             if path.name not in exceptions:
                 with self.subTest(chapter=path.name):
                     self.assertNotRegex(path.read_text(), r'drawing[\s-]+scalars?')
@@ -1952,7 +1954,7 @@ class PreparatorySourceTests(unittest.TestCase):
                     'multiply hue saturation color luminosity').split()
         found = {}
         for chapter in ('paints.scrbl', 'shaders.scrbl'):
-            for form, header, _ in checks.commands((ROOT / checks.REFERENCE / chapter).read_text()):
+            for form, header, _ in checks.commands((source_path(ROOT, checks.REFERENCE) / chapter).read_text()):
                 if form != 'defproc':
                     continue
                 name = header[0][0]
@@ -1968,7 +1970,7 @@ class PreparatorySourceTests(unittest.TestCase):
         self.assertEqual(len(set(expected)), 29)
 
     def test_clipping_example_compares_same_initial_clip_in_separate_scopes(self):
-        text = (ROOT / checks.REFERENCE / 'canvases.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'canvases.scrbl').read_text()
         start = text.index('@defproc[(canvas-clip-rect!')
         end = text.index('@defproc[(canvas-clip-path!', start)
         example = text[start:end]
@@ -1981,7 +1983,7 @@ class PreparatorySourceTests(unittest.TestCase):
         self.assertNotIn('@examples', example)
 
     def test_displayed_native_example_inventory_has_one_addition(self):
-        count = sum(form == 'racketblock' for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
+        count = sum(form == 'racketblock' for path in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl')
                     for form, _, _ in checks.commands(path.read_text(), recursive=True))
         self.assertEqual(count, 319)
 
@@ -2015,7 +2017,7 @@ class SourceReviewArchiveTests(unittest.TestCase):
         with zipfile.ZipFile(self.archive) as archive:
             for item in self.fixture.manifest['snapshots']:
                 self.assertEqual(archive.read('sources/' + item['file']),
-                                 (self.root / item['file']).read_bytes())
+                                 (source_path(self.root, item['file'])).read_bytes())
             names = set(archive.namelist())
             for path in ('info.rkt', 'tools/check-reference.py', 'tools/reference_support.py',
                          'tools/reference_review.py', *[item['manual']
@@ -2039,14 +2041,14 @@ class SourceReviewArchiveTests(unittest.TestCase):
             self.assertNotEqual(Path(options['cwd']), Path(command[4]).parent)
 
     def test_missing_inventory_does_not_publish_a_source_archive(self):
-        path = self.root / self.fixture.manifest['snapshots'][0]['file']
+        path = source_path(self.root, self.fixture.manifest['snapshots'][0]['file'])
         path.unlink()
         with self.assertRaises(FileNotFoundError):
             self.package()
         self.assertFalse(self.archive.exists())
 
     def test_wrong_inventory_hash_is_rejected_even_with_fresh_source_hashes(self):
-        path = self.root / self.fixture.manifest['snapshots'][0]['file']
+        path = source_path(self.root, self.fixture.manifest['snapshots'][0]['file'])
         path.write_text(path.read_text() + '\n')
         hashes = review.source_hashes(self.root, review_inputs=True)
         with self.assertRaises(checks.CheckError):
@@ -2054,7 +2056,7 @@ class SourceReviewArchiveTests(unittest.TestCase):
         self.assertFalse(self.archive.exists())
 
     def test_missing_tutorial_source_fails_closed(self):
-        (self.root / self.fixture.manifest['tutorial_links'][0]['manual']).unlink()
+        (source_path(self.root, self.fixture.manifest['tutorial_links'][0]['manual'])).unlink()
         with self.assertRaises(FileNotFoundError):
             self.package()
         self.assertFalse(self.archive.exists())
@@ -2099,7 +2101,7 @@ class SourceReviewArchiveTests(unittest.TestCase):
             self.assertFalse(report['link_scopes']['complete_site_checked'])
             for item in self.fixture.manifest['snapshots']:
                 self.assertEqual(archive.read('sources/' + item['file']),
-                                 (self.root / item['file']).read_bytes())
+                                 (source_path(self.root, item['file'])).read_bytes())
 
     def test_source_archive_creation_is_available_without_racket(self):
         command = [review.sys.executable, '-E', '-s', '-B',
@@ -2267,7 +2269,7 @@ class R3TextCoverageTests(unittest.TestCase):
             self.check()
 
     def test_every_declared_text_alias_appears_in_the_link_probe(self):
-        text = (self.root / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        text = (source_path(self.root, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for prefix, names in (('typefaces:', TYPEFACE_EXPORTS), ('fonts:', FONT_EXPORTS)):
             for name in names:
                 self.assertIn('@racket[' + prefix + name + ']', text)
@@ -2286,7 +2288,7 @@ class R3TextSemanticsTests(unittest.TestCase):
     chapters = ('typefaces', 'fonts', 'shaping', 'text-blobs', 'text-layout')
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def header(self, chapter, name):
         return next(header for form, header, _ in checks.commands(self.text(chapter))
@@ -2413,7 +2415,7 @@ class R3aEditorialCleanupTests(unittest.TestCase):
     """Check local wording and discoverability, not native implementation behavior."""
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def entry(self, chapter, name):
         text = self.text(chapter)
@@ -2501,7 +2503,7 @@ class R3BlobCoverageTests(unittest.TestCase):
                                      f'scribblings/reference/{chapter}.scrbl')
 
     def test_each_new_public_import_path_is_exercised_by_link_probe(self):
-        text = (self.root / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        text = (source_path(self.root, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for prefix, names in (('text-blobs:', BLOB_EXPORTS), ('geometry-primitives:', ATLAS_EXPORTS)):
             for name in names:
                 self.assertEqual(text.count('@racket[' + name + ']'), 1)
@@ -2541,7 +2543,7 @@ class R3BlobCoverageTests(unittest.TestCase):
 class R3BlobSemanticsTests(unittest.TestCase):
     """Inspect authored contracts and focused regression wiring, not simulated Skia."""
     def text(self, chapter='text-blobs'):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def header(self, name, chapter='text-blobs'):
         return next(header for form, header, _ in checks.commands(self.text(chapter))
@@ -2710,7 +2712,7 @@ class R3BlobSemanticsTests(unittest.TestCase):
 class R3b1EditorialTests(unittest.TestCase):
     """Inspect the actual Scribble example; these tests do not evaluate Racket."""
     def text(self):
-        return (ROOT / checks.REFERENCE / 'matrices.scrbl').read_text()
+        return (source_path(ROOT, checks.REFERENCE) / 'matrices.scrbl').read_text()
 
     def test_atlas_heading_keeps_its_existing_link_target(self):
         text = self.text()
@@ -2752,7 +2754,7 @@ class R3b1EditorialTests(unittest.TestCase):
 class R3EffectsSemanticsTests(unittest.TestCase):
     """Inspect independently authored contracts and test wiring, not simulated native behavior."""
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def header(self, name, chapter):
         return next(h for form, h, _ in checks.commands(self.text(chapter))
@@ -2776,7 +2778,7 @@ class R3EffectsSemanticsTests(unittest.TestCase):
             self.assertNotIn('@defproc[(' + name, self.text('paints'))
 
     def test_new_public_module_targets_are_not_duplicated(self):
-        text = '\n'.join(p.read_text() for p in (ROOT / checks.REFERENCE).glob('*.scrbl'))
+        text = '\n'.join(p.read_text() for p in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl'))
         for module in ('effects', 'color-filters', 'runtime-effects'):
             self.assertEqual(text.count('@defmodule[skia/' + module + ' #:no-declare]'), 1)
 
@@ -2925,7 +2927,7 @@ class R3EffectsSemanticsTests(unittest.TestCase):
             self.assertEqual(source.count('(test-case '), count)
 
     def test_picture_filter_is_documented_with_the_picture_batch(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         self.assertIn('make-picture-image-filter', {r['name'] for r in manifest['definitions']})
         notes = (ROOT / 'docs/REFERENCE-DEVELOPMENT.md').read_text()
         self.assertIn('make-picture-image-filter', notes)
@@ -2935,12 +2937,12 @@ class R3EffectsSemanticsTests(unittest.TestCase):
 class R3dColorSemanticsTests(unittest.TestCase):
     """Source and call-shape checks; native outcomes are tested separately in Racket."""
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
 
     def test_every_alias_in_the_actual_probe_matches_the_html_validator(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
-        probe = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
+        probe = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for row in manifest['definitions']:
             for module in row['exports']:
                 if module == 'skia':
@@ -2965,7 +2967,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
                                  COLOR_REQUIRED_KEYWORDS.get(name, []))
 
     def test_new_public_modules_have_one_canonical_definition_for_each_export(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         for module, names in (('color-space', COLOR_SPACE_EXPORTS), ('color4f', COLOR4F_EXPORTS),
                               ('float-colors', FLOAT_COLOR_EXPORTS),
                               ('image-info', GB_MODULES['image-info.rkt'])):
@@ -2977,7 +2979,7 @@ class R3dColorSemanticsTests(unittest.TestCase):
         self.assertEqual(sum(len(r['exports']) for r in manifest['definitions']), 2000)
 
     def test_real_inventory_pins_are_not_replaced_by_test_snapshots(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         self.assertEqual({row['file']: row['git_blob'] for row in manifest['snapshots']}, {
             'api/public-api-headless.json': '4bf4408665bde6f86e1e41cb51f730d323da9a44',
             'api/public-api-gui.json': '06d5fe8408b28508e90cd4ca8b8c3cc91f6feaf8'})
@@ -3149,7 +3151,7 @@ class R3d1BindingScopeTests(unittest.TestCase):
     )
 
     def section(self, filename, tag):
-        text = (ROOT / checks.REFERENCE / filename).read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / filename).read_text()
         start = text.index('@section[#:tag "' + tag + '"]')
         following = re.search(r'(?m)^@section(?:\[|\{)', text[start + 1:])
         stop = start + 1 + following.start() if following else len(text)
@@ -3171,16 +3173,16 @@ class R3d1BindingScopeTests(unittest.TestCase):
     def test_affected_source_modules_remain_in_for_label(self):
         for filename, _tag, module, _names in self.affected:
             with self.subTest(module=module):
-                text = (ROOT / checks.REFERENCE / filename).read_text()
+                text = (source_path(ROOT, checks.REFERENCE) / filename).read_text()
                 require = text.split('@title', 1)[0]
                 self.assertIn(module, require)
                 self.assertIn('for-label', require)
                 self.assertIn(' skia ', require)
 
     def test_canonical_export_manifest_and_probe_cover_the_twelve_names(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         definitions = {row['name']: row for row in manifest['definitions']}
-        probe = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        probe = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         affected_count = 0
         for filename, tag, module, names in self.affected:
             for name in names:
@@ -3213,13 +3215,13 @@ class R3d1BindingScopeTests(unittest.TestCase):
 class R3eOutputSourceTests(unittest.TestCase):
     """Inspect authored output semantics; no native or rendered success is implied."""
     def text(self, name):
-        return (ROOT / checks.REFERENCE / (name + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (name + '.scrbl')).read_text()
 
     def normalized(self, name):
         return ' '.join(self.text(name).split())
 
     def header(self, name):
-        for file in (ROOT / checks.REFERENCE).glob('*.scrbl'):
+        for file in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl'):
             for form, header, _ in checks.commands(file.read_text(), recursive=True):
                 if form == 'defproc' and header[0][0] == name:
                     return header
@@ -3239,7 +3241,7 @@ class R3eOutputSourceTests(unittest.TestCase):
         self.assertEqual(by_name['with-pdf-page']['kind'], 'syntax')
 
     def test_public_module_families_are_complete_and_not_private_paths(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         for module, names in [('skia/pictures', PICTURE_EXPORTS),
                               ('skia/output', OUTPUT_EXPORTS),
                               ('skia/annotations', ANNOTATION_EXPORTS)]:
@@ -3260,7 +3262,7 @@ class R3eOutputSourceTests(unittest.TestCase):
             self.assertEqual(text.count('@(declare-exporting'), 1)
 
     def test_output_alias_probe_matches_actual_import_prefixes(self):
-        text = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for module, names in [('pictures', PICTURE_EXPORTS), ('output', OUTPUT_EXPORTS),
                               ('annotations', ANNOTATION_EXPORTS)]:
             self.assertIn('(prefix-in ' + module + ': skia/' + module + ')', text)
@@ -3417,7 +3419,7 @@ class R3e1EditorialTests(unittest.TestCase):
     """Check the revised specification and real-macro test setup, not Racket execution."""
 
     def test_page_form_prose_uses_the_documented_binding_identifier(self):
-        text = (ROOT / checks.REFERENCE / 'pdf-documents.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'pdf-documents.scrbl').read_text()
         start = text.index('@defform[(with-pdf-page')
         end = text.index('@defproc[', start)
         entry = ' '.join(text[start:end].split())
@@ -3428,7 +3430,7 @@ class R3e1EditorialTests(unittest.TestCase):
         self.assertIn('page protection, abort-on-escape, and lifetime rules', entry)
 
     def test_gpu_annotation_classification_links_to_the_execution_query(self):
-        text = (ROOT / checks.REFERENCE / 'annotations.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'annotations.scrbl').read_text()
         start = text.index('@defproc[(canvas-annotation-backend')
         end = text.index('@defproc[', start + 1)
         entry = ' '.join(text[start:end].split())
@@ -3498,13 +3500,13 @@ class R3fStreamCodecTests(unittest.TestCase):
                 'scanline-codecs', 'incremental-codecs')
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def prose(self, chapter):
         return ' '.join(self.text(chapter).split())
 
     def header(self, name):
-        for path in (ROOT / checks.REFERENCE).glob('*.scrbl'):
+        for path in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl'):
             for form, header, _ in checks.commands(path.read_text(), recursive=True):
                 if form == 'defproc' and header[0][0] == name:
                     return header
@@ -3525,7 +3527,7 @@ class R3fStreamCodecTests(unittest.TestCase):
                 self.assertEqual(by_name[name]['required_keywords'], [])
 
     def test_module_families_have_one_canonical_entry_per_binding(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         for path, names in IO_MODULES.items():
             module = checks.public_module(path)
             rows = [row for row in manifest['definitions'] if module in row['exports']]
@@ -3539,7 +3541,7 @@ class R3fStreamCodecTests(unittest.TestCase):
                              for module in row['exports']))
 
     def test_new_canonical_and_alias_probes_are_present_exactly_once(self):
-        probe = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        probe = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for name in IO_PROCEDURES:
             self.assertEqual(probe.count('@racket[' + name + ']'), 1, name)
         for path, names in IO_MODULES.items():
@@ -3838,7 +3840,7 @@ class R3f1EditorialTests(unittest.TestCase):
     """Inspect actual source forms; native decoder assertions run separately in Racket."""
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def header(self, name):
         return next(header for form, header, _ in checks.commands(self.text('codecs'))
@@ -3874,7 +3876,7 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertIn('The Skia package for Racket is an independent interface', intro)
         self.assertNotIn('docs/API.md', intro)
         self.assertIn('@seclink["top" #:doc', intro)
-        self.assertIn('skia/scribblings/tutorials/index.scrbl', intro)
+        self.assertIn('skia-doc/scribblings/tutorials/index.scrbl', intro)
         self.assertEqual(text.count('@include-reference-section['), 13)
         self.assertIn('@(decorate-reference-index (index-section))', text)
 
@@ -3912,7 +3914,7 @@ class R3f1EditorialTests(unittest.TestCase):
         self.assertEqual(text.count('(test-case '), 21)
 
     def test_tutorial_references_are_preserved_for_integrated_publication(self):
-        manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         references = {}
         for chapter in ('reference', 'paints', 'encoding'):
             for form, header, _ in checks.commands(self.text(chapter), recursive=True):
@@ -3920,7 +3922,7 @@ class R3f1EditorialTests(unittest.TestCase):
                     document = header[header.index('#:doc') + 1]
                     references[document[1][1]] = header[0]
         for row in manifest['tutorial_links']:
-            self.assertEqual(references['skia/' + row['manual']], row['tag'])
+            self.assertEqual(references['skia-doc/' + row['manual']], row['tag'])
         notes = (ROOT / 'docs/REFERENCE-DEVELOPMENT.md').read_text()
         self.assertIn('## Reference-only editing previews', notes)
         self.assertIn('tools/reference-render.rkt +m --htmls', notes)
@@ -3931,15 +3933,15 @@ class R3f1EditorialTests(unittest.TestCase):
 class R3gaGeometryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {d['name']: d for d in cls.definitions}
 
     def text(self, name):
-        return (ROOT / checks.REFERENCE / name).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / name).read_text()
 
     def header(self, name):
-        chapter = ROOT / self.by_name[name]['chapter']
+        chapter = source_path(ROOT, self.by_name[name]['chapter'])
         for form, header, _ in checks.commands(chapter.read_text()):
             if form == 'defproc' and header[0][0] == name:
                 return header
@@ -4145,7 +4147,7 @@ class R3gaGeometryTests(unittest.TestCase):
         self.assertNotIn('grid-eval', portable)
 
     def test_displayed_examples_are_preserved_as_opt_in_native_execution(self):
-        forms = [(f, h) for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
+        forms = [(f, h) for p in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl')
                  for f, h, _ in checks.commands(p.read_text(), recursive=True)]
         self.assertEqual(sum(f == 'racketblock' for f, _ in forms), 319)
         self.assertEqual(sum(f == 'examples' for f, _ in forms), 26)
@@ -4182,15 +4184,15 @@ class R3gaGeometryTests(unittest.TestCase):
 class R3gbRasterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {d['name']: d for d in cls.definitions}
 
     def text(self, name):
-        return (ROOT / checks.REFERENCE / (name + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (name + '.scrbl')).read_text()
 
     def header(self, name):
-        text = (ROOT / self.by_name[name]['chapter']).read_text()
+        text = (source_path(ROOT, self.by_name[name]['chapter'])).read_text()
         for form, header, _ in checks.commands(text):
             if form == 'defproc' and header[0][0] == name:
                 return header
@@ -4252,21 +4254,21 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_source_review_inputs_include_every_reachable_chapter(self):
         hashes = review.source_hashes(ROOT, review_inputs=True)
-        self.assertTrue(self.chapters <= set(hashes))
+        self.assertTrue({source_path(ROOT, p).relative_to(ROOT).as_posix() for p in self.chapters} <= set(hashes))
         for path in ('api/public-api-headless.json', 'api/public-api-gui.json',
                      'tools/check-reference.py', 'tools/reference_review.py',
                      'tools/reference_raster_cases.py', 'tools/reference-raster-test.rkt'):
             self.assertIn(path, hashes)
         for name in ('layers', 'specialized-canvases', 'rounded-rectangles', 'regions',
                      'structured-drawing', 'portable-drawing', 'projective-matrices', 'drawables'):
-            self.assertIn('scribblings/reference/' + name + '.scrbl', hashes)
+            self.assertIn('skia-doc/scribblings/reference/' + name + '.scrbl', hashes)
 
     def test_missing_old_or_new_include_target_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            shutil.copytree(ROOT / checks.REFERENCE, root / checks.REFERENCE)
+            shutil.copytree(source_path(ROOT, checks.REFERENCE), source_path(root, checks.REFERENCE))
             for name in ('layers', 'raster-buffers'):
-                path = root / checks.REFERENCE / (name + '.scrbl')
+                path = source_path(root, checks.REFERENCE) / (name + '.scrbl')
                 before = path.read_bytes()
                 path.unlink()
                 with self.subTest(chapter=name):
@@ -4276,7 +4278,7 @@ class R3gbRasterTests(unittest.TestCase):
 
     def test_real_inventory_files_remain_byte_pinned(self):
         for row in self.manifest['snapshots']:
-            self.assertEqual(checks.git_blob((ROOT / row['file']).read_bytes()), row['git_blob'])
+            self.assertEqual(checks.git_blob((source_path(ROOT, row['file'])).read_bytes()), row['git_blob'])
 
     def test_buffer_and_pixmap_storage_lengths_are_not_conflated(self):
         text = ' '.join(self.text('raster-buffers').split())
@@ -4434,7 +4436,7 @@ class R3gbRasterTests(unittest.TestCase):
         self.assertIn('not @racket[skia-close!]', ' '.join(self.text('image-operations').split()))
 
     def test_all_new_aliases_have_imports_and_link_probes(self):
-        text = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         imports = dict(re.findall(r'\(prefix-in ([^\s]+) (skia/[^\s)]+)\)', text))
         modules = set(imports.values())
         for row in self.manifest['definitions']:
@@ -4459,7 +4461,7 @@ class R3gbRasterTests(unittest.TestCase):
             self.assertLess(text.index('@(define ' + evaluator), text.index('@title'))
 
     def test_displayed_examples_remain_opt_in_native_code(self):
-        forms = [f for p in (ROOT / checks.REFERENCE).glob('*.scrbl')
+        forms = [f for p in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl')
                  for f, _, _ in checks.commands(p.read_text(), recursive=True)]
         self.assertEqual(forms.count('racketblock'), 319)
         self.assertEqual(forms.count('examples'), 26)
@@ -4499,7 +4501,7 @@ class R3gbRasterTests(unittest.TestCase):
 
 class R3gb1EditorialTests(unittest.TestCase):
     def text(self, name):
-        return (ROOT / checks.REFERENCE / (name + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (name + '.scrbl')).read_text()
 
     def entry(self, name):
         text = self.text('graphics')
@@ -4626,15 +4628,15 @@ class R3gb1EditorialTests(unittest.TestCase):
 class R4aContextTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {row['name']: row for row in cls.definitions}
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def header(self, name):
-        path = ROOT / self.by_name[name]['chapter']
+        path = source_path(ROOT, self.by_name[name]['chapter'])
         return next(h for f, h, _ in checks.commands(path.read_text())
                     if f == 'defproc' and h[0][0] == name)
 
@@ -4828,7 +4830,7 @@ class R4aContextTests(unittest.TestCase):
             self.assertLess(text.index('@(define ' + evaluator), text.index('@title'))
 
     def test_all_40_new_public_paths_appear_in_the_binding_probe(self):
-        text = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for module, names in R4A_MODULES.items():
             prefix = module.removesuffix('.rkt') + ':'
             self.assertIn('(prefix-in ' + prefix + ' skia/' + module.removesuffix('.rkt') + ')',
@@ -4880,7 +4882,7 @@ class R4aContextTests(unittest.TestCase):
                      'reference-gpu-context-test.rkt'):
             self.assertIn('tools/' + name, files)
         for name in ('gpu-providers', 'gpu-contexts', 'gpu-context-options'):
-            self.assertIn('scribblings/reference/' + name + '.scrbl', files)
+            self.assertIn('skia-doc/scribblings/reference/' + name + '.scrbl', files)
         self.assertIn('api/public-api-headless.json', files)
         self.assertIn('api/public-api-gui.json', files)
 
@@ -5018,7 +5020,7 @@ class R4bDocumentationTests(unittest.TestCase):
             self.assertIn('#:use-sources (skia/gpu)', text)
         text = self.text('gpu-synchronization')
         self.assertIn('#:use-sources (skia/gpu-diagnostics)', text)
-        links = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        links = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for name in R4B_PROCEDURES:
             self.assertIn('@racket[gpu:' + name + ']', links)
         self.assertIn('@racket[gpu-diagnostics:gpu-memory-statistics]', links)
@@ -5137,7 +5139,7 @@ class R4bDocumentationTests(unittest.TestCase):
         from reference_review import source_hashes
         files = source_hashes(ROOT, review_inputs=True)
         for chapter in ('gpu-surfaces', 'gpu-images', 'gpu-transfers', 'gpu-synchronization'):
-            self.assertIn('scribblings/reference/' + chapter + '.scrbl', files)
+            self.assertIn('skia-doc/scribblings/reference/' + chapter + '.scrbl', files)
         self.assertNotIn('api/reference-source/gpu.rkt.b64', files)
         self.assertIn('api/public-api-headless.json', files)
         self.assertIn('tools/reference_gpu_surface_evidence.py', files)
@@ -5148,7 +5150,7 @@ class R4bSourceAdditionTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        self.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         # This archived source signature tests the validator itself. It is no
         # longer part of the current inventory, because the refreshed public
         # API snapshot now reflects this export directly.
@@ -5162,9 +5164,9 @@ class R4bSourceAdditionTests(unittest.TestCase):
             'source_copy': 'api/reference-source/gpu.rkt.b64',
         }
         self.manifest['source_verified_additions'] = [item]
-        self.path = self.root / item['source_copy']
+        self.path = source_path(self.root, item['source_copy'])
         self.path.parent.mkdir(parents=True)
-        shutil.copyfile(ROOT / item['source_copy'], self.path)
+        shutil.copyfile(source_path(ROOT, item['source_copy']), self.path)
 
     def check(self):
         return checks.source_addition_exports(self.root, self.manifest)
@@ -5206,7 +5208,7 @@ class R4bSourceAdditionTests(unittest.TestCase):
             self.check()
 
     def test_source_copy_must_match_an_available_checkout(self):
-        (self.root / 'gpu.rkt').write_text('#lang racket/base\n')
+        (source_path(self.root, 'gpu.rkt')).write_text('#lang racket/base\n')
         with self.assertRaises(checks.CheckError):
             self.check()
 
@@ -5346,15 +5348,15 @@ class R4bBuildPlanTests(unittest.TestCase):
 class R4cInteropTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {d['name']: d for d in cls.definitions}
 
     def text(self, name):
-        return (ROOT / checks.REFERENCE / (name + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (name + '.scrbl')).read_text()
 
     def header(self, name):
-        chapter = ROOT / self.by_name[name]['chapter']
+        chapter = source_path(ROOT, self.by_name[name]['chapter'])
         for form, header, _ in checks.commands(chapter.read_text()):
             if form == 'defproc' and header[0][0] == name:
                 return header
@@ -5488,7 +5490,7 @@ class R4cInteropTests(unittest.TestCase):
             self.assertIn(phrase, text)
 
     def test_link_probe_mentions_every_new_public_alias(self):
-        text = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        text = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         prefixes = {
             'skia/gpu': 'gpu:', 'skia/gpu-diagnostics': 'gpu-diagnostics:',
             'skia/gpu-egl': 'gpu-egl:', 'skia/gpu-racket-gl': 'gpu-racket-gl:',
@@ -5525,7 +5527,7 @@ class R4cInteropTests(unittest.TestCase):
         files = source_hashes(ROOT, review_inputs=True)
         for chapter in ('gpu-opengl-hosts', 'gpu-diagnostics', 'gpu-gl-interop',
                         'gpu-external-resources', 'gpu-native-handoffs'):
-            self.assertIn('scribblings/reference/' + chapter + '.scrbl', files)
+            self.assertIn('skia-doc/scribblings/reference/' + chapter + '.scrbl', files)
         self.assertIn('tools/reference_gpu_interop_cases.py', files)
         self.assertIn('tools/reference-gpu-interop-pure-test.rkt', files)
         self.assertIn('api/public-api-headless.json', files)
@@ -5535,15 +5537,15 @@ class R4cInteropTests(unittest.TestCase):
 class R4dPresentationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {d['name']: d for d in cls.definitions}
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def header(self, name):
-        path = ROOT / self.by_name[name]['chapter']
+        path = source_path(ROOT, self.by_name[name]['chapter'])
         for form, header, _ in checks.commands(path.read_text()):
             if form == 'defproc' and header[0][0] == name:
                 return header
@@ -5694,7 +5696,7 @@ class R4dPresentationTests(unittest.TestCase):
             self.assertIn(phrase, text)
 
     def test_link_probe_covers_all_r4d_exports(self):
-        links = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        links = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         prefixes = {'skia/gpu': 'gpu:', 'skia/canvas': 'canvas:',
                     'skia/gpu-gui': 'gpu-gui:', 'skia/gpu-canvas': 'gpu-canvas:',
                     'skia/render-canvas': 'render-canvas:', 'skia/gpu-output': 'gpu-output:'}
@@ -5713,7 +5715,7 @@ class R4dPresentationTests(unittest.TestCase):
         self.assertIn('No GUI, native GPU', pure)
 
     def test_examples_are_unchanged_by_r4d(self):
-        forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
+        forms = [(form, header) for path in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
         self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 319)
         self.assertEqual(sum(form == 'examples' for form, _ in forms), 26)
@@ -5730,15 +5732,15 @@ class R4dPresentationTests(unittest.TestCase):
 class R4eDcIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {d['name']: d for d in cls.definitions}
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def header(self, name):
-        path = ROOT / self.by_name[name]['chapter']
+        path = source_path(ROOT, self.by_name[name]['chapter'])
         return next(h for f, h, _ in checks.commands(path.read_text())
                     if f == 'defproc' and h[0][0] == name)
 
@@ -5915,7 +5917,7 @@ class R4eDcIntegrationTests(unittest.TestCase):
                                  ['runtime_check'], 'live')
 
     def test_link_probe_covers_every_r4e_export(self):
-        links = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        links = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         prefixes = {'skia/dc': 'dc:', 'skia/dc-output': 'dc-output:', 'skia/gpu-dc': 'gpu-dc:'}
         for path, names in R4E_MODULES.items():
             module = checks.public_module(path)
@@ -5939,7 +5941,7 @@ class R4eDcIntegrationTests(unittest.TestCase):
             reader.read()
 
     def test_examples_remain_unchanged_by_r4e(self):
-        forms = [(form, header) for path in (ROOT / checks.REFERENCE).glob('*.scrbl')
+        forms = [(form, header) for path in (source_path(ROOT, checks.REFERENCE)).glob('*.scrbl')
                  for form, header, _ in checks.commands(path.read_text(), recursive=True)]
         self.assertEqual(sum(form == 'racketblock' for form, _ in forms), 319)
         self.assertEqual(sum(form == 'examples' for form, _ in forms), 26)
@@ -5947,7 +5949,7 @@ class R4eDcIntegrationTests(unittest.TestCase):
     def test_source_review_contains_r4e_chapters_cases_and_pinned_inventories(self):
         files = review.source_hashes(ROOT, review_inputs=True)
         for chapter in ('racket-dc', 'dc-output', 'gpu-dc'):
-            self.assertIn('scribblings/reference/' + chapter + '.scrbl', files)
+            self.assertIn('skia-doc/scribblings/reference/' + chapter + '.scrbl', files)
         self.assertIn('tools/reference_dc_cases.py', files)
         self.assertIn('tools/reference-dc-integration-pure-test.rkt', files)
         self.assertIn('api/public-api-headless.json', files)
@@ -5957,12 +5959,12 @@ class R4eDcIntegrationTests(unittest.TestCase):
 class R4fPictBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {row['name']: row for row in cls.definitions}
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def test_pict_bridge_closes_the_fresh_inventory(self):
         result = checks.check_source(ROOT, require_complete=True)
@@ -6021,27 +6023,27 @@ class R4fPictBridgeTests(unittest.TestCase):
         self.assertIn('@racketmodname[file/convertible]', prose)
 
     def test_link_probe_covers_all_pict_exports(self):
-        links = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        links = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for name in ('image->pict', 'surface->pict', 'picture->pict'):
             self.assertIn('@racket[pict:' + name + ']', links)
 
     def test_reference_validation_runs_existing_pict_suites(self):
         runner = (ROOT / 'tools/check-reference.py').read_text()
         self.assertIn("run('pict-pure-tests'", runner)
-        self.assertIn("ROOT / 'tests/pict-pure-test.rkt'", runner)
-        self.assertIn("ROOT / 'tests/pict-native-test.rkt'", runner)
+        self.assertIn("source_path(ROOT, 'tests/pict-pure-test.rkt')", runner)
+        self.assertIn("source_path(ROOT, 'tests/pict-native-test.rkt')", runner)
 
 
 class R4gRacketDrawBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / checks.MANIFEST).read_text())
+        cls.manifest = json.loads((source_path(ROOT, checks.MANIFEST)).read_text())
         cls.definitions, cls.chapters = checks.document_definitions(ROOT)
         cls.by_name = {row['name']: row for row in cls.definitions}
         cls.manifest_by_name = {row['name']: row for row in cls.manifest['definitions']}
 
     def text(self, chapter):
-        return (ROOT / checks.REFERENCE / (chapter + '.scrbl')).read_text()
+        return (source_path(ROOT, checks.REFERENCE) / (chapter + '.scrbl')).read_text()
 
     def test_racket_draw_bridge_closes_the_current_inventory(self):
         result = checks.check_source(ROOT, require_complete=True)
@@ -6098,7 +6100,7 @@ class R4gRacketDrawBridgeTests(unittest.TestCase):
                        'Fully transparent output has zero RGB',
                        'at most one final open subpath', 'zero through five'):
             self.assertIn(phrase, prose)
-        links = (ROOT / checks.REFERENCE / 'tests/links.scrbl').read_text()
+        links = (source_path(ROOT, checks.REFERENCE) / 'tests/links.scrbl').read_text()
         for name in ('bitmap->image', 'image->bitmap', 'surface->bitmap',
                      'color%->rgba', 'rgba->color%',
                      'dc-path->skia-path', 'skia-path->dc-path'):
@@ -6109,7 +6111,7 @@ class R4gRacketDrawBridgeTests(unittest.TestCase):
         self.assertIn("run('racket-draw-pure-tests'", runner)
         for source in ('racket-draw-pure-test.rkt', 'racket-draw-native-test.rkt',
                        'racket-draw-consumer-test.rkt'):
-            self.assertIn("ROOT / 'tests/" + source + "'", runner)
+            self.assertIn("source_path(ROOT, 'tests/" + source + "')", runner)
 
 
 if __name__ == '__main__':

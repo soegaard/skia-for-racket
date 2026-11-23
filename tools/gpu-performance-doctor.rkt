@@ -12,8 +12,8 @@
 ;;; Imports and Exports
 ;;;
 (require racket/list racket/path racket/file rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../private/gpu-cache-native.rkt"
-         "../tests/gpu-cache-native-test.rkt" "gpu-performance-work.rkt"
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/private/gpu-cache-native.rkt"
+         "../skia-lib/tests/gpu-cache-native-test.rkt" "gpu-performance-work.rkt"
          "gpu-performance-options.rkt" "gpu-test-host.rkt" "gpu-report.rkt")
 (provide gpu-performance-doctor!)
 

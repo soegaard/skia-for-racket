@@ -12,7 +12,8 @@ from pathlib import Path
 import tempfile
 import urllib.request
 
-from native_packages import (MAX_ARCHIVE, need, read_json, validate_observations,
+from repository_layout import documentation_root
+from native_packages import (ROOT, MAX_ARCHIVE, need, read_json, validate_observations,
                              check_locked_input, json_bytes, sha256,
                              validate_distribution_lock, check_font_input, MAX_FONT)
 
@@ -25,7 +26,7 @@ class HTTPSOnly(urllib.request.HTTPRedirectHandler):
 
 def prepare(lock_path, cache, *, source=None, font_source=None):
     lock = read_json(lock_path)
-    (validate_distribution_lock if 'font_package' in lock else validate_observations)(lock)
+    (validate_distribution_lock if 'documentation_fonts' in lock else validate_observations)(lock)
     need(not cache.exists(), 'cache must be a new directory')
     cache.parent.mkdir(parents=True, exist_ok=True)
     # Entire acquisition validates before a verified cache becomes visible.
@@ -48,20 +49,13 @@ def prepare(lock_path, cache, *, source=None, font_source=None):
                         need(size <= min(MAX_ARCHIVE, record['size']), 'native input exceeds locked size')
                         output.write(chunk)
                 check_locked_input(destination, record)
-        for record in lock.get('font_package', {}).get('files', []):
+        for record in lock.get('documentation_fonts', {}).get('files', []):
             name = record['filename']
             destination = staging / name
-            if source is not None:
-                path = (font_source or source) / name
-                destination.write_bytes(check_font_input(path, record))
-            else:
-                opener = urllib.request.build_opener(HTTPSOnly())
-                with opener.open(record['url'], timeout=120) as response:
-                    need(response.geturl().startswith('https://'), 'insecure font redirect')
-                    data = response.read(min(MAX_FONT, record['size']) + 1)
-                need(len(data) == record['size'], 'font size differs from lock')
-                destination.write_bytes(data)
-                check_font_input(destination, record)
+            # These source assets belong to skia-doc. Candidate preparation
+            # checks/copies the committed files; it never reacquires fonts.
+            path = (font_source or documentation_root(ROOT) / 'fonts') / name
+            destination.write_bytes(check_font_input(path, record))
         (staging / 'verified-inputs.json').write_bytes(json_bytes(dict(
             schema=1, lock_sha256=sha256(lock_path.read_bytes()),
             archives={n: r['sha256'] for n, r in lock['archives'].items()},

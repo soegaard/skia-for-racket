@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Headless validator tests with mocked processes, not live GPU validation."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import importlib.util
 import io
@@ -22,11 +23,11 @@ class Checks(unittest.TestCase):
                  system='linux', inspector_only=False, directory_only=False):
         before=Path.cwd()
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);(root/'tests').mkdir();(root/'private').mkdir()
+            root=Path(temp);(source_path(root, 'tests')).mkdir();(source_path(root, 'private')).mkdir()
             for name in ('gpu-egl-native-test','gpu-gl-interop-native-test','gpu-egl-pure-test',
                          'gpu-presenter-native-test','gpu-cross-backend-native-test'):
-                (root/'tests'/f'{name}.rkt').write_text('#lang racket/base\n')
-            (root/'private/gpu-egl-system.rkt').write_text('#lang racket/base\n')
+                (source_path(root, 'tests')/f'{name}.rkt').write_text('#lang racket/base\n')
+            (source_path(root, 'private/gpu-egl-system.rkt')).write_text('#lang racket/base\n')
             calls=[]; environments=[]
             def fake(argv,**kwargs):
                 calls.append(argv);environments.append(kwargs.get('env'))
@@ -45,7 +46,7 @@ class Checks(unittest.TestCase):
                 with patch.dict(os.environ,env),patch.object(v,'ROOT',root),patch.object(v.sys,'platform',system),\
                      patch.object(v.subprocess,'run',side_effect=fake),contextlib.redirect_stdout(io.StringIO()),\
                      contextlib.redirect_stderr(io.StringIO()): rc=v.main()
-                directory,=(root/'output').iterdir()
+                directory,=(root / 'output').iterdir()
                 report=json.loads((directory/('validation.json' if rc==0 else 'validation.failed.json')).read_text())
                 return rc,calls,environments,report
             finally:os.chdir(before)

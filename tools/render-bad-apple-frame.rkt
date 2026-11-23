@@ -8,9 +8,9 @@
 ;; acceptance indices against an independent SVG renderer at exactly 480 by 360 pixels.
 
 (require racket/cmdline
-         "../examples/bad-apple/data.rkt"
-         "../examples/bad-apple/scene.rkt"
-         "../main.rkt")
+         "../skia-lib/examples/bad-apple/data.rkt"
+         "../skia-lib/examples/bad-apple/scene.rkt"
+         "../skia-lib/main.rkt")
 
 (module+ main
   (define data-path #f)

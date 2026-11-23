@@ -1,5 +1,6 @@
 """Independent evidence checks for 0.75b. Fixtures are not native execution."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import json
 from pathlib import Path
@@ -35,7 +36,7 @@ def inspect(root:Path,token:str,*,require_renderers=False,run=None):
     root=Path(root)
     paths={}
     for name in FILES:
-        p=root/name;need(p.is_file() and not p.is_symlink(),'missing/unsafe evidence: '+name)
+        p=source_path(root, name);need(p.is_file() and not p.is_symlink(),'missing/unsafe evidence: '+name)
         need(p.stat().st_size<=16*1024*1024,'oversized evidence: '+name);paths[name]=p
     native=receipt(json.loads(paths['native.json'].read_text()),token)
     need(paths['copy.bin'].read_bytes()==bytes(i%251 for i in range(131079)),'native streamed copy differs')
@@ -79,7 +80,7 @@ def inspect(root:Path,token:str,*,require_renderers=False,run=None):
         executable=shutil.which(tool)
         if not executable:
             need(not require_renderers,'required renderer unavailable: '+tool);continue
-        target=root/('rendered-'+kind+'.png')
+        target=source_path(root, 'rendered-'+kind+'.png')
         if kind=='pdf':command=[executable,'-singlefile','-r','72','-png',str(paths['document.pdf']),str(target.with_suffix(''))]
         else:command=[executable,'--width','64','--height','48','--output',str(target),str(paths['document.svg'])]
         if run:run(command)

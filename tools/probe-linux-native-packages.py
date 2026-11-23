@@ -6,6 +6,7 @@ unmodified NuGet inputs, and the local experimental native ZIPs. This checks
 feasibility; it cannot certify a catalog candidate or an earlier glibc baseline.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 import json

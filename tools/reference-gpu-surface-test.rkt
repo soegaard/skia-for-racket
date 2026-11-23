@@ -16,7 +16,7 @@
 ;; Explicit real-backend acceptance. No unavailable-backend skips or CPU fallback.
 (require rackunit rackunit/text-ui json racket/cmdline racket/list racket/runtime-path
          syntax/modread skia skia/gpu skia/gpu-diagnostics
-         "../private/gpu-io-trace.rkt")
+         "../skia-lib/private/gpu-io-trace.rkt")
 
 ;;;
 ;;; Backend Selection and Evidence Counters
@@ -61,7 +61,7 @@
 ; reference-directory : path?
 ;   Locates ../scribblings/reference relative to this module, independent of the invoking
 ;   directory.
-(define-runtime-path reference-directory "../scribblings/reference")
+(define-runtime-path reference-directory "../skia-doc/scribblings/reference")
 
 ; anchor : namespace-anchor?
 ;   Gives displayed GPU helpers access to the same imports as their native acceptance cases.

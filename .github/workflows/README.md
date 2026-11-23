@@ -1,5 +1,15 @@
 # GitHub Actions workflows
 
+November 23 Git-layout amendment: the current source packages are `skia`,
+`skia-lib` and `skia-doc`, with two macOS/Linux native packages and the existing
+Windows NuGet exception. Fonts belong to `skia-doc`; there is no standalone font
+package. The old unsplit full gate passed at `7693d907` / run `45096827302`
+attempt 2. The split needs fresh CI and public Git-source checks. See
+[the current runbook](../../docs/PACKAGE-PUBLICATION.md) and
+[local validation](../../docs/GIT-PACKAGE-VALIDATION.md); earlier dated records below are
+historical. No publication is authorized by this implementation.
+
+
 These YAML files connect repository checks in [tools/](../../tools/README.md)
 to GitHub runners and retained validation artifacts. Runner/platform requirements
 and evidence rules are documented in [CI](../../docs/CI.md).

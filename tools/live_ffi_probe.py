@@ -5,6 +5,7 @@ No mocked native workers, fallback buffering, C compiler, CMake, or extra shared
 library. Compilation here means Racket's ordinary `raco make` only.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -19,7 +20,7 @@ import tempfile
 import uuid
 import xml.etree.ElementTree as ET
 import importlib.util
-_FIXTURES = Path(__file__).resolve().parents[1] / 'tests/live-ffi-probe/fixtures.py'
+_FIXTURES = source_path(Path(__file__).resolve().parents[1], 'tests/live-ffi-probe/fixtures.py')
 _spec = importlib.util.spec_from_file_location('live_ffi_probe_fixtures', _FIXTURES)
 fixtures = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fixtures)
@@ -141,11 +142,11 @@ def run_probe(root, output, racket, run, require_renderers=False):
     """Execute the retained 25-case native gate in a separate Racket process."""
     output=Path(output);output.mkdir(parents=True,exist_ok=False)
     token=uuid.uuid4().hex
-    identity=json.loads(run([racket,root/'tools/live-stream-identity.rkt']))
+    identity=json.loads(run([racket,root / 'tools/live-stream-identity.rkt']))
     need(identity.get('vm')=='chez-scheme' and identity.get('os_threads') is True,
          'requires Racket CS with OS-thread support')
     fixtures.write(output/'fixtures')
-    completion=run([racket,root/'tests/live-ffi-probe/probe.rkt', '--library',identity['path'],
+    completion=run([racket,source_path(root, 'tests/live-ffi-probe/probe.rkt'), '--library',identity['path'],
                     '--directory',output/'native','--fixtures',output/'fixtures','--token',token])
     need(len(re.findall(r'^pure-ffi-native: 25 cases, 0 failures\s*$',completion,re.M))==1,
          'missing or duplicate native probe completion')

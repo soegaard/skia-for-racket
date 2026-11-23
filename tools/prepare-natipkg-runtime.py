@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Stage a hash-pinned official Linux pkg-build runtime in a new CI directory."""
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import os

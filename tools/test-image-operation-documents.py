@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic PDF/SVG and full-receipt tests for the 0.72 inspectors, not Skia rendering."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import base64
 import copy
 import importlib.util
@@ -113,30 +114,30 @@ class Documents(unittest.TestCase):
         make_matrix(self.root);result=iv.inspect_documents(self.root,'synthetic-only')
         self.assertEqual(len(result['documents']),12);self.assertFalse(result['independent_renderers_executed'])
     def test_wrong_PDF_image_dimensions(self):
-        row=src.synthetic_row();make_pdf(self.root/'bad.pdf',row,scene_image('offset',row),dimensions=(96,64))
-        with self.assertRaises(ValueError):iv.inspect_pdf(self.root/'bad.pdf',row)
+        row=src.synthetic_row();make_pdf(self.root / 'bad.pdf',row,scene_image('offset',row),dimensions=(96,64))
+        with self.assertRaises(ValueError):iv.inspect_pdf(self.root / 'bad.pdf',row)
     def test_wrong_PDF_link(self):
-        row=src.synthetic_row();make_pdf(self.root/'bad.pdf',row,scene_image('offset',row),link=False)
-        with self.assertRaises(ValueError):iv.inspect_pdf(self.root/'bad.pdf',row)
+        row=src.synthetic_row();make_pdf(self.root / 'bad.pdf',row,scene_image('offset',row),link=False)
+        with self.assertRaises(ValueError):iv.inspect_pdf(self.root / 'bad.pdf',row)
     def test_PDF_vector_marker_missing(self):
-        row=src.synthetic_row();make_pdf(self.root/'bad.pdf',row,scene_image('offset',row),marker=False)
-        with self.assertRaises(ValueError):iv.inspect_pdf(self.root/'bad.pdf',row)
+        row=src.synthetic_row();make_pdf(self.root / 'bad.pdf',row,scene_image('offset',row),marker=False)
+        with self.assertRaises(ValueError):iv.inspect_pdf(self.root / 'bad.pdf',row)
     def test_PDF_unexpected_text(self):
-        row=src.synthetic_row();make_pdf(self.root/'bad.pdf',row,scene_image('offset',row),text=True)
-        with self.assertRaises(ValueError):iv.inspect_pdf(self.root/'bad.pdf',row)
+        row=src.synthetic_row();make_pdf(self.root / 'bad.pdf',row,scene_image('offset',row),text=True)
+        with self.assertRaises(ValueError):iv.inspect_pdf(self.root / 'bad.pdf',row)
     def test_wrong_SVG_image_dimensions(self):
-        row=src.synthetic_row(kind='svg');make_svg(self.root/'bad.svg',row,scene_image('offset',row),dimensions=(96,64))
-        with self.assertRaises(ValueError):iv.inspect_svg(self.root/'bad.svg',row)
+        row=src.synthetic_row(kind='svg');make_svg(self.root / 'bad.svg',row,scene_image('offset',row),dimensions=(96,64))
+        with self.assertRaises(ValueError):iv.inspect_svg(self.root / 'bad.svg',row)
     def test_wrong_SVG_link(self):
-        row=src.synthetic_row(kind='svg');make_svg(self.root/'bad.svg',row,scene_image('offset',row),link=False)
-        with self.assertRaises(ValueError):iv.inspect_svg(self.root/'bad.svg',row)
+        row=src.synthetic_row(kind='svg');make_svg(self.root / 'bad.svg',row,scene_image('offset',row),link=False)
+        with self.assertRaises(ValueError):iv.inspect_svg(self.root / 'bad.svg',row)
     def test_SVG_external_image(self):
-        row=src.synthetic_row(kind='svg');p=self.root/'bad.svg';make_svg(p,row,scene_image('offset',row))
+        row=src.synthetic_row(kind='svg');p=self.root / 'bad.svg';make_svg(p,row,scene_image('offset',row))
         text=p.read_text();start=text.index('data:image/png;base64,');end=text.index('"',start)
         p.write_text(text[:start]+'https://example.invalid/image.png'+text[end:])
         with self.assertRaises(ValueError):iv.inspect_svg(p,row)
     def test_SVG_DTD_rejected(self):
-        row=src.synthetic_row(kind='svg');p=self.root/'bad.svg';make_svg(p,row,scene_image('offset',row))
+        row=src.synthetic_row(kind='svg');p=self.root / 'bad.svg';make_svg(p,row,scene_image('offset',row))
         p.write_text('<!DOCTYPE svg>'+p.read_text())
         with self.assertRaises(ValueError):iv.inspect_svg(p,row)
     def test_GPU_synthetic_matrix(self):
@@ -146,7 +147,7 @@ class Documents(unittest.TestCase):
 def reject_document(change):
     def test(self):
         value=make_matrix(self.root);change(value)
-        (self.root/'documents.json').write_text(json.dumps(value))
+        (self.root / 'documents.json').write_text(json.dumps(value))
         with self.assertRaises((ValueError,TypeError,KeyError)):iv.inspect_documents(self.root,'synthetic-only')
     return test
 for name,change in {
@@ -163,7 +164,7 @@ for name,change in {
 def reject_GPU(change):
     def test(self):
         value=make_gpu(self.root);change(value)
-        (self.root/'gpu.json').write_text(json.dumps(value))
+        (self.root / 'gpu.json').write_text(json.dumps(value))
         with self.assertRaises((ValueError,TypeError,KeyError)):iv.inspect_gpu(self.root,'synthetic-only','egl','hardware')
     return test
 for name,change in {

@@ -11,8 +11,8 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require json racket/cmdline racket/file racket/list "../main.rkt"
-         (only-in "../private/live-port-runtime.rkt" active-operation-count in-port-service?))
+(require json racket/cmdline racket/file racket/list "../skia-lib/main.rkt"
+         (only-in "../skia-lib/private/live-port-runtime.rkt" active-operation-count in-port-service?))
 
 ;;;
 ;;; Diagnostic Operations

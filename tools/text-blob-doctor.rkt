@@ -11,7 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require racket/cmdline racket/file racket/list json "../main.rkt" "../tests/text-blob-scenes.rkt")
+(require racket/cmdline racket/file racket/list json "../skia-lib/main.rkt" "../skia-lib/tests/text-blob-scenes.rkt")
 (provide generate-text-blob-documents)
 
 ;;;

@@ -14,10 +14,10 @@
 ;; Actual HWND/swap-chain tests on the owning Racket GUI eventspace. This is
 ;; separate from the offscreen WARP gate; passing is not screen certification.
 (require json racket/class racket/cmdline racket/file racket/path racket/list
-         rackunit/text-ui "../main.rkt" "../gpu.rkt"
-         "gpu-presentation-host.rkt" "../private/gpu-io-trace.rkt"
-         (submod "../private/gpu-presenter-d3d12.rkt" testing)
-         "../tests/gpu-presenter-native-test.rkt")
+         rackunit/text-ui "../skia-lib/main.rkt" "../skia-lib/gpu.rkt"
+         "gpu-presentation-host.rkt" "../skia-lib/private/gpu-io-trace.rkt"
+         (submod "../skia-lib/private/gpu-presenter-d3d12.rkt" testing)
+         "../skia-lib/tests/gpu-presenter-native-test.rkt")
 (provide dxgi-doctor!)
 
 ;;;

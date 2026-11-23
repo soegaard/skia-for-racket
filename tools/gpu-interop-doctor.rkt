@@ -12,9 +12,9 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/path rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../gpu-gl-interop.rkt"
-         "../tests/gpu-gl-fixtures.rkt" "../tests/gpu-gl-interop-native-test.rkt"
-         "../private/gpu-gl-interop-native.rkt" "../private/gpu-io-trace.rkt"
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/gpu-gl-interop.rkt"
+         "../skia-lib/tests/gpu-gl-fixtures.rkt" "../skia-lib/tests/gpu-gl-interop-native-test.rkt"
+         "../skia-lib/private/gpu-gl-interop-native.rkt" "../skia-lib/private/gpu-io-trace.rkt"
          "gpu-test-host.rkt" "gpu-report.rkt")
 (provide gpu-interop-doctor!)
 

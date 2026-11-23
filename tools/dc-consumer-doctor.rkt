@@ -12,8 +12,8 @@
 ;;; Imports and Exports
 ;;;
 (require racket/class racket/list racket/file racket/path json rackunit/text-ui
-         (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
-         "../tests/dc-consumer-fixtures.rkt" "../tests/dc-consumer-native-test.rkt")
+         (prefix-in rd: racket/draw) (prefix-in sk: "../skia-lib/main.rkt") "../skia-lib/dc.rkt"
+         "../skia-lib/tests/dc-consumer-fixtures.rkt" "../skia-lib/tests/dc-consumer-native-test.rkt")
 (provide dc-consumer-doctor!)
 
 ;;;

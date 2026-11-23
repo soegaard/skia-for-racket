@@ -7,6 +7,7 @@ replaced with a hidden window/Xvfb. GPU_MODE=optional permits only initial
 unavailability.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import json
 import os
 from pathlib import Path
@@ -34,8 +35,8 @@ def main() -> int:
     surface = os.environ.get('SKIA_EGL_SURFACE','surfaceless')
     hardware = os.environ.get('REQUIRE_HARDWARE','0') == '1'
     commands=[];skips=[];verified=False; output_verified=False; performance_verified=False; identity=''
-    (ROOT/'output').mkdir(exist_ok=True)
-    directory=Path(tempfile.mkdtemp(prefix='gpu-0.46-headless-',dir=ROOT/'output'))
+    (ROOT / 'output').mkdir(exist_ok=True)
+    directory=Path(tempfile.mkdtemp(prefix='gpu-0.46-headless-',dir=ROOT / 'output'))
     env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1',SKIA_GPU_VALIDATION_RUN=directory.name)
     for key in DISPLAY_VARIABLES: env.pop(key,None)
     def run(argv, *, capture=False):
@@ -78,17 +79,17 @@ def main() -> int:
                    'tools/gpu-performance-options.rkt','tools/ci-identity.rkt','tools/ci-import-smoke.rkt','tools/ci-package-smoke.rkt']
         # The suites below load no GUI. GUI-native suites and their doctors are
         # intentionally absent, rather than relying on a DISPLAY being present.
-        modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('*.rkt'))
+        modules += [str(p.relative_to(ROOT)) for p in sorted((source_path(ROOT, 'tests')).glob('*.rkt'))
                     if p.name not in ('gpu-presenter-native-test.rkt','gpu-cross-backend-native-test.rkt')]
-        modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu-egl*.rkt'))]
-        modules += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'private').glob('gpu-gl*.rkt'))]
+        modules += [str(p.relative_to(ROOT)) for p in sorted((source_path(ROOT, 'private')).glob('gpu-egl*.rkt'))]
+        modules += [str(p.relative_to(ROOT)) for p in sorted((source_path(ROOT, 'private')).glob('gpu-gl*.rkt'))]
         modules += ['private/gpu-driver-egl.rkt','private/gpu-interop-guard.rkt']
         run([racket,'-l','raco','--','make',*dict.fromkeys(modules)])
-        run([racket,'-e','(require "main.rkt") (skia-check!) (harfbuzz-check!)'])
+        run([racket,'-e','(require "skia-lib/main.rkt") (skia-check!) (harfbuzz-check!)'])
         run(['bash','tools/audit-symbols.sh']);run(['bash','tools/audit-harfbuzz-symbols.sh'])
         for name in ('doctor','portable-drawing-doctor','color-filter-doctor','raster-buffer-doctor'):
             run([racket,f'tools/{name}.rkt'])
-        run([racket,'run-tests.rkt'])
+        run([racket,source_path(ROOT, 'run-tests.rkt').relative_to(ROOT)])
         if mode=='off': skips.append('Live EGL checks not run (GPU_MODE=off)')
         else:
             options=['--egl-platform',platform,'--egl-device-index',str(index),'--egl-surface',surface]

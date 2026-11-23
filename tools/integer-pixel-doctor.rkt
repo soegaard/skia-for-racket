@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/list json
-         "../main.rkt" "../tests/integer-pixel-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/integer-pixel-fixtures.rkt")
 (provide generate-integer-pixel-documents)
 
 ;;;

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Windows x64 native interop validation. No implicit fallback or optional skip."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import os
 from pathlib import Path

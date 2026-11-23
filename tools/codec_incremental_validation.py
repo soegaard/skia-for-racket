@@ -1,5 +1,6 @@
 """Independent native incremental progress/pixel inspector; never decodes via Skia."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import hashlib
 import io
 import json
@@ -51,7 +52,7 @@ def png_parts(data):
 
 def file_bytes(root,name):
     need(type(name) is str and re.fullmatch(r'[A-Za-z0-9-]+\.(?:pixels|png|bin)',name),'unsafe evidence filename')
-    p=root/name
+    p=source_path(root, name)
     need(p.is_file() and not p.is_symlink(),'missing/symlink evidence: '+name)
     return p.read_bytes()
 
@@ -79,7 +80,7 @@ def statistics(stats,*,decode_calls,retained,pixel_bytes=None):
 def inspect(directory,token):
     from PIL import Image
     root=Path(directory)
-    p=root/'incremental.json'
+    p=root / 'incremental.json'
     need(p.is_file() and not p.is_symlink(),'missing/symlink receipt')
     obj=json.loads(p.read_text(encoding='utf-8'),object_pairs_hook=pairs_unique)
     integer(obj.get('schema'),1,'wrong schema')

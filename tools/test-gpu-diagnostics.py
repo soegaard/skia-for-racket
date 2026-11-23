@@ -5,6 +5,7 @@ These tests validate the inspector/validator, never claim to execute Racket or G
 operations. RepositorySources is mandatory when run from the complete checkout.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -57,7 +58,7 @@ def synthetic_evidence(root,token=TOKEN,backend='egl',adapter='hardware'):
             if 15<=x<28 and 10<=y<20:color=(11,179,67,255)
             raw.extend(color)
     for name in names:
-        (root/(name+'.rgba')).write_bytes(raw)
+        (source_path(root, name+'.rgba')).write_bytes(raw)
         captures.append(dict(name=name,file=name+'.rgba',width=32,height=24))
     interfaces=[]
     if backend=='egl':
@@ -73,28 +74,28 @@ def synthetic_evidence(root,token=TOKEN,backend='egl',adapter='hardware'):
                  gpu_executed=True,driver_memory_measured=False,process_memory_measured=False,gles_rendering_executed=False,
                  webgl_rendering_executed=False,cases=v.GPU_CASES,failures=0,labels=list(v.LABELS),cleanup_errors=[],
                  reports=reports,diagnostic_traces=traces,captures=captures,interfaces=interfaces,lifecycle=life)
-    (root/'gpu.json').write_text(json.dumps(receipt),encoding='utf-8')
+    (root / 'gpu.json').write_text(json.dumps(receipt),encoding='utf-8')
     return receipt
 
 class Evidence(unittest.TestCase):
     def setUp(self):
         t=tempfile.TemporaryDirectory();self.addCleanup(t.cleanup);self.root=Path(t.name)
         self.data=synthetic_evidence(self.root)
-    def write(self): (self.root/'gpu.json').write_text(json.dumps(self.data),encoding='utf-8')
+    def write(self): (self.root / 'gpu.json').write_text(json.dumps(self.data),encoding='utf-8')
     def rejects(self):
         self.write()
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
-    def test_valid_egl(self):self.assertEqual(v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')['status'],'passed')
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
+    def test_valid_egl(self):self.assertEqual(v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')['status'],'passed')
     def test_valid_metal(self):
-        synthetic_evidence(self.root,backend='metal');self.assertEqual(v.inspect(self.root/'gpu.json',TOKEN,'metal','hardware')['gl_factories_executed'],[])
+        synthetic_evidence(self.root,backend='metal');self.assertEqual(v.inspect(self.root / 'gpu.json',TOKEN,'metal','hardware')['gl_factories_executed'],[])
     def test_valid_warp(self):
-        synthetic_evidence(self.root,backend='direct3d',adapter='warp');v.inspect(self.root/'gpu.json',TOKEN,'direct3d','warp')
+        synthetic_evidence(self.root,backend='direct3d',adapter='warp');v.inspect(self.root / 'gpu.json',TOKEN,'direct3d','warp')
     def test_no_invented_memory_total(self):
-        r=v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware');self.assertNotIn('total_bytes',r);self.assertFalse(r['driver_or_process_memory_measured'])
+        r=v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware');self.assertNotIn('total_bytes',r);self.assertFalse(r['driver_or_process_memory_measured'])
     def test_usage_not_required_to_equal_overlapping_dump_fields(self):
-        self.data['reports']['cache_after']['budgeted_bytes']=5555;self.write();v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        self.data['reports']['cache_after']['budgeted_bytes']=5555;self.write();v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
     def test_uint64_exactness(self):
-        self.data['reports']['light']['entries'][0]['value']=2**64-1;self.write();v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        self.data['reports']['light']['entries'][0]['value']=2**64-1;self.write();v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
     def test_scope_substitution(self):self.data['reports']['light']['scope']=v.GLOBAL_SCOPE;self.rejects()
     def test_truncation_cannot_hide_full_dump(self):self.data['reports']['light']['truncated']=True;self.rejects()
     def test_dropped_counter(self):self.data['reports']['light']['dropped_count']=1;self.rejects()
@@ -129,19 +130,19 @@ class Evidence(unittest.TestCase):
     def test_failed_release(self):self.data['lifecycle']['after_release']['failed_releases']=1;self.rejects()
     def test_no_children_at_abandon(self):self.data['lifecycle']['after_release']['live_children']=0;self.rejects()
     def test_pixel_corruption(self):
-        p=self.root/'after.rgba';data=bytearray(p.read_bytes());data[200]^=1;p.write_bytes(data)
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        p=self.root / 'after.rgba';data=bytearray(p.read_bytes());data[200]^=1;p.write_bytes(data)
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
     def test_missing_pixels(self):
-        (self.root/'after.rgba').unlink()
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        (self.root / 'after.rgba').unlink()
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
     def test_duplicate_json(self):
-        p=self.root/'gpu.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
+        p=self.root / 'gpu.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
         with self.assertRaises(ValueError):v.inspect(p,TOKEN,'egl','hardware')
     def test_symlink_pixel(self):
-        p=self.root/'after.rgba';p.unlink()
-        try:p.symlink_to(self.root/'before.rgba')
+        p=self.root / 'after.rgba';p.unlink()
+        try:p.symlink_to(self.root / 'before.rgba')
         except OSError:self.skipTest('host cannot create test symlink')
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
 
 # Every field below changes a valid receipt into invalid/misleading evidence.
 def change_test(field,value):
@@ -185,12 +186,12 @@ class BoundsAndCompletion(unittest.TestCase):
 
 class Orchestration(unittest.TestCase):
     def invoke(self,mode=None,*,failure=None,partial=False,manifest_change=False,backend='egl',missing_racket=False,timeout=False):
-        spec=importlib.util.spec_from_file_location('diagnostics_driver_test',ROOT/'tools/validate-gpu-diagnostics.py')
+        spec=importlib.util.spec_from_file_location('diagnostics_driver_test',ROOT / 'tools/validate-gpu-diagnostics.py')
         m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
         commands=[]
         with tempfile.TemporaryDirectory(prefix='diagnostics source ') as tmp:
             root=Path(tmp)
-            (root/'run-tests.rkt').write_text('(define-runtime-path another "tests/unrelated-native-test.rkt")\n')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path another "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 c=list(map(str,command));commands.append(c);name=Path(c[1]).name;out=kwargs['stdout']
                 if name==failure:
@@ -203,11 +204,11 @@ class Orchestration(unittest.TestCase):
                     receipt=Path(c[c.index('--report')+1]);token=c[c.index('--token')+1]
                     synthetic_evidence(receipt.parent,token,backend,'hardware')
                 out.flush();return subprocess.CompletedProcess(c,0)
-            args=['--racket','definitely-no-racket' if missing_racket else sys.executable,'--directory',str(root/'out'),'--backend',backend]
+            args=['--racket','definitely-no-racket' if missing_racket else sys.executable,'--directory',str(root / 'out'),'--backend',backend]
             if mode is not None:args+=['--regressions',mode]
             with patch.object(m.shutil,'which',return_value=None if missing_racket else sys.executable),patch.object(m.subprocess,'run',side_effect=execute),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 rc=m.main(args,root=root)
-            report=json.loads((root/'out/validation.json').read_text())
+            report=json.loads((root / 'out/validation.json').read_text())
         return rc,report,commands
     def test_default_full(self):
         rc,r,c=self.invoke();self.assertEqual(rc,0);self.assertTrue(r['regressions_passed']);self.assertEqual(r['regressions_status'],'passed')
@@ -243,50 +244,50 @@ class Orchestration(unittest.TestCase):
 class PayloadSources(unittest.TestCase):
     def test_case_counts(self):
         for kind,n in [('pure',v.PURE_CASES),('native',v.NATIVE_CASES)]:
-            text=(ROOT/f'tests/gpu-diagnostics-{kind}-test.rkt').read_text()
+            text=(source_path(ROOT, f'tests/gpu-diagnostics-{kind}-test.rkt')).read_text()
             self.assertEqual(text.count('(test-case '),n)
             self.assertIn(f'(define gpu-diagnostics-{kind}-test-count {n})',text)
     def test_gpu_labels_match_required_receipt(self):
-        text=(ROOT/'tests/gpu-diagnostics-gpu-test.rkt').read_text()
+        text=(source_path(ROOT, 'tests/gpu-diagnostics-gpu-test.rkt')).read_text()
         self.assertEqual(re.findall(r'^      \(test! "([^"]+)"',text,re.M),list(v.LABELS))
         self.assertIn(f'(define GPU-CASES {v.GPU_CASES})',text)
     def test_no_transfer_or_completion_in_diagnostic_module(self):
-        text=(ROOT/'private/gpu-diagnostics-native.rkt').read_text()
+        text=(source_path(ROOT, 'private/gpu-diagnostics-native.rkt')).read_text()
         for forbidden in ('gr_direct_context_flush','gr_direct_context_submit','read_pixels','sk_image_make_raster','gpu-wait!'):
             self.assertNotIn(forbidden,text)
     def test_no_third_party_callback_table(self):
-        text=(ROOT/'private/gpu-diagnostics-native.rkt').read_text()
+        text=(source_path(ROOT, 'private/gpu-diagnostics-native.rkt')).read_text()
         self.assertIn('collect-memory-statistics/native',text);self.assertNotIn('sk_managedtracememorydump_set_procs',text)
     def test_explicit_standard_checked(self):
-        text=(ROOT/'private/gpu-gl-interface.rkt').read_text()
+        text=(source_path(ROOT, 'private/gpu-gl-interface.rkt')).read_text()
         self.assertIn('gl-version-standard',text);self.assertIn('gl-interface-standard',text)
         self.assertLess(text.index('gl-interface-standard'),text.index('(native-call mode #f callback)'))
     def test_retained_interface_destroyed_once(self):
-        text=(ROOT/'private/gpu-gl-interface.rkt').read_text();part=text[text.index('(define (release-gl-interface!'):]
+        text=(source_path(ROOT, 'private/gpu-gl-interface.rkt')).read_text();part=text[text.index('(define (release-gl-interface!'):]
         self.assertLess(part.index('(hash-remove!'),part.index("(native-call 'unref"))
 
-@unittest.skipUnless((ROOT/'gpu.rkt').is_file(),'complete-checkout integration, not available in payload-only delivery')
+@unittest.skipUnless((source_path(ROOT, 'gpu.rkt')).is_file(),'complete-checkout integration, not available in payload-only delivery')
 class RepositorySources(unittest.TestCase):
     def test_registry_and_export_wiring(self):
-        s=(ROOT/'private/gpu-native.rkt').read_text()
+        s=(source_path(ROOT, 'private/gpu-native.rkt')).read_text()
         for name in ('gr_direct_context_dump_memory_statistics','gr_glinterface_assemble_interface','gr_glinterface_assemble_gles_interface','gr_glinterface_assemble_webgl_interface','gr_glinterface_has_extension'):
             self.assertEqual(len(re.findall(r'\(define-gpu-native\s+\w+\s+'+name+r'\b',s)),1)
-        self.assertIn('(all-from-out "gpu-diagnostics.rkt")',(ROOT/'gpu.rkt').read_text())
-        self.assertIn("'test-gpu-diagnostics.py'",(ROOT/'tools/ci.py').read_text())
+        self.assertIn('(all-from-out "gpu-diagnostics.rkt")',(source_path(ROOT, 'gpu.rkt')).read_text())
+        self.assertIn("'test-gpu-diagnostics.py'",(ROOT / 'tools/ci.py').read_text())
     def test_workflow_preserves_separate_gates(self):
-        s=(ROOT/'.github/workflows/gpu-context-controls.yml').read_text()
+        s=(ROOT / '.github/workflows/gpu-context-controls.yml').read_text()
         self.assertEqual(s.count('tools/validate-gpu-diagnostics.py'),2)
         self.assertEqual(s.count('tools/validate-gpu-context-controls.py'),2)
         calls=re.findall(r'python tools/validate-gpu-diagnostics\.py(.*?)(?=\n\s*- name:|\Z)',s,re.S)
         self.assertEqual(len(calls),2)
         for call in calls:self.assertIn('--regressions none',call)
-        auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
+        auto={p.name for p in (ROOT / '.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
         self.assertEqual(auto,{'ci.yml','acceptance.yml','api-inventory.yml','catalog-package.yml'})
     def test_public_docs_and_global_scope_preserved(self):
-        s=(ROOT/'docs/GPU-DIAGNOSTICS.md').read_text()
+        s=(ROOT / 'docs/GPU-DIAGNOSTICS.md').read_text()
         for name in ('gpu-memory-statistics','gpu-gl-interface-info','gpu-gl-has-extension?','#:gl-interface'):self.assertIn(name,s)
-        self.assertIn('process-global-skia-caches',(ROOT/'private/graphics-data.rkt').read_text())
-        self.assertIn('gpu-context-skia-resources',(ROOT/'private/graphics-data.rkt').read_text())
-        self.assertIn('(define version "0.79")',(ROOT/'info.rkt').read_text())
+        self.assertIn('process-global-skia-caches',(source_path(ROOT, 'private/graphics-data.rkt')).read_text())
+        self.assertIn('gpu-context-skia-resources',(source_path(ROOT, 'private/graphics-data.rkt')).read_text())
+        self.assertIn('(define version "0.79")',(source_path(ROOT, 'info.rkt')).read_text())
 
 if __name__=='__main__':unittest.main(verbosity=2)

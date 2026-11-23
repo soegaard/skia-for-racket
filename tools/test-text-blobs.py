@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.69 standard-library checks. Synthetic images/receipts are not native evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -39,7 +40,7 @@ def synthetic_pixels(scene):
     return bytes(out)
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_three_capabilities_have_public_anchors_without_execution_claims(self):
         import api_inventory as inv
         c=inv.load_catalog(ROOT);summary=inv.validate_catalog(c);rows={r['id']:r for r in c['features']['capabilities']}
@@ -214,10 +215,10 @@ def good_gpu():
 class GPUReceipts(unittest.TestCase):
     def evaluate(self,row,*,pixels=False):
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d);(root/'gpu.json').write_text(json.dumps(row))
+            root=Path(d);(root / 'gpu.json').write_text(json.dumps(row))
             if pixels:
                 data={s:synthetic_pixels(s) for s in tv.SCENES}
-                for s,m in tv.GPU_SPECS:(root/(s+'-'+m+'.rgba')).write_bytes(data[s])
+                for s,m in tv.GPU_SPECS:(source_path(root, s+'-'+m+'.rgba')).write_bytes(data[s])
             return tv.inspect_gpu(root,'token','egl','hardware')
     def test_synthetic_complete_GPU_evidence(self):self.assertEqual(self.evaluate(good_gpu(),pixels=True)['frames'],6)
     def test_counts_cannot_be_boolean_or_incorrect(self):
@@ -245,21 +246,21 @@ class GPUReceipts(unittest.TestCase):
 class Orchestration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        spec=importlib.util.spec_from_file_location('text_blob_gate',ROOT/'tools/validate-text-blobs.py')
+        spec=importlib.util.spec_from_file_location('text_blob_gate',ROOT / 'tools/validate-text-blobs.py')
         cls.gate=importlib.util.module_from_spec(spec);spec.loader.exec_module(cls.gate)
     def test_compile_includes_dynamic_native_suites(self):
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d);(root/'run-tests.rkt').write_text('(define-runtime-path a "tests/a.rkt")\n(define-runtime-path b "tests/a.rkt")')
+            root=Path(d);(source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path a "tests/a.rkt")\n(define-runtime-path b "tests/a.rkt")')
             targets=self.gate.compile_targets(root)
-            self.assertEqual(targets.count(root/'tests/a.rkt'),1)
-            self.assertIn(root/'run-tests.rkt',targets);self.assertIn(root/'tests/text-blob-gpu-test.rkt',targets)
+            self.assertEqual(targets.count(source_path(root, 'tests/a.rkt')),1)
+            self.assertIn(source_path(root, 'run-tests.rkt'),targets);self.assertIn(source_path(root, 'tests/text-blob-gpu-test.rkt'),targets)
     def test_empty_compile_graph_rejects(self):
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d);(root/'run-tests.rkt').write_text('#lang racket/base')
+            root=Path(d);(source_path(root, 'run-tests.rkt')).write_text('#lang racket/base')
             with self.assertRaises(ValueError):self.gate.compile_targets(root)
     def test_unsafe_compile_graph_rejects(self):
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d);(root/'run-tests.rkt').write_text('(define-runtime-path a "tests/../a.rkt")')
+            root=Path(d);(source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path a "tests/../a.rkt")')
             with self.assertRaises(ValueError):self.gate.compile_targets(root)
     def test_timeout_must_be_positive_and_finite(self):
         for value in ('0','-1','nan','inf'):

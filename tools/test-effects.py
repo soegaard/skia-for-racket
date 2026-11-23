@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.66 source/evidence regression tests. Synthetic receipts are not rendering evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import json
 from pathlib import Path
@@ -18,7 +19,7 @@ NEW_SYMBOLS={
  'sk_blender_new_arithmetic','sk_imagefilter_new_blender','sk_imagefilter_new_picture_with_rect'}
 
 class Sources(unittest.TestCase):
-    def text(self,name): return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name): return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_native_registry_contains_all_new_symbols(self):
         forms=inv.forms(self.text('private/native.rkt'))
         declared={f[1] for f in forms if isinstance(f,list) and f and f[0]=='define-native'}
@@ -58,7 +59,7 @@ class Sources(unittest.TestCase):
         self.assertIn("dynamic-require effects-native-tests-file 'effects-native-tests",s)
     def test_validator_recompiles_regression_graph(self):
         s=self.text('tools/validate-effects.py')
-        self.assertIn("run_tests=ROOT/'run-tests.rkt'",s)
+        self.assertIn("run_tests=source_path(ROOT, 'run-tests.rkt')",s)
         self.assertIn("dynamic_targets=sorted(set(re.findall",s)
         self.assertIn("run([racket,'-l','raco','--','make',*modules])",s)
     def test_document_payload_is_exact_and_viewer_check_is_resampling_tolerant(self):

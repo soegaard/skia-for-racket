@@ -14,8 +14,8 @@
 
 ;; Workloads and measurements; no host/window is initialized by requiring this module.
 (require racket/list racket/path (only-in ffi/unsafe void/reference-sink)
-         "../main.rkt" "../gpu.rkt" "../private/gpu-performance-util.rkt"
-         "../private/gpu-io-trace.rkt" "../examples/gpu-scenes.rkt" "gpu-report.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/private/gpu-performance-util.rkt"
+         "../skia-lib/private/gpu-io-trace.rkt" "../skia-lib/examples/gpu-scenes.rkt" "gpu-report.rkt")
 (provide benchmark-scenes benchmark-scene! release-stress! benchmark-pattern-pixels)
 
 ;;;

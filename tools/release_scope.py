@@ -5,6 +5,7 @@ only the Markdown report; it never silently approves changed review inputs.
 The existing API inventory remains the authority for declarations/anchors.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 from collections import Counter
@@ -50,7 +51,7 @@ def path_at(root: Path, name: str, *, exists: bool = True) -> Path:
          and all(p not in ('', '.', '..') for p in name.split('/'))
          and not any(ord(c) < 32 for c in name), 'unsafe source path: ' + repr(name))
     root = Path(root).resolve()
-    p = root.joinpath(*PurePosixPath(name).parts)
+    p = source_path(root, name)
     for part in (p, *p.parents):
         if part == root:
             break
@@ -253,6 +254,21 @@ def review_inputs(root: Path, catalog: dict, inventory_hashes: dict[str, str]) -
         'NOTICE.md', 'plans/README.md', 'plans/skia-package-catalog-publication.md',
     })
     names.update(p.relative_to(root).as_posix() for p in (root / 'packaging').rglob('*') if p.is_file())
+    # Revised Git boundaries: review concrete source/data ownership as well as
+    # the historical collection-relative API inventory. Fonts are approved data
+    # inputs, not another package or an inferred API change.
+    names.update({'tools/check-gpu-source.py', 'tools/repository_layout.py', 'tools/check-package-layout.py',
+                  'tools/test-package-layout.py', 'tools/prepare-git-catalog.py',
+                  'tools/dc_validation.py', 'tools/validate-dc.py', 'tools/test-dc.py',
+                  'tools/validate-skia-canvas.py', 'tools/test-validate-skia-canvas.py',
+                  'docs/GIT-PACKAGE-VALIDATION.md', 'plans/skia-package-catalog-git-publication.md',
+                  'README.md', '.gitignore', '.gitattributes'})
+    for package in ('skia', 'skia-lib', 'skia-doc'):
+        for path in (root / package).rglob('*'):
+            if path.is_file() and not set(path.relative_to(root / package).parts) & {
+                    'compiled','doc','html','output','downloads','__pycache__','.DS_Store','native'}:
+                names.add(path.relative_to(root).as_posix())
+
     for cap in catalog['features']['capabilities']:
         names.update(cap['test_sources'])
     for name in sorted(names):
@@ -452,7 +468,7 @@ def main(argv=None, *, root=ROOT) -> int:
             if not racket and Path(args.racket).is_file():
                 racket = str(Path(args.racket).resolve())
             need(bool(racket), 'Racket executable not found')
-            roots = [root / 'tests/release-scope-pure-test.rkt']
+            roots = [source_path(root, 'tests/release-scope-pure-test.rkt')]
             for name, command in [('compile', [racket, '-l', 'raco', '--', 'make', *roots]),
                                   ('pure', [racket, *roots])]:
                 command = list(map(str, command))

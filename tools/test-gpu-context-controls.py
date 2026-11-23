@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.77b source/inspector tests. Native receipts here are Python-authored fixtures."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -28,7 +29,7 @@ def synthetic_evidence(root,token=TOKEN,backend='egl',adapter='hardware'):
     for g,(name,opts) in enumerate(v.CONFIGS.items(),1):
         info=dict(backend=rbackend,state='ready',generation=g,context_factory=base+('_with_options' if opts is not False else ''),
                   context_options_source='explicit' if opts is not False else 'native-defaults',context_options=copy.deepcopy(opts),adapter_selection=adapter)
-        (root/(name+'.rgba')).write_bytes(v.pixels())
+        (source_path(root, name+'.rgba')).write_bytes(v.pixels())
         rows.append(dict(name=name,file=name+'.rgba',width=32,height=24,info=info,requested_options=copy.deepcopy(opts),
                          drawing_readbacks=0,readbacks=1,events=[flush('surface',g),dict(kind='gpu-snapshot'),flush('image',g),
                             dict(kind='submit',wait_requested=True),dict(kind='readback'),dict(kind='flush'),dict(kind='submit',wait_requested=True)]))
@@ -42,7 +43,7 @@ def synthetic_evidence(root,token=TOKEN,backend='egl',adapter='hardware'):
                                after_release=dict(state='abandoned',live_children=2,generation=1000,pending_releases=0),
                                after_close=dict(state='closed',live_children=0,generation=1000,pending_releases=0),
                                children_invalidated=True,child_close_required=True),cleanup_errors=[])
-    (root/'gpu.json').write_text(json.dumps(report),encoding='utf-8')
+    (root / 'gpu.json').write_text(json.dumps(report),encoding='utf-8')
     return report
 
 class Evidence(unittest.TestCase):
@@ -50,30 +51,30 @@ class Evidence(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.data=synthetic_evidence(self.root)
     def reject(self,change):
-        change(self.data);(self.root/'gpu.json').write_text(json.dumps(self.data),encoding='utf-8')
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
-    def test_valid_synthetic(self):self.assertEqual(v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')['total_pixels_checked'],3840)
+        change(self.data);(self.root / 'gpu.json').write_text(json.dumps(self.data),encoding='utf-8')
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
+    def test_valid_synthetic(self):self.assertEqual(v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')['total_pixels_checked'],3840)
     def test_all_backend_schemas(self):
         for backend,adapter in [('metal','hardware'),('direct3d','warp')]:
             synthetic_evidence(self.root,TOKEN,backend,adapter)
-            self.assertEqual(v.inspect(self.root/'gpu.json',TOKEN,backend,adapter)['status'],'passed')
+            self.assertEqual(v.inspect(self.root / 'gpu.json',TOKEN,backend,adapter)['status'],'passed')
     def test_pixel_corruption(self):
-        path=self.root/'manual.rgba';b=bytearray(path.read_bytes());b[120]^=1;path.write_bytes(b)
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        path=self.root / 'manual.rgba';b=bytearray(path.read_bytes());b[120]^=1;path.write_bytes(b)
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
     def test_missing_capture(self):
-        (self.root/'tuned.rgba').unlink()
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        (self.root / 'tuned.rgba').unlink()
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
     def test_short_capture(self):
-        (self.root/'tuned.rgba').write_bytes(b'x')
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        (self.root / 'tuned.rgba').write_bytes(b'x')
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
     def test_duplicate_json_key(self):
-        p=self.root/'gpu.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
+        p=self.root / 'gpu.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
         with self.assertRaises(ValueError):v.inspect(p,TOKEN,'egl','hardware')
     def test_symlink(self):
-        p=self.root/'tuned.rgba';p.unlink()
-        try:p.symlink_to(self.root/'manual.rgba')
+        p=self.root / 'tuned.rgba';p.unlink()
+        try:p.symlink_to(self.root / 'manual.rgba')
         except OSError:self.skipTest('host cannot create symlinks')
-        with self.assertRaises(ValueError):v.inspect(self.root/'gpu.json',TOKEN,'egl','hardware')
+        with self.assertRaises(ValueError):v.inspect(self.root / 'gpu.json',TOKEN,'egl','hardware')
 
 MUTATIONS={
  'old_token':lambda r:r.update(run_token='old'),
@@ -119,12 +120,12 @@ class Completion(unittest.TestCase):
 
 class Orchestration(unittest.TestCase):
     def invoke(self,mode=None,failure=None,partial=False,changed=False):
-        spec=importlib.util.spec_from_file_location('gpu_controls_driver_test',ROOT/'tools/validate-gpu-context-controls.py')
+        spec=importlib.util.spec_from_file_location('gpu_controls_driver_test',ROOT / 'tools/validate-gpu-context-controls.py')
         m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
         calls=[]
         with tempfile.TemporaryDirectory() as t:
             root=Path(t)
-            (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kw):
                 command=list(map(str,command));calls.append(command);name=Path(command[1]).name
                 log=kw['stdout']
@@ -136,11 +137,11 @@ class Orchestration(unittest.TestCase):
                     report=Path(command[command.index('--report')+1])
                     synthetic_evidence(report.parent,command[command.index('--token')+1],command[command.index('--backend')+1],command[command.index('--adapter')+1])
                 log.flush();return subprocess.CompletedProcess(command,0)
-            args=['--racket',sys.executable,'--backend','egl','--directory',str(root/'out')]
+            args=['--racket',sys.executable,'--backend','egl','--directory',str(root / 'out')]
             if mode:args+=['--regressions',mode]
             with patch.object(m.shutil,'which',return_value=sys.executable),patch.object(m.subprocess,'run',side_effect=execute),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 code=m.main(args,root=root)
-            report=json.loads((root/'out/validation.json').read_text())
+            report=json.loads((root / 'out/validation.json').read_text())
         return code,report,calls
     def test_full_default(self):
         code,r,_=self.invoke();self.assertEqual(code,0);self.assertEqual(r['regressions_status'],'passed');self.assertTrue(r['gpu_executed'])
@@ -166,7 +167,7 @@ class Orchestration(unittest.TestCase):
     def test_partial_summary(self):self.assertEqual(self.invoke('none',partial=True)[0],1)
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_counts(self):
         for kind,count in [('pure',v.PURE_CASES),('native',v.NATIVE_CASES)]:
             s=self.text(f'tests/gpu-context-control-{kind}-test.rkt');self.assertEqual(s.count('(test-case '),count)
@@ -189,19 +190,19 @@ class Sources(unittest.TestCase):
             self.assertIn(term,s)
         for term in ('continue-on-error:','\n  push:','\n  pull_request:','cmake','gcc','clang'):self.assertNotIn(term,s)
     def test_complete_driver_integration(self):
-        if not (ROOT/'gpu.rkt').is_file():self.skipTest('requires complete installed source checkout')
+        if not (source_path(ROOT, 'gpu.rkt')).is_file():self.skipTest('requires complete installed source checkout')
         for file,term in [('gpu.rkt','#:options [options #f]'),('gpu-egl.rkt','#:options [options #f]'),
             ('private/gpu-driver-gl.rkt','gr_direct_context_make_gl_with_options'),
             ('private/gpu-driver-metal.rkt','gr_direct_context_make_metal_with_options'),
             ('private/gpu-driver-d3d12.rkt','gr_direct_context_make_direct3d_with_options')]:self.assertIn(term,self.text(file))
     def test_complete_domain_integration(self):
-        if not (ROOT/'private/gpu-domain.rkt').is_file():self.skipTest('requires complete installed source checkout')
+        if not (source_path(ROOT, 'private/gpu-domain.rkt')).is_file():self.skipTest('requires complete installed source checkout')
         s=self.text('private/gpu-domain.rkt')
         self.assertIn('domain-release-and-abandon!',s);self.assertIn("'release-failed",s);self.assertIn('quarantined',s)
     def test_required_gate_integration(self):
-        if not (ROOT/'.github/workflows/acceptance.yml').is_file():self.skipTest('requires complete installed source checkout')
+        if not (ROOT / '.github/workflows/acceptance.yml').is_file():self.skipTest('requires complete installed source checkout')
         self.assertIn('test "$GPU_CONTEXT_CONTROLS_RESULT" = success',self.text('.github/workflows/acceptance.yml'))
-        auto={p.name for p in (ROOT/'.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
+        auto={p.name for p in (ROOT / '.github/workflows').glob('*.yml') if '\n  push:' in p.read_text() or '\n  pull_request:' in p.read_text()}
         self.assertEqual(auto,{'ci.yml','api-inventory.yml','acceptance.yml','catalog-package.yml'})
 
 if __name__=='__main__':unittest.main(verbosity=2)

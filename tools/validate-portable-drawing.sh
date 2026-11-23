@@ -18,15 +18,15 @@ done
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
 # Never select a different raco from PATH. Include all dynamically loaded tests.
-"$RACKET" -l raco -- make main.rkt portable-drawing.rkt output.rkt bitmap.rkt \
-  tools/doctor.rkt tools/portable-drawing-doctor.rkt run-tests.rkt tests/*.rkt \
-  examples/portable-drawing.rkt
-"$RACKET" tools/doctor.rkt
+"$RACKET" -l raco -- make skia-lib/main.rkt skia-lib/portable-drawing.rkt skia-lib/output.rkt skia-lib/bitmap.rkt \
+  skia-lib/tools/doctor.rkt tools/portable-drawing-doctor.rkt skia-lib/run-tests.rkt tests/*.rkt \
+  skia-lib/examples/portable-drawing.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
 "$RACKET" tools/portable-drawing-doctor.rkt
-"$RACKET" run-tests.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
 PREFIX="output/portable-drawing-0.35"
-"$RACKET" examples/portable-drawing.rkt "$PREFIX"
+"$RACKET" skia-lib/examples/portable-drawing.rkt "$PREFIX"
 PDF_ARGS=()
 case "${CHECK_PDF:-auto}" in
   1) PDF_ARGS=(--pdf) ;;

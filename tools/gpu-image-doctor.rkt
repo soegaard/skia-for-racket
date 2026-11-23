@@ -13,9 +13,9 @@
 ;;;
 (require racket/cmdline racket/file racket/path racket/runtime-path racket/list
          rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../private/gpu-image-native.rkt"
-         "../private/gpu-surface-native.rkt" "../private/gpu-io-trace.rkt"
-         "../examples/gpu-images.rkt" "../tests/gpu-image-native-test.rkt"
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/private/gpu-image-native.rkt"
+         "../skia-lib/private/gpu-surface-native.rkt" "../skia-lib/private/gpu-io-trace.rkt"
+         "../skia-lib/examples/gpu-images.rkt" "../skia-lib/tests/gpu-image-native-test.rkt"
          "gpu-report.rkt" "gpu-test-host.rkt")
 (provide gpu-image-doctor!)
 

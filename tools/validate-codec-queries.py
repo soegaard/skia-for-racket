@@ -5,6 +5,7 @@ Full regressions are the standalone default. --regressions=none retains every
 codec-query-specific native test and result oracle. No GPU or scaled/subset decoding claim is made.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -68,22 +69,22 @@ def main(argv=None, *, root=ROOT):
             report.update(failed_command=command, failed_log=str(log))
             raise
     try:
-        run([sys.executable, root/'tools/api-inventory.py', '--check'])
-        run([sys.executable, root/'tools/test-codec-queries.py'])
-        run([racket, root/'tools/check-package-version.rkt'])
-        targets = [root/name for name in ('main.rkt', 'codec-queries.rkt',
+        run([sys.executable, root / 'tools/api-inventory.py', '--check'])
+        run([sys.executable, root / 'tools/test-codec-queries.py'])
+        run([racket, source_path(root, 'tools/check-package-version.rkt')])
+        targets = [source_path(root, name) for name in ('main.rkt', 'codec-queries.rkt',
                    'tests/codec-query-pure-test.rkt', 'tests/codec-query-native-test.rkt',
                    'tools/codec-query-doctor.rkt', 'examples/codec-queries.rkt')]
         if args.regressions == 'full':
             targets += global_compile_targets(root)
         run([racket, '-l', 'raco', '--', 'make', *dict.fromkeys(targets)])
-        regressions.run(lambda: run([racket, root/'run-tests.rkt']))
+        regressions.run(lambda: run([racket, source_path(root, 'run-tests.rkt')]))
         for name, count, flag in (('codec-query-pure', checks.PURE_CASES, 'pure_passed'),
                                   ('codec-query-native', checks.NATIVE_CASES, 'native_passed')):
-            checks.suite_output(run([racket, root/f'tests/{name}-test.rkt']), name, count)
+            checks.suite_output(run([racket, source_path(root, f'tests/{name}-test.rkt')]), name, count)
             report[flag] = True
-        run([racket, root/'examples/codec-queries.rkt'])
-        run([racket, root/'tools/codec-query-doctor.rkt', '--directory', output/'native', '--token', token])
+        run([racket, source_path(root, 'examples/codec-queries.rkt')])
+        run([racket, root / 'tools/codec-query-doctor.rkt', '--directory', output/'native', '--token', token])
         result = checks.inspect(output/'native', token)
         (output/'inspection.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         report['byte_oracles_passed'] = True

@@ -1,0 +1,68 @@
+#lang racket/base
+
+;;;
+;;; Projective Doctor
+;;;
+
+;; Exercises projective transforms and output-audit classification and reports native diagnostic
+;; evidence.
+;; The validation workflow uses this focused probe alongside automated regression suites.
+
+;;;
+;;; Imports and Exports
+;;;
+(require ffi/unsafe "../main.rkt" "../private/types.rkt")
+(provide projective-doctor!)
+
+;;;
+;;; Diagnostic Operations
+;;;
+
+; has? : output-audit-report? symbol? symbol? -> boolean?
+;   Finds an audit event matching both the requested feature and disposition.
+(define (has? report feature status)
+  (for/or ([e (in-list (output-audit-report-events report))])
+    (and (eq? (output-audit-event-feature e) feature) (eq? (output-audit-event-status e) status))))
+
+; projective-doctor! : -> void?
+;   Checks general-matrix ABI ordering, homogeneous projection, scoped restoration, and explicit
+;   PDF/SVG raster fallback.
+(define (projective-doctor!)
+  (unless (= (ctype-sizeof _sk-m44) 64) (error 'doctor "general canvas matrix ABI size"))
+  (with-skia ([s (make-surface 64 64)] [p (make-paint #:color 'red #:antialias? #f)])
+    (define c (surface-canvas s))
+    ;; Independent old native call tests the new read side, not just roundtrip.
+    (canvas-translate! c 17 23)
+    (unless (equal? (canvas-matrix4 c) (matrix4-translate 17 23))
+      (error 'doctor "general matrix row/column conversion"))
+    (canvas-reset-transform! c)
+    (define original (canvas-matrix4 c))
+    (with-canvas-matrix c (matrix3-perspective 1/32 0)
+      (draw-rect c 16 16 32 32 p))
+    (unless (and (equal? (canvas-matrix4 c) original)
+                 (equal? (surface-pixel s 15 15) (rgb 255 0 0))
+                 (= (rgba-alpha (surface-pixel s 30 15)) 0))
+      (error 'doctor "perspective raster coverage or scoped restore"))
+    (canvas-set-matrix4! c (matrix4-perspective 128))
+    (canvas-concat-matrix4! c (matrix4-rotate-x-degrees 90))
+    (unless (equal? (canvas-matrix4 c)
+                    (matrix4-compose (matrix4-perspective 128) (matrix4-rotate-x-degrees 90)))
+      (error 'doctor "native 4x4 composition discarded depth")))
+  (unless (and (not (matrix3-map-point (matrix3-perspective 1 0) -1 2))
+               (not (matrix3-map-rect (matrix3-perspective 1 0) -2 0 2 2)))
+    (error 'doctor "homogeneous horizon checks"))
+  (define (draw c)
+    (canvas-concat-matrix3! c (matrix3-perspective 1/32 0))
+    (with-skia ([p (make-paint #:color 'blue)]) (draw-rect c 8 8 24 24 p)))
+  (for ([backend '(pdf svg)])
+    (define unsafe (analyze-output-page (make-output-page 50 50 draw) backend))
+    (unless (has? unsafe 'projective-transform 'needs-raster)
+      (error 'doctor "unhandled perspective missing from ~a preflight" backend))
+    (define-values (bs report)
+      (output->bytes/audit
+       (make-output-page 50 50 (lambda (c) (draw-rasterized c 0 0 40 40 draw #:scale 2)))
+       backend #:policy 'error))
+    (unless (and (> (bytes-length bs) 0) (has? report 'projective-transform 'rasterized)
+                 (not (output-audit-report-blocking? report)))
+      (error 'doctor "explicit perspective fallback failed for ~a" backend)))
+  (printf "General matrices passed: row/column ABI, retained depth, homogeneous divide, scoped restore, explicit PDF/SVG fallback; M44=64\n"))

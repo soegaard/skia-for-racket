@@ -4,6 +4,7 @@ Pixel oracles below are independent of the Racket drawing implementation. All
 file reads are bounded, local, and reject ambiguous or stale evidence.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 
 import argparse
@@ -427,14 +428,14 @@ def main(argv=None, *, root=ROOT):
         for name, options in (('api-inventory.py', ['--check']),
                               ('check-gpu-source.py', ['--require-integration']),
                               ('test-advanced-canvases.py', []), ('test-advanced-canvas-documents.py', [])):
-            runner.run([sys.executable, root/'tools'/name, *options])
-        runner.run([selected, root/'tools/check-package-version.rkt'])
-        targets = [root/p for p in ('main.rkt', 'gpu.rkt', 'tests/advanced-canvas-gpu-test.rkt',
+            runner.run([sys.executable, root / 'tools'/name, *options])
+        runner.run([selected, source_path(root, 'tools/check-package-version.rkt')])
+        targets = [source_path(root, p) for p in ('main.rkt', 'gpu.rkt', 'tests/advanced-canvas-gpu-test.rkt',
                    'tools/advanced-canvas-doctor.rkt', 'examples/advanced-canvases.rkt')]
         if args.regressions == 'full':
             targets += global_compile_targets(root)
         runner.run([selected, '-l', 'raco', '--', 'make', *targets])
-        regressions.run(lambda: runner.run([selected, root/'run-tests.rkt']))
+        regressions.run(lambda: runner.run([selected, source_path(root, 'run-tests.rkt')]))
         source = 'cpu'
         capture = []
         if args.require_gpu:
@@ -443,7 +444,7 @@ def main(argv=None, *, root=ROOT):
                 backend = 'metal' if sys.platform == 'darwin' else ('direct3d' if os.name == 'nt' else 'egl')
             need(backend == 'direct3d' or args.adapter == 'hardware', 'WARP requires Direct3D')
             gpu_dir = directory/'gpu'
-            runner.run([selected, root/'tests/advanced-canvas-gpu-test.rkt', '--backend', backend,
+            runner.run([selected, source_path(root, 'tests/advanced-canvas-gpu-test.rkt'), '--backend', backend,
                         '--adapter', args.adapter, '--directory', gpu_dir, '--token', token])
             report['gpu'] = inspect_gpu(gpu_dir, token, backend, args.adapter)
             report['gpu_executed'] = True
@@ -452,7 +453,7 @@ def main(argv=None, *, root=ROOT):
             need(args.backend == 'auto' and args.adapter == 'hardware',
                  'an explicit backend/adapter requires --require-gpu')
         documents = directory/'documents'
-        runner.run([selected, root/'tools/advanced-canvas-doctor.rkt', '--directory', documents,
+        runner.run([selected, root / 'tools/advanced-canvas-doctor.rkt', '--directory', documents,
                     '--token', token, *capture])
         report['documents'] = inspect_documents(documents, token, source,
                                                 render=args.require_renderers, runner=runner)
@@ -474,6 +475,6 @@ def main(argv=None, *, root=ROOT):
 
 
 def make_output(root: Path) -> Path:
-    out = root/'output'
+    out = root / 'output'
     out.mkdir(exist_ok=True)
     return out

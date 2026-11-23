@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Windows x64 local D3D12 validation. WARP is explicit; failures never skip."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import os
 from pathlib import Path

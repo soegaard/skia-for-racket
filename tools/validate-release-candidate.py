@@ -5,6 +5,7 @@ No option refreshes a frozen policy, dispatches jobs, retries failed jobs,
 creates a tag, changes branch protection or publishes a package.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import os
 from pathlib import Path
@@ -54,7 +55,7 @@ def main(argv=None, *, root=ROOT):
                                                   attempt=result['identity']['attempt']))
             need(rc.clean_source(root) == source, 'source changed during evidence collection')
             need(rc.digest(relative(root, POLICY)) == before, 'policy changed during validation')
-            package = rc.retain_catalog_source(root, directory, directory / 'skia.zip',
+            package = rc.retain_catalog_source(root, directory, directory / 'source-packages',
                                                attempt=result['identity']['attempt'], commit=source['commit'])
             need(package['sha256'] == result['catalog_source_sha256'], 'retained source differs from catalog qualification')
             need(rc.clean_source(root) == source, 'source changed during archive creation')

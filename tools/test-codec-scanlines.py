@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic scanline evidence/runner tests, never native execution evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -44,7 +45,7 @@ def synthetic_evidence(root: Path, token=TOKEN):
     image = Image.frombytes('RGBA', v.BMP_SIZE, v.fixture_pixels())
     output = io.BytesIO();image.save(output, format='PNG');sources['unsupported.png'] = output.getvalue()
     for name, content in sources.items():
-        (root/name).write_bytes(content)
+        (source_path(root, name)).write_bytes(content)
     # These are Python-authored expected outcomes, not fabricated native evidence.
     decoded_jpeg = v.independently_decode(sources['reference.jpeg'], 'JPEG', v.JPEG_SIZE)
     decoded_half = v.independently_decode(sources['reference.jpeg'], 'JPEG', v.JPEG_SIZE, half=True)
@@ -68,7 +69,7 @@ def synthetic_evidence(root: Path, token=TOKEN):
                 first=(h-position-got if bottom else position) if got else False
                 stride=32 if name=='bottom' else w*4
                 raw=b''.join(ref[((first+j)*w)*4:((first+j+1)*w)*4]+bytes(stride-w*4) for j in range(got))
-                file=f'{name}-{i}.rows';(root/file).write_bytes(raw)
+                file=f'{name}-{i}.rows';(source_path(root, file)).write_bytes(raw)
                 result=dict(decoded=got,first_row=first,row_bytes=stride,height=got,complete=got==count,file=file)
             position+=count
             steps.append(dict(op=op,count=count,before=before,before_row=before_row,after=position,
@@ -80,7 +81,7 @@ def synthetic_evidence(root: Path, token=TOKEN):
                  unsupported_png=dict(result='unimplemented',code=9),session_scope='owned-private-codec',
                  scaled_scanline_executed=True,subset_decode_executed=False,incremental_decode_executed=False,
                  live_port_callbacks=False,gpu_executed=False)
-    (root/'scanlines.json').write_text(json.dumps(receipt),encoding='utf-8')
+    (root / 'scanlines.json').write_text(json.dumps(receipt),encoding='utf-8')
     return receipt
 
 
@@ -108,7 +109,7 @@ class Evidence(unittest.TestCase):
         self.root=Path(self.temp.name);self.receipt=synthetic_evidence(self.root)
     def case(self,name='bottom'):return next(c for c in self.receipt['cases'] if c['name']==name)
     def rejects(self):
-        (self.root/'scanlines.json').write_text(json.dumps(self.receipt),encoding='utf-8')
+        (self.root / 'scanlines.json').write_text(json.dumps(self.receipt),encoding='utf-8')
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
     def test_valid(self):self.assertEqual(v.inspect(self.root,TOKEN)['cases_checked'],10)
     def test_foreign_token(self):self.receipt['run_token']='old';self.rejects()
@@ -142,29 +143,29 @@ class Evidence(unittest.TestCase):
     def test_unclosed(self):self.case()['closed']=False;self.rejects()
     def test_unsafe_path(self):self.case()['steps'][0]['result']['file']='../bad';self.rejects()
     def test_wrong_native_unsupported(self):self.receipt['unsupported_png']['code']=0;self.rejects()
-    def test_missing_capture(self):(self.root/'top-0.rows').unlink();self.rejects()
-    def test_extra_capture(self):(self.root/'extra.rows').write_bytes(b'');self.rejects()
+    def test_missing_capture(self):(self.root / 'top-0.rows').unlink();self.rejects()
+    def test_extra_capture(self):(self.root / 'extra.rows').write_bytes(b'');self.rejects()
     def test_padding_corruption(self):
-        p=self.root/'bottom-0.rows';b=bytearray(p.read_bytes());b[28]=1;p.write_bytes(b);self.rejects()
+        p=self.root / 'bottom-0.rows';b=bytearray(p.read_bytes());b[28]=1;p.write_bytes(b);self.rejects()
     def test_row_reversal(self):
-        p=self.root/'bottom-0.rows';b=p.read_bytes();p.write_bytes(b[32:]+b[:32]);self.rejects()
+        p=self.root / 'bottom-0.rows';b=p.read_bytes();p.write_bytes(b[32:]+b[:32]);self.rejects()
     def test_partial_publishes_native_fill(self):
-        p=self.root/'short-bottom-0.rows';p.write_bytes(bytes(3*28)+p.read_bytes());self.rejects()
-    def test_empty_has_bytes(self):(self.root/'empty-1.rows').write_bytes(bytes(28));self.rejects()
-    def test_short_fixture_not_really_truncated(self):(self.root/'short-bottom.bmp').write_bytes((self.root/'bottom.bmp').read_bytes());self.rejects()
+        p=self.root / 'short-bottom-0.rows';p.write_bytes(bytes(3*28)+p.read_bytes());self.rejects()
+    def test_empty_has_bytes(self):(self.root / 'empty-1.rows').write_bytes(bytes(28));self.rejects()
+    def test_short_fixture_not_really_truncated(self):(self.root / 'short-bottom.bmp').write_bytes((self.root / 'bottom.bmp').read_bytes());self.rejects()
     def test_duplicate_json(self):
-        p=self.root/'scanlines.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
+        p=self.root / 'scanlines.json';p.write_text(p.read_text().replace('"schema": 1','"schema": 1, "schema": 1'))
         with self.assertRaises(ValueError):v.inspect(self.root,TOKEN)
 
 
 class Orchestration(unittest.TestCase):
     def invoke(self,mode=None,failure=None,partial=False,mutate=False):
-        spec=importlib.util.spec_from_file_location('codec_scanline_driver_test',ROOT/'tools/validate-codec-scanlines.py')
+        spec=importlib.util.spec_from_file_location('codec_scanline_driver_test',ROOT / 'tools/validate-codec-scanlines.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         commands=[]
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
-            (root/'run-tests.rkt').write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path unrelated "tests/unrelated-native-test.rkt")\n')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command);name=Path(command[1]).name
                 out=kwargs['stdout']
@@ -175,11 +176,11 @@ class Orchestration(unittest.TestCase):
                 if name=='codec-scanline-doctor.rkt':
                     synthetic_evidence(Path(command[command.index('--directory')+1]),command[command.index('--token')+1])
                 out.flush();return subprocess.CompletedProcess(command,0)
-            args=['--racket',sys.executable,'--directory',str(root/'out')]
+            args=['--racket',sys.executable,'--directory',str(root / 'out')]
             if mode is not None:args+=['--regressions',mode]
             with patch.object(module.shutil,'which',return_value=sys.executable),patch.object(module.subprocess,'run',side_effect=execute),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 rc=module.main(args,root=root)
-            report=json.loads((root/'out/validation.json').read_text())
+            report=json.loads((root / 'out/validation.json').read_text())
         return rc,report,commands
     def test_default_full(self):
         rc,r,_=self.invoke();self.assertEqual(rc,0);self.assertEqual(r['regressions_status'],'passed');self.assertTrue(r['native_passed'])
@@ -207,7 +208,7 @@ class Orchestration(unittest.TestCase):
 
 
 class Sources(unittest.TestCase):
-    def source(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def source(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_counts(self):
         for kind,count in (('pure',v.PURE_CASES),('native',v.NATIVE_CASES)):
             s=self.source(f'tests/codec-scanline-{kind}-test.rkt')

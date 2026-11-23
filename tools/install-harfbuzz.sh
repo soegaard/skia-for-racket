@@ -3,6 +3,7 @@
 # Compatible with macOS's system Bash 3.2. No sudo, dotnet, or compiler needed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -f "$ROOT/skia-lib/info.rkt" ]]; then ROOT="$ROOT/skia-lib"; fi
 VERSION="$(tr -d '\r\n' < "$ROOT/private/harfbuzz-default-version.txt")"
 ARCHIVE=""
 usage() {
@@ -92,4 +93,4 @@ for item in package.nupkg package.nuspec HARFBUZZ-SHA256SUMS.txt HARFBUZZ-SOURCE
 done
 mv -f "$WORK/$FILE" "$DEST/$FILE"
 printf '\nInstalled %s\n' "$DEST/$FILE"
-printf '%s\n' 'Next: racket tools/doctor.rkt' '      racket run-tests.rkt'
+printf '%s\n' 'Next: racket skia-lib/tools/doctor.rkt' '      racket skia-lib/run-tests.rkt'

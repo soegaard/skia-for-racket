@@ -11,7 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require "../main.rkt")
+(require "../skia-lib/main.rkt")
 (provide output-doctor!)
 
 

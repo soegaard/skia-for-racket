@@ -6,8 +6,10 @@ The macOS and Linux catalog installation being prepared is:
 raco pkg install --auto skia
 ```
 
-It declares platform native data and licensed tutorial/test fonts as package
-dependencies. Both CPU rendering and HarfBuzz shaping use those managed assets;
+The `skia` meta-package installs `skia-lib` (the existing `skia` collection) and
+`skia-doc` (manuals, tutorials and the four licensed Noto fonts). `skia-lib` can
+be installed on its own, without the documentation or its font assets. Both CPU
+rendering and HarfBuzz shaping use the declared platform native packages;
 no native-install script or runtime download is part of package setup.
 
 The native packages redistribute unmodified binaries from the
@@ -20,7 +22,7 @@ or later available, run:
 ```sh
 raco pkg install --auto --no-setup skia
 racket -l skia/tools/install-windows-natives
-raco setup --pkgs skia
+raco setup --pkgs skia-lib skia-doc skia
 ```
 
 The middle command downloads both pinned Windows NuGets directly from NuGet,
@@ -44,23 +46,24 @@ native and TTF support. Linux ARM64, musl, and 32-bit have no automatic package.
 
 ## Source directory guide
 
-The root Racket modules are public entry points and detached value types.
-[main.rkt](main.rkt) assembles the default `skia` import; GUI, GPU, and
+The Racket modules in `skia-lib/` are public entry points and detached value types.
+`skia/` is the meta-package; `skia-doc/` owns documentation and tutorial data.
+[main.rkt](skia-lib/main.rkt) assembles the default `skia` import; GUI, GPU, and
 interoperability entry points are selected explicitly. Implementations and native
-ownership machinery live in [private/](private/README.md). Source comments follow
+ownership machinery live in [private/](skia-lib/private/README.md). Source comments follow
 [house-style.md](house-style.md).
 
 | Directory | Contents |
 | --- | --- |
-| [private/](private/README.md) | Core implementation, validation, native bindings, resource lifetimes, and backend adapters. |
-| [unsafe/](unsafe/README.md) | Explicit native-pointer ingress for Metal and Direct3D interoperability. |
-| [examples/](examples/README.md) | Runnable demonstrations and public API usage examples. |
-| [scribblings/](scribblings/README.md) | Reference/tutorial sources, example modules, supporting code, and checked visual assets. |
-| [tests/](tests/README.md) | Pure regressions, native rendering checks, and opt-in GPU/GUI tests. |
+| [private/](skia-lib/private/README.md) | Core implementation, validation, native bindings, resource lifetimes, and backend adapters. |
+| [unsafe/](skia-lib/unsafe/README.md) | Explicit native-pointer ingress for Metal and Direct3D interoperability. |
+| [examples/](skia-lib/examples/README.md) | Runnable demonstrations and public API usage examples. |
+| [scribblings/](skia-doc/scribblings/README.md) | Reference/tutorial sources, example modules, supporting code, and checked visual assets. |
+| [tests/](skia-lib/tests/README.md) | Pure regressions, native rendering checks, and opt-in GPU/GUI tests. |
 | [tools/](tools/README.md) | Installers, validators, ABI probes, evidence collectors, and documentation tooling. |
 | [docs/](docs/README.md) | Maintainer-facing design, contracts, compatibility notes, and validation instructions. |
 | [api/](api/README.md) | Reviewed capability, public-signature, Reference-coverage, and release-policy inventories. |
-| [native/](native/README.md) | Installation destination for separately obtained native libraries. |
+| [native/](skia-lib/native/README.md) | Installation destination for separately obtained native libraries. |
 | [plans/](plans/README.md) | Implementation/editorial plans and progress records. |
 | [.github/](.github/README.md) | CI, opt-in acceptance, documentation publication, and dependency-update configuration. |
 
@@ -75,10 +78,10 @@ filename does not imply that it is included in the default import.
 
 | Module | Responsibility |
 | --- | --- |
-| [main.rkt](main.rkt) | Collects the default drawing, image, geometry, text, document, and stream interfaces. |
-| [info.rkt](info.rkt) | Declares package dependencies, registered manuals, test exclusions, and command-line tools. |
-| [run-tests.rkt](run-tests.rkt) | Runs the package's selected Racket test modules. |
-| [native-capabilities.rkt](native-capabilities.rkt) | Exposes the package's native capability declarations. |
+| [main.rkt](skia-lib/main.rkt) | Collects the default drawing, image, geometry, text, document, and stream interfaces. |
+| [info.rkt](skia-lib/info.rkt) | Declares package dependencies, registered manuals, test exclusions, and command-line tools. |
+| [run-tests.rkt](skia-lib/run-tests.rkt) | Runs the package's selected Racket test modules. |
+| [native-capabilities.rkt](skia-lib/native-capabilities.rkt) | Exposes the package's native capability declarations. |
 
 </details>
 
@@ -87,20 +90,20 @@ filename does not imply that it is included in the default import.
 
 | Module | Responsibility |
 | --- | --- |
-| [canvas-primitives.rkt](canvas-primitives.rkt) | Draws points, arcs, rounded rectangles, and colors and manages canvas clips and layers. |
-| [advanced-layers.rkt](advanced-layers.rkt) | Applies checked layer options to native canvas save/restore scopes. |
-| [layer-options.rkt](layer-options.rkt) | Defines immutable layer bounds and compositing-flag requests. |
-| [specialized-canvases.rkt](specialized-canvases.rkt) | Supplies no-draw, multi-target, and overdraw canvases to bounded callbacks. |
-| [matrix.rkt](matrix.rkt) | Constructs and combines detached affine transformations and maps points, vectors, and rectangles. |
-| [projective-matrix.rkt](projective-matrix.rkt) | Constructs, combines, inverts, and applies detached 3-by-3 and 4-by-4 matrices. |
-| [canvas-matrix.rkt](canvas-matrix.rkt) | Reads and applies 3-by-3 and 4-by-4 canvas transformation matrices. |
-| [geometry.rkt](geometry.rkt) | Extends path construction, geometric inspection, paint queries, and region and rounded-rectangle operations. |
-| [geometry-primitives.rkt](geometry-primitives.rkt) | Constructs integer regions, vertex meshes, image lattices, atlas transforms, and cubic patches. |
-| [portable-drawing.rkt](portable-drawing.rkt) | Draws markers, sliced images, lattices, and atlases through explicit portable paths. |
-| [effects.rkt](effects.rkt) | Constructs additional path effects, masks, procedural shaders, and compositing effects. |
-| [runtime-effects.rkt](runtime-effects.rkt) | Compiles SkSL effects, reflects uniforms and children, and constructs shader, filter, or blender instances. |
-| [pictures.rkt](pictures.rkt) | Queries, serializes, loads, and samples recorded native pictures. |
-| [drawables.rkt](drawables.rkt) | Wraps recorded pictures as drawables and exposes drawing, bounds, and change queries. |
+| [canvas-primitives.rkt](skia-lib/canvas-primitives.rkt) | Draws points, arcs, rounded rectangles, and colors and manages canvas clips and layers. |
+| [advanced-layers.rkt](skia-lib/advanced-layers.rkt) | Applies checked layer options to native canvas save/restore scopes. |
+| [layer-options.rkt](skia-lib/layer-options.rkt) | Defines immutable layer bounds and compositing-flag requests. |
+| [specialized-canvases.rkt](skia-lib/specialized-canvases.rkt) | Supplies no-draw, multi-target, and overdraw canvases to bounded callbacks. |
+| [matrix.rkt](skia-lib/matrix.rkt) | Constructs and combines detached affine transformations and maps points, vectors, and rectangles. |
+| [projective-matrix.rkt](skia-lib/projective-matrix.rkt) | Constructs, combines, inverts, and applies detached 3-by-3 and 4-by-4 matrices. |
+| [canvas-matrix.rkt](skia-lib/canvas-matrix.rkt) | Reads and applies 3-by-3 and 4-by-4 canvas transformation matrices. |
+| [geometry.rkt](skia-lib/geometry.rkt) | Extends path construction, geometric inspection, paint queries, and region and rounded-rectangle operations. |
+| [geometry-primitives.rkt](skia-lib/geometry-primitives.rkt) | Constructs integer regions, vertex meshes, image lattices, atlas transforms, and cubic patches. |
+| [portable-drawing.rkt](skia-lib/portable-drawing.rkt) | Draws markers, sliced images, lattices, and atlases through explicit portable paths. |
+| [effects.rkt](skia-lib/effects.rkt) | Constructs additional path effects, masks, procedural shaders, and compositing effects. |
+| [runtime-effects.rkt](skia-lib/runtime-effects.rkt) | Compiles SkSL effects, reflects uniforms and children, and constructs shader, filter, or blender instances. |
+| [pictures.rkt](skia-lib/pictures.rkt) | Queries, serializes, loads, and samples recorded native pictures. |
+| [drawables.rkt](skia-lib/drawables.rkt) | Wraps recorded pictures as drawables and exposes drawing, bounds, and change queries. |
 
 </details>
 
@@ -109,19 +112,19 @@ filename does not imply that it is included in the default import.
 
 | Module | Responsibility |
 | --- | --- |
-| [color.rkt](color.rkt) | Normalizes named and packed colors into RGBA byte values. |
-| [color4f.rkt](color4f.rkt) | Defines detached extended-range float colors with explicit alpha semantics. |
-| [color-space.rkt](color-space.rkt) | Constructs transfer functions, RGB spaces, and XYZ-D50 conversion matrices. |
-| [color-filters.rkt](color-filters.rkt) | Constructs channel-table, gamma, lighting, luma, and contrast filters. |
-| [float-colors.rkt](float-colors.rkt) | Uses extended-range color values in paints, canvas fills, and gradient shaders. |
-| [image-info.rkt](image-info.rkt) | Describes image dimensions, pixel formats, alpha interpretation, and color-space metadata. |
-| [image-operations.rkt](image-operations.rkt) | Queries image properties and performs materialization, pixel transfers, scaling, and filtering. |
-| [raster-buffers.rkt](raster-buffers.rkt) | Owns formatted pixel storage and lends checked pixmap or canvas access to callbacks. |
-| [surface-properties.rkt](surface-properties.rkt) | Describes native pixel geometry and supported surface-rendering flags. |
-| [codec-queries.rkt](codec-queries.rkt) | Queries decoder-supported scaled dimensions and subset rectangles. |
-| [codec-scanlines.rkt](codec-scanlines.rkt) | Creates sequential decoder sessions and reads or skips output rows. |
-| [codec-incremental.rkt](codec-incremental.rkt) | Feeds encoded input to a stateful decoder and exposes progress and copied pixel snapshots. |
-| [graphics.rkt](graphics.rkt) | Queries and configures native font and resource caches and requests explicit cache purges. |
+| [color.rkt](skia-lib/color.rkt) | Normalizes named and packed colors into RGBA byte values. |
+| [color4f.rkt](skia-lib/color4f.rkt) | Defines detached extended-range float colors with explicit alpha semantics. |
+| [color-space.rkt](skia-lib/color-space.rkt) | Constructs transfer functions, RGB spaces, and XYZ-D50 conversion matrices. |
+| [color-filters.rkt](skia-lib/color-filters.rkt) | Constructs channel-table, gamma, lighting, luma, and contrast filters. |
+| [float-colors.rkt](skia-lib/float-colors.rkt) | Uses extended-range color values in paints, canvas fills, and gradient shaders. |
+| [image-info.rkt](skia-lib/image-info.rkt) | Describes image dimensions, pixel formats, alpha interpretation, and color-space metadata. |
+| [image-operations.rkt](skia-lib/image-operations.rkt) | Queries image properties and performs materialization, pixel transfers, scaling, and filtering. |
+| [raster-buffers.rkt](skia-lib/raster-buffers.rkt) | Owns formatted pixel storage and lends checked pixmap or canvas access to callbacks. |
+| [surface-properties.rkt](skia-lib/surface-properties.rkt) | Describes native pixel geometry and supported surface-rendering flags. |
+| [codec-queries.rkt](skia-lib/codec-queries.rkt) | Queries decoder-supported scaled dimensions and subset rectangles. |
+| [codec-scanlines.rkt](skia-lib/codec-scanlines.rkt) | Creates sequential decoder sessions and reads or skips output rows. |
+| [codec-incremental.rkt](skia-lib/codec-incremental.rkt) | Feeds encoded input to a stateful decoder and exposes progress and copied pixel snapshots. |
+| [graphics.rkt](skia-lib/graphics.rkt) | Queries and configures native font and resource caches and requests explicit cache purges. |
 
 </details>
 
@@ -130,18 +133,18 @@ filename does not imply that it is included in the default import.
 
 | Module | Responsibility |
 | --- | --- |
-| [fonts.rkt](fonts.rkt) | Configures native font behavior and queries glyph metrics, positions, and outlines. |
-| [typefaces.rkt](typefaces.rkt) | Loads typefaces, queries font styles and tables, and copies native font data. |
-| [text-blobs.rkt](text-blobs.rkt) | Builds text blobs from ordered glyph runs and places shaped glyphs along paths. |
-| [output.rkt](output.rkt) | Describes physical output pages and renders them to images, PDF, or SVG. |
-| [output-policy.rkt](output-policy.rkt) | Describes backend capabilities and classifies output-audit events and reports. |
-| [output-audit.rkt](output-audit.rkt) | Analyzes output pages and returns reports alongside encoded or saved document output. |
-| [output-groups.rkt](output-groups.rkt) | Records a drawing group and chooses its permitted native or raster output representation. |
-| [annotations.rkt](annotations.rkt) | Adds PDF/SVG links and named destinations through validated canvas operations. |
-| [streams.rkt](streams.rkt) | Wraps native memory and file streams with checked seeking, copying, and byte transfer operations. |
-| [stream-inputs.rkt](stream-inputs.rkt) | Constructs codecs, typefaces, pictures, and images from native streams or buffered ports. |
-| [file-streams.rkt](file-streams.rkt) | Opens native output streams for files and exposes explicit flushing. |
-| [live-streams.rkt](live-streams.rkt) | Reads and writes encoded images, pictures, and documents through Racket ports. |
+| [fonts.rkt](skia-lib/fonts.rkt) | Configures native font behavior and queries glyph metrics, positions, and outlines. |
+| [typefaces.rkt](skia-lib/typefaces.rkt) | Loads typefaces, queries font styles and tables, and copies native font data. |
+| [text-blobs.rkt](skia-lib/text-blobs.rkt) | Builds text blobs from ordered glyph runs and places shaped glyphs along paths. |
+| [output.rkt](skia-lib/output.rkt) | Describes physical output pages and renders them to images, PDF, or SVG. |
+| [output-policy.rkt](skia-lib/output-policy.rkt) | Describes backend capabilities and classifies output-audit events and reports. |
+| [output-audit.rkt](skia-lib/output-audit.rkt) | Analyzes output pages and returns reports alongside encoded or saved document output. |
+| [output-groups.rkt](skia-lib/output-groups.rkt) | Records a drawing group and chooses its permitted native or raster output representation. |
+| [annotations.rkt](skia-lib/annotations.rkt) | Adds PDF/SVG links and named destinations through validated canvas operations. |
+| [streams.rkt](skia-lib/streams.rkt) | Wraps native memory and file streams with checked seeking, copying, and byte transfer operations. |
+| [stream-inputs.rkt](skia-lib/stream-inputs.rkt) | Constructs codecs, typefaces, pictures, and images from native streams or buffered ports. |
+| [file-streams.rkt](skia-lib/file-streams.rkt) | Opens native output streams for files and exposes explicit flushing. |
+| [live-streams.rkt](skia-lib/live-streams.rkt) | Reads and writes encoded images, pictures, and documents through Racket ports. |
 
 </details>
 
@@ -150,13 +153,13 @@ filename does not imply that it is included in the default import.
 
 | Module | Responsibility |
 | --- | --- |
-| [bitmap.rkt](bitmap.rkt) | Copies Skia surfaces and images into Racket bitmap objects. |
-| [racket-draw.rkt](racket-draw.rkt) | Copies bitmaps, colors, and paths between Racket draw values and Skia values. |
-| [pict.rkt](pict.rkt) | Converts Skia images, surfaces, and recorded pictures into Racket pict values. |
-| [dc.rkt](dc.rkt) | Provides persistent and callback-scoped Skia raster drawing contexts and capability queries. |
-| [dc-output.rkt](dc-output.rkt) | Supplies Skia drawing contexts to document callbacks and supports explicit raster groups and annotations. |
-| [canvas.rkt](canvas.rkt) | Presents a persistent Skia drawing context through Racket GUI canvas and window behavior. |
-| [render-canvas.rkt](render-canvas.rkt) | Selects a raster or GPU canvas implementation behind a common callback-oriented interface. |
+| [bitmap.rkt](skia-lib/bitmap.rkt) | Copies Skia surfaces and images into Racket bitmap objects. |
+| [racket-draw.rkt](skia-lib/racket-draw.rkt) | Copies bitmaps, colors, and paths between Racket draw values and Skia values. |
+| [pict.rkt](skia-lib/pict.rkt) | Converts Skia images, surfaces, and recorded pictures into Racket pict values. |
+| [dc.rkt](skia-lib/dc.rkt) | Provides persistent and callback-scoped Skia raster drawing contexts and capability queries. |
+| [dc-output.rkt](skia-lib/dc-output.rkt) | Supplies Skia drawing contexts to document callbacks and supports explicit raster groups and annotations. |
+| [canvas.rkt](skia-lib/canvas.rkt) | Presents a persistent Skia drawing context through Racket GUI canvas and window behavior. |
+| [render-canvas.rkt](skia-lib/render-canvas.rkt) | Selects a raster or GPU canvas implementation behind a common callback-oriented interface. |
 
 </details>
 
@@ -165,17 +168,17 @@ filename does not imply that it is included in the default import.
 
 | Module | Responsibility |
 | --- | --- |
-| [gpu.rkt](gpu.rkt) | Creates and scopes GPU contexts and exposes rendering, state, and shutdown operations. |
-| [gpu-context-options.rkt](gpu-context-options.rkt) | Validates detached options used to construct native GPU contexts. |
-| [gpu-diagnostics.rkt](gpu-diagnostics.rkt) | Queries native memory statistics and OpenGL interface capabilities. |
-| [gpu-egl.rkt](gpu-egl.rkt) | Creates headless EGL contexts or providers for an already-current EGL context. |
-| [gpu-racket-gl.rkt](gpu-racket-gl.rkt) | Adapts a Racket GUI OpenGL context to a GPU provider. |
-| [gpu-interop.rkt](gpu-interop.rkt) | Re-exports common GPU interoperability operations and guarded transfer support. |
-| [gpu-gl-interop.rkt](gpu-gl-interop.rkt) | Exposes the supported OpenGL resource-sharing operations. |
-| [gpu-gui.rkt](gpu-gui.rkt) | Hosts GPU presenters in Racket GUI canvases and windows. |
-| [gpu-dc.rkt](gpu-dc.rkt) | Supplies drawing-context adapters during a GPU frame or surface callback. |
-| [gpu-canvas.rkt](gpu-canvas.rkt) | Presents frame-scoped Skia drawing contexts in Racket GUI canvases and windows. |
-| [gpu-output.rkt](gpu-output.rkt) | Runs explicit document raster-fallback work using a live GPU context. |
+| [gpu.rkt](skia-lib/gpu.rkt) | Creates and scopes GPU contexts and exposes rendering, state, and shutdown operations. |
+| [gpu-context-options.rkt](skia-lib/gpu-context-options.rkt) | Validates detached options used to construct native GPU contexts. |
+| [gpu-diagnostics.rkt](skia-lib/gpu-diagnostics.rkt) | Queries native memory statistics and OpenGL interface capabilities. |
+| [gpu-egl.rkt](skia-lib/gpu-egl.rkt) | Creates headless EGL contexts or providers for an already-current EGL context. |
+| [gpu-racket-gl.rkt](skia-lib/gpu-racket-gl.rkt) | Adapts a Racket GUI OpenGL context to a GPU provider. |
+| [gpu-interop.rkt](skia-lib/gpu-interop.rkt) | Re-exports common GPU interoperability operations and guarded transfer support. |
+| [gpu-gl-interop.rkt](skia-lib/gpu-gl-interop.rkt) | Exposes the supported OpenGL resource-sharing operations. |
+| [gpu-gui.rkt](skia-lib/gpu-gui.rkt) | Hosts GPU presenters in Racket GUI canvases and windows. |
+| [gpu-dc.rkt](skia-lib/gpu-dc.rkt) | Supplies drawing-context adapters during a GPU frame or surface callback. |
+| [gpu-canvas.rkt](skia-lib/gpu-canvas.rkt) | Presents frame-scoped Skia drawing contexts in Racket GUI canvases and windows. |
+| [gpu-output.rkt](skia-lib/gpu-output.rkt) | Runs explicit document raster-fallback work using a live GPU context. |
 
 </details>
 
@@ -255,7 +258,7 @@ cases and described-font consumer fixtures run through the existing CI gates.
 
 ```bash
 python3 tools/validate-dc-closure.py --racket "$RACKET" --require-renderers
-"$RACKET" examples/dc-closure.rkt
+"$RACKET" skia-lib/examples/dc-closure.rkt
 ```
 
 
@@ -274,7 +277,7 @@ full mode also renders the files independently with Poppler and librsvg.
 ```bash
 python3 -m pip install -r tools/dc-output-requirements.txt
 python3 tools/validate-dc-output.py --racket "$RACKET" --require-renderers
-"$RACKET" examples/dc-output.rkt
+"$RACKET" skia-lib/examples/dc-output.rkt
 ```
 
 ## GPU staging reuse
@@ -322,8 +325,8 @@ examples and acceptance limits](docs/RENDER-CANVAS.md).
 
 ```bash
 python3 tools/validate-render-canvas.py --racket "$RACKET" --require-gpu
-"$RACKET" examples/render-canvas.rkt --renderer raster
-"$RACKET" examples/render-canvas.rkt --renderer gpu
+"$RACKET" skia-lib/examples/render-canvas.rkt --renderer raster
+"$RACKET" skia-lib/examples/render-canvas.rkt --renderer gpu
 ```
 
 ## 0.59: GPU drawing contexts
@@ -337,7 +340,7 @@ from the actual X/Y target extents, including HiDPI rounding.
 
 ```bash
 python3 tools/validate-gpu-dc.py --racket "$RACKET" --require-gui
-"$RACKET" examples/skia-canvas-on-gpu.rkt
+"$RACKET" skia-lib/examples/skia-canvas-on-gpu.rkt
 ```
 
 ## Persistent raster GUI canvas
@@ -362,7 +365,7 @@ canvas. The raster canvas has no GPU selection or silent rendering fallback.
 The next stage is **0.59: a GPU-backed canvas/DC facade with explicit frame
 lifetime**. The existing `gpu-canvas%` API and native pins are unchanged.
 
-Run the [GUI example](examples/skia-canvas.rkt) and see
+Run the [GUI example](skia-lib/examples/skia-canvas.rkt) and see
 [the canvas contract and validation](docs/SKIA-CANVAS.md). The new required
 Linux GUI CI job uses an isolated installed package under Xvfb; existing CPU
 and EGL jobs retain their headless contracts. GUI CI establishes tested widget
@@ -689,7 +692,7 @@ frames may synchronize for safe drawable cleanup; acquisition can block.
 
 See [presentation API and ownership](docs/GPU-PRESENTATION.md) and
 [automated and manual validation](docs/GPU-PRESENTATION-TESTING.md).
-Run `examples/gpu-presenters.rkt --backend both` on macOS to inspect the same
+Run `skia-lib/examples/gpu-presenters.rkt --backend both` on macOS to inspect the same
 callback in both windows. Automated submission/teardown checks do not certify
 physical display pixels; their review explicitly requires human inspection.
 
@@ -852,7 +855,7 @@ Earlier full Unicode conformance results remain historical.
 
 ## Canvas primitives and compositing layers
 
-`canvas-primitives.rkt`, also exported by `main.rkt`, adds points/point sets,
+`skia-lib/canvas-primitives.rkt`, also exported by `skia-lib/main.rkt`, adds points/point sets,
 arcs, immutable four-corner rounded-rectangle specifications, clip queries,
 color fills, and protected scoped layers. A layer paint applies opacity and
 filters to the completed group at restore. Native layer bounds can restrict
@@ -918,7 +921,7 @@ Raster output ignores annotation operations after argument validation.
 
 See [the annotation guide](docs/ANNOTATIONS.md) for clipping/bounding-rectangle
 semantics, URI restrictions, stable fragment IDs, and ownership. The single
-`examples/document-links.rkt` runner exports PDF, SVGs, raster references and
+`skia-lib/examples/document-links.rkt` runner exports PDF, SVGs, raster references and
 an **interactive** HTML review page using `object` rather than `img` for SVGs.
 The existing ICC sentinel workaround and color-output implementation are unchanged.
 
@@ -949,7 +952,7 @@ PDF `#:pdfa? #t` exposes Skia's XMP/UUID/fixed-sRGB-output-intent mode, not a
 PDF/A conformance guarantee. Normalize source-image samples to sRGB before
 embedding in portable documents: the pinned PDF serializer does not reliably
 preserve source-image ICC profiles. See [the guide](docs/COLOR-OUTPUT.md).
-`examples/color-output.rkt` supplies one PDF/SVG/raster registry, six tagged
+`skia-lib/examples/color-output.rkt` supplies one PDF/SVG/raster registry, six tagged
 encoded images, source profiles, and a comparison HTML page.
 
 ## Advanced filter graphs
@@ -973,7 +976,7 @@ filters can rasterize. General filter graphs on SVG need explicit bounded
 `draw-rasterized` groups; there is no blanket automatic fallback.
 
 The validation script uses the same selected Racket for compiling all test
-modules and running the complete suite. `examples/filter-graphs.rkt` is one
+modules and running the complete suite. `skia-lib/examples/filter-graphs.rkt` is one
 registry for the PDF, SVGs, independent references, and browser review page.
 
 ## Path inspection and affine matrices
@@ -1024,7 +1027,7 @@ without shrinking their original content box. The low-level APIs retain their
 native-text and SVG-user-unit defaults.
 
 See the [shared-output guide](docs/OUTPUT-GUIDE.md), the [API reference](docs/API.md),
-and `examples/vector-output.rkt` for the complete PDF/SVG/raster review registry.
+and `skia-lib/examples/vector-output.rkt` for the complete PDF/SVG/raster review registry.
 Already-recorded pictures cannot have their text policy changed retroactively;
 unsupported native SVG effects still need explicit rasterization.
 
@@ -1051,7 +1054,7 @@ use `simple-text-path` or `shaped-run->path` for explicit outlines. Use
 surrounding content stays vector. There is no blanket automatic fallback.
 See the [SVG guide and coverage table](docs/SVG-OUTPUT.md).
 
-`examples/svg-documents.rkt` writes three SVGs, their separately drawn raster
+`skia-lib/examples/svg-documents.rkt` writes three SVGs, their separately drawn raster
 references, and a browser review page. `tools/inspect-svg-output.py` checks the
 actual SVG structure using Python's standard library; it does not render it.
 
@@ -1071,7 +1074,7 @@ The same canvas drawing operations now target multi-page PDFs. Output can be
 copied to bytes or safely published to a file; metadata and fallback raster DPI
 are configurable. PDF page dimensions are points, not pixels. See the
 [PDF guide](docs/PDF-OUTPUT.md) and [API reference](docs/API.md#pdf-documents).
-`examples/pdf-documents.rkt` writes a three-page PDF and separate raster reference
+`skia-lib/examples/pdf-documents.rkt` writes a three-page PDF and separate raster reference
 PNGs. Those PNGs are not PDF renderings; compare them with an actual PDF viewer.
 
 ## Animated frames and orientation
@@ -1086,7 +1089,7 @@ PNGs. Those PNGs are not PDF renderings; compare them with an actual PDF viewer.
 
 `image-frame-from-bytes` and `image-frame-from-file` offer one-shot decoding.
 Use `#:normalize-origin? #f` for encoded pixel coordinates. Existing image
-constructors retain their previous behavior. Run `examples/advanced-codecs.rkt`
+constructors retain their previous behavior. Run `skia-lib/examples/advanced-codecs.rkt`
 for the animation/orientation contact sheet. Detailed contracts are in
 [the API reference](docs/API.md#animated-codecs-and-encoded-orientation).
 
@@ -1125,30 +1128,29 @@ bash tools/install-native.sh &&
 bash tools/install-harfbuzz.sh &&
 bash tools/audit-symbols.sh &&
 bash tools/audit-harfbuzz-symbols.sh &&
-"$RACO" make main.rkt bitmap.rkt tools/doctor.rkt run-tests.rkt &&
-"$RACKET" tools/doctor.rkt &&
-"$RACKET" run-tests.rkt &&
+"$RACO" make skia-lib/main.rkt skia-lib/bitmap.rkt skia-lib/tools/doctor.rkt skia-lib/run-tests.rkt &&
+"$RACKET" skia-lib/tools/doctor.rkt &&
+"$RACKET" skia-lib/run-tests.rkt &&
 mkdir -p output &&
-"$RACKET" examples/circle.rkt output/circle.png &&
-"$RACKET" examples/gallery.rkt output/gallery.png &&
-"$RACKET" examples/text.rkt output/text.png &&
-"$RACKET" examples/text-blobs.rkt output/text-blobs.png &&
-"$RACKET" examples/shaping.rkt output/shaping.png &&
-"$RACKET" examples/layout.rkt output/layout.png &&
-"$RACKET" examples/mixed-text.rkt output/mixed-text.png &&
-"$RACKET" examples/line-breaking.rkt output/line-breaking.png &&
-"$RACKET" examples/justification.rkt output/justification.png &&
-"$RACKET" examples/bidi-controls.rkt output/bidi-controls.png &&
-"$RACKET" examples/break-providers.rkt output/break-providers.png &&
-"$RACKET" examples/script-justification.rkt output/script-justification.png &&
-"$RACKET" examples/color-spaces.rkt output/color-spaces.png &&
-"$RACKET" examples/gradients.rkt output/gradients.png &&
-"$RACKET" examples/codecs.rkt output/codecs.png &&
-"$RACKET" examples/path-effects.rkt output/path-effects.png &&
-"$RACKET" examples/filters.rkt output/filters.png &&
-"$RACKET" examples/pictures.rkt output/pictures.png &&
-"$RACKET" examples/svg-paths.rkt output/svg-paths.png &&
-"$RACKET" examples/bitmap-bridge.rkt output/bitmap.png
+"$RACKET" skia-lib/examples/circle.rkt output/circle.png &&
+"$RACKET" skia-lib/examples/gallery.rkt output/gallery.png &&
+"$RACKET" skia-lib/examples/text.rkt output/text.png &&
+"$RACKET" skia-lib/examples/text-blobs.rkt output/text-blobs.png &&
+"$RACKET" skia-lib/examples/shaping.rkt output/shaping.png &&
+"$RACKET" skia-lib/examples/layout.rkt output/layout.png &&
+"$RACKET" skia-lib/examples/mixed-text.rkt output/mixed-text.png &&
+"$RACKET" skia-lib/examples/line-breaking.rkt output/line-breaking.png &&
+"$RACKET" skia-lib/examples/justification.rkt output/justification.png &&
+"$RACKET" skia-lib/examples/bidi-controls.rkt output/bidi-controls.png &&
+"$RACKET" skia-lib/examples/break-providers.rkt output/break-providers.png &&
+"$RACKET" skia-lib/examples/script-justification.rkt output/script-justification.png &&
+"$RACKET" skia-lib/examples/gradients.rkt output/gradients.png &&
+"$RACKET" skia-lib/examples/codecs.rkt output/codecs.png &&
+"$RACKET" skia-lib/examples/path-effects.rkt output/path-effects.png &&
+"$RACKET" skia-lib/examples/filters.rkt output/filters.png &&
+"$RACKET" skia-lib/examples/pictures.rkt output/pictures.png &&
+"$RACKET" skia-lib/examples/svg-paths.rkt output/svg-paths.png &&
+"$RACKET" skia-lib/examples/bitmap-bridge.rkt output/bitmap.png
 ```
 
 Adjust the two executable paths for another Racket installation. The examples
@@ -1181,7 +1183,7 @@ route is described in the publication runbook.
 ### Testing without a native library
 
 ```sh
-racket run-tests.rkt --pure
+racket skia-lib/run-tests.rkt --pure
 ```
 
 This runs the color/validation/ABI-layout tests and the actual ownership layer
@@ -1192,7 +1194,7 @@ missing or incompatible library is an error, not a silently skipped test.
 
 ```sh
 export RACKET_SKIA_LIBRARY="/absolute/path/to/libSkiaSharp.dylib"
-racket tools/doctor.rkt
+racket skia-lib/tools/doctor.rkt
 ```
 
 The override is a **filename**, not a directory, and must match the pinned
@@ -1200,7 +1202,8 @@ The override is a **filename**, not a directory, and must match the pinned
 does not silently load another library. Otherwise both loaders select one
 generation-qualified `skia-native-1` directory in Racket's library search order.
 A selected incomplete, corrupt or unloadable managed pair is an error. Only
-when no managed pair exists may the legacy `native/<platform>/` directory be
+when no managed pair exists may the collection's `native/<platform>/` directory
+(`skia-lib/native/<platform>/` in a checkout) be
 selected, followed by the old system-search route for an unregistered checkout.
 An installed package with missing declared native data fails clearly.
 Managed packages take precedence over developer files; set both explicit
@@ -1226,7 +1229,7 @@ boundary. Stop active renderers before reinstalling a native library.
 ## Native symbol audit
 
 `tools/audit-symbols.sh` compares every `define-native` declaration in
-`private/native.rkt` against the symbols actually exported by the selected
+`skia-lib/private/native.rkt` against the symbols actually exported by the selected
 `libSkiaSharp`. Unlike `skia-check!`, which stops when symbol resolution first
 fails, the audit reports all missing native names in one pass. Run it after
 installing or replacing the native asset and before the doctor when changing
@@ -1245,20 +1248,19 @@ The single public collection remains:
 (require skia)
 ```
 
-The source ZIP contains no native libraries or font binaries. The package
-manager obtains the separately checksummed declared font data and macOS/Linux
-native packages during installation. Windows native downloads stay outside the
+The `skia` and `skia-lib` source packages contain no native libraries or fonts.
+`skia-doc` contains the four approved Noto files and their notices. The package
+manager obtains the declared macOS/Linux native packages during installation. Windows native downloads stay outside the
 package and require the explicit installer. Importing `skia` performs no native load or download. Keep a
 linked development source directory available while its package is installed.
 
 ## First drawing
 
-This program works as a file in the extracted root using `"main.rkt"`. Replace
-that module path with `skia` after package installation.
+After package installation, save this program in a file and run it with Racket.
 
 ```racket
 #lang racket/base
-(require "main.rkt")
+(require skia)
 
 (with-skia ([surface (make-surface 640 480 #:background 'white)]
             [fill (make-paint #:color "#326DE6")]
@@ -1536,18 +1538,21 @@ rather than sharing a resource. Parallel-place execution has not been tested.
 ## Layout
 
 ```text
-main.rkt                 public drawing API
-color.rkt                pure color values/conversions
-bitmap.rkt               optional racket/draw pixel-copy bridge
-private/native.rkt       lazy, version-checked C ABI binding
-private/types.rkt        exact native struct layouts
-private/lifetime.rkt     ownership cells and scoped cleanup
-private/core.rkt         drawing/resource implementation
-private/check.rkt        argument validation and option mapping
-examples/                circle, gallery, text, gradients, codecs, path effects, filters, bitmap bridge
-tests/                  pure, lifetime, and live-rendering suites
-tools/                  explicit native installer and doctor
-docs/                   API reference and ABI/source notes
+skia-lib/main.rkt                 public drawing API
+skia-lib/color.rkt                pure color values/conversions
+skia-lib/bitmap.rkt               optional racket/draw pixel-copy bridge
+skia-lib/private/native.rkt       lazy, version-checked C ABI binding
+skia-lib/private/types.rkt        exact native struct layouts
+skia-lib/private/lifetime.rkt     ownership cells and scoped cleanup
+skia-lib/private/core.rkt         drawing/resource implementation
+skia-lib/private/check.rkt        argument validation and option mapping
+skia-lib/examples/              runtime examples
+skia-lib/tests/                 pure, lifetime, and live-rendering suites
+skia-lib/tools/                 installed diagnostics and Windows acquisition helpers
+skia-doc/                      manuals, tutorials, copier, fonts and integration tests
+skia/                          meta-package
+tools/                         repository installers, validators and evidence collectors
+docs/                          API reference, ABI/source notes and maintainer runbooks
 ```
 
 See [API reference](docs/API.md), [ABI notes](docs/ABI.md),
@@ -1874,13 +1879,13 @@ compiler, native helper or retained user-port callback is needed.
 
 ### Global caches and memory statistics (0.77a)
 
-`graphics.rkt` exposes explicit global cache limits, usage, purges, and bounded
+`skia-lib/graphics.rkt` exposes explicit global cache limits, usage, purges, and bounded
 detached memory snapshots. See [GLOBAL-CACHES.md](docs/GLOBAL-CACHES.md). No
 cache policy is changed by import, and no compiler/native helper is added.
 
 ### GPU context options and targeted control (0.77b)
 
-`gpu.rkt` exposes immutable native context options, targeted surface/image flush,
+`skia-lib/gpu.rkt` exposes immutable native context options, targeted surface/image flush,
 and healthy-host release-and-abandon. See [GPU-CONTEXT-CONTROLS.md](docs/GPU-CONTEXT-CONTROLS.md).
 Existing calls retain native defaults; no new compiler/native helper is needed.
 
@@ -1896,7 +1901,7 @@ Native-backed `xyz-d50-concat` and `xyz-d50-invert` are public through `skia`. T
 
 ## 0.78c — Public API stabilization
 
-See [the API contract](docs/API-CONTRACTS.md) and [generated export/signature index](docs/PUBLIC-API.md). The policy distinguishes stable, experimental and private interfaces without changing existing exports. Runtime reflection is checked separately from native/rendering evidence; 0.78d release validation remains outstanding.
+See [the API contract](docs/API-CONTRACTS.md) and [generated export/signature index](docs/PUBLIC-API.md). The policy distinguishes stable, experimental and private interfaces without changing existing exports. Runtime reflection is checked separately from native/rendering evidence; the revised Git package layout requires a fresh full release-candidate run.
 
 ## 0.78d — Release candidate validation
 

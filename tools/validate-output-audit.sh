@@ -16,10 +16,10 @@ done
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
 "$RACKET" -l raco -- make \
-  main.rkt output-policy.rkt output-audit.rkt matrix.rkt output.rkt bitmap.rkt \
-  tools/doctor.rkt run-tests.rkt tests/*.rkt examples/output-audit.rkt
-"$RACKET" tools/doctor.rkt
-"$RACKET" run-tests.rkt
+  skia-lib/main.rkt skia-lib/output-policy.rkt skia-lib/output-audit.rkt skia-lib/matrix.rkt skia-lib/output.rkt skia-lib/bitmap.rkt \
+  skia-lib/tools/doctor.rkt skia-lib/run-tests.rkt tests/*.rkt skia-lib/examples/output-audit.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
-"$RACKET" examples/output-audit.rkt output/output-audit-0.29
+"$RACKET" skia-lib/examples/output-audit.rkt output/output-audit-0.29
 python3 tools/inspect-output-audit.py --probe-prefix output/output-audit-0.29

@@ -7,6 +7,7 @@ GPU-offscreen validation from real-window validation and never certify a screen
 capture or performance. The selected Racket is used for ALL Racket commands.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -30,7 +31,7 @@ SOURCES = (*HEADLESS, *GUI, "private/dc-render.rkt", "private/dc-class.rkt", "pr
 
 
 def fingerprint(root: Path) -> dict[str, str]:
-    return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in SOURCES}
+    return {name: hashlib.sha256((source_path(root, name)).read_bytes()).hexdigest() for name in SOURCES}
 
 
 def validate_suite(output: str, name: str) -> None:
@@ -127,8 +128,8 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         directory = args.directory.resolve()
         directory.mkdir(parents=True, exist_ok=False)
     else:
-        (root / "output").mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix="gpu-dc-0.59-", dir=root / "output"))
+        (root / 'output').mkdir(exist_ok=True)
+        directory = Path(tempfile.mkdtemp(prefix="gpu-dc-0.59-", dir=root / 'output'))
     runner = Runner(directory, args.timeout)
     result = {"schema": 1, "stage": "0.59", "status": "failed", "gui_required": args.require_gui,
               "native_gpu_tests_passed": False, "gui_tests_passed": False,
@@ -141,7 +142,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         result["racket_executable"] = str(Path(racket).resolve())
         before = fingerprint(root)
         result["source_sha256"] = before
-        identity = validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root)))
+        identity = validate_identity(json.loads(runner.run([racket, root / 'tools/ci-identity.rkt'], root)))
         result["identity"] = identity
         native, gui = select_backends(args.backend, identity)
         if args.adapter is not None and native != "direct3d":
@@ -153,14 +154,14 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         if args.adapter is not None:
             backend_args += ["--adapter", args.adapter]
             gui_args += ["--adapter", args.adapter]
-        runner.run([racket, "-l", "raco", "--", "make", *(root / p for p in HEADLESS)], root)
+        runner.run([racket, "-l", "raco", "--", "make", *(source_path(root, p) for p in HEADLESS)], root)
         for name, options in (("gpu-dc-pure", []), ("gpu-dc-native", backend_args)):
-            validate_suite(runner.run([racket, root / f"tests/{name}-test.rkt", *options], root), name)
+            validate_suite(runner.run([racket, source_path(root, f"tests/{name}-test.rkt"), *options], root), name)
             result["completed_suites"].append({"name": name, "cases": COUNTS[name]})
         result["native_gpu_tests_passed"] = True
         if args.require_gui:
-            runner.run([racket, "-l", "raco", "--", "make", *(root / p for p in GUI)], root)
-            validate_suite(runner.run([racket, root / "tests/gpu-dc-gui-test.rkt", *gui_args], root), "gpu-dc-gui")
+            runner.run([racket, "-l", "raco", "--", "make", *(source_path(root, p) for p in GUI)], root)
+            validate_suite(runner.run([racket, source_path(root, 'tests/gpu-dc-gui-test.rkt'), *gui_args], root), "gpu-dc-gui")
             result["completed_suites"].append({"name": "gpu-dc-gui", "cases": COUNTS["gpu-dc-gui"]})
             result["gui_tests_passed"] = True
         if fingerprint(root) != before:

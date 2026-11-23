@@ -5,6 +5,7 @@ Default: native Racket tests plus parsed PDF/SVG structure, text and annotations
 --require-renderers also requires independent Poppler/librsvg pixel acceptance.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
@@ -39,7 +40,7 @@ SOURCES = (
 
 
 def fingerprint(root: Path):
-    return {name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in SOURCES}
+    return {name: hashlib.sha256((source_path(root, name)).read_bytes()).hexdigest() for name in SOURCES}
 
 
 def suite_output(text: str, name: str):
@@ -129,8 +130,8 @@ def main(argv=None, *, root=ROOT):
         directory = args.directory.resolve()
         directory.mkdir(parents=True, exist_ok=False)
     else:
-        (root/"output").mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix="dc-output-0.63-", dir=root/"output"))
+        (root / 'output').mkdir(exist_ok=True)
+        directory = Path(tempfile.mkdtemp(prefix="dc-output-0.63-", dir=root / 'output'))
     runner = Runner(directory, args.timeout)
     token = uuid.uuid4().hex
     result = dict(schema=1, stage="0.63", status="failed", run_token=token,
@@ -153,23 +154,23 @@ def main(argv=None, *, root=ROOT):
                 renderers[name] = str(Path(resolved).resolve())
             result["renderers"] = renderers
         before = fingerprint(root)
-        ident = identity(json.loads(runner.run([racket, root/"tools/ci-identity.rkt"], root), object_pairs_hook=checks.unique))
+        ident = identity(json.loads(runner.run([racket, root / 'tools/ci-identity.rkt'], root), object_pairs_hook=checks.unique))
         result["identity"] = ident
         modules = ["dc-output.rkt", "tests/dc-output-pure-test.rkt", "tests/dc-output-native-test.rkt",
                    "tools/dc-output-doctor.rkt", "examples/dc-output.rkt"]
-        runner.run([racket, "-l", "raco", "--", "make", *[root/p for p in modules]], root)
+        runner.run([racket, "-l", "raco", "--", "make", *[source_path(root, p) for p in modules]], root)
         result["compiled"] = True
         # Only the global suite is optional. The DC-specific baseline and all
         # document suites/inspectors below remain mandatory in both modes.
-        regressions.run(lambda: runner.run([racket, root/"run-tests.rkt"], root))
-        runner.run([sys.executable, root/"tools/validate-dc.py", "--racket", racket], root)
+        regressions.run(lambda: runner.run([racket, source_path(root, 'run-tests.rkt')], root))
+        runner.run([sys.executable, root / 'tools/validate-dc.py', "--racket", racket], root)
         result["baseline_passed"] = True
         for name in COUNTS:
-            suite_output(runner.run([racket, root/f"tests/{name}-test.rkt"], root), name)
+            suite_output(runner.run([racket, source_path(root, f"tests/{name}-test.rkt")], root), name)
         result["native_tests_passed"] = True
         result["suites"] = dict(COUNTS)
         documents = directory/"documents"
-        worker_output(runner.run([racket, root/"tools/dc-output-doctor.rkt", "--directory", documents,
+        worker_output(runner.run([racket, root / 'tools/dc-output-doctor.rkt', "--directory", documents,
                                   "--run-token", token], root))
         rows = checks.validate_receipt(checks.read_json(documents/"documents.json"), token,
                                       {k: ident[k] for k in ("version", "os", "architecture", "vm")})

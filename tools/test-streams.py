@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.75a source, byte-inspector and mocked orchestration tests; not native evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import ast
 import contextlib
 import copy
@@ -36,10 +37,10 @@ def receipt():
 def fixtures(root, token=TOKEN):
     root.mkdir(parents=True, exist_ok=True)
     report = receipt(); report['run_token'] = token
-    (root/'streams.json').write_text(json.dumps(report), encoding='utf-8')
+    (root / 'streams.json').write_text(json.dumps(report), encoding='utf-8')
     data = bytes(range(256))*16
     for name, content in (('stream.bin', data), ('tail.bin', data[7:]), ('decoded.rgba', v.PIXELS)):
-        (root/name).write_bytes(content)
+        (source_path(root, name)).write_bytes(content)
 
 
 class CompilePathPortability(unittest.TestCase):
@@ -78,10 +79,10 @@ class Evidence(unittest.TestCase):
             root = Path(temporary); fixtures(root)
             if change:
                 data = receipt(); data.update(change)
-                (root/'streams.json').write_text(json.dumps(data), encoding='utf-8')
+                (root / 'streams.json').write_text(json.dumps(data), encoding='utf-8')
             if file:
-                if content is None: (root/file).unlink()
-                else: (root/file).write_bytes(content)
+                if content is None: (source_path(root, file)).unlink()
+                else: (source_path(root, file)).write_bytes(content)
             return v.inspect(root, TOKEN)
     def test_synthetic_valid(self): self.assertEqual(self.inspect()['status'], 'passed')
     def test_not_live_streaming_claim(self): self.assertFalse(self.inspect()['live_port_streaming_verified'])
@@ -108,19 +109,19 @@ class Evidence(unittest.TestCase):
     def test_linked_file(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);fixtures(root)
-            (root/'copy.bin').write_bytes((root/'stream.bin').read_bytes())
-            (root/'stream.bin').unlink();(root/'stream.bin').symlink_to(root/'copy.bin')
+            (root / 'copy.bin').write_bytes((root / 'stream.bin').read_bytes())
+            (root / 'stream.bin').unlink();(root / 'stream.bin').symlink_to(root / 'copy.bin')
             with self.assertRaises(ValueError):v.inspect(root,TOKEN)
 
 
 class Orchestration(unittest.TestCase):
     def invoke(self, mode=None, failure=None, partial=False, mutate=False):
-        spec=importlib.util.spec_from_file_location('stream_driver_test', ROOT/'tools/validate-streams.py')
+        spec=importlib.util.spec_from_file_location('stream_driver_test', ROOT / 'tools/validate-streams.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         commands=[]
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
-            (root/'run-tests.rkt').write_text('(define-runtime-path some-test "tests/unrelated-native-test.rkt")\n')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path some-test "tests/unrelated-native-test.rkt")\n')
             def execute(command, **kwargs):
                 command=list(map(str,command));commands.append(command)
                 name=Path(command[1]).name if len(command)>1 else ''
@@ -134,16 +135,16 @@ class Orchestration(unittest.TestCase):
                 if name=='stream-doctor.rkt':
                     fixtures(Path(command[command.index('--directory')+1]),command[command.index('--token')+1])
                     if mutate:
-                        (root/'run-tests.rkt').write_text('changed during validation\n')
+                        (source_path(root, 'run-tests.rkt')).write_text('changed during validation\n')
                 out.flush()
                 return subprocess.CompletedProcess(command,0)
-            args=['--racket',sys.executable,'--directory',str(root/'out')]
+            args=['--racket',sys.executable,'--directory',str(root / 'out')]
             if mode is not None:args+=['--regressions',mode]
             with patch.object(module.shutil,'which',return_value=sys.executable), \
                  patch.object(module.subprocess,'run',side_effect=execute), \
                  contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 result=module.main(args,root=root)
-            return result,json.loads((root/'out/validation.json').read_text()),commands
+            return result,json.loads((root / 'out/validation.json').read_text()),commands
     def test_default_full(self):
         rc,report,commands=self.invoke()
         self.assertEqual(rc,0);self.assertTrue(report['regressions_passed'])
@@ -183,7 +184,7 @@ class Orchestration(unittest.TestCase):
 
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_actual_case_counts(self):
         for kind,count in (('pure',v.PURE_CASES),('native',v.NATIVE_CASES)):
             text=self.text(f'tests/stream-{kind}-test.rkt')

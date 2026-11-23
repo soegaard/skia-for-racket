@@ -6,6 +6,7 @@ an incomplete report, failed independent pixel probes or a readback in a normal
 frame is fatal. A CPU reference is not a fallback for a failed GPU capture.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import importlib.util
@@ -34,7 +35,7 @@ SOURCES = tuple(dict.fromkeys((*base.SOURCES,
 
 
 def fingerprint(root: Path) -> dict:
-    return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in SOURCES}
+    return {name: hashlib.sha256((source_path(root, name)).read_bytes()).hexdigest() for name in SOURCES}
 
 
 def validate_marker(output: str, suite: str) -> None:
@@ -74,8 +75,8 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         # Do not follow a preexisting symlink or reuse old evidence.
         directory.mkdir(parents=True, exist_ok=False)
     else:
-        (root / "output").mkdir(exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix="gpu-dc-consumers-0.60-", dir=root / "output"))
+        (root / 'output').mkdir(exist_ok=True)
+        directory = Path(tempfile.mkdtemp(prefix="gpu-dc-consumers-0.60-", dir=root / 'output'))
     runner = base.Runner(directory, args.timeout)
     token = uuid.uuid4().hex
     result = {"schema": 1, "stage": "0.60", "status": "failed", "run_token": token,
@@ -90,7 +91,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         result["racket_executable"] = str(Path(racket).resolve())
         before = fingerprint(root)
         result["source_sha256"] = before
-        identity = base.validate_identity(json.loads(runner.run([racket, root / "tools/ci-identity.rkt"], root)))
+        identity = base.validate_identity(json.loads(runner.run([racket, root / 'tools/ci-identity.rkt'], root)))
         result["identity"] = identity
         worker_identity = {k: identity[k] for k in ("version", "os", "architecture", "vm")}
         native, gui = base.select_backends(args.backend, identity)
@@ -100,7 +101,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         options = ["--backend", native]
         if args.adapter:
             options += ["--adapter", args.adapter]
-        baseline_args = [sys.executable, root / "tools/validate-gpu-dc.py", "--racket", racket,
+        baseline_args = [sys.executable, root / 'tools/validate-gpu-dc.py', "--racket", racket,
                          *options, "--directory", directory / "baseline", "--timeout", args.timeout]
         if args.require_gui:
             baseline_args += ["--require-gui"]
@@ -115,7 +116,7 @@ def main(argv=None, *, root: Path = ROOT) -> int:
         result["baseline_passed"] = True
         suites = [("native", native)] + ([("gui", gui)] if args.require_gui else [])
         for suite, backend in suites:
-            module = root / f"tools/gpu-dc-consumer-{suite}.rkt"
+            module = source_path(root, f"tools/gpu-dc-consumer-{suite}.rkt")
             runner.run([racket, "-l", "raco", "--", "make", module], root)
             command = [racket, module, "--backend", backend, "--directory", directory / suite, "--run-token", token]
             if args.adapter:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic inspector/control-flow tests; not native Skia execution evidence."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -50,12 +51,12 @@ class Completion(unittest.TestCase):
         with self.assertRaises(ValueError):v.suite_output(self.text().replace('0 error(s)','1 error(s)'),'live-stream-pure',26)
 class Orchestration(unittest.TestCase):
     def invoke(self,mode=None,failure=None,partial=False):
-        spec=importlib.util.spec_from_file_location('live_driver',ROOT/'tools/validate-live-streams.py')
+        spec=importlib.util.spec_from_file_location('live_driver',ROOT / 'tools/validate-live-streams.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         commands=[]
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
-            (root/'run-tests.rkt').write_text('(define-runtime-path x "tests/unrelated-native-test.rkt")')
+            (source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path x "tests/unrelated-native-test.rkt")')
             def execute(command,**kwargs):
                 command=list(map(str,command));commands.append(command)
                 name=Path(command[1]).name if len(command)>1 else ''
@@ -64,14 +65,14 @@ class Orchestration(unittest.TestCase):
                     if name==f'live-stream-{kind}-test.rkt':
                         kwargs['stdout'].write('incomplete\n' if partial else f'{count} success(es) 0 failure(s) 0 error(s) {count} test(s) run\nlive-stream-{kind}: {count} cases, 0 failures\n')
                 return subprocess.CompletedProcess(command,0)
-            args=['--racket',sys.executable,'--directory',str(root/'out')]
+            args=['--racket',sys.executable,'--directory',str(root / 'out')]
             if mode:args+=['--regressions',mode]
             with patch.object(module.subprocess,'run',side_effect=execute), patch.object(module.shutil,'which',return_value=sys.executable), \
                  patch.object(module.checks,'inspect',return_value={'status':'passed','scope':'mock inspector'}), \
                  patch.object(module.probe,'run_probe',side_effect=(ValueError('synthetic probe failure') if failure=='probe' else None), return_value={'status':'passed','native_cases':25}), \
                  contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
                 result=module.main(args,root=root)
-            return result,json.loads((root/'out/validation.json').read_text()),commands
+            return result,json.loads((root / 'out/validation.json').read_text()),commands
     def test_default_full(self):
         rc,r,c=self.invoke();self.assertEqual(rc,0);self.assertTrue(r['regressions_passed']);self.assertTrue(any(Path(x[1]).name=='run-tests.rkt' for x in c))
     def test_none_is_not_pass(self):
@@ -101,7 +102,7 @@ class Orchestration(unittest.TestCase):
     def test_source_failure(self):self.assertEqual(self.invoke('none',failure='api-inventory.py')[0],1)
     def test_doctor_failure(self):self.assertEqual(self.invoke('none',failure='live-stream-doctor.rkt')[0],1)
 class Sources(unittest.TestCase):
-    def text(self,p):return (ROOT/p).read_text(encoding='utf-8')
+    def text(self,p):return (source_path(ROOT, p)).read_text(encoding='utf-8')
     def test_doctor_uses_format_specific_encoding_options(self):
         source=' '.join(self.text('tools/live-stream-doctor.rkt').split())
         for call in ("[(png) (image->port image out 'png)]",
@@ -141,8 +142,8 @@ class Sources(unittest.TestCase):
         for term in ('killed caller','custodian','bounded output pipe','collections during callbacks'):
             self.assertIn(term,source)
     def test_no_custom_native_bridge(self):
-        self.assertFalse((ROOT/'tools/port-bridge').exists())
-        self.assertFalse((ROOT/'tools/build-port-bridge.py').exists())
+        self.assertFalse((ROOT / 'tools/port-bridge').exists())
+        self.assertFalse((ROOT / 'tools/build-port-bridge.py').exists())
     def test_cpu_gate_preserved(self):
         s=self.text('live-streams.rkt');self.assertIn("call-with-owned 'picture->bytes",s);self.assertIn("call-with-owned 'image->encoded-bytes",s)
     def test_not_byte_serialization_wrappers(self):
@@ -155,15 +156,15 @@ class Sources(unittest.TestCase):
         self.assertIn('16384',self.text('private/live-port-util.rkt'))
         self.assertIn("'--width','64','--height','48'",self.text('tools/live_stream_validation.py'))
     def test_native_stream_memory_guards(self):
-        if not (ROOT/'streams.rkt').exists():self.skipTest('complete checkout integration tested by installer')
+        if not (source_path(ROOT, 'streams.rkt')).exists():self.skipTest('complete checkout integration tested by installer')
         s=self.text('streams.rkt');self.assertIn('memory-output-only',s);self.assertIn('with-output stream-h',s)
     def test_registration(self):
-        if not (ROOT/'run-tests.rkt').exists():self.skipTest('complete checkout integration tested by installer')
+        if not (source_path(ROOT, 'run-tests.rkt')).exists():self.skipTest('complete checkout integration tested by installer')
         s=self.text('run-tests.rkt');self.assertIn('(run-tests live-stream-pure-tests)',s)
         self.assertIn("dynamic-require live-stream-native-tests-file 'live-stream-native-tests",s)
         self.assertIn("'test-live-streams.py'",self.text('tools/ci.py'))
     def test_no_new_automatic_workflow(self):
-        if not (ROOT/'.github/workflows/streams.yml').exists():self.skipTest('complete checkout integration tested by installer')
+        if not (ROOT / '.github/workflows/streams.yml').exists():self.skipTest('complete checkout integration tested by installer')
         s=self.text('.github/workflows/streams.yml');self.assertNotIn('\n  push:',s)
         self.assertIn('validate-live-streams.py --regressions none',s)
 if __name__=='__main__':unittest.main(verbosity=2)

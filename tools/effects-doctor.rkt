@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/list json
-         "../main.rkt" "../tests/effects-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/effects-fixtures.rkt")
 
 ;;;
 ;;; Diagnostic Operations

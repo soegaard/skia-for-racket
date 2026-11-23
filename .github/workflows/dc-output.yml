@@ -54,10 +54,10 @@ jobs:
         run: |
           python tools/test-dc-output.py
           python tools/test-dc-closure.py
-          racket -l raco -- make dc-output.rkt tools/dc-output-doctor.rkt examples/dc-output.rkt examples/dc-closure.rkt
+          racket -l raco -- make skia-lib/dc-output.rkt tools/dc-output-doctor.rkt skia-lib/examples/dc-output.rkt skia-lib/examples/dc-closure.rkt
       - name: Global pure regressions (standalone mode)
         if: inputs.regressions != 'none'
-        run: racket run-tests.rkt --pure
+        run: racket skia-lib/run-tests.rkt --pure
       - name: Install pinned Skia and HarfBuzz
         run: |
           bash tools/install-native.sh

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.73 acceptance: source, full regression graph, typed GPU captures and documents."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import json
@@ -20,7 +21,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def compile_targets(root, regressions='full'):
     if checked_mode(regressions) == 'none':
         # Compile feature roots only; do not traverse unrelated regression suites.
-        return [root / p for p in (
+        return [source_path(root, p) for p in (
             'main.rkt',
             'gpu.rkt',
             'gpu-dc.rkt',
@@ -28,12 +29,12 @@ def compile_targets(root, regressions='full'):
             'tests/gpu-format-gpu-test.rkt',
             'examples/gpu-formats.rkt',
         )]
-    text=(root/'run-tests.rkt').read_text(encoding='utf-8')
+    text=(source_path(root, 'run-tests.rkt')).read_text(encoding='utf-8')
     dynamic=sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)',text)))
     if not dynamic:raise ValueError('empty regression compile graph')
     for p in dynamic:
         if '..' in p.split('/') or '\\' in p or ':' in p:raise ValueError('unsafe compile target')
-    return [root/p for p in dict.fromkeys(('main.rkt','gpu.rkt','gpu-dc.rkt','surface-properties.rkt',
+    return [source_path(root, p) for p in dict.fromkeys(('main.rkt','gpu.rkt','gpu-dc.rkt','surface-properties.rkt',
          'run-tests.rkt',*dynamic,'tests/gpu-format-gpu-test.rkt','examples/gpu-formats.rkt'))]
 
 def main(argv=None):
@@ -59,8 +60,8 @@ def main(argv=None):
         if args.directory.exists():parser.error('evidence directory exists')
         args.directory.mkdir(parents=True);out=args.directory.resolve()
     else:
-        (ROOT/'output').mkdir(exist_ok=True)
-        out=Path(tempfile.mkdtemp(prefix='gpu-formats-0.73-',dir=ROOT/'output'))
+        (ROOT / 'output').mkdir(exist_ok=True)
+        out=Path(tempfile.mkdtemp(prefix='gpu-formats-0.73-',dir=ROOT / 'output'))
     (out/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
     report=dict(schema=1,stage='0.73',package_version='0.75',run_token=token,status='failed',
        regressions_passed=False,gpu_required=args.require_gpu,gpu_attempted=False,gpu_executed=False,gpu_passed=False,
@@ -76,14 +77,14 @@ def main(argv=None):
             except (OSError,subprocess.SubprocessError):report.update(failed_command=command,failed_log=str(log));raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
-        run([sys.executable,ROOT/'tools/test-gpu-formats.py'])
-        run([racket,ROOT/'tools/check-package-version.rkt'])
+        run([sys.executable,ROOT / 'tools/api-inventory.py','--check'])
+        run([sys.executable,ROOT / 'tools/test-gpu-formats.py'])
+        run([racket,source_path(ROOT, 'tools/check-package-version.rkt')])
         run([racket,'-l','raco','--','make',*compile_targets(ROOT, args.regressions)])
-        regressions.run(lambda: run([racket,ROOT/'run-tests.rkt']))
+        regressions.run(lambda: run([racket,source_path(ROOT, 'run-tests.rkt')]))
         if args.require_gpu:
             report['gpu_attempted']=True;(out/'gpu').mkdir()
-            run([racket,ROOT/'tests/gpu-format-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
+            run([racket,source_path(ROOT, 'tests/gpu-format-gpu-test.rkt'),'--backend',backend,'--adapter',args.adapter,
                  '--report',out/'gpu/gpu.json','--token',token]);report['gpu_executed']=True
             render=None
             if args.require_renderers:

@@ -57,10 +57,10 @@ jobs:
           bash tools/install-native.sh
           bash tools/install-harfbuzz.sh
       - name: Compile GPU DC feature modules
-        run: racket -l raco -- make dc.rkt gpu-dc.rkt
+        run: racket -l raco -- make skia-lib/dc.rkt skia-lib/gpu-dc.rkt
       - name: Global regression suite (standalone mode)
         if: inputs.regressions != 'none'
-        run: racket run-tests.rkt
+        run: racket skia-lib/run-tests.rkt
       - name: Require GPU DC baseline and consumer validation
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' \
@@ -101,7 +101,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install pinned Skia and HarfBuzz libraries
         run: |
-          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source -Root (Get-Location).Path
+          ./tools/install-native-windows.ps1 -Racket (Get-Command racket).Source -Python (Get-Command python).Source -Root (Join-Path (Get-Location).Path 'skia-lib')
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require native consumer parity through D3D12 WARP
         run: |

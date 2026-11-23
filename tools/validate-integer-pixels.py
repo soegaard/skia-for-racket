@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.70 acceptance: optional full regressions, native PDF/SVG, optional required GPU/viewers."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 from validation_regressions import RegressionGate, add_regression_argument, checked_mode, global_compile_targets
 import argparse
 import hashlib
@@ -22,7 +23,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def compile_targets(root, regressions='full'):
     if checked_mode(regressions) == 'none':
         # Compile feature roots only; do not traverse unrelated regression suites.
-        return [root / p for p in (
+        return [source_path(root, p) for p in (
             'main.rkt',
             'image-info.rkt',
             'raster-buffers.rkt',
@@ -30,13 +31,13 @@ def compile_targets(root, regressions='full'):
             'tools/integer-pixel-doctor.rkt',
             'examples/integer-pixels.rkt',
         )]
-    text=(root/'run-tests.rkt').read_text(encoding='utf-8')
+    text=(source_path(root, 'run-tests.rkt')).read_text(encoding='utf-8')
     dynamic=sorted(set(re.findall(r'\(define-runtime-path\s+\S+\s+"(tests/[^"\n]+\.rkt)"\)',text)))
     if not dynamic:raise ValueError('empty dynamic regression graph')
     for name in dynamic:
         if any(p in ('','.','..') for p in name.split('/')) or '\\' in name or ':' in name:
             raise ValueError('unsafe compile target')
-    return [root/p for p in dict.fromkeys(('main.rkt','image-info.rkt','raster-buffers.rkt','run-tests.rkt',*dynamic,
+    return [source_path(root, p) for p in dict.fromkeys(('main.rkt','image-info.rkt','raster-buffers.rkt','run-tests.rkt',*dynamic,
                                          'tests/integer-pixel-gpu-test.rkt','tools/integer-pixel-doctor.rkt','examples/integer-pixels.rkt'))]
 
 def main(argv=None):
@@ -61,8 +62,8 @@ def main(argv=None):
         if args.directory.exists():parser.error('evidence directory already exists')
         args.directory.mkdir(parents=True);out=args.directory.resolve()
     else:
-        (ROOT/'output').mkdir(exist_ok=True)
-        out=Path(tempfile.mkdtemp(prefix='integer-pixels-0.70-',dir=ROOT/'output'))
+        (ROOT / 'output').mkdir(exist_ok=True)
+        out=Path(tempfile.mkdtemp(prefix='integer-pixels-0.70-',dir=ROOT / 'output'))
     (out/'logs').mkdir();token=uuid.uuid4().hex;commands=[]
     report=dict(schema=1,stage='0.70',package_version='0.75',status='failed',run_token=token,
                 regressions_passed=False,documents_passed=False,rendering_executed=False,rendering_attempted=False,
@@ -81,13 +82,13 @@ def main(argv=None):
                 report.update(failed_command=command,failed_log=str(log));raise
     regressions = RegressionGate(args.regressions, report)
     try:
-        run([sys.executable,ROOT/'tools/api-inventory.py','--check'])
-        run([sys.executable,ROOT/'tools/test-integer-pixels.py'])
-        run([sys.executable,ROOT/'tools/test-integer-pixel-documents.py'])
+        run([sys.executable,ROOT / 'tools/api-inventory.py','--check'])
+        run([sys.executable,ROOT / 'tools/test-integer-pixels.py'])
+        run([sys.executable,ROOT / 'tools/test-integer-pixel-documents.py'])
         run([racket,'-l','raco','--','make',*compile_targets(ROOT, args.regressions)])
-        regressions.run(lambda: run([racket,ROOT/'run-tests.rkt']))
+        regressions.run(lambda: run([racket,source_path(ROOT, 'run-tests.rkt')]))
         report['rendering_attempted']=True
-        run([racket,ROOT/'tools/integer-pixel-doctor.rkt','--directory',out/'documents','--token',token])
+        run([racket,ROOT / 'tools/integer-pixel-doctor.rkt','--directory',out/'documents','--token',token])
         report['rendering_executed']=True
         render=None
         if args.require_renderers:
@@ -106,7 +107,7 @@ def main(argv=None):
                       independent_renderers_passed=args.require_renderers)
         if args.require_gpu:
             report['gpu_attempted']=True
-            run([racket,ROOT/'tests/integer-pixel-gpu-test.rkt','--backend',backend,'--adapter',args.adapter,
+            run([racket,source_path(ROOT, 'tests/integer-pixel-gpu-test.rkt'),'--backend',backend,'--adapter',args.adapter,
                  '--directory',out/'gpu','--token',token])
             report['gpu_executed']=True
             gpu=inspect_gpu(out/'gpu',token,backend,args.adapter)

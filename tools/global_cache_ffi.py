@@ -1,5 +1,7 @@
 """Strict source inventory for the pinned Xamarin trace adapter (not include/c)."""
+from repository_layout import source_path, library_root, documentation_root
 from pathlib import Path
+from repository_layout import source_path
 import json
 
 EXPECTED = {
@@ -30,7 +32,7 @@ def unique(pairs):
 
 def checked_imports(root, forms, String=None):
     root=Path(root)
-    p=root/SIDECAR
+    p=source_path(root, SIDECAR)
     need(p.is_file() and not p.is_symlink(),'missing/symlink trace FFI sidecar')
     data=json.loads(p.read_text(encoding='utf-8'),object_pairs_hook=unique)
     need(type(data.get('schema')) is int and data['schema']==1,'wrong trace FFI schema')
@@ -42,7 +44,7 @@ def checked_imports(root, forms, String=None):
     need(data.get('module')==MODULE and data.get('macro')=='define-trace','wrong trace registry')
     need(data.get('signatures')==EXPECTED and data.get('callbacks')==CALLBACKS,'trace signature manifest drift')
     need(data.get('table_fields')==['numeric','string'],'trace layout manifest drift')
-    src=root/MODULE
+    src=source_path(root, MODULE)
     need(src.is_file() and not src.is_symlink(),'missing/symlink trace module')
     nodes=forms(src.read_text(encoding='utf-8'))
     declarations=[n for n in nodes if isinstance(n,list) and n and n[0]=='define-trace']

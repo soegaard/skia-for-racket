@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require json racket/cmdline racket/file racket/list
-         "../main.rkt" "../tests/typeface-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/typeface-fixtures.rkt")
 (provide generate-stream-evidence)
 
 ;;;

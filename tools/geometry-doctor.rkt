@@ -11,7 +11,7 @@
 ;;;
 ;;; Imports and Exports
 ;;;
-(require ffi/unsafe racket/list "../main.rkt" "../private/types.rkt")
+(require ffi/unsafe racket/list "../skia-lib/main.rkt" "../skia-lib/private/types.rkt")
 (provide geometry-doctor!)
 
 ;;;

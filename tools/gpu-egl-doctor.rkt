@@ -12,8 +12,8 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/path rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../gpu-egl.rkt"
-         "../tests/gpu-egl-native-test.rkt" "gpu-report.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/gpu-egl.rkt"
+         "../skia-lib/tests/gpu-egl-native-test.rkt" "gpu-report.rkt")
 (provide gpu-egl-doctor!)
 
 ;;;

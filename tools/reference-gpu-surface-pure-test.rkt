@@ -16,9 +16,9 @@
 ;; Native-free checks. Fake operations test the actual one-shot lifetime worker;
 ;; they do not establish GPU, pixel, driver, or platform acceptance.
 (require rackunit racket/list racket/runtime-path syntax/modread skia skia/gpu
-         "../private/gpu-format-util.rkt"
-         "../private/gpu-cache-util.rkt"
-         "../private/gpu-render.rkt")
+         "../skia-lib/private/gpu-format-util.rkt"
+         "../skia-lib/private/gpu-cache-util.rkt"
+         "../skia-lib/private/gpu-render.rkt")
 
 
 
@@ -30,7 +30,7 @@
 ; reference-directory : path?
 ;   Locates ../scribblings/reference relative to this module, independent of the invoking
 ;   directory.
-(define-runtime-path reference-directory "../scribblings/reference")
+(define-runtime-path reference-directory "../skia-doc/scribblings/reference")
 
 
 ; displayed-blocks : path-string? -> (listof list?)

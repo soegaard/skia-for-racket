@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Focused parser tests for the documentation-navigation checker."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import importlib.util
 import hashlib
@@ -26,7 +27,7 @@ class NavigationParserTests(unittest.TestCase):
                      'scribblings/support/paragraph-feedback.js',
                      'scribblings/support/paragraph-feedback.css',
                      'tools/test-documentation-navigation.py'):
-            self.assertEqual(hashes.get(name), hashlib.sha256((ROOT / name).read_bytes()).hexdigest())
+            self.assertEqual(hashes.get(source_path(ROOT, name).relative_to(ROOT).as_posix()), hashlib.sha256((source_path(ROOT, name)).read_bytes()).hexdigest())
 
     def test_visits_every_guide_and_tutorial_page(self):
         with TemporaryDirectory() as directory:
@@ -35,7 +36,7 @@ class NavigationParserTests(unittest.TestCase):
             directories = ['skia-reference', 'skia-guide', 'skia-tutorials'] + [
                 navigation.tutorial_directory(entry['id']) for entry in tutorials]
             pages = [root / 'index.html'] + [
-                root / name / page for name in directories for page in ('index.html', 'chapter.html')]
+                source_path(root, name) / page for name in directories for page in ('index.html', 'chapter.html')]
             for page in pages:
                 page.parent.mkdir(exist_ok=True)
                 page.write_text('', encoding='utf-8')
@@ -53,7 +54,7 @@ class NavigationParserTests(unittest.TestCase):
             root = Path(directory)
             page = root / 'chapter.html'
             for asset in ('paragraph-feedback.js', 'paragraph-feedback.css'):
-                (root / asset).write_text('', encoding='utf-8')
+                (source_path(root, asset)).write_text('', encoding='utf-8')
             page.write_text(f'<head>{head}</head><body></body>', encoding='utf-8')
             navigation.check_feedback(root, page)
             for invalid in (
@@ -73,10 +74,10 @@ class NavigationParserTests(unittest.TestCase):
                 with self.assertRaisesRegex(navigation.CheckError, 'feedback asset reference'):
                     navigation.check_feedback(root, page)
                 page.write_text(f'<head>{head}</head>', encoding='utf-8')
-                (root / asset).unlink()
+                (source_path(root, asset)).unlink()
                 with self.assertRaisesRegex(navigation.CheckError, 'missing navigation target'):
                     navigation.check_feedback(root, page)
-                (root / asset).write_text('', encoding='utf-8')
+                (source_path(root, asset)).write_text('', encoding='utf-8')
 
     def test_pages_staging_includes_code_and_font_stylesheets(self):
         workflow = (ROOT / '.github/workflows/pages.yml').read_text()

@@ -17,12 +17,12 @@
 ;; or validate any native pointer supplied to an unsafe interop constructor.
 (require rackunit racket/list
          skia/gpu-interop
-         (submod "../private/gpu-external.rkt" backend-internals)
-         "../private/gpu-d3d12-interop-policy.rkt"
-         "../private/gpu-metal-interop-policy.rkt"
-         "../private/gpu-egl-util.rkt"
-         "../private/gpu-diagnostic-util.rkt"
-         "../private/gpu-gl-interop-util.rkt")
+         (submod "../skia-lib/private/gpu-external.rkt" backend-internals)
+         "../skia-lib/private/gpu-d3d12-interop-policy.rkt"
+         "../skia-lib/private/gpu-metal-interop-policy.rkt"
+         "../skia-lib/private/gpu-egl-util.rkt"
+         "../skia-lib/private/gpu-diagnostic-util.rkt"
+         "../skia-lib/private/gpu-gl-interop-util.rkt")
 
 
 ;;;

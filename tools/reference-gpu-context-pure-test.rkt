@@ -16,10 +16,10 @@
 ;; No native graphics calls. Private fake drivers exercise the actual state
 ;; machine and public context wrappers; they are not GPU acceptance evidence.
 (require rackunit racket/list skia/gpu skia/gpu-context-options
-         (only-in "../private/gpu-context.rkt" wrap-gpu-domain)
-         (prefix-in p: "../private/gpu-provider.rkt")
-         (prefix-in d: "../private/gpu-domain.rkt")
-         (prefix-in control: (submod "../private/gpu-context-control.rkt" testing)))
+         (only-in "../skia-lib/private/gpu-context.rkt" wrap-gpu-domain)
+         (prefix-in p: "../skia-lib/private/gpu-provider.rkt")
+         (prefix-in d: "../skia-lib/private/gpu-domain.rkt")
+         (prefix-in control: (submod "../skia-lib/private/gpu-context-control.rkt" testing)))
 
 
 ;;;

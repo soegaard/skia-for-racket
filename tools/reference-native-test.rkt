@@ -23,7 +23,7 @@
 ; reference-directory : path?
 ;   Locates ../scribblings/reference relative to this module, independent of the invoking
 ;   directory.
-(define-runtime-path reference-directory "../scribblings/reference")
+(define-runtime-path reference-directory "../skia-doc/scribblings/reference")
 
 ;; Read and execute the displayed native examples, instead of maintaining copies.
 ;; The live-stream provider installs process-global native callbacks.  It alone

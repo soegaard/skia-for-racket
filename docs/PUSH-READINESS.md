@@ -1,5 +1,15 @@
 # GitHub CI test branch
 
+November 23 Git-layout amendment: the current source packages are `skia`,
+`skia-lib` and `skia-doc`, with two macOS/Linux native packages and the existing
+Windows NuGet exception. Fonts belong to `skia-doc`; there is no standalone font
+package. The old unsplit full gate passed at `7693d907` / run `45096827302`
+attempt 2. The split needs fresh CI and public Git-source checks. See
+[the current runbook](PACKAGE-PUBLICATION.md) and
+[local validation](GIT-PACKAGE-VALIDATION.md); earlier dated records below are
+historical. No publication is authorized by this implementation.
+
+
 The test branch is `codex/catalog-ci`. The maintainer pushed through `47ebdda3`;
 the implementation agent does not push, publish packages or dispatch deployments.
 The follow-up fixes below require another maintainer push and fresh CI results.

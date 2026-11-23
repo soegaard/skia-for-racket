@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require json racket/cmdline racket/file racket/list
-         "../main.rkt" "../tests/codec-scanline-fixtures.rkt" "../tests/codec-fixtures.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/tests/codec-scanline-fixtures.rkt" "../skia-lib/tests/codec-fixtures.rkt")
 (provide generate-scanline-evidence)
 
 ;;;

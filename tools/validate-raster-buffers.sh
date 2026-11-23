@@ -18,17 +18,17 @@ done
 bash tools/audit-symbols.sh
 bash tools/audit-harfbuzz-symbols.sh
 # Never select a different raco from PATH. Include all dynamically loaded tests.
-"$RACKET" -l raco -- make main.rkt raster-buffers.rkt color-filters.rkt output.rkt bitmap.rkt \
-  tools/doctor.rkt tools/portable-drawing-doctor.rkt tools/color-filter-doctor.rkt tools/raster-buffer-doctor.rkt run-tests.rkt tests/*.rkt \
-  examples/raster-buffers.rkt
-"$RACKET" tools/doctor.rkt
+"$RACKET" -l raco -- make skia-lib/main.rkt skia-lib/raster-buffers.rkt skia-lib/color-filters.rkt skia-lib/output.rkt skia-lib/bitmap.rkt \
+  skia-lib/tools/doctor.rkt tools/portable-drawing-doctor.rkt tools/color-filter-doctor.rkt tools/raster-buffer-doctor.rkt skia-lib/run-tests.rkt tests/*.rkt \
+  skia-lib/examples/raster-buffers.rkt
+"$RACKET" skia-lib/tools/doctor.rkt
 "$RACKET" tools/portable-drawing-doctor.rkt
 "$RACKET" tools/color-filter-doctor.rkt
 "$RACKET" tools/raster-buffer-doctor.rkt
-"$RACKET" run-tests.rkt
+"$RACKET" skia-lib/run-tests.rkt
 mkdir -p output
 PREFIX="output/raster-buffers-0.37"
-"$RACKET" examples/raster-buffers.rkt "$PREFIX"
+"$RACKET" skia-lib/examples/raster-buffers.rkt "$PREFIX"
 PDF_ARGS=()
 case "${CHECK_PDF:-auto}" in
   1) PDF_ARGS=(--pdf) ;;

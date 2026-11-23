@@ -4,6 +4,7 @@ This is not a GitHub expression interpreter. Unknown syntax requires review;
 never silently omit a job, matrix row, step, or evidence artifact.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import hashlib
 import itertools
@@ -37,7 +38,7 @@ def relative(root: Path, name: str) -> Path:
          and not name.startswith('/') and all(p not in ('', '.', '..') for p in name.split('/'))
          and not any(ord(c) < 32 for c in name), 'unsafe source path: ' + repr(name))
     root = root.resolve()
-    result = root.joinpath(*name.split('/'))
+    result = source_path(root, name)
     for part in (result, *result.parents):
         if part == root:
             break

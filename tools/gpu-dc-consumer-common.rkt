@@ -14,8 +14,8 @@
 ;; Evidence helpers. Raw RGBA is encoded/reviewed by the Python inspector only
 ;; after semantic checks. None of these output files is normal presentation.
 (require racket/class racket/file racket/list json
-         "../private/gpu-io-trace.rkt"
-         "../tests/gpu-dc-consumer-fixtures.rkt")
+         "../skia-lib/private/gpu-io-trace.rkt"
+         "../skia-lib/tests/gpu-dc-consumer-fixtures.rkt")
 (provide observe-consumer-io! write-consumer-capture! finish-consumer-report!
          workload-id extent->json ensure-consumer! consumer-identity)
 

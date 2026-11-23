@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic D3D12 inspector/orchestration tests. No Windows/GPU execution claim."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import ast
 import importlib.util
@@ -181,7 +182,7 @@ class Runner(unittest.TestCase):
 
 class Source(unittest.TestCase):
     def test_guid_bytes(self):
-        source = (HERE.parent / 'private/gpu-d3d12-types.rkt').read_text()
+        source = (source_path(HERE.parent, 'private/gpu-d3d12-types.rkt')).read_text()
         ids = dict(factory4='1bc6ea02-ef36-464f-bf0c-21ca39e5168a', adapter1='29038f61-3839-4626-91fd-086879011a05',
                    device='189819f1-1db6-4b57-be54-1821339b85f7', queue='0ec870a6-5d7e-4c22-8cfc-5baae07616ed')
         for name, expected in ids.items():
@@ -189,7 +190,7 @@ class Source(unittest.TestCase):
             observed = text.encode().decode('unicode_escape').encode('latin1')
             self.assertEqual(observed, uuid.UUID(expected).bytes_le, name)
     def test_byvalue_signature(self):
-        source = (HERE.parent / 'private/gpu-native.rkt').read_text()
+        source = (source_path(HERE.parent, 'private/gpu-native.rkt')).read_text()
         self.assertIn('(_fun _gr-d3d-backend-context -> _pointer)', source)
         self.assertNotIn('(_fun _gr-d3d-backend-context-pointer -> _pointer)', source)
     def test_sdk_slots_not_just_mirrors(self):
@@ -197,7 +198,7 @@ class Source(unittest.TestCase):
         for term in ('IDXGIFactory4Vtbl', 'EnumWarpAdapter', 'ID3D12DeviceVtbl', 'GetDeviceRemovedReason', 'DXGI_ADAPTER_DESC1'):
             self.assertIn(term, source)
     def test_no_default_migration(self):
-        self.assertEqual((HERE.parent / 'private/native-default-version.txt').read_text().strip(), '3.119.1')
+        self.assertEqual((source_path(HERE.parent, 'private/native-default-version.txt')).read_text().strip(), '3.119.1')
     def test_shared_suites_are_called(self):
         source = (HERE / 'gpu-d3d12-doctor.rkt').read_text()
         for name in ('surface', 'image', 'cache'):
@@ -271,10 +272,10 @@ class Integration(unittest.TestCase):
         self.assertLess(hook[0].lineno, verifies[-1]); self.assertLess(verifies[-1], copy_line)
     def test_all_shared_source_cases_match_report_counts(self):
         for name, count in d.COUNTS.items():
-            source = (HERE.parent / 'tests' / ('gpu-' + name + '-native-test.rkt')).read_text()
+            source = (source_path(HERE.parent, 'tests') / ('gpu-' + name + '-native-test.rkt')).read_text()
             self.assertEqual(len(re.findall(r'\(test-case\s', source)), count)
     def test_pure_suite_is_wired(self):
-        source = (HERE.parent / 'run-tests.rkt').read_text()
+        source = (source_path(HERE.parent, 'run-tests.rkt')).read_text()
         self.assertIn('"tests/gpu-d3d12-pure-test.rkt"', source)
         self.assertIn('(run-tests gpu-d3d12-pure-tests)', source)
     def test_source_ci_runs_this_suite(self):

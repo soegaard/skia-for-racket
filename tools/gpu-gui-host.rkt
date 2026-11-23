@@ -11,8 +11,8 @@
 ;;; Imports and Exports
 ;;;
 ;; Loaded only by an explicit live GL probe, never by skia or skia/gpu.
-(require racket/class racket/draw "../gpu-racket-gl.rkt"
-         "../private/gpu-provider.rkt")
+(require racket/class racket/draw "../skia-lib/gpu-racket-gl.rkt"
+         "../skia-lib/private/gpu-provider.rkt")
 (provide call-with-gpu-test-host)
 
 ;;;

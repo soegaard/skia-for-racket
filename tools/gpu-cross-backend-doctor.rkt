@@ -12,7 +12,7 @@
 ;;; Imports and Exports
 ;;;
 (require racket/cmdline racket/file racket/path rackunit/text-ui
-         "../gpu.rkt" "../tests/gpu-cross-backend-native-test.rkt"
+         "../skia-lib/gpu.rkt" "../skia-lib/tests/gpu-cross-backend-native-test.rkt"
          "gpu-test-host.rkt" "gpu-report.rkt")
 (provide gpu-cross-backend-doctor!)
 

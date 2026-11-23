@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -f "$ROOT/skia-lib/info.rkt" ]]; then ROOT="$ROOT/skia-lib"; fi
 NATIVE_RKT="$ROOT/private/harfbuzz-native.rkt"
 case "${1:-}" in -h|--help)
   echo 'Usage: tools/audit-harfbuzz-symbols.sh [LIBRARY]'; exit 0;; esac

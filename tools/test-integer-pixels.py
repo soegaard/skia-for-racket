@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Standard-library 0.70 source and inspector regressions. No native claims."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import copy
 import importlib.util
 import json
@@ -26,7 +27,7 @@ def row(fmt='rgba-8888',kind='pdf'):
                                    dict(feature='annotation',status='vector')]))
 
 class Sources(unittest.TestCase):
-    def text(self,name):return (ROOT/name).read_text(encoding='utf-8')
+    def text(self,name):return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def reader(self):
         import api_inventory as inv
         return inv

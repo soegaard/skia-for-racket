@@ -6,6 +6,7 @@ libraries are copied into the installed package. No package/compiled/native
 cache is restored. Successful workflow execution is evidence, not configuration.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import argparse
 import hashlib
 import json
@@ -35,7 +36,7 @@ OVERRIDE_KEYS = ('PLTCOLLECTS', 'PLTADDONDIR', 'PLTCONFIGDIR', 'PLTLINKS', 'PLTC
 ABI_NAMES = ('codec', 'pdf', 'path-matrix', 'filter', 'color-output', 'runtime',
              'geometry', 'projective', 'color-filter', 'gpu', 'presentation', 'cache')
 PYTHON_CHECKS = (
-    'test-native-packages.py', 'test-catalog-packaging.py', 'test-windows-native.py',
+    'test-native-packages.py', 'test-package-layout.py', 'test-reference.py', 'test-documentation-navigation.py', 'test-catalog-packaging.py', 'test-windows-native.py',
     'test-release-scope.py', 'test-small-gaps.py', 'test-public-api.py', 'test-release-candidate.py',
     'test-gpu-diagnostics.py',
     'test-gpu-context-controls.py',
@@ -123,7 +124,7 @@ def source_paths(root: Path) -> list[str]:
     for name in raw.decode('utf-8').split('\0'):
         if not name:
             continue
-        path = root / name
+        path = source_path(root, name)
         require(not Path(name).is_absolute() and '\\' not in name and ':' not in name
                 and all(part not in ('', '.', '..') for part in Path(name).parts),
                 'unsafe Git source path: ' + repr(name))
@@ -141,9 +142,13 @@ def make_source_archive(root: Path, destination: Path) -> dict:
             parts = Path(name).parts
             require(not any(p in ('.git', 'compiled', '__pycache__', 'output', 'downloads', 'doc', 'html') for p in parts),
                     'generated/developer files must not enter the source package')
-            require(not name.lower().endswith(('.nupkg', '.so', '.dylib', '.dll', '.exe', '.pyc', '.zo', '.ttf', '.otf', '.ttc')),
+            require(not name.lower().endswith(('.nupkg', '.so', '.dylib', '.dll', '.exe', '.pyc', '.zo')) and
+                    (not name.lower().endswith(('.ttf', '.otf', '.ttc')) or name.startswith('skia-doc/fonts/')),
                     'native/compiled binary must not enter the clean source package')
-            data = (root / name).read_bytes()
+            if name.lower().endswith(('.ttf', '.otf', '.ttc')):
+                from release_candidate import approved_documentation_font
+                approved_documentation_font(root, name)
+            data = (source_path(root, name)).read_bytes()
             info = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_STORED
             info.create_system = 3
@@ -157,9 +162,19 @@ def verify_install(root: Path, installed: Path, home: Path, archive: Path) -> No
     require(installed.is_relative_to(home.resolve()), 'package did not resolve inside the isolated user home')
     require(not installed.is_relative_to(root.resolve()), 'package resolved into the checkout instead of an installed copy')
     require(installed != archive.parent.resolve(), 'package is linked to staging')
+    split = library_root(root) != root
     for name in source_paths(root):
-        path = installed / name
-        require(path.is_file() and sha256(path) == sha256(root / name), 'installed source differs: ' + name)
+        if split:
+            parts = Path(name).parts
+            if parts[0] not in ('skia','skia-lib','skia-doc'):
+                continue
+            owner = installed.parent / parts[0]
+            require(owner.resolve().is_relative_to(home.resolve()) and not owner.is_symlink(),
+                    'source package escaped the isolated home: ' + parts[0])
+            path = owner.joinpath(*parts[1:])
+        else:
+            path = installed / name
+        require(path.is_file() and sha256(path) == sha256(source_path(root, name)), 'installed source differs: ' + name)
 
 
 def install_commands(installed: Path, racket: str, os_name: str, archives: Path | None = None) -> list[list[str]]:
@@ -170,7 +185,7 @@ def install_commands(installed: Path, racket: str, os_name: str, archives: Path 
         return [[sys.executable, str(installed / 'tools/install-native-windows.py'),
                  '--root', str(installed), '--racket', racket,
                  *([item for kind in ('skia', 'harfbuzz') for item in ('--' + kind + '-archive', str(pair[kind]))] if archives else [])]]
-    return [['bash', str(installed / ('tools/' + name)), *(['--archive', str(pair[kind])] if archives else [])]
+    return [['bash', str(installed.parent / ('tools/' + name)), *(['--archive', str(pair[kind])] if archives else [])]
             for name,kind in (('install-native.sh','skia'), ('install-harfbuzz.sh','harfbuzz'))]
 
 
@@ -370,9 +385,16 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
         runner.run([*raco, 'pkg', 'config', '--set', 'catalogs', staged / 'catalog',
                     'https://download.racket-lang.org/releases/' + identity['version'] + '/catalog/'], cwd=away)
         runner.run([*raco, 'pkg', 'install', '--scope', 'user', '--auto', '--batch', '--no-cache', '--no-setup',
-                    '--name', 'skia-for-racket', archive], cwd=away)
+                    'skia'], cwd=away)
         found = runner.run([racket, '-e', '(require json) (write-json (path->string (collection-path "skia")))'], cwd=away)
         installed = Path(json.loads(found)).resolve()
+        workspace = installed.parent
+        # Maintenance tools live beside, never inside, the installed packages.
+        # Their Racket imports resolve to these exact installed skia-lib/doc directories.
+        for name in ('tools', 'api', 'docs', 'plans', '.github', 'packaging'):
+            shutil.copytree(root / name, workspace / name, ignore=shutil.ignore_patterns('compiled', '__pycache__'))
+        for name in ('LICENSE', 'NOTICE.md', 'README.md', 'house-style.md'):
+            shutil.copy2(root / name, workspace / name)
         report['installed_collection'] = str(installed)
         try:
             verify_install(root, installed, home, archive)
@@ -395,11 +417,12 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
             env['RACKET_SKIA_LIBRARY'] = str(installed / 'native' / rid / ('libSkiaSharp' + extension))
             env['RACKET_HARFBUZZ_LIBRARY'] = str(installed / 'native' / rid / ('libHarfBuzzSharp' + extension))
             report['checks']['fresh_native_install'] = True
-            runner.run([*raco, 'setup', '--jobs', '2', '--no-docs', '--check-pkg-deps',
-                        '--pkgs', 'skia-for-racket'], cwd=away)
+            runner.run([*raco, 'setup', '--jobs', '2', '--check-pkg-deps',
+                        '--pkgs', 'skia-lib', 'skia-doc', 'skia'], cwd=away)
             report['checks']['package_setup_and_dependencies'] = True
+            runner.run([*raco, 'test', '--package', 'skia-lib', 'skia-doc'], cwd=away)
             abi = temporary / 'C ABI build'
-            runner.run(['cmake', '-S', installed / 'tools/ci-abi', '-B', abi,
+            runner.run(['cmake', '-S', workspace / 'tools/ci-abi', '-B', abi,
                         *(['-G', 'Visual Studio 17 2022', '-A', 'x64'] if identity['os'] == 'windows' else [])], cwd=away)
             runner.run(['cmake', '--build', abi, '--config', 'Release', '--parallel', '2'], cwd=away)
             runner.run(['ctest', '--test-dir', abi, '-C', 'Release', '--output-on-failure'], cwd=away)
@@ -416,14 +439,14 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
             if profile == 'cpu':
                 if identity['os'] != 'windows':
                     for name in ('audit-symbols.sh', 'audit-harfbuzz-symbols.sh'):
-                        runner.run(['bash', installed / 'tools' / name], cwd=away)
+                        runner.run(['bash', workspace / 'tools' / name], cwd=away)
                 for name in ('doctor', 'portable-drawing-doctor', 'color-filter-doctor', 'raster-buffer-doctor'):
-                    runner.run([racket, installed / 'tools' / (name + '.rkt')], cwd=away)
+                    runner.run([racket, source_path(workspace, 'tools/' + name + '.rkt')], cwd=away)
                 runner.run([racket, installed / 'run-tests.rkt'], cwd=away)
                 report['checks']['cpu_regressions'] = True
                 # Raster DC evidence is produced by the INSTALLED package and
                 # retained directly inside this job's artifact, even on failure.
-                runner.run([sys.executable, installed / 'tools/validate-dc.py',
+                runner.run([sys.executable, workspace / 'tools/validate-dc.py',
                             '--racket', racket,
                             '--output', runner.output / 'dc-foundation'], cwd=away)
                 report['checks']['dc_foundation'] = True
@@ -431,7 +454,7 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                 # A rejected m153 candidate is NOT a rendering/compatibility pass.
                 if row['id'] == 'linux-x64':
                     candidate_output = runner.output / 'native-abi-candidate'
-                    runner.run([sys.executable, installed / 'tools/native-abi-lab.py',
+                    runner.run([sys.executable, workspace / 'tools/native-abi-lab.py',
                                 '--candidate', '--racket', racket,
                                 '--output', candidate_output], cwd=away)
                     candidate = json.loads((candidate_output / 'report.json').read_text(encoding='utf-8'))
@@ -448,7 +471,7 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                 canvas_output = runner.output / 'skia-canvas'
                 runner.run(['xvfb-run', '--auto-servernum',
                             '--server-args=-screen 0 1280x960x24',
-                            sys.executable, installed / 'tools/validate-skia-canvas.py',
+                            sys.executable, workspace / 'tools/validate-skia-canvas.py',
                             '--racket', racket, '--require-gui',
                             '--output', canvas_output], cwd=away)
                 report['canvas'] = validate_canvas(canvas_output)
@@ -461,24 +484,26 @@ def package_checks(runner: Runner, root: Path, row: dict, profile: str, report: 
                            SKIA_EGL_PLATFORM='surfaceless', SKIA_EGL_DEVICE_INDEX='0',
                            SKIA_EGL_SURFACE=row['surface'])
                 # Leave the full 0.45 default stress size intact (3 x 180).
-                runner.run([sys.executable, installed / 'tools/validate-gpu-headless.py'], cwd=away)
-                runs = list((installed / 'output').glob('gpu-0.46-headless-*'))
+                runner.run([sys.executable, workspace / 'tools/validate-gpu-headless.py'], cwd=away)
+                runs = list((workspace / 'output').glob('gpu-0.46-headless-*'))
                 require(len(runs) == 1, 'expected exactly one fresh headless run')
                 report['gpu'] = validate_headless(runs[0], row['surface'])
                 report['checks']['cpu_regressions'] = True  # included in that required runner
             # Additional required backends use the same isolated installation.
             # Exceptions propagate; finally still retains partial evidence.
             if extra_checks is not None:
-                extra_checks(runner, installed, away, env, report)
+                extra_checks(runner, workspace, away, env, report)
             verify_install(root, installed, home, archive)
             report['checks']['installed_source_matches_checkout'] = True
         finally:
             copy_artifacts(installed, runner.output)
+            copy_artifacts(workspace, runner.output)
 
 
 def source_checks(runner: Runner, root: Path, report: dict) -> None:
     require(sys.platform.startswith('linux'), 'the shared Unix source checks run in the Linux source lane')
     runner.run([sys.executable, root / 'tools/static-check.py'], cwd=root)
+    runner.run([sys.executable, root / 'tools/check-package-layout.py'], cwd=root)
     runner.run([sys.executable, root / 'tools/check-gpu-source.py', '--require-integration'], cwd=root)
     for name in PYTHON_CHECKS:
         runner.run([sys.executable, root / 'tools' / name,

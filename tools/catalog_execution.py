@@ -10,7 +10,7 @@ PROFILE_FILE = 'etc/skia-catalog-runtime.json'
 
 
 RUNTIME_ENVIRONMENTS = (
-    'source installation', 'scope lifecycle', 'foreign target data',
+    'source installation', 'library-only installation', 'scope lifecycle', 'foreign target data',
     'reinstalled source', 'reinstalled built', 'reinstalled binary-lib',
 )
 

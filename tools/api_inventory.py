@@ -4,6 +4,7 @@ No native library, GUI, or repository network access on import. Managed coverage
 is source/capability-family coverage, NOT a reflection-based C# overload inventory.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 from collections import Counter
@@ -66,7 +67,7 @@ def safe_file(root: Path, relative: str, *, must_exist: bool = True) -> Path:
     # Use the canonical root only for containment. Preserve the caller's
     # lexical root in the returned path; on macOS /var resolves to /private/var.
     root_resolved = root.resolve()
-    path = root.joinpath(*pieces)
+    path = source_path(root, relative)
     cursor = path
     while cursor != root:
         require(not cursor.is_symlink(), f"symlink in source path: {relative}")
@@ -294,10 +295,11 @@ def flat_atoms(value):
 
 
 def production_files(root: Path) -> list[str]:
+    root = library_root(root)
     files = {p.name for p in root.glob("*.rkt") if p.name not in ("info.rkt", "run-tests.rkt")}
     for directory in ("private", "unsafe"):
-        require((root / directory).is_dir() and not (root / directory).is_symlink(), f"missing/symlink {directory} directory")
-        files.update(p.relative_to(root).as_posix() for p in (root / directory).rglob("*.rkt"))
+        require((source_path(root, directory)).is_dir() and not (source_path(root, directory)).is_symlink(), f"missing/symlink {directory} directory")
+        files.update(p.relative_to(root).as_posix() for p in (source_path(root, directory)).rglob("*.rkt"))
     return sorted(files)
 
 
@@ -365,9 +367,10 @@ def source_exports(root: Path, module: str, cache: dict | None = None, visiting:
     out: set[str] = set()
     def relpath(value: str) -> str:
         # Source-authored ../ imports are normalized but still checked against root.
-        path = (root / module).parent.joinpath(value).resolve()
-        require(path.is_relative_to(root.resolve()), "reexport escapes source root")
-        return path.relative_to(root.resolve()).as_posix()
+        source_root = library_root(root).resolve()
+        path = (source_root / module).parent.joinpath(value).resolve()
+        require(path.is_relative_to(source_root), "reexport escapes source root")
+        return path.relative_to(source_root).as_posix()
     def spec(x):
         if type(x) is str:
             out.add(x)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """0.68b source/inspector regressions. Synthetic inputs do not certify native rendering."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import contextlib
 import copy
 import importlib.util
@@ -34,7 +35,7 @@ RACKET_FILES = ('fonts.rkt', 'private/font-query-util.rkt', 'tests/font-query-pu
 
 
 class Sources(unittest.TestCase):
-    def text(self, name): return (ROOT/name).read_text(encoding='utf-8')
+    def text(self, name): return (source_path(ROOT, name)).read_text(encoding='utf-8')
     def test_four_capabilities_are_public_without_invented_execution(self):
         import api_inventory as inv
         catalog = inv.load_catalog(ROOT); result = inv.validate_catalog(catalog)
@@ -244,17 +245,17 @@ class FileChecks(unittest.TestCase):
 class CompileGraph(unittest.TestCase):
     @staticmethod
     def gate():
-        spec=importlib.util.spec_from_file_location('font_gate',ROOT/'tools/validate-font-queries.py')
+        spec=importlib.util.spec_from_file_location('font_gate',ROOT / 'tools/validate-font-queries.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
     def test_dynamic_suites_and_gpu_program_compiled(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'run-tests.rkt').write_text('(define-runtime-path a "tests/a.rkt")\n(define-runtime-path a "tests/a.rkt")')
+            root=Path(t);(source_path(root, 'run-tests.rkt')).write_text('(define-runtime-path a "tests/a.rkt")\n(define-runtime-path a "tests/a.rkt")')
             paths=self.gate().compile_targets(root)
-            self.assertEqual(paths.count(root/'tests/a.rkt'),1)
-            self.assertIn(root/'tests/font-query-gpu-test.rkt',paths)
+            self.assertEqual(paths.count(source_path(root, 'tests/a.rkt')),1)
+            self.assertIn(source_path(root, 'tests/font-query-gpu-test.rkt'),paths)
     def test_empty_dynamic_graph_rejected(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);(root/'run-tests.rkt').write_text('#lang racket/base')
+            root=Path(t);(source_path(root, 'run-tests.rkt')).write_text('#lang racket/base')
             with self.assertRaises(ValueError):self.gate().compile_targets(root)
     def test_invalid_timeouts(self):
         gate=self.gate()
@@ -262,7 +263,7 @@ class CompileGraph(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 gate.main(['--timeout',timeout])
     def test_failure_logs_retained(self):
-        source=(ROOT/'tools/validate-font-queries.py').read_text()
+        source=(ROOT / 'tools/validate-font-queries.py').read_text()
         self.assertIn('failed_command=command, failed_log=str(log)',source)
         self.assertIn("'validation.json'",source)
 

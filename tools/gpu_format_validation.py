@@ -1,5 +1,6 @@
 """Independent 0.73 evidence checks. Synthetic receipts are test data only."""
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 import json
 import math
 from pathlib import Path
@@ -137,7 +138,7 @@ def rendered_checks(path,color):
     return dict(pixel_probes=4)
 
 def inspect(root,token,backend,adapter,render=None):
-    root=Path(root);data=read_json(root/'gpu.json')
+    root=Path(root);data=read_json(root / 'gpu.json')
     require(data.get('schema')==1 and type(data.get('schema')) is int and data.get('stage')=='0.73','wrong report schema/stage')
     require(data.get('run_token')==token and data.get('status')=='passed','failed/foreign invocation')
     require(data.get('backend')==backend and data.get('adapter')==adapter,'wrong execution backend/adapter')

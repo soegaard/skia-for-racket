@@ -8,7 +8,7 @@
 ;; This entry point gives external validation one dispatcher for supported GPU backends.
 
 ;; This metadata command must also work with nonexistent native-library paths.
-(require json "../gpu.rkt")
+(require json "../skia-lib/gpu.rkt")
 (module+ main
   (write-json
    (hasheq 'schema 1 'native_probe_performed #f

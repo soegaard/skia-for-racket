@@ -12,9 +12,9 @@
 ;;; Imports and Exports
 ;;;
 (require racket/class racket/file racket/path json rackunit/text-ui
-         (prefix-in rd: racket/draw) (prefix-in sk: "../main.rkt") "../dc.rkt"
-         "../tests/dc-style-fixtures.rkt" "../tests/dc-style-pure-test.rkt"
-         "../tests/dc-style-native-test.rkt" "../examples/dc-replay.rkt")
+         (prefix-in rd: racket/draw) (prefix-in sk: "../skia-lib/main.rkt") "../skia-lib/dc.rkt"
+         "../skia-lib/tests/dc-style-fixtures.rkt" "../skia-lib/tests/dc-style-pure-test.rkt"
+         "../skia-lib/tests/dc-style-native-test.rkt" "../skia-lib/examples/dc-replay.rkt")
 (provide dc-style-doctor!)
 
 ;;;

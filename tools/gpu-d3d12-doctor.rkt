@@ -12,9 +12,9 @@
 ;;; Imports and Exports
 ;;;
 (require json racket/cmdline racket/file racket/path racket/list rackunit/text-ui
-         "../main.rkt" "../gpu.rkt" "../private/gpu-io-trace.rkt"
-         "../tests/gpu-surface-native-test.rkt" "../tests/gpu-image-native-test.rkt"
-         "../tests/gpu-cache-native-test.rkt")
+         "../skia-lib/main.rkt" "../skia-lib/gpu.rkt" "../skia-lib/private/gpu-io-trace.rkt"
+         "../skia-lib/tests/gpu-surface-native-test.rkt" "../skia-lib/tests/gpu-image-native-test.rkt"
+         "../skia-lib/tests/gpu-cache-native-test.rkt")
 (provide d3d12-doctor!)
 
 ;;;

@@ -12,9 +12,9 @@
 ;;; Imports and Exports
 ;;;
 (require json racket/cmdline racket/file racket/list
-         "../main.rkt" "../tests/codec-incremental-fixtures.rkt"
-         (only-in "../tests/codec-scanline-fixtures.rkt" scanline-fixture-bmp)
-         (only-in "../private/codec-incremental-source.rkt" incremental-source-count))
+         "../skia-lib/main.rkt" "../skia-lib/tests/codec-incremental-fixtures.rkt"
+         (only-in "../skia-lib/tests/codec-scanline-fixtures.rkt" scanline-fixture-bmp)
+         (only-in "../skia-lib/private/codec-incremental-source.rkt" incremental-source-count))
 (provide generate-codec-incremental-evidence)
 
 ;;;

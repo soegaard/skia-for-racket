@@ -8,6 +8,7 @@ targets after a build or staged-site relocation.
 Every manual page must also include the paragraph-feedback configuration and assets.
 """
 from __future__ import annotations
+from repository_layout import source_path, library_root, documentation_root
 
 import argparse
 from html.parser import HTMLParser
@@ -18,7 +19,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CATALOG = ROOT / 'scribblings' / 'tutorials' / 'support' / 'catalog.json'
+CATALOG = source_path(ROOT, 'scribblings') / 'tutorials' / 'support' / 'catalog.json'
 
 
 class CheckError(ValueError):
@@ -152,7 +153,7 @@ def installed_redirect_target(root: Path, href: str):
             or document == 'skia-tutorials'
             or document.startswith('skia-tutorial-')):
         return None
-    candidate = (root / document / relative).resolve()
+    candidate = (source_path(root, document) / relative).resolve()
     return candidate if candidate.is_relative_to(root.resolve()) else None
 
 
@@ -317,7 +318,7 @@ def check_site(root: Path):
                    tutorial_id=None, categories=categories, shortcut_ids=shortcut_ids)
 
     for directory, section in (('skia-guide', 'guide'), ('skia-tutorials', 'tutorials')):
-        index_page = root / directory / 'index.html'
+        index_page = source_path(root, directory) / 'index.html'
         need(index_page.is_file(), f'missing {section} index: {index_page}')
         for page in sorted(index_page.parent.glob('*.html')):
             check_page(root, page, section=section, index=page == index_page, tutorial_id=None,
@@ -325,7 +326,7 @@ def check_site(root: Path):
 
     for entry in tutorials:
         identifier = entry['id']
-        index_page = root / tutorial_directory(identifier) / 'index.html'
+        index_page = source_path(root, tutorial_directory(identifier)) / 'index.html'
         need(index_page.is_file(), f'missing tutorial page for {identifier}: {index_page}')
         for page in sorted(index_page.parent.glob('*.html')):
             check_page(root, page, section='tutorials', index=False, tutorial_id=identifier,
@@ -344,8 +345,12 @@ def check_site(root: Path):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('site', type=Path, help='root of installed or staged documentation HTML')
+    parser.add_argument('--catalog', type=Path, help='installed documentation tutorial catalog')
     parser.add_argument('--output', type=Path, help='write the machine-readable report here')
     args = parser.parse_args(argv)
+    global CATALOG
+    if args.catalog is not None:
+        CATALOG = args.catalog.resolve()
     try:
         report = check_site(args.site)
     except (CheckError, OSError, UnicodeError, json.JSONDecodeError) as error:
